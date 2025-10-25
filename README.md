@@ -110,25 +110,26 @@
 
 ### 🗄️ 数据库相关
 - **MyBatis-Plus** 3.5.14 - ORM 框架
-- **MySQL Connector** 8.0.33 - MySQL 驱动
-- **PostgreSQL** 42.7.4 - PostgreSQL 驱动
-- **HikariCP** 5.1.0 - 连接池
+- **MyBatis** 3.5.19 - ORM 核心
+- **MySQL Connector** 8.2.0 - MySQL 驱动
+- **PostgreSQL** 42.7.8 - PostgreSQL 驱动
+- **HikariCP** 7.0.2 - 连接池
 
 ### 🛠️ 工具类库
 - **MapStruct** 1.5.5.Final - 对象映射
 - **Lombok** 1.18.36 - 代码生成
 - **Hutool** 5.8.34 - 工具类库
-- **FastJSON2** 2.0.54 - JSON 处理
-- **Jackson** 2.18.2 - JSON 序列化
+- **FastJSON2** 2.0.59 - JSON 处理
+- **Jackson** 2.18.2 - JSON 序列化 (Spring Boot 管理)
 
 ### 🧪 测试框架
-- **JUnit 5** 11.1 - 单元测试
-- **Mockito** 5.12.0 - Mock 框架
-- **TestContainers** 1.20.5 - 集成测试
+- **JUnit 5** 11.1 - 单元测试 (Spring Boot 管理)
+- **Mockito** 5.12.0 - Mock 框架 (Spring Boot 管理)
+- **TestContainers** 1.21.3 - 集成测试
 
 ### 📊 监控与安全
-- **Micrometer** 1.13.2 - 指标收集
-- **Prometheus** 1.13.2 - 监控系统
+- **Micrometer** 1.13.2 - 指标收集 (Spring Boot 管理)
+- **Prometheus** 1.13.2 - 监控系统 (Spring Boot 管理)
 - **JWT** 0.12.6 - 身份认证
 
 ### 📄 文档与API
@@ -136,9 +137,32 @@
 - **Knife4j** 4.5.0 - API 文档界面
 
 ### 🔧 其他工具
-- **Apache POI** 5.2.5 - Office 文档处理
-- **Quartz** 2.3.2 - 定时任务
-- **Apache Curator** 5.5.0 - 分布式协调
+- **Apache POI** 5.4.1 - Office 文档处理
+- **iText** 8.0.2 - PDF 处理
+- **Apache Curator** 5.9.0 - 分布式协调
+- **Kryo** 5.5.0 - 序列化框架
+- **Protobuf** 3.25.5 - 序列化协议
+- **OkHttp** 4.12.0 - HTTP 客户端
+- **Retrofit** 2.11.0 - REST 客户端
+- **Commons Lang3** 3.17.0 - Apache 工具库
+- **Commons Collections4** 4.4 - Apache 集合库
+- **Commons Pool2** 2.12.0 - Apache 对象池
+- **Guava** 33.3.1-jre - Google 工具库
+
+### 📨 消息队列
+- **Apache Kafka** 3.7.0 - 分布式流处理平台
+- **Apache RocketMQ** 5.2.0 - 阿里云消息队列
+
+### ⏰ 定时任务
+- **XXL-Job** 2.4.1 - 分布式任务调度平台
+
+### 🚀 分布式缓存
+- **JetCache** 2.7.4 - 多级缓存框架
+- **Redisson** 3.32.0 - Redis 客户端
+
+### 🔍 搜索引擎和NoSQL
+- **Elasticsearch** 8.11.0 - 分布式搜索引擎
+- **MongoDB** 4.11.1 - 文档数据库
 
 ## 🔧 开发工具
 
@@ -274,6 +298,22 @@ mvn versions:display-plugin-updates
 - 🛠️ **开发工具集成**: 开箱即用的代码质量检查
 - 🚀 **快速开发**: 减少重复配置，专注业务开发
 - 📋 **最佳实践**: 遵循企业级开发规范
+
+## 🔄 版本更新说明
+
+### 最新版本更新 (2024)
+- ✅ **数据库驱动**: MySQL 8.2.0, PostgreSQL 42.7.8, HikariCP 7.0.2
+- ✅ **ORM框架**: MyBatis 3.5.19, MyBatis-Plus 3.5.14
+- ✅ **工具库**: FastJSON2 2.0.59, Apache POI 5.4.1
+- ✅ **测试框架**: TestContainers 1.21.3
+- ✅ **分布式组件**: Apache Curator 5.9.0
+- ✅ **技术栈共识**: Kafka + RocketMQ, XXL-Job, JetCache, Elasticsearch + MongoDB
+
+### 技术栈选择原则
+- 🎯 **现代化**: 选择最新稳定版本
+- 🔒 **安全性**: 优先考虑安全修复
+- ⚡ **性能**: 关注性能优化
+- 🔄 **兼容性**: 确保与Spring Boot 3.3.13兼容
 
 ## ⚠️ 重要说明
 
