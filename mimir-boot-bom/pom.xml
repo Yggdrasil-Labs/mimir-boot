@@ -37,7 +37,7 @@
         <testcontainers.version>1.21.3</testcontainers.version>
         
         <!-- 安全相关 -->
-        <jwt.version>0.12.6</jwt.version>
+        <jwt.version>0.13.0</jwt.version>
         
         <!-- 文档相关 -->
         <springdoc.version>2.7.0</springdoc.version>
