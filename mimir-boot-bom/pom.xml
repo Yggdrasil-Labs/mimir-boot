@@ -74,7 +74,7 @@
         <spring.boot.websocket.version>3.3.13</spring.boot.websocket.version>
         <spring.boot.security.version>3.3.13</spring.boot.security.version>
         <spring.boot.data.redis.version>3.5.7</spring.boot.data.redis.version>
-        <spring.boot.data.jpa.version>3.3.13</spring.boot.data.jpa.version>
+        <spring.boot.data.jpa.version>3.5.7</spring.boot.data.jpa.version>
         <spring.boot.test.version>3.3.13</spring.boot.test.version>
         
         <!-- 日志相关 -->
