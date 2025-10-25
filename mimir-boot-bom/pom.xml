@@ -24,7 +24,7 @@
         <mybatis.plus.version>3.5.14</mybatis.plus.version>
         <mybatis.version>3.5.19</mybatis.version>
         <mysql.version>8.2.0</mysql.version>
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.8</postgresql.version>
         <hikaricp.version>7.0.2</hikaricp.version>
         
         <!-- 工具类 -->
