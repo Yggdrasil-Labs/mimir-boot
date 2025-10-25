@@ -52,7 +52,7 @@
         <rocketmq.version>5.2.0</rocketmq.version>
         
         <!-- 定时任务 -->
-        <xxl.job.version>2.4.1</xxl.job.version>
+        <xxl.job.version>3.2.0</xxl.job.version>
         
         <!-- 分布式缓存 -->
         <jetcache.version>2.7.8</jetcache.version>
