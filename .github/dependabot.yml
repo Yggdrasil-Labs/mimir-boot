@@ -1,0 +1,231 @@
+# Dependabot configuration
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # ===== JavaScript/TypeScript (npm/yarn/pnpm) =====
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      dev-deps:
+        patterns:
+          - "eslint*"
+          - "@types/*"
+          - "typescript"
+          - "vitest"
+          - "jest*"
+          - "webpack*"
+          - "rollup*"
+          - "vite*"
+
+  # ===== Python (pip/poetry/pipenv) =====
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:20"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== Java (Maven) =====
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:40"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== Java (Gradle) =====
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:45"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== Go (Modules) =====
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:50"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== PHP (Composer) =====
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:55"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== .NET (NuGet) =====
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+
+  # ===== Flutter/Dart (pub) =====
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:15"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== Rust (Cargo) =====
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:20"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+
+  # ===== GitHub Actions (repo-wide) =====
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:30"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "🧰 infra"
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+  # ===== Dockerfiles (repo root) =====
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    reviewers:
+      - "Yggdrasil-Labs/reviewers"
+
+
+# 说明：
+# - 语义化提交：commit-message.prefix 统一使用 chore 前缀，符合依赖/构建变更语义。
+# - 自动标签：labels 将自动给 PR 打上依赖相关标签；可配合规则实现自动合并。
+# - Reviewer：示例使用组织团队别名，按需替换为具体成员或团队。
+# - 更新频率：统一为 weekly，并设置周一凌晨分时段，减少噪音。
+# - 分组：对前端常见 dev 依赖与 minor/patch 版本进行归组，降低 PR 数量。
+
