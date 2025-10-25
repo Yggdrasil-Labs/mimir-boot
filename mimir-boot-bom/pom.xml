@@ -67,7 +67,7 @@
         <guava.version>33.3.1-jre</guava.version>
         
         <!-- Spring Boot Starters -->
-        <spring.boot.validation.version>3.3.13</spring.boot.validation.version>
+        <spring.boot.validation.version>3.5.7</spring.boot.validation.version>
         <spring.boot.actuator.version>3.3.13</spring.boot.actuator.version>
         <spring.boot.cache.version>3.3.13</spring.boot.cache.version>
         <spring.boot.mail.version>3.3.13</spring.boot.mail.version>
