@@ -43,7 +43,7 @@
         <maven.antrun.plugin.version>3.1.0</maven.antrun.plugin.version>
         <sonar.maven.plugin.version>3.11.0.2182</sonar.maven.plugin.version>
         <maven.help.plugin.version>3.4.0</maven.help.plugin.version>
-        <maven.surefire.report.plugin.version>3.3.0</maven.surefire.report.plugin.version>
+        <maven.surefire.report.plugin.version>3.5.4</maven.surefire.report.plugin.version>
         <maven.site.plugin.version>4.0.0-M15</maven.site.plugin.version>
         <maven.project.info.plugin.version>3.4.5</maven.project.info.plugin.version>
     </properties>
