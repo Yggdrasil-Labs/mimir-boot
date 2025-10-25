@@ -1,231 +1,128 @@
-# Dependabot configuration
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
-  # ===== JavaScript/TypeScript (npm/yarn/pnpm) =====
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
-      include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-    groups:
-      minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-      dev-deps:
-        patterns:
-          - "eslint*"
-          - "@types/*"
-          - "typescript"
-          - "vitest"
-          - "jest*"
-          - "webpack*"
-          - "rollup*"
-          - "vite*"
-
-  # ===== Python (pip/poetry/pipenv) =====
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:20"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-  # ===== Java (Maven) =====
+  # Maven 依赖更新
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "03:40"
-      timezone: "Asia/Shanghai"
+      time: "09:00"
     open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "📦 deps"
     reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-  # ===== Java (Gradle) =====
-  - package-ecosystem: "gradle"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:45"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
+      - "yggdrasil-labs"
+    assignees:
+      - "yggdrasil-labs"
     commit-message:
-      prefix: "chore"
+      prefix: "deps"
       include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
+    # 忽略主要版本更新（破坏性变更）
+    ignore:
+      # Spring Boot 主要版本更新需要手动处理
+      - dependency-name: "org.springframework.boot:spring-boot-dependencies"
+        update-types: ["version-update:semver-major"]
+      # Spring Cloud 主要版本更新
+      - dependency-name: "org.springframework.cloud:spring-cloud-dependencies"
+        update-types: ["version-update:semver-major"]
+      # Spring Cloud Alibaba 主要版本更新
+      - dependency-name: "com.alibaba.cloud:spring-cloud-alibaba-dependencies"
+        update-types: ["version-update:semver-major"]
+      # MyBatis Plus 主要版本更新
+      - dependency-name: "com.baomidou:mybatis-plus-boot-starter"
+        update-types: ["version-update:semver-major"]
+      # 数据库驱动主要版本更新
+      - dependency-name: "com.mysql:mysql-connector-j"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.postgresql:postgresql"
+        update-types: ["version-update:semver-major"]
+      # 消息队列主要版本更新
+      - dependency-name: "org.apache.rocketmq:rocketmq-spring-boot-starter"
+        update-types: ["version-update:semver-major"]
+      # 搜索引擎主要版本更新
+      - dependency-name: "org.elasticsearch.client:elasticsearch-java"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.mongodb:mongodb-driver-sync"
+        update-types: ["version-update:semver-major"]
+      # Java 版本相关更新
+      - dependency-name: "org.apache.maven.plugins:maven-compiler-plugin"
+        update-types: ["version-update:semver-major"]
+    # 允许的更新类型
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    # 分组相关依赖
+    groups:
+      # Spring 生态
+      spring-ecosystem:
+        patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework.cloud:*"
+          - "org.springframework.security:*"
+          - "com.alibaba.cloud:*"
+        update-types: ["minor", "patch"]
+      # 数据库相关
+      database:
+        patterns:
+          - "com.mysql:*"
+          - "org.postgresql:*"
+          - "com.zaxxer:*"
+          - "com.baomidou:*"
+        update-types: ["minor", "patch"]
+      # 测试框架
+      testing:
+        patterns:
+          - "org.junit.jupiter:*"
+          - "org.mockito:*"
+          - "org.testcontainers:*"
+        update-types: ["minor", "patch"]
+      # 工具类
+      utilities:
+        patterns:
+          - "org.projectlombok:*"
+          - "cn.hutool:*"
+          - "com.alibaba.fastjson2:*"
+          - "com.fasterxml.jackson.*:*"
+        update-types: ["minor", "patch"]
+      # 监控和安全
+      monitoring-security:
+        patterns:
+          - "io.micrometer:*"
+          - "io.jsonwebtoken:*"
+        update-types: ["minor", "patch"]
+      # 消息队列
+      messaging:
+        patterns:
+          - "org.springframework.kafka:*"
+          - "org.apache.rocketmq:*"
+        update-types: ["minor", "patch"]
+      # 搜索引擎和NoSQL
+      search-nosql:
+        patterns:
+          - "org.elasticsearch.client:*"
+          - "org.mongodb:*"
+        update-types: ["minor", "patch"]
+      # 定时任务
+      scheduling:
+        patterns:
+          - "com.xuxueli:*"
+        update-types: ["minor", "patch"]
+      # 分布式缓存
+      caching:
+        patterns:
+          - "com.alicp.jetcache:*"
+        update-types: ["minor", "patch"]
 
-  # ===== Go (Modules) =====
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:50"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-  # ===== PHP (Composer) =====
-  - package-ecosystem: "composer"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:55"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-  # ===== .NET (NuGet) =====
-  - package-ecosystem: "nuget"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:00"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-
-  # ===== Flutter/Dart (pub) =====
-  - package-ecosystem: "pub"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:15"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-  # ===== Rust (Cargo) =====
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:20"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-
-  # ===== GitHub Actions (repo-wide) =====
+  # GitHub Actions 更新
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "02:30"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "🧰 infra"
-      - "📦 deps"
+      time: "09:00"
+    open-pull-requests-limit: 5
     reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-  # ===== Dockerfiles (repo root) =====
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "02:00"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
-    target-branch: "main"
+      - "yggdrasil-labs"
+    assignees:
+      - "yggdrasil-labs"
     commit-message:
-      prefix: "chore"
+      prefix: "ci"
       include: "scope"
-    labels:
-      - "📦 deps"
-    reviewers:
-      - "Yggdrasil-Labs/reviewers"
-
-
-# 说明：
-# - 语义化提交：commit-message.prefix 统一使用 chore 前缀，符合依赖/构建变更语义。
-# - 自动标签：labels 将自动给 PR 打上依赖相关标签；可配合规则实现自动合并。
-# - Reviewer：示例使用组织团队别名，按需替换为具体成员或团队。
-# - 更新频率：统一为 weekly，并设置周一凌晨分时段，减少噪音。
-# - 分组：对前端常见 dev 依赖与 minor/patch 版本进行归组，降低 PR 数量。
-
