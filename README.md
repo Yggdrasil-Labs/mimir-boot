@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Java](https://img.shields.io/badge/Java-21-orange.svg)
+![Java](https://img.shields.io/badge/Java-17-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.13-brightgreen.svg)
 ![Maven](https://img.shields.io/badge/Maven-3.9.9-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
@@ -103,9 +103,9 @@
 ## 📋 技术栈
 
 ### 🌸 Spring 生态
-- **Spring Boot** 3.3.13 - 应用框架
-- **Spring Cloud** 2023.0.6 - 微服务框架
-- **Spring Cloud Alibaba** 2023.0.3.3 - 阿里云组件
+- **Spring Boot** 3.3.13 - 应用框架 (最新稳定版)
+- **Spring Cloud** 2023.0.6 - 微服务框架 (Leyton)
+- **Spring Cloud Alibaba** 2023.0.3.4 - 阿里云组件 (最新稳定版)
 - **Spring Security** 6.3.4 - 安全框架
 
 ### 🗄️ 数据库相关
@@ -302,6 +302,10 @@ mvn versions:display-plugin-updates
 ## 🔄 版本更新说明
 
 ### 最新版本更新 (2024)
+- ✅ **JDK版本**: Java 17 (LTS版本，官方全面支持)
+- ✅ **Spring Boot**: 3.3.13 (最新稳定版)
+- ✅ **Spring Cloud**: 2023.0.6 (Leyton，最新版本)
+- ✅ **Spring Cloud Alibaba**: 2023.0.3.4 (最新稳定版)
 - ✅ **数据库驱动**: MySQL 8.2.0, PostgreSQL 42.7.8, HikariCP 7.0.2
 - ✅ **ORM框架**: MyBatis 3.5.19, MyBatis-Plus 3.5.14
 - ✅ **工具库**: FastJSON2 2.0.59, Apache POI 5.4.1
@@ -313,7 +317,16 @@ mvn versions:display-plugin-updates
 - 🎯 **现代化**: 选择最新稳定版本
 - 🔒 **安全性**: 优先考虑安全修复
 - ⚡ **性能**: 关注性能优化
-- 🔄 **兼容性**: 确保与Spring Boot 3.3.13兼容
+- 🔄 **兼容性**: 确保与JDK 17和Spring Boot 3.3.13兼容
+
+## 📊 版本兼容性矩阵
+
+| 组件                       | 推荐版本                        | 稳定性       | 兼容说明                           |
+| ------------------------ | --------------------------- | --------- | ------------------------------ |
+| **JDK**                  | **17 (LTS)**                | ✅ 长期支持    | 官方全面支持 Spring Boot 3.x         |
+| **Spring Boot**          | **3.3.13**                  | ✅ 最新稳定版  | 官方最新版本，兼容 JDK 17、21            |
+| **Spring Cloud**         | **2023.0.6（代号 Leyton）**     | ✅ 最新版本 | 与 Boot 3.3.x 完全兼容              |
+| **Spring Cloud Alibaba** | **2023.0.3.4**              | ✅ 最新稳定版 | 与 Boot 3.3.x、Cloud 2023.0.x 兼容 |
 
 ## ⚠️ 重要说明
 
