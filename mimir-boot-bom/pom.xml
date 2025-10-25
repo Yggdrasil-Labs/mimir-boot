@@ -59,7 +59,7 @@
         
         <!-- 搜索引擎和NoSQL -->
         <elasticsearch.version>8.11.0</elasticsearch.version>
-        <mongodb.version>4.11.1</mongodb.version>
+        <mongodb.version>4.11.5</mongodb.version>
         
         <!-- 其他工具 -->
         <commons.lang3.version>3.17.0</commons.lang3.version>
