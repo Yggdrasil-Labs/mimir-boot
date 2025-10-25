@@ -97,7 +97,7 @@
         <quartz.version>2.3.2</quartz.version>
         
         <!-- 分布式锁 -->
-        <curator.version>5.5.0</curator.version>
+        <curator.version>5.9.0</curator.version>
     </properties>
 
     <dependencyManagement>
