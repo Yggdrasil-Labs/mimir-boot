@@ -38,6 +38,14 @@
         <pmd.plugin.version>3.22.0</pmd.plugin.version>
         <flatten.plugin.version>1.5.0</flatten.plugin.version>
         <maven.gpg.plugin.version>3.1.0</maven.gpg.plugin.version>
+        <maven.enforcer.plugin.version>3.4.1</maven.enforcer.plugin.version>
+        <maven.war.plugin.version>3.4.0</maven.war.plugin.version>
+        <maven.antrun.plugin.version>3.1.0</maven.antrun.plugin.version>
+        <sonar.maven.plugin.version>3.11.0.2182</sonar.maven.plugin.version>
+        <maven.help.plugin.version>3.4.0</maven.help.plugin.version>
+        <maven.surefire.report.plugin.version>3.3.0</maven.surefire.report.plugin.version>
+        <maven.site.plugin.version>4.0.0-M15</maven.site.plugin.version>
+        <maven.project.info.plugin.version>3.4.5</maven.project.info.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -174,6 +182,32 @@
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>${jacoco.plugin.version}</version>
+                    <configuration>
+                        <excludes>
+                            <exclude>**/config/**</exclude>
+                            <exclude>**/entity/**</exclude>
+                            <exclude>**/dto/**</exclude>
+                            <exclude>**/vo/**</exclude>
+                            <exclude>**/Application.class</exclude>
+                        </excludes>
+                        <rules>
+                            <rule>
+                                <element>BUNDLE</element>
+                                <limits>
+                                    <limit>
+                                        <counter>INSTRUCTION</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>0.80</minimum>
+                                    </limit>
+                                    <limit>
+                                        <counter>BRANCH</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>0.70</minimum>
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
                     <executions>
                         <execution>
                             <goals>
@@ -185,6 +219,12 @@
                             <phase>test</phase>
                             <goals>
                                 <goal>report</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>check</id>
+                            <goals>
+                                <goal>check</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -269,6 +309,86 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${maven.dependency.plugin.version}</version>
+                </plugin>
+
+                <!-- Maven Enforcer Plugin (依赖约束) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven.enforcer.plugin.version}</version>
+                    <configuration>
+                        <rules>
+                            <requireJavaVersion>
+                                <version>[21,)</version>
+                            </requireJavaVersion>
+                            <requireMavenVersion>
+                                <version>[3.8.0,)</version>
+                            </requireMavenVersion>
+                            <bannedDependencies>
+                                <excludes>
+                                    <exclude>commons-logging:commons-logging</exclude>
+                                    <exclude>log4j:log4j</exclude>
+                                </excludes>
+                            </bannedDependencies>
+                        </rules>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven War Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-war-plugin</artifactId>
+                    <version>${maven.war.plugin.version}</version>
+                    <configuration>
+                        <failOnMissingWebXml>false</failOnMissingWebXml>
+                        <warName>${project.build.finalName}</warName>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Antrun Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>${maven.antrun.plugin.version}</version>
+                </plugin>
+
+
+                <!-- SonarQube Maven Plugin -->
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar.maven.plugin.version}</version>
+                </plugin>
+
+                <!-- Maven Help Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-help-plugin</artifactId>
+                    <version>${maven.help.plugin.version}</version>
+                </plugin>
+
+                <!-- Maven Surefire Report Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-report-plugin</artifactId>
+                    <version>${maven.surefire.report.plugin.version}</version>
+                </plugin>
+
+                <!-- Maven Site Plugin (文档生成) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>${maven.site.plugin.version}</version>
+                    <configuration>
+                        <skipDeploy>true</skipDeploy>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Project Info Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>${maven.project.info.plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -388,6 +508,85 @@
                                 </goals>
                             </execution>
                         </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+
+        <!-- SonarQube 代码质量分析 -->
+        <profile>
+            <id>sonar</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonarsource.scanner.maven</groupId>
+                        <artifactId>sonar-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- CI/CD 集成 -->
+        <profile>
+            <id>ci</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- 性能测试 -->
+        <profile>
+            <id>performance</id>
+            <properties>
+                <maven.test.skip>false</maven.test.skip>
+                <maven.failsafe.skip>false</maven.failsafe.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*PerformanceTest.java</include>
+                                <include>**/*LoadTest.java</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- 文档生成 -->
+        <profile>
+            <id>docs</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-site-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-project-info-reports-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-report-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>
