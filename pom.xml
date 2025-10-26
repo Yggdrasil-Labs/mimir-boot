@@ -4,30 +4,36 @@
 
     <groupId>com.yggdrasil.labs</groupId>
     <artifactId>mimir-boot</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
 
     <name>Mimir Boot</name>
+
     <modules>
         <module>mimir-boot-parent</module>
         <module>mimir-boot-bom</module>
+        <module>mimir-boot-common</module>
     </modules>
 
     <properties>
+        <!-- 📌 版本号统一管理：只修改这里即可，所有子模块自动继承 -->
+        <revision>1.0-SNAPSHOT</revision>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <java.version>21</java.version>
-        
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>17</java.version>
+
         <!-- 项目信息 -->
         <project.name>Mimir Boot</project.name>
         <project.description>Yggdrasil-Labs 的 Java 企业级基础框架</project.description>
         <project.url>https://github.com/Yggdrasil-Labs/mimir-boot</project.url>
         <project.scm.url>https://github.com/Yggdrasil-Labs/mimir-boot.git</project.scm.url>
         <project.scm.connection>scm:git:git://github.com/Yggdrasil-Labs/mimir-boot.git</project.scm.connection>
-        <project.scm.developerConnection>scm:git:ssh://github.com:Yggdrasil-Labs/mimir-boot.git</project.scm.developerConnection>
-        
+        <project.scm.developerConnection>scm:git:ssh://github.com:Yggdrasil-Labs/mimir-boot.git
+        </project.scm.developerConnection>
+
         <!-- 许可证 -->
         <project.license.name>Apache License, Version 2.0</project.license.name>
         <project.license.url>https://www.apache.org/licenses/LICENSE-2.0</project.license.url>

@@ -1,8 +1,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.yggdrasil.labs</groupId>
-    <version>1.0-SNAPSHOT</version>
+    
+    <parent>
+        <groupId>com.yggdrasil.labs</groupId>
+        <artifactId>mimir-boot</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    
     <artifactId>mimir-boot-parent</artifactId>
     <packaging>pom</packaging>
 
@@ -44,7 +50,6 @@
         <sonar.maven.plugin.version>5.2.0.4988</sonar.maven.plugin.version>
         <maven.help.plugin.version>3.4.0</maven.help.plugin.version>
         <maven.surefire.report.plugin.version>3.5.4</maven.surefire.report.plugin.version>
-        <maven.site.plugin.version>4.0.0-M15</maven.site.plugin.version>
         <maven.project.info.plugin.version>3.4.5</maven.project.info.plugin.version>
     </properties>
 
@@ -277,7 +282,7 @@
                     <version>${flatten.plugin.version}</version>
                     <configuration>
                         <updatePomFile>true</updatePomFile>
-                        <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                        <flattenMode>oss</flattenMode>
                     </configuration>
                     <executions>
                         <execution>
@@ -319,7 +324,7 @@
                     <configuration>
                         <rules>
                             <requireJavaVersion>
-                                <version>[21,)</version>
+                                <version>[17,)</version>
                             </requireJavaVersion>
                             <requireMavenVersion>
                                 <version>[3.8.0,)</version>
