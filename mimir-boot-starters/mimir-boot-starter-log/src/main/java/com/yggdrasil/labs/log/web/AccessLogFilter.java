@@ -68,25 +68,18 @@ public class AccessLogFilter implements Filter {
      */
     private void logAccess(HttpServletRequest request, HttpServletResponse response, long durationMs) {
         try {
-            String ip = getClientIp(request);
-            String method = request.getMethod();
-            String uri = request.getRequestURI();
-            String queryString = request.getQueryString();
+            String ip = sanitize(getClientIp(request));
+            String method = sanitize(request.getMethod());
+            String uri = sanitize(request.getRequestURI());
+            String queryString = sanitize(request.getQueryString());
             int statusCode = response.getStatus();
-            String userAgent = request.getHeader("User-Agent");
+            String userAgent = sanitize(request.getHeader("User-Agent"));
 
             // 构建完整的 URI（包含查询参数）
             String fullUri = queryString != null ? uri + "?" + queryString : uri;
 
-            // 构建日志消息
-            String message = String.format(
-                    "IP=[%s], Method=[%s], URI=[%s], Status=[%d], Duration=[%dms], UserAgent=[%s]",
-                    ip, method, fullUri, statusCode, durationMs,
-                    userAgent != null ? userAgent : "Unknown"
-            );
-
             // 根据状态码和耗时判断日志级别（最佳实践）
-            logAccessByStatus(message, statusCode, durationMs);
+            logAccessByStatus(ip, method, fullUri, statusCode, durationMs, userAgent != null ? userAgent : "Unknown");
         } catch (Exception e) {
             ACCESS_LOG.error("Failed to log access", e);
         }
@@ -101,41 +94,48 @@ public class AccessLogFilter implements Filter {
      * - 4xx (客户端错误): WARN，如果慢则 WARN
      * - 5xx (服务器错误): ERROR，如果慢则 ERROR
      *
-     * @param message   日志消息
+     * @param ip         客户端 IP
+     * @param method     HTTP 方法
+     * @param fullUri   完整的 URI
      * @param statusCode HTTP 状态码
      * @param durationMs 耗时（毫秒）
+     * @param userAgent  User-Agent
      */
-    private void logAccessByStatus(String message, int statusCode, long durationMs) {
+    private void logAccessByStatus(String ip, String method, String fullUri, int statusCode, long durationMs, String userAgent) {
         boolean isSlow = durationMs > slowThresholdMs;
+        
+        // 使用参数化日志，防止日志注入攻击
+        String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Duration=[{}ms], UserAgent=[{}]";
+        Object[] args = new Object[]{ip, method, fullUri, statusCode, durationMs, userAgent};
         
         // 判断状态码范围
         if (statusCode >= 500) {
             // 5xx: 服务器错误，记录为 ERROR
             // 示例：500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable
-            ACCESS_LOG.error(message);
+            ACCESS_LOG.error(message, args);
         } else if (statusCode >= 400) {
             // 4xx: 客户端错误，记录为 WARN
             // 示例：400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests
             if (isSlow) {
-                ACCESS_LOG.warn(message + " [慢接口]");
+                ACCESS_LOG.warn(message + " [慢接口]", args);
             } else {
-                ACCESS_LOG.warn(message);
+                ACCESS_LOG.warn(message, args);
             }
         } else if (statusCode >= 300) {
             // 3xx: 重定向，记录为 INFO
             // 示例：301 Moved Permanently, 302 Found, 304 Not Modified
             if (isSlow) {
-                ACCESS_LOG.warn(message + " [慢接口]");
+                ACCESS_LOG.warn(message + " [慢接口]", args);
             } else {
-                ACCESS_LOG.info(message);
+                ACCESS_LOG.info(message, args);
             }
         } else {
             // 2xx: 成功，记录为 INFO
             // 示例：200 OK, 201 Created, 204 No Content
             if (isSlow) {
-                ACCESS_LOG.warn(message + " [慢接口]");
+                ACCESS_LOG.warn(message + " [慢接口]", args);
             } else {
-                ACCESS_LOG.info(message);
+                ACCESS_LOG.info(message, args);
             }
         }
     }
@@ -177,6 +177,25 @@ public class AccessLogFilter implements Filter {
         }
 
         return request.getRemoteAddr();
+    }
+
+    /**
+     * 清理用户输入，防止日志注入攻击
+     * <p>
+     * 移除换行符、回车符、制表符等控制字符，防止恶意用户通过构造特殊字符来伪造日志条目
+     *
+     * @param input 原始输入
+     * @return 清理后的字符串，如果输入为 null 则返回 null
+     */
+    private String sanitize(String input) {
+        if (input == null) {
+            return null;
+        }
+        return input
+                .replace("\n", "\\n")  // 替换换行符
+                .replace("\r", "\\r")  // 替换回车符
+                .replace("\t", "\\t")  // 替换制表符
+                .trim();               // 去除首尾空白
     }
 }
 

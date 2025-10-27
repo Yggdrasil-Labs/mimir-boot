@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
+@SuppressWarnings("deprecation")
 class AccessLogFilterTest {
 
     private AccessLogFilter filter;
@@ -293,6 +294,63 @@ class AccessLogFilterTest {
 
             listAppender.list.clear();
         }
+    }
+
+    /**
+     * 测试日志注入防护
+     * 验证恶意输入（包含换行符等特殊字符）不会被用来伪造日志条目
+     */
+    @Test
+    void testLogInjectionPrevention() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        // 模拟恶意输入：URI 中包含换行符
+        when(request.getRequestURI()).thenReturn("/api/test\n[伪造日志]");
+        when(request.getQueryString()).thenReturn("param=value\r\n伪造的日志");
+        when(request.getMethod()).thenReturn("GET");
+        // User-Agent 中也包含恶意字符
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0\r\n伪造的日志");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(response.getStatus()).thenReturn(200);
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(1, listAppender.list.size());
+        ILoggingEvent event = listAppender.list.get(0);
+        String message = event.getFormattedMessage();
+        
+        // 验证换行符被转义为 \n
+        assertTrue(message.contains("\\n"), "换行符应该被转义为 \\n");
+        // 验证不存在未转义的换行符导致的额外日志行
+        assertEquals(1, listAppender.list.size(), "应该只有一条日志，不应该被注入额外的日志条目");
+    }
+
+    /**
+     * 测试包含制表符的输入
+     */
+    @Test
+    void testTabCharacterInInput() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        when(request.getRequestURI()).thenReturn("/api/test\twith\ttab");
+        when(request.getQueryString()).thenReturn("param=value\tvalue2");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(response.getStatus()).thenReturn(200);
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(1, listAppender.list.size());
+        ILoggingEvent event = listAppender.list.get(0);
+        String message = event.getFormattedMessage();
+        
+        // 验证制表符被转义为 \t
+        assertTrue(message.contains("\\t"), "制表符应该被转义为 \\t");
     }
 }
 
