@@ -13,8 +13,10 @@ updates:
     assignees:
       - "yggdrasil-labs"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
       include: "scope"
+    labels:
+      - "📦 deps"
     # 忽略主要版本更新（破坏性变更）
     ignore:
       # Spring Boot 主要版本更新需要手动处理
@@ -110,6 +112,17 @@ updates:
         patterns:
           - "com.alicp.jetcache:*"
         update-types: ["minor", "patch"]
+      # Maven 插件
+      maven-plugins:
+        patterns:
+          - "org.apache.maven.plugins:*"
+          - "org.codehaus.mojo:*"
+          - "org.springframework.boot:spring-boot-maven-plugin"
+          - "org.jacoco:jacoco-maven-plugin"
+          - "com.github.spotbugs:spotbugs-maven-plugin"
+          - "org.codehaus.mojo:flatten-maven-plugin"
+          - "org.sonarsource.scanner.maven:sonar-maven-plugin"
+        update-types: ["minor", "patch"]
 
   # GitHub Actions 更新
   - package-ecosystem: "github-actions"
@@ -126,3 +139,5 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    labels:
+      - "🧰 infra"
