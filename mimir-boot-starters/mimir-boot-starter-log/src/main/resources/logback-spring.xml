@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Logback 配置文件
+    统一日志打印行为，支持控制台输出、文件记录、定时压缩等功能
+    
+    特性：
+    1. 控制台输出 - 开发环境友好的彩色日志
+    2. 文件输出 - 按日期滚动，自动压缩归档
+    3. 日志分离 - 错误日志单独文件
+    4. 性能优化 - 异步日志写入
+    5. 统一格式 - 包含时间、线程、级别、类名、日志内容
+    
+    配置说明：
+    - 通过 springProfile 支持不同环境配置
+    - 日志级别：ERROR > WARN > INFO > DEBUG
+    - 文件归档策略：按天滚动，保留指定天数
+-->
+<configuration>
+    <!-- 引入 Spring Boot 默认配置 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- 注册自定义转换器 -->
+    <conversionRule conversionWord="mask" 
+                    converterClass="com.yggdrasil.labs.log.converter.SensitiveDataConverter"/>
+    
+    <!-- 敏感信息脱敏配置属性（默认关闭）-->
+    <!-- 配置属性通过 Spring 配置文件设置，默认为 false -->
+    
+    <!-- 定义变量 -->
+    <!-- 日志路径优先级：LOG_PATH环境变量 > 当前目录 > 临时目录 > /tmp -->
+    <property name="LOG_PATH" value="${LOG_PATH:-logs}"/>
+    <property name="APP_NAME" value="${spring.application.name:-application}"/>
+    <!-- 日志模式：包含时间戳、线程、级别、TraceId、SpanId、Logger、消息 -->
+    <!-- TraceId 和 SpanId 由 Micrometer Tracing 自动注入 -->
+    <property name="LOG_PATTERN_FILE" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] [%X{spanId}] %logger{50} - %mask%n"/>
+    <property name="LOG_PATTERN_CONSOLE" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%thread]){magenta} %clr(%-5level){highlight} %clr([%X{traceId}]){yellow} %clr([%X{spanId}]){cyan} %clr(%logger{50}){cyan} - %mask%n"/>
+    
+    <!-- 控制台输出 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN_CONSOLE}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
+    
+    <!-- 通用日志文件输出 - 按日期滚动 -->
+    <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}.log</file>
+        <encoder>
+            <pattern>${LOG_PATTERN_FILE}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <!-- 滚动策略：按日期和大小滚动 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 日志文件命名格式 -->
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <!-- 单个日志文件最大大小 -->
+            <maxFileSize>100MB</maxFileSize>
+            <!-- 日志总大小 -->
+            <totalSizeCap>10GB</totalSizeCap>
+            <!-- 保留天数 -->
+            <maxHistory>30</maxHistory>
+            <!-- 当日志文件超过 maxFileSize 时，会根据 fileNamePattern 自动滚动 -->
+        </rollingPolicy>
+        
+        <!-- 只记录 INFO 及以上级别 -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+    
+    <!-- 错误日志文件输出 - 只记录 ERROR 级别 -->
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <encoder>
+            <pattern>${LOG_PATTERN_FILE}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-error-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <totalSizeCap>5GB</totalSizeCap>
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+        
+        <!-- 只记录 ERROR 级别 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    
+    <!-- 访问日志文件输出 - 记录所有请求的访问信息 -->
+    <appender name="FILE_ACCESS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-access.log</file>
+        <encoder>
+            <!-- 访问日志格式：时间 [线程] 级别 [TraceId] [SpanId] - 消息 -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-}] [%X{spanId:-}] - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-access-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <totalSizeCap>10GB</totalSizeCap>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        
+        <!-- 记录 INFO 及以上级别（包含慢接口的 WARN） -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+    
+    <!-- 异步日志输出 - 提升性能 -->
+    <appender name="ASYNC_FILE_INFO" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- 不丢失日志。默认如果队列80%已满,则会丢弃TRACE、DEBUG、INFO日志 -->
+        <discardingThreshold>0</discardingThreshold>
+        <!-- 队列大小 -->
+        <queueSize>512</queueSize>
+        <appender-ref ref="FILE_INFO"/>
+    </appender>
+    
+    <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>256</queueSize>
+        <appender-ref ref="FILE_ERROR"/>
+    </appender>
+    
+    <appender name="ASYNC_FILE_ACCESS" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <appender-ref ref="FILE_ACCESS"/>
+    </appender>
+    
+    <!-- 访问日志 Logger -->
+    <logger name="access.log" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_ACCESS"/>
+    </logger>
+    
+    <!-- 开发环境配置 -->
+    <springProfile name="dev,local,development">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </root>
+        
+        <!-- 应用日志级别 -->
+        <logger name="com.yggdrasil.labs" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </logger>
+        
+        <!-- SQL 日志 - 便于调试 -->
+        <logger name="com.yggdrasil.labs.mapper" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+        </logger>
+    </springProfile>
+    
+    <!-- 测试环境配置 -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </root>
+        
+        <logger name="com.yggdrasil.labs" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </logger>
+    </springProfile>
+    
+    <!-- 生产环境配置 -->
+    <springProfile name="prod,produce,production">
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </root>
+        
+        <!-- 应用日志级别 -->
+        <logger name="com.yggdrasil.labs" level="INFO" additivity="false">
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </logger>
+        
+        <!-- 第三方日志级别控制 -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.apache" level="WARN"/>
+        <logger name="com.alibaba" level="WARN"/>
+        <logger name="com.baomidou" level="WARN"/>
+        <logger name="org.mybatis" level="WARN"/>
+        <logger name="com.zaxxer" level="WARN"/>
+        <logger name="com.mysql" level="WARN"/>
+        <logger name="org.postgresql" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="io.netty" level="WARN"/>
+        <logger name="io.lettuce" level="WARN"/>
+        <logger name="io.lettuce.core" level="WARN"/>
+        <logger name="redis.clients" level="WARN"/>
+        <logger name="org.reflections" level="WARN"/>
+    </springProfile>
+    
+    <!-- 默认配置（如果没有指定 spring.profiles.active） -->
+    <springProfile name="!dev &amp; !test &amp; !prod &amp; !local &amp; !produce &amp; !development &amp; !production">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </root>
+        
+        <logger name="com.yggdrasil.labs" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_INFO"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </logger>
+    </springProfile>
+    
+    <!-- 通用配置 -->
+    <!-- 防止 Spring 框架日志过多 -->
+    <logger name="org.springframework.boot.context.embedded" level="INFO"/>
+    <logger name="org.springframework.boot.web.servlet" level="INFO"/>
+    <logger name="org.springframework.context" level="INFO"/>
+    
+    <!-- 防止 Vert.x 相关日志过多 -->
+    <logger name="io.vertx" level="WARN"/>
+    <logger name="io.netty.buffer" level="WARN"/>
+    
+    <!-- 防止 RocketMQ 日志过多 -->
+    <logger name="org.apache.rocketmq" level="WARN"/>
+    
+    <!-- 防止 Dubbo 日志过多 -->
+    <logger name="org.apache.dubbo" level="WARN"/>
+    
+    <!-- SQL 执行时间过长警告 -->
+    <logger name="com.yggdrasil.labs.datasource" level="WARN"/>
+</configuration>
+

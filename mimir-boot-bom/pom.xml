@@ -39,6 +39,9 @@
         <hutool.version>5.8.41</hutool.version>
         <fastjson2.version>2.0.60</fastjson2.version>
 
+        <!-- 日志相关 -->
+        <slf4j.version>2.0.16</slf4j.version>
+
         <!-- 测试相关 -->
         <testcontainers.version>1.21.3</testcontainers.version>
 
@@ -349,10 +352,33 @@
                 <version>${curator.version}</version>
             </dependency>
 
+            <!-- 日志相关 -->
+            <!-- SLF4J 桥接器版本管理 -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jcl-over-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jul-to-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>log4j-over-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
             <!-- Mimir Boot 模块 -->
             <dependency>
                 <groupId>com.yggdrasil.labs</groupId>
                 <artifactId>mimir-boot-common</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-log</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

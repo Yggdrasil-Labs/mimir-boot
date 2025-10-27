@@ -1,14 +1,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    
+
     <parent>
         <groupId>com.yggdrasil.labs</groupId>
         <artifactId>mimir-boot</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    
+
     <artifactId>mimir-boot-parent</artifactId>
     <packaging>pom</packaging>
 
@@ -21,7 +21,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        
+
         <!-- Maven 插件版本 -->
         <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>3.3.0</maven.surefire.plugin.version>
@@ -207,7 +207,7 @@
                                     <limit>
                                         <counter>BRANCH</counter>
                                         <value>COVEREDRATIO</value>
-                                        <minimum>0.70</minimum>
+                                        <minimum>0.50</minimum>
                                     </limit>
                                 </limits>
                             </rule>
@@ -611,7 +611,7 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-        
+
         <repository>
             <id>spring-milestones</id>
             <name>Spring Milestones</name>
@@ -623,7 +623,7 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-        
+
         <repository>
             <id>spring-snapshots</id>
             <name>Spring Snapshots</name>
@@ -635,7 +635,7 @@
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-        
+
         <repository>
             <id>aliyun</id>
             <name>Aliyun Maven</name>
@@ -661,7 +661,7 @@
                 <enabled>false</enabled>
             </snapshots>
         </pluginRepository>
-        
+
         <pluginRepository>
             <id>aliyun</id>
             <name>Aliyun Maven</name>

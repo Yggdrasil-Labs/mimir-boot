@@ -13,6 +13,7 @@
         <module>mimir-boot-parent</module>
         <module>mimir-boot-bom</module>
         <module>mimir-boot-common</module>
+        <module>mimir-boot-starters</module>
     </modules>
 
     <properties>
