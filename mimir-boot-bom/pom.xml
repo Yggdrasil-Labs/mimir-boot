@@ -34,7 +34,7 @@
         <hikaricp.version>7.0.2</hikaricp.version>
 
         <!-- 工具类 -->
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.42</lombok.version>
         <hutool.version>5.8.41</hutool.version>
         <fastjson2.version>2.0.59</fastjson2.version>
