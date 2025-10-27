@@ -1,3 +1,5 @@
+# Dependabot Configuration
+# Strategy: Only allow patch updates for Spring ecosystem to maintain compatibility
 version: 2
 updates:
   # Maven 依赖更新
@@ -60,8 +62,7 @@ updates:
           - "org.springframework.cloud:*"
           - "org.springframework.security:*"
           - "com.alibaba.cloud:*"
-        update-types: ["minor", "patch"]
-      # 数据库相关
+        update-types: ["patch"]
       database:
         patterns:
           - "com.mysql:*"
