@@ -54,7 +54,7 @@
 
         <!-- 缓存相关 -->
         <redis.version>4.4.6</redis.version>
-        <redisson.version>3.32.0</redisson.version>
+        <redisson.version>3.52.0</redisson.version>
 
         <!-- 消息队列 -->
         <kafka.version>3.7.0</kafka.version>
