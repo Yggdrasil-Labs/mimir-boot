@@ -22,7 +22,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Spring 相关 -->
-        <spring.boot.version>3.3.13</spring.boot.version>
+        <spring.boot.version>3.5.7</spring.boot.version>
         <spring.cloud.version>2023.0.6</spring.cloud.version>
         <spring.cloud.alibaba.version>2023.0.3.4</spring.cloud.alibaba.version>
 
