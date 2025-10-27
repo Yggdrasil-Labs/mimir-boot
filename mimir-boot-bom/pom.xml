@@ -46,7 +46,7 @@
         <jwt.version>0.13.0</jwt.version>
 
         <!-- 文档相关 -->
-        <springdoc.version>2.7.0</springdoc.version>
+        <springdoc.version>2.8.13</springdoc.version>
         <knife4j.version>4.5.0</knife4j.version>
 
         <!-- 缓存相关 -->
