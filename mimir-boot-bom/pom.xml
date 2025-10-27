@@ -74,7 +74,7 @@
         <commons.lang3.version>3.19.0</commons.lang3.version>
         <commons.collections4.version>4.5.0</commons.collections4.version>
         <commons.pool2.version>2.12.1</commons.pool2.version>
-        <guava.version>33.3.1-jre</guava.version>
+        <guava.version>33.5.0-jre</guava.version>
 
         <!-- 序列化相关 -->
         <jackson.version>2.20.0</jackson.version>
