@@ -75,7 +75,7 @@
 
         <!-- 序列化相关 -->
         <jackson.version>2.20.0</jackson.version>
-        <kryo.version>5.5.0</kryo.version>
+        <kryo.version>5.6.2</kryo.version>
         <protobuf.version>3.25.5</protobuf.version>
 
         <!-- 网络相关 -->
