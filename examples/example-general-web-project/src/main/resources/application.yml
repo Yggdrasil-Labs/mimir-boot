@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: example-general-web-project
+
+server:
+  port: 8080
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+  pattern:
+    # 控制台日志模式
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

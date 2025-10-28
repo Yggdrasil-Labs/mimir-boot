@@ -14,6 +14,7 @@
         <module>mimir-boot-bom</module>
         <module>mimir-boot-common</module>
         <module>mimir-boot-starters</module>
+        <module>examples</module>
     </modules>
 
     <properties>
