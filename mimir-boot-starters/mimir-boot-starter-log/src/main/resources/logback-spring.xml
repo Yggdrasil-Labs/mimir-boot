@@ -16,6 +16,9 @@
     - 文件归档策略：按天滚动，保留指定天数
 -->
 <configuration>
+    <!-- 抑制 Logback 内部初始化日志 -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    
     <!-- 引入 Spring Boot 默认配置 -->
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     
@@ -29,11 +32,14 @@
     <!-- 定义变量 -->
     <!-- 日志路径优先级：LOG_PATH环境变量 > 当前目录 > 临时目录 > /tmp -->
     <property name="LOG_PATH" value="${LOG_PATH:-logs}"/>
-    <property name="APP_NAME" value="${spring.application.name:-application}"/>
+    <!-- 使用 Spring 属性，确保读取 spring.application.name，默认值为 application -->
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="application"/>
+    <!-- 统一日志目录：LOG_PATH/APP_NAME -->
+    <property name="LOG_DIR" value="${LOG_PATH}/${APP_NAME}"/>
     <!-- 日志模式：包含时间戳、线程、级别、TraceId、SpanId、Logger、消息 -->
     <!-- TraceId 和 SpanId 由 Micrometer Tracing 自动注入 -->
-    <property name="LOG_PATTERN_FILE" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] [%X{spanId}] %logger{50} - %mask%n"/>
-    <property name="LOG_PATTERN_CONSOLE" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%thread]){magenta} %clr(%-5level){highlight} %clr([%X{traceId}]){yellow} %clr([%X{spanId}]){cyan} %clr(%logger{50}){cyan} - %mask%n"/>
+    <property name="LOG_PATTERN_FILE" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%logger{50} - %mask%n"/>
+    <property name="LOG_PATTERN_CONSOLE" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%thread]){magenta} %clr(%-5level){highlight} %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%clr(%logger{50}){cyan} - %mask%n"/>
     
     <!-- 控制台输出 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -48,7 +54,7 @@
     
     <!-- 通用日志文件输出 - 按日期滚动 -->
     <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH}/${APP_NAME}.log</file>
+        <file>${LOG_DIR}/info.log</file>
         <encoder>
             <pattern>${LOG_PATTERN_FILE}</pattern>
             <charset>UTF-8</charset>
@@ -57,7 +63,7 @@
         <!-- 滚动策略：按日期和大小滚动 -->
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- 日志文件命名格式 -->
-            <fileNamePattern>${LOG_PATH}/${APP_NAME}-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/info-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
             <!-- 单个日志文件最大大小 -->
             <maxFileSize>100MB</maxFileSize>
             <!-- 日志总大小 -->
@@ -75,14 +81,14 @@
     
     <!-- 错误日志文件输出 - 只记录 ERROR 级别 -->
     <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <file>${LOG_DIR}/error.log</file>
         <encoder>
             <pattern>${LOG_PATTERN_FILE}</pattern>
             <charset>UTF-8</charset>
         </encoder>
         
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/${APP_NAME}-error-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/error-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
             <maxFileSize>100MB</maxFileSize>
             <totalSizeCap>5GB</totalSizeCap>
             <maxHistory>60</maxHistory>
@@ -98,15 +104,15 @@
     
     <!-- 访问日志文件输出 - 记录所有请求的访问信息 -->
     <appender name="FILE_ACCESS" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH}/${APP_NAME}-access.log</file>
+        <file>${LOG_DIR}/access.log</file>
         <encoder>
-            <!-- 访问日志格式：时间 [线程] 级别 [TraceId] [SpanId] - 消息 -->
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-}] [%X{spanId:-}] - %msg%n</pattern>
+            <!-- 访问日志格式：时间 [线程] 级别 [Trace/Span]（存在时才输出）- 消息 -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }- %msg%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
         
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/${APP_NAME}-access-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/access-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
             <maxFileSize>100MB</maxFileSize>
             <totalSizeCap>10GB</totalSizeCap>
             <maxHistory>30</maxHistory>
