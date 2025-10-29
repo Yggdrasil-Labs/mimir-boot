@@ -15,5 +15,6 @@
 
     <modules>
         <module>mimir-boot-starter-log</module>
+        <module>mimir-boot-starter-exception</module>
     </modules>
 </project>
