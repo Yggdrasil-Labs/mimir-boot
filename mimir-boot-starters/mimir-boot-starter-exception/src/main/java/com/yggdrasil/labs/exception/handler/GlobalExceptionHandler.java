@@ -164,7 +164,8 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public R<Void> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e, HttpServletRequest request) {
-        String message = String.format("缺少必需参数: %s", e.getParameterName());
+        String sanitizedParamName = sanitizeForLog(e.getParameterName());
+        String message = String.format("缺少必需参数: %s", sanitizedParamName);
         log.warn("缺少请求参数异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
@@ -182,7 +183,9 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public R<Void> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
-        String message = String.format("参数类型不匹配: %s，期望类型: %s", e.getName(), Objects.requireNonNull(e.getRequiredType()).getSimpleName());
+        String sanitizedParamName = sanitizeForLog(e.getName());
+        String expectedType = Objects.requireNonNull(e.getRequiredType()).getSimpleName();
+        String message = String.format("参数类型不匹配: %s，期望类型: %s", sanitizedParamName, expectedType);
         log.warn("参数类型不匹配异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
@@ -217,7 +220,9 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public R<Void> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
-        String message = String.format("请求方法 %s 不支持，支持的方法: %s", e.getMethod(), String.join(", ", Objects.requireNonNull(e.getSupportedMethods())));
+        String sanitizedMethod = sanitizeForLog(e.getMethod());
+        String supportedMethods = String.join(", ", Objects.requireNonNull(e.getSupportedMethods()));
+        String message = String.format("请求方法 %s 不支持，支持的方法: %s", sanitizedMethod, supportedMethods);
         log.warn("HTTP 请求方法不支持异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
@@ -235,7 +240,9 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public R<Void> handleNoHandlerFoundException(
             NoHandlerFoundException e, HttpServletRequest request) {
-        String message = String.format("未找到请求路径: %s %s", e.getHttpMethod(), e.getRequestURL());
+        String sanitizedMethod = sanitizeForLog(e.getHttpMethod());
+        String sanitizedUrl = sanitizeForLog(e.getRequestURL() != null ? e.getRequestURL().toString() : "null");
+        String message = String.format("未找到请求路径: %s %s", sanitizedMethod, sanitizedUrl);
         log.warn("处理器未找到异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
