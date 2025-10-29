@@ -1,6 +1,5 @@
 package com.yggdrasil.labs.common.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.yggdrasil.labs.common.exception.ErrorCode;
 import lombok.Data;
 
@@ -14,7 +13,6 @@ import java.io.Serializable;
  * @since 1.0.0
  */
 @Data
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> implements Serializable {
 
     @Serial
