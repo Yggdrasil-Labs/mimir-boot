@@ -118,10 +118,10 @@ public class GlobalExceptionHandler {
     public R<List<String>> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
         List<String> errors = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .map(error -> sanitizeForLog(error.getField()) + ": " + sanitizeForLog(error.getDefaultMessage()))
                 .collect(Collectors.toList());
         log.warn("参数校验异常: errors={}, uri={}",
-                errors.stream().map(this::sanitizeForLog).collect(Collectors.toList()),
+                errors,
                 sanitizeForLog(request.getRequestURI()));
         return new R<>(
                 ErrorCode.PARAM_INVALID.getCode(),
@@ -141,10 +141,10 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public R<List<String>> handleBindException(BindException e, HttpServletRequest request) {
         List<String> errors = e.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
+                .map(error -> sanitizeForLog(error.getDefaultMessage()))
                 .collect(Collectors.toList());
         log.warn("参数绑定异常: errors={}, uri={}",
-                errors.stream().map(this::sanitizeForLog).collect(Collectors.toList()),
+                errors,
                 sanitizeForLog(request.getRequestURI()));
         return new R<>(
                 ErrorCode.PARAM_INVALID.getCode(),
@@ -221,7 +221,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getMethod());
-        String supportedMethods = String.join(", ", Objects.requireNonNull(e.getSupportedMethods()));
+        String supportedMethods = sanitizeForLog(String.join(", ", Objects.requireNonNull(e.getSupportedMethods())));
         String message = String.format("请求方法 %s 不支持，支持的方法: %s", sanitizedMethod, supportedMethods);
         log.warn("HTTP 请求方法不支持异常: {}, uri={}",
                 sanitizeForLog(message),
