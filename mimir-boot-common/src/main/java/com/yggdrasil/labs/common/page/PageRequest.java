@@ -20,14 +20,14 @@ public class PageRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 当前页码
+     * 页码（从1开始）
      */
-    private Long current = CommonConstants.DEFAULT_PAGE_NUMBER;
+    private Long pageIndex = CommonConstants.DEFAULT_PAGE_NUMBER;
 
     /**
-     * 每页大小
+     * 页大小
      */
-    private Long size = CommonConstants.DEFAULT_PAGE_SIZE;
+    private Long pageSize = CommonConstants.DEFAULT_PAGE_SIZE;
 
     /**
      * 排序字段
@@ -49,26 +49,26 @@ public class PageRequest implements Serializable {
     /**
      * 构造方法
      *
-     * @param current 当前页码
-     * @param size    每页大小
+     * @param pageIndex 页码（从1开始）
+     * @param pageSize  页大小
      */
-    public PageRequest(Long current, Long size) {
-        this.current = current;
-        this.size = size;
+    public PageRequest(Long pageIndex, Long pageSize) {
+        this.pageIndex = pageIndex;
+        this.pageSize = pageSize;
         validateAndCorrect();
     }
 
     /**
      * 构造方法
      *
-     * @param current        当前页码
-     * @param size           每页大小
+     * @param pageIndex      页码（从1开始）
+     * @param pageSize       页大小
      * @param orderBy        排序字段
      * @param orderDirection 排序方向
      */
-    public PageRequest(Long current, Long size, String orderBy, String orderDirection) {
-        this.current = current;
-        this.size = size;
+    public PageRequest(Long pageIndex, Long pageSize, String orderBy, String orderDirection) {
+        this.pageIndex = pageIndex;
+        this.pageSize = pageSize;
         this.orderBy = orderBy;
         this.orderDirection = orderDirection;
         validateAndCorrect();
@@ -80,7 +80,7 @@ public class PageRequest implements Serializable {
      * @return 偏移量
      */
     public Long getOffset() {
-        return (current - 1) * size;
+        return (pageIndex - 1) * pageSize;
     }
 
     /**
@@ -94,14 +94,14 @@ public class PageRequest implements Serializable {
      * </ul>
      */
     public void validateAndCorrect() {
-        if (this.current == null || this.current < 1) {
-            this.current = CommonConstants.DEFAULT_PAGE_NUMBER;
+        if (this.pageIndex == null || this.pageIndex < 1) {
+            this.pageIndex = CommonConstants.DEFAULT_PAGE_NUMBER;
         }
-        if (this.size == null || this.size < 1) {
-            this.size = CommonConstants.DEFAULT_PAGE_SIZE;
+        if (this.pageSize == null || this.pageSize < 1) {
+            this.pageSize = CommonConstants.DEFAULT_PAGE_SIZE;
         }
-        if (this.size > CommonConstants.MAX_PAGE_SIZE) {
-            this.size = CommonConstants.MAX_PAGE_SIZE;
+        if (this.pageSize > CommonConstants.MAX_PAGE_SIZE) {
+            this.pageSize = CommonConstants.MAX_PAGE_SIZE;
         }
         // 验证排序方向，使用枚举进行校验
         if (this.orderDirection == null || (!OrderDirection.isAsc(this.orderDirection) && !OrderDirection.isDesc(this.orderDirection))) {
@@ -112,24 +112,24 @@ public class PageRequest implements Serializable {
     /**
      * 创建分页请求（自动校验）
      *
-     * @param current 当前页码
-     * @param size    每页大小
+     * @param pageIndex 页码（从1开始）
+     * @param pageSize  页大小
      * @return 分页请求（已校验）
      */
-    public static PageRequest of(Long current, Long size) {
-        return new PageRequest(current, size);
+    public static PageRequest of(Long pageIndex, Long pageSize) {
+        return new PageRequest(pageIndex, pageSize);
     }
 
     /**
      * 创建分页请求（自动校验）
      *
-     * @param current        当前页码
-     * @param size           每页大小
+     * @param pageIndex      页码（从1开始）
+     * @param pageSize       页大小
      * @param orderBy        排序字段
      * @param orderDirection 排序方向
      * @return 分页请求（已校验）
      */
-    public static PageRequest of(Long current, Long size, String orderBy, String orderDirection) {
-        return new PageRequest(current, size, orderBy, orderDirection);
+    public static PageRequest of(Long pageIndex, Long pageSize, String orderBy, String orderDirection) {
+        return new PageRequest(pageIndex, pageSize, orderBy, orderDirection);
     }
 }

@@ -23,27 +23,27 @@ public class PageResult<T> implements Serializable {
     /**
      * 数据列表
      */
-    private List<T> records;
+    private List<T> data;
 
     /**
      * 总记录数
      */
-    private Long total;
+    private Long totalCount;
 
     /**
-     * 当前页码
+     * 页码
      */
-    private Long current;
+    private Long pageIndex;
 
     /**
-     * 每页大小
+     * 页大小
      */
-    private Long size;
+    private Long pageSize;
 
     /**
      * 总页数
      */
-    private Long pages;
+    private Long totalPages;
 
     /**
      * 是否有下一页
@@ -64,45 +64,45 @@ public class PageResult<T> implements Serializable {
     /**
      * 构造方法
      *
-     * @param records 数据列表
-     * @param total   总记录数
-     * @param current 当前页码
-     * @param size    每页大小
+     * @param data      数据列表
+     * @param totalCount 总记录数
+     * @param pageIndex 页码
+     * @param pageSize  页大小
      */
-    public PageResult(List<T> records, Long total, Long current, Long size) {
-        this.records = records;
-        this.total = total;
-        this.current = current;
-        this.size = size;
-        this.pages = (total + size - 1) / size;
-        this.hasNext = current < pages;
-        this.hasPrevious = current > 1;
+    public PageResult(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
+        this.data = data;
+        this.totalCount = totalCount;
+        this.pageIndex = pageIndex;
+        this.pageSize = pageSize;
+        this.totalPages = pageSize == 0 ? 0 : (totalCount + pageSize - 1) / pageSize;
+        this.hasNext = pageIndex < totalPages;
+        this.hasPrevious = pageIndex > 1;
     }
 
     /**
      * 创建分页结果
      *
-     * @param records 数据列表
-     * @param total   总记录数
-     * @param current 当前页码
-     * @param size    每页大小
-     * @param <T>     数据类型
+     * @param data      数据列表
+     * @param totalCount 总记录数
+     * @param pageIndex 页码
+     * @param pageSize  页大小
+     * @param <T>       数据类型
      * @return 分页结果
      */
-    public static <T> PageResult<T> of(List<T> records, Long total, Long current, Long size) {
-        return new PageResult<>(records, total, current, size);
+    public static <T> PageResult<T> of(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
+        return new PageResult<>(data, totalCount, pageIndex, pageSize);
     }
 
     /**
      * 创建空分页结果
      *
-     * @param current 当前页码
-     * @param size    每页大小
-     * @param <T>     数据类型
+     * @param pageIndex 页码
+     * @param pageSize  页大小
+     * @param <T>       数据类型
      * @return 空分页结果
      */
-    public static <T> PageResult<T> empty(Long current, Long size) {
-        return new PageResult<>(List.of(), 0L, current, size);
+    public static <T> PageResult<T> empty(Long pageIndex, Long pageSize) {
+        return new PageResult<>(List.of(), 0L, pageIndex, pageSize);
     }
 
     /**
@@ -113,6 +113,6 @@ public class PageResult<T> implements Serializable {
      * @return 空分页结果
      */
     public static <T> PageResult<T> empty(PageRequest pageRequest) {
-        return empty(pageRequest.getCurrent(), pageRequest.getSize());
+        return empty(pageRequest.getPageIndex(), pageRequest.getPageSize());
     }
 }

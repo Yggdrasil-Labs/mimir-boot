@@ -12,7 +12,7 @@
     <packaging>jar</packaging>
 
     <name>Mimir Boot Common</name>
-    <description>Mimir Boot 通用组件模块，包含工具类、异常、枚举、分页等通用功能</description>
+    <description>Mimir Boot 核心规范模块，提供统一异常、响应、分页、DTO/VO 等项目级规范</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

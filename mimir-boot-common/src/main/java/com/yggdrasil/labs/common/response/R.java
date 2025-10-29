@@ -13,7 +13,7 @@ import java.io.Serializable;
  * @since 1.0.0
  */
 @Data
-public class ApiResponse<T> implements Serializable {
+public class R<T> implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -46,7 +46,7 @@ public class ApiResponse<T> implements Serializable {
     /**
      * 构造方法
      */
-    public ApiResponse() {
+    public R() {
         this.timestamp = System.currentTimeMillis();
     }
 
@@ -57,7 +57,7 @@ public class ApiResponse<T> implements Serializable {
      * @param message 响应信息
      * @param data    响应数据
      */
-    public ApiResponse(String code, String message, T data) {
+    public R(String code, String message, T data) {
         this();
         this.code = code;
         this.message = message;
@@ -70,8 +70,8 @@ public class ApiResponse<T> implements Serializable {
      * @param <T> 数据类型
      * @return 成功响应
      */
-    public static <T> ApiResponse<T> success() {
-        return new ApiResponse<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), null);
+    public static <T> R<T> success() {
+        return new R<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), null);
     }
 
     /**
@@ -81,8 +81,8 @@ public class ApiResponse<T> implements Serializable {
      * @param <T>  数据类型
      * @return 成功响应
      */
-    public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), data);
+    public static <T> R<T> success(T data) {
+        return new R<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), data);
     }
 
     /**
@@ -93,8 +93,8 @@ public class ApiResponse<T> implements Serializable {
      * @param <T>     数据类型
      * @return 成功响应
      */
-    public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(ErrorCode.SUCCESS.getCode(), message, data);
+    public static <T> R<T> success(String message, T data) {
+        return new R<>(ErrorCode.SUCCESS.getCode(), message, data);
     }
 
     /**
@@ -105,8 +105,8 @@ public class ApiResponse<T> implements Serializable {
      * @param <T>     数据类型
      * @return 失败响应
      */
-    public static <T> ApiResponse<T> fail(String code, String message) {
-        return new ApiResponse<>(code, message, null);
+    public static <T> R<T> fail(String code, String message) {
+        return new R<>(code, message, null);
     }
 
     /**
@@ -116,8 +116,8 @@ public class ApiResponse<T> implements Serializable {
      * @param <T>     数据类型
      * @return 失败响应
      */
-    public static <T> ApiResponse<T> fail(String message) {
-        return new ApiResponse<>(ErrorCode.FAIL.getCode(), message, null);
+    public static <T> R<T> fail(String message) {
+        return new R<>(ErrorCode.FAIL.getCode(), message, null);
     }
 
     /**
@@ -138,3 +138,4 @@ public class ApiResponse<T> implements Serializable {
         return !isSuccess();
     }
 }
+
