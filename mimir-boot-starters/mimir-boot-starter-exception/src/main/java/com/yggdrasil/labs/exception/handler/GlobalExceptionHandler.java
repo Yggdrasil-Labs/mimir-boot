@@ -2,13 +2,11 @@ package com.yggdrasil.labs.exception.handler;
 
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
-import com.yggdrasil.labs.common.util.LogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -45,7 +43,11 @@ public class GlobalExceptionHandler {
      * @return 清理后的字符串，如果输入为 null 则返回 "null"
      */
     private String sanitizeForLog(String input) {
-        return LogSanitizer.sanitize(input);
+        if (input == null) {
+            return "null";
+        }
+        return input.replaceAll("[\\r\\n]", "")
+                .replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "");
     }
 
     /**
