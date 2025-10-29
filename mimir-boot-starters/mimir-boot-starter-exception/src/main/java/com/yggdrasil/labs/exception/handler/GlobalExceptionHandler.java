@@ -2,6 +2,7 @@ package com.yggdrasil.labs.exception.handler;
 
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.common.util.LogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,19 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     /**
+     * 清理日志内容，防止日志注入攻击
+     * <p>
+     * 移除换行符和控制字符，防止恶意用户通过特殊字符伪造日志条目。
+     * </p>
+     *
+     * @param input 原始输入
+     * @return 清理后的字符串，如果输入为 null 则返回 "null"
+     */
+    private String sanitizeForLog(String input) {
+        return LogSanitizer.sanitize(input);
+    }
+
+    /**
      * 处理业务异常
      *
      * @param e       业务异常
@@ -44,7 +58,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BizException.class)
     @ResponseStatus(HttpStatus.OK)
     public R<Void> handleBizException(BizException e, HttpServletRequest request) {
-        log.warn("业务异常: code={}, message={}, uri={}", e.getCode(), e.getMessage(), request.getRequestURI());
+        log.warn("业务异常: code={}, message={}, uri={}",
+                sanitizeForLog(e.getCode()),
+                sanitizeForLog(e.getMessage()),
+                sanitizeForLog(request.getRequestURI()));
         return R.fail(e.getCode(), e.getMessage());
     }
 
@@ -58,7 +75,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public R<Void> handleSystemException(SystemException e, HttpServletRequest request) {
-        log.error("系统异常: code={}, message={}, uri={}", e.getCode(), e.getMessage(), request.getRequestURI(), e);
+        log.error("系统异常: code={}, message={}, uri={}",
+                sanitizeForLog(e.getCode()),
+                sanitizeForLog(e.getMessage()),
+                sanitizeForLog(request.getRequestURI()),
+                e);
         return R.fail(e.getCode(), e.getMessage());
     }
 
@@ -76,8 +97,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BaseException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public R<Void> handleBaseException(BaseException e, HttpServletRequest request) {
-        log.error("框架异常: code={}, message={}, uri={}", e.getCode(), e.getMessage(),
-                request.getRequestURI(), e);
+        log.error("框架异常: code={}, message={}, uri={}",
+                sanitizeForLog(e.getCode()),
+                sanitizeForLog(e.getMessage()),
+                sanitizeForLog(request.getRequestURI()),
+                e);
         return R.fail(e.getCode(), e.getMessage());
     }
 
@@ -96,7 +120,9 @@ public class GlobalExceptionHandler {
         List<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.toList());
-        log.warn("参数校验异常: errors={}, uri={}", errors, request.getRequestURI());
+        log.warn("参数校验异常: errors={}, uri={}",
+                errors.stream().map(this::sanitizeForLog).collect(Collectors.toList()),
+                sanitizeForLog(request.getRequestURI()));
         return new R<>(
                 ErrorCode.PARAM_INVALID.getCode(),
                 ErrorCode.PARAM_INVALID.getMessage(),
@@ -117,7 +143,9 @@ public class GlobalExceptionHandler {
         List<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.toList());
-        log.warn("参数绑定异常: errors={}, uri={}", errors, request.getRequestURI());
+        log.warn("参数绑定异常: errors={}, uri={}",
+                errors.stream().map(this::sanitizeForLog).collect(Collectors.toList()),
+                sanitizeForLog(request.getRequestURI()));
         return new R<>(
                 ErrorCode.PARAM_INVALID.getCode(),
                 ErrorCode.PARAM_INVALID.getMessage(),
@@ -137,7 +165,9 @@ public class GlobalExceptionHandler {
     public R<Void> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e, HttpServletRequest request) {
         String message = String.format("缺少必需参数: %s", e.getParameterName());
-        log.warn("缺少请求参数异常: {}, uri={}", message, request.getRequestURI());
+        log.warn("缺少请求参数异常: {}, uri={}",
+                sanitizeForLog(message),
+                sanitizeForLog(request.getRequestURI()));
         return R.fail(ErrorCode.PARAM_MISSING.getCode(), message);
     }
 
@@ -153,7 +183,9 @@ public class GlobalExceptionHandler {
     public R<Void> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         String message = String.format("参数类型不匹配: %s，期望类型: %s", e.getName(), Objects.requireNonNull(e.getRequiredType()).getSimpleName());
-        log.warn("参数类型不匹配异常: {}, uri={}", message, request.getRequestURI());
+        log.warn("参数类型不匹配异常: {}, uri={}",
+                sanitizeForLog(message),
+                sanitizeForLog(request.getRequestURI()));
         return R.fail(ErrorCode.PARAM_INVALID.getCode(), message);
     }
 
@@ -168,7 +200,9 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public R<Void> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException e, HttpServletRequest request) {
-        log.warn("HTTP 消息不可读异常: {}, uri={}", e.getMessage(), request.getRequestURI());
+        log.warn("HTTP 消息不可读异常: {}, uri={}",
+                sanitizeForLog(e.getMessage()),
+                sanitizeForLog(request.getRequestURI()));
         return R.fail(ErrorCode.PARAM_INVALID.getCode(), "请求体格式错误");
     }
 
@@ -184,7 +218,9 @@ public class GlobalExceptionHandler {
     public R<Void> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
         String message = String.format("请求方法 %s 不支持，支持的方法: %s", e.getMethod(), String.join(", ", Objects.requireNonNull(e.getSupportedMethods())));
-        log.warn("HTTP 请求方法不支持异常: {}, uri={}", message, request.getRequestURI());
+        log.warn("HTTP 请求方法不支持异常: {}, uri={}",
+                sanitizeForLog(message),
+                sanitizeForLog(request.getRequestURI()));
         return R.fail(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), message);
     }
 
@@ -200,7 +236,9 @@ public class GlobalExceptionHandler {
     public R<Void> handleNoHandlerFoundException(
             NoHandlerFoundException e, HttpServletRequest request) {
         String message = String.format("未找到请求路径: %s %s", e.getHttpMethod(), e.getRequestURL());
-        log.warn("处理器未找到异常: {}, uri={}", message, request.getRequestURI());
+        log.warn("处理器未找到异常: {}, uri={}",
+                sanitizeForLog(message),
+                sanitizeForLog(request.getRequestURI()));
         return R.fail(ErrorCode.DATA_NOT_FOUND.getCode(), message);
     }
 
@@ -220,11 +258,16 @@ public class GlobalExceptionHandler {
         // 如果异常实现了 IException 接口，使用其错误码和消息
         if (e instanceof IException ie) {
             log.error("框架异常（未捕获）: code={}, message={}, uri={}",
-                    ie.getCode(), ie.getMessage(), request.getRequestURI(), e);
+                    sanitizeForLog(ie.getCode()),
+                    sanitizeForLog(ie.getMessage()),
+                    sanitizeForLog(request.getRequestURI()),
+                    e);
             return R.fail(ie.getCode(), ie.getMessage());
         }
 
-        log.error("未捕获的异常: uri={}", request.getRequestURI(), e);
+        log.error("未捕获的异常: uri={}",
+                sanitizeForLog(request.getRequestURI()),
+                e);
         return R.fail(ErrorCode.SYSTEM_ERROR.getCode(), ErrorCode.SYSTEM_ERROR.getMessage());
     }
 }

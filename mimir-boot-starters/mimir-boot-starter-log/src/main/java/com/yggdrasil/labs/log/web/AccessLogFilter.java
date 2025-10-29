@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.log.web;
 
+import com.yggdrasil.labs.common.util.LogSanitizer;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -188,14 +189,7 @@ public class AccessLogFilter implements Filter {
      * @return 清理后的字符串，如果输入为 null 则返回 null
      */
     private String sanitize(String input) {
-        if (input == null) {
-            return null;
-        }
-        return input
-                .replace("\n", "\\n")  // 替换换行符
-                .replace("\r", "\\r")  // 替换回车符
-                .replace("\t", "\\t")  // 替换制表符
-                .trim();               // 去除首尾空白
+        return LogSanitizer.escapeControls(input);
     }
 }
 

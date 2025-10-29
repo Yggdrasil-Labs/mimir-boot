@@ -18,12 +18,11 @@
     </properties>
 
     <dependencies>
-        <!-- 
-            核心设计思路：
-            1. Spring Boot 已经提供了 logback-classic，我们可以直接依赖它
-            2. 不需要排除 spring-boot-starter-logging
-            3. 只需要通过 logback-spring.xml 覆盖配置即可
-        -->
+        <!-- 公共模块（提供 LogSanitizer 等通用工具） -->
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-common</artifactId>
+        </dependency>
         
         <!-- Spring Boot 日志启动器（包含 logback） -->
         <dependency>
