@@ -13,7 +13,11 @@ public final class LogSanitizer {
     }
 
     /**
-     * 移除换行与控制字符，防止伪造日志行。
+     * 日志安全清理（白名单策略）。
+     * <p>
+     * 仅保留可打印 ASCII 字符 [\x20-\x7E]，删除其它所有字符（包括换行、回车、制表符、
+     * 以及所有非打印/控制类 Unicode 字符），防止通过特殊字符伪造日志条目。
+     * </p>
      *
      * @param input 原始输入
      * @return 清理后的字符串，null 返回 "null"
@@ -22,8 +26,7 @@ public final class LogSanitizer {
         if (input == null) {
             return "null";
         }
-        return input.replaceAll("[\\r\\n]", "")
-                .replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "");
+        return input.replaceAll("[^\\x20-\\x7E]", "");
     }
 
     /**

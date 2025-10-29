@@ -36,13 +36,7 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     /**
-     * 清理日志内容，防止日志注入攻击
-     * <p>
-     * 移除换行符和控制字符，防止恶意用户通过特殊字符伪造日志条目。
-     * </p>
-     *
-     * @param input 原始输入
-     * @return 清理后的字符串，如果输入为 null 则返回 "null"
+     * 清理日志内容，防止日志注入攻击（委托公共工具类，统一策略）。
      */
     private String sanitizeForLog(String input) {
         return LogSanitizer.sanitize(input);
