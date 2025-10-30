@@ -26,5 +26,9 @@
             <groupId>com.yggdrasil.labs</groupId>
             <artifactId>mimir-boot-starter-log</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-starter-exception</artifactId>
+        </dependency>
     </dependencies>
 </project>
