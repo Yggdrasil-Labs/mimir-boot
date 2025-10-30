@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -235,7 +234,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleNoHandlerFoundException(
             NoHandlerFoundException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getHttpMethod());
-        String sanitizedUrl = sanitizeForLog(e.getRequestURL() != null ? e.getRequestURL().toString() : "null");
+        String sanitizedUrl = sanitizeForLog(e.getRequestURL());
         String message = String.format("未找到请求路径: %s %s", sanitizedMethod, sanitizedUrl);
         log.warn("处理器未找到异常: {}, uri={}",
                 sanitizeForLog(message),
