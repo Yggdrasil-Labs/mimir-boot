@@ -341,6 +341,11 @@
                 <artifactId>mimir-boot-starter-log</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-exception</artifactId>
+                <version>${revision}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
