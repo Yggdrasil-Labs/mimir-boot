@@ -250,8 +250,6 @@ class LogbackBasicTest {
 
         logger.info("带 MDC 的日志");
 
-        ILoggingEvent event = listAppender.list.get(0);
-
         // 验证 MDC 可以通过其他方式访问
         logger.info("再次测试");
 
