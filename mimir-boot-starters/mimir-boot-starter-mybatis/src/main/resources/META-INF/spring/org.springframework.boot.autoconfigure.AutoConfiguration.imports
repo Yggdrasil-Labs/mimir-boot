@@ -1,0 +1,5 @@
+com.yggdrasil.labs.mybatis.config.MybatisPlusAutoConfiguration
+com.yggdrasil.labs.mybatis.config.MybatisPlusLoggingConfiguration
+com.yggdrasil.labs.mybatis.config.MybatisPlusAuditConfiguration
+com.yggdrasil.labs.mybatis.config.MybatisPlusCryptoConfiguration
+

@@ -144,10 +144,39 @@
         <queueSize>1024</queueSize>
         <appender-ref ref="FILE_ACCESS"/>
     </appender>
+
+    <!-- SQL 日志文件输出（独立文件，记录 JSON 结构化 SQL 日志） -->
+    <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/sql.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/sql-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <totalSizeCap>10GB</totalSizeCap>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <appender name="ASYNC_FILE_SQL" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <appender-ref ref="FILE_SQL"/>
+    </appender>
     
     <!-- 访问日志 Logger -->
     <logger name="access.log" level="INFO" additivity="false">
         <appender-ref ref="ASYNC_FILE_ACCESS"/>
+    </logger>
+
+    <!-- 结构化 SQL 日志（由 mybatis starter 的 JsonSqlLogInnerInterceptor 输出） -->
+    <logger name="SQL.JSON" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_SQL"/>
     </logger>
     
     <!-- 开发环境配置 -->

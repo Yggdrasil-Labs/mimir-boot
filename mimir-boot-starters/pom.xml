@@ -17,5 +17,7 @@
         <module>mimir-boot-starter-log</module>
         <module>mimir-boot-starter-exception</module>
         <module>mimir-boot-starter-web</module>
+        <module>mimir-boot-starter-mybatis</module>
+        <module>mimir-boot-starter-mybatis-processor</module>
     </modules>
 </project>
