@@ -1,0 +1,68 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.yggdrasil.labs</groupId>
+        <artifactId>mimir-boot-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../mimir-boot-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mimir-boot-starter-web</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Mimir Boot Starter Web</name>
+
+    <dependencies>
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Jackson -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-json</artifactId>
+        </dependency>
+
+        <!-- Mimir Boot Common -->
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-common</artifactId>
+        </dependency>
+
+        <!-- Mimir Boot Starter Exception -->
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-starter-exception</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 Suite 支持 -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
