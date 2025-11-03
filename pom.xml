@@ -39,6 +39,9 @@
         <!-- 许可证 -->
         <project.license.name>Apache License, Version 2.0</project.license.name>
         <project.license.url>https://www.apache.org/licenses/LICENSE-2.0</project.license.url>
+
+        <!-- Spotless 插件版本（用于根 POM 前缀解析与无源校验） -->
+        <spotless.plugin.version>2.43.0</spotless.plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
@@ -80,5 +83,45 @@
         <system>GitHub Actions</system>
         <url>https://github.com/Yggdrasil-Labs/mimir-boot/actions</url>
     </ciManagement>
+
+    <!-- 发布仓库配置 -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
+        </repository>
+    </distributionManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!-- 在根模块声明一个“无源”的 Spotless，使 `spotless:*` 在根执行不报错 -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>__NO_SOURCES__</include>
+                        </includes>
+                        <googleJavaFormat>
+                            <version>1.22.0</version>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                    </java>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

@@ -22,7 +22,7 @@
 - 🪵 **智能日志**: 自动脱敏、Trace追踪、访问日志
 - 🔐 **配置安全**: Nacos 配置加密脱敏，支持 ENC() 格式
 - 🔧 **开箱即用**: 多个 Starter 模块，快速接入
-- 📋 **质量保证**: Checkstyle、单元测试、JaCoCo 覆盖率
+- 📋 **质量保证**: Spotless 代码格式化、单元测试、JaCoCo 覆盖率、SonarCloud 分析
 
 ## 📦 模块说明
 
@@ -47,7 +47,7 @@
 <parent>
   <groupId>com.yggdrasil.labs</groupId>
   <artifactId>mimir-boot-parent</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.0</version>
 </parent>
 
 <dependencyManagement>
@@ -55,7 +55,7 @@
     <dependency>
       <groupId>com.yggdrasil.labs</groupId>
       <artifactId>mimir-boot-bom</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>1.0.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -127,8 +127,11 @@ mvn clean install -pl mimir-boot-starter-log -am
 # 跳过测试
 mvn clean package -DskipTests
 
-# 代码质量检查
-mvn checkstyle:check -Pquality
+# 代码格式化检查（Spotless）
+mvn spotless:check
+
+# 自动格式化代码（Spotless）
+mvn spotless:apply
 
 # 使用 Maven Wrapper
 ./mvnw clean install
@@ -293,6 +296,56 @@ mimir-boot/
 ## 📄 许可证
 
 本项目采用 [Apache License 2.0](LICENSE) 许可证。
+
+## 🛠️ CI / Release / 发布
+
+- **CI（.github/workflows/ci.yml）**
+  - 在 push 到 `main`/`develop` 和 PR 时运行：`./mvnw -B -U spotless:check verify`
+  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
+  - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
+
+- **Release PR 与自动打 Tag（.github/workflows/release-please.yml）**
+  - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
+  - 合并该 PR 后，自动创建 `vX.Y.Z` Tag 与 GitHub Release
+
+- **发布（.github/workflows/release.yml）**
+  - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
+  - 随后发布制品到 GitHub Packages（GPR）
+
+### 使用 GitHub Packages（消费者）
+在使用方开发机/CI 的 `~/.m2/settings.xml` 配置凭据（无需改动本仓 POM）：
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>GITHUB_USER</username>
+      <password>GITHUB_TOKEN</password>
+    </server>
+  </servers>
+</settings>
+```
+
+在使用方项目的 `pom.xml` 增加仓库（或放到其 `settings.xml` 的 `mirrors/profiles` 中统一管理）：
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <name>GitHub Packages</name>
+    <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
+    <releases><enabled>true</enabled></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+  <!-- 仍需中央仓 -->
+  <repository>
+    <id>central</id>
+    <url>https://repo1.maven.org/maven2/</url>
+  </repository>
+  
+</repositories>
+```
 
 ## 📞 联系我们
 

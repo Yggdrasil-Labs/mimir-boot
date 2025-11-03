@@ -26,31 +26,17 @@
         <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>3.5.4</maven.surefire.plugin.version>
         <maven.failsafe.plugin.version>3.5.4</maven.failsafe.plugin.version>
-        <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
-        <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
         <maven.clean.plugin.version>3.4.0</maven.clean.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
         <maven.install.plugin.version>3.1.1</maven.install.plugin.version>
         <maven.deploy.plugin.version>3.1.2</maven.deploy.plugin.version>
-        <maven.site.plugin.version>4.0.0-M16</maven.site.plugin.version>
         <maven.versions.plugin.version>2.19.1</maven.versions.plugin.version>
         <maven.dependency.plugin.version>3.9.0</maven.dependency.plugin.version>
-        <maven.assembly.plugin.version>3.7.1</maven.assembly.plugin.version>
-        <maven.shade.plugin.version>3.6.0</maven.shade.plugin.version>
-        <maven.spring.boot.plugin.version>3.5.7</maven.spring.boot.plugin.version>
+        <maven.spring.boot.plugin.version>3.3.13</maven.spring.boot.plugin.version>
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
-        <spotbugs.plugin.version>4.9.8.1</spotbugs.plugin.version>
-        <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
-        <pmd.plugin.version>3.28.0</pmd.plugin.version>
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
-        <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
-        <maven.war.plugin.version>3.5.0</maven.war.plugin.version>
-        <maven.antrun.plugin.version>3.2.0</maven.antrun.plugin.version>
-        <sonar.maven.plugin.version>5.2.0.4988</sonar.maven.plugin.version>
-        <maven.help.plugin.version>3.5.1</maven.help.plugin.version>
-        <maven.surefire.report.plugin.version>3.5.4</maven.surefire.report.plugin.version>
-        <maven.project.info.plugin.version>3.9.0</maven.project.info.plugin.version>
+        <spotless.plugin.version>2.43.0</spotless.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -118,43 +104,6 @@
                             <goals>
                                 <goal>integration-test</goal>
                                 <goal>verify</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-
-                <!-- Maven Source Plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>${maven.source.plugin.version}</version>
-                    <executions>
-                        <execution>
-                            <id>attach-sources</id>
-                            <goals>
-                                <goal>jar-no-fork</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-
-                <!-- Maven Javadoc Plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>${maven.javadoc.plugin.version}</version>
-                    <configuration>
-                        <encoding>UTF-8</encoding>
-                        <charset>UTF-8</charset>
-                        <docencoding>UTF-8</docencoding>
-                        <additionalJOption>-Xdoclint:none</additionalJOption>
-                        <failOnError>false</failOnError>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>attach-javadocs</id>
-                            <goals>
-                                <goal>jar</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -235,46 +184,6 @@
                     </executions>
                 </plugin>
 
-                <!-- SpotBugs Plugin (代码质量检查) -->
-                <plugin>
-                    <groupId>com.github.spotbugs</groupId>
-                    <artifactId>spotbugs-maven-plugin</artifactId>
-                    <version>${spotbugs.plugin.version}</version>
-                    <configuration>
-                        <effort>Max</effort>
-                        <threshold>Low</threshold>
-                        <failOnError>false</failOnError>
-                    </configuration>
-                </plugin>
-
-                <!-- Checkstyle Plugin (代码风格检查) -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>${checkstyle.plugin.version}</version>
-                    <configuration>
-                        <configLocation>checkstyle.xml</configLocation>
-                        <encoding>UTF-8</encoding>
-                        <consoleOutput>true</consoleOutput>
-                        <failsOnError>false</failsOnError>
-                    </configuration>
-                </plugin>
-
-                <!-- PMD Plugin (代码质量分析) -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-pmd-plugin</artifactId>
-                    <version>${pmd.plugin.version}</version>
-                    <configuration>
-                        <rulesets>
-                            <ruleset>/rulesets/java/basic.xml</ruleset>
-                            <ruleset>/rulesets/java/braces.xml</ruleset>
-                            <ruleset>/rulesets/java/design.xml</ruleset>
-                        </rulesets>
-                        <failOnViolation>false</failOnViolation>
-                    </configuration>
-                </plugin>
-
                 <!-- Flatten Plugin (版本管理) -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -339,61 +248,31 @@
                     </configuration>
                 </plugin>
 
-                <!-- Maven War Plugin -->
+
+                <!-- Spotless Plugin (代码格式化) -->
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-war-plugin</artifactId>
-                    <version>${maven.war.plugin.version}</version>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.plugin.version}</version>
                     <configuration>
-                        <failOnMissingWebXml>false</failOnMissingWebXml>
-                        <warName>${project.build.finalName}</warName>
+                        <java>
+                            <includes>
+                                <include>**/*.java</include>
+                            </includes>
+                            <googleJavaFormat>
+                                <version>1.22.0</version>
+                                <style>GOOGLE</style>
+                            </googleJavaFormat>
+                            <removeUnusedImports/>
+                            <trimTrailingWhitespace/>
+                            <endWithNewline/>
+                            <indent>
+                                <tabs>false</tabs>
+                                <spaces>true</spaces>
+                                <spacesPerTab>4</spacesPerTab>
+                            </indent>
+                        </java>
                     </configuration>
-                </plugin>
-
-                <!-- Maven Antrun Plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <version>${maven.antrun.plugin.version}</version>
-                </plugin>
-
-
-                <!-- SonarQube Maven Plugin -->
-                <plugin>
-                    <groupId>org.sonarsource.scanner.maven</groupId>
-                    <artifactId>sonar-maven-plugin</artifactId>
-                    <version>${sonar.maven.plugin.version}</version>
-                </plugin>
-
-                <!-- Maven Help Plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-help-plugin</artifactId>
-                    <version>${maven.help.plugin.version}</version>
-                </plugin>
-
-                <!-- Maven Surefire Report Plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-report-plugin</artifactId>
-                    <version>${maven.surefire.report.plugin.version}</version>
-                </plugin>
-
-                <!-- Maven Site Plugin (文档生成) -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-site-plugin</artifactId>
-                    <version>${maven.site.plugin.version}</version>
-                    <configuration>
-                        <skipDeploy>true</skipDeploy>
-                    </configuration>
-                </plugin>
-
-                <!-- Maven Project Info Plugin -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-project-info-reports-plugin</artifactId>
-                    <version>${maven.project.info.plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -421,6 +300,12 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Spotless Plugin -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
@@ -472,82 +357,8 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.github.spotbugs</groupId>
-                        <artifactId>spotbugs-maven-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-checkstyle-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-pmd-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- 发布配置 -->
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>${maven.gpg.plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-
-        <!-- SonarQube 代码质量分析 -->
-        <profile>
-            <id>sonar</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.sonarsource.scanner.maven</groupId>
-                        <artifactId>sonar-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- CI/CD 集成 -->
-        <profile>
-            <id>ci</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-enforcer-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jacoco</groupId>
-                        <artifactId>jacoco-maven-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.github.spotbugs</groupId>
-                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>
@@ -576,56 +387,12 @@
             </build>
         </profile>
 
-        <!-- 文档生成 -->
-        <profile>
-            <id>docs</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-site-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-project-info-reports-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-report-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
+
     </profiles>
 
     <!-- Maven 仓库配置 -->
     <repositories>
-        <!-- 国内镜像仓库（优先） -->
-        <repository>
-            <id>aliyun</id>
-            <name>Aliyun Maven</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-
-        <repository>
-            <id>aliyun-central</id>
-            <name>Aliyun Central Mirror</name>
-            <url>https://maven.aliyun.com/repository/central</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-
-        <!-- 备选仓库 -->
+        <!-- 默认仅使用 Central，其他仓库通过 profile 按需启用 -->
         <repository>
             <id>central</id>
             <name>Maven Central</name>
@@ -635,53 +402,20 @@
             </releases>
             <snapshots>
                 <enabled>false</enabled>
-            </snapshots>
-        </repository>
-
-        <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-
-        <repository>
-            <id>spring-snapshots</id>
-            <name>Spring Snapshots</name>
-            <url>https://repo.spring.io/snapshot</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
             </snapshots>
         </repository>
     </repositories>
 
     <pluginRepositories>
-        <pluginRepository>
-            <id>aliyun</id>
-            <name>Aliyun Maven</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-
+        <!-- 默认仅使用 Central，其他插件仓库通过 profile 按需启用 -->
         <pluginRepository>
             <id>central</id>
             <name>Maven Central</name>
             <url>https://repo1.maven.org/maven2/</url>
             <releases>
                 <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+                <checksumPolicy>warn</checksumPolicy>
             </releases>
             <snapshots>
                 <enabled>false</enabled>
