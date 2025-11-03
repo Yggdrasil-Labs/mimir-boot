@@ -44,6 +44,7 @@
         <!-- 测试相关 -->
         <testcontainers.version>1.21.3</testcontainers.version>
         <compile.testing.version>0.21.0</compile.testing.version>
+        <truth.version>1.4.2</truth.version>
 
         <!-- 安全相关 -->
         <jwt.version>0.13.0</jwt.version>
@@ -199,6 +200,11 @@
                 <groupId>com.google.testing.compile</groupId>
                 <artifactId>compile-testing</artifactId>
                 <version>${compile.testing.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.truth</groupId>
+                <artifactId>truth</artifactId>
+                <version>${truth.version}</version>
             </dependency>
 
             <!-- 安全相关 -->

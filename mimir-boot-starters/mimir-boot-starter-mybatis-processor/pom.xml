@@ -19,11 +19,11 @@
             <artifactId>javapoet</artifactId>
         </dependency>
 
-        <!-- mybatis-plus types for references in generated code (compile-time only) -->
+        <!-- mybatis-plus: 测试时编译生成代码所需类型 -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-extension</artifactId>
-            <scope>provided</scope>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -36,6 +36,27 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- @Service 注解来源（生成的 ServiceImpl 使用） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Google Compile-Testing: 单元测试注解处理器生成代码 -->
+        <dependency>
+            <groupId>com.google.testing.compile</groupId>
+            <artifactId>compile-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Truth 断言库（compile-testing 依赖） -->
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
             <scope>test</scope>
         </dependency>
 
