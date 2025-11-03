@@ -52,12 +52,11 @@ jobs:
   sonar:
     runs-on: ubuntu-latest
     needs: [ build ]
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-    if: ${{ env.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,14 +75,12 @@ jobs:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ env.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ env.SONAR_PROJECT_KEY }}
-          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
         run: |
-          HOST_OPT=""
-          if [ -n "${SONAR_HOST_URL}" ]; then HOST_OPT="-Dsonar.host.url=${SONAR_HOST_URL}"; else HOST_OPT="-Dsonar.host.url=https://sonarcloud.io"; fi
           ORG_OPT=""
           if [ -n "${SONAR_ORGANIZATION}" ]; then ORG_OPT="-Dsonar.organization=${SONAR_ORGANIZATION}"; fi
           KEY_OPT=""
           if [ -n "${SONAR_PROJECT_KEY}" ]; then KEY_OPT="-Dsonar.projectKey=${SONAR_PROJECT_KEY}"; fi
           ./mvnw -B sonar:sonar \
-            ${HOST_OPT} ${ORG_OPT} ${KEY_OPT} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            ${ORG_OPT} ${KEY_OPT} \
             -Dsonar.coverage.jacoco.xmlReportPaths="**/target/site/jacoco/jacoco.xml"
