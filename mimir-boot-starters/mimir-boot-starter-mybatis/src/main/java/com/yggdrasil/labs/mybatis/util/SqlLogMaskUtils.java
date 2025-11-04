@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.mybatis.util;
 
+import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
 
 import java.lang.reflect.Field;
@@ -75,12 +76,12 @@ public class SqlLogMaskUtils {
     private static String maskValue(String value, SensitiveField anno) {
         if (value == null || value.isEmpty()) return value;
         if (anno == null) {
-            return "******";
+            return CommonConstants.MASKED;
         }
         SensitiveField.MaskStrategy strategy = anno.strategy();
         String replacement = anno.replacement();
         return switch (strategy) {
-            case ALL -> "******";
+            case ALL -> CommonConstants.MASKED;
             case PHONE -> maskPhone(value);
             case ID_CARD -> maskIdCard(value);
             case BANK_CARD -> maskBankCard(value);
@@ -90,25 +91,25 @@ public class SqlLogMaskUtils {
     }
 
     private static String maskPhone(String phone) {
-        if (phone == null || phone.length() < 7) return "******";
+        if (phone == null || phone.length() < 7) return CommonConstants.MASKED;
         return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 
     private static String maskIdCard(String idCard) {
-        if (idCard == null || idCard.length() < 10) return "******";
+        if (idCard == null || idCard.length() < 10) return CommonConstants.MASKED;
         int len = idCard.length();
         return idCard.substring(0, 6) + "********" + idCard.substring(len - 4);
     }
 
     private static String maskBankCard(String card) {
-        if (card == null || card.length() < 8) return "******";
+        if (card == null || card.length() < 8) return CommonConstants.MASKED;
         return card.substring(0, 4) + "****" + card.substring(card.length() - 4);
     }
 
     private static String maskEmail(String email) {
-        if (email == null || !email.contains("@")) return "******";
+        if (email == null || !email.contains("@")) return CommonConstants.MASKED;
         int atIndex = email.indexOf("@");
-        if (atIndex <= 1) return "******";
+        if (atIndex <= 1) return CommonConstants.MASKED;
         return email.charAt(0) + "****" + email.substring(atIndex);
     }
 

@@ -49,39 +49,19 @@ public class CommonConstants {
     public static final String DEFAULT_TIMEZONE = "Asia/Shanghai";
 
     /**
-     * 请求追踪ID请求头
+     * MDC/字段中的 traceId 关键字
      */
-    public static final String TRACE_ID_HEADER = "X-Trace-Id";
+    public static final String TRACE_ID = "traceId";
 
     /**
-     * 用户ID请求头
+     * 通用未知占位
      */
-    public static final String USER_ID_HEADER = "X-User-Id";
+    public static final String UNKNOWN = "unknown";
 
     /**
-     * 租户ID请求头
+     * 通用脱敏占位
      */
-    public static final String TENANT_ID_HEADER = "X-Tenant-Id";
-
-    /**
-     * 应用ID请求头
-     */
-    public static final String APP_ID_HEADER = "X-App-Id";
-
-    /**
-     * 版本号请求头
-     */
-    public static final String VERSION_HEADER = "X-Version";
-
-    /**
-     * 语言请求头
-     */
-    public static final String LANGUAGE_HEADER = "X-Language";
-
-    /**
-     * 时区请求头
-     */
-    public static final String TIMEZONE_HEADER = "X-Timezone";
+    public static final String MASKED = "******";
 
     /**
      * 私有构造方法，防止实例化

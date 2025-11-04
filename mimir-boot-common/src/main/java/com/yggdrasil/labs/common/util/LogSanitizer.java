@@ -36,7 +36,7 @@ public final class LogSanitizer {
         if (inputs == null) {
             return List.of();
         }
-        return inputs.stream().map(LogSanitizer::sanitize).collect(Collectors.toList());
+        return inputs.stream().map(LogSanitizer::sanitize).toList();
     }
 
     /**

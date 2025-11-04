@@ -1,6 +1,6 @@
 package com.yggdrasil.labs.web.interceptor;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -59,7 +59,7 @@ class TraceInterceptorTest {
     void testPreHandleWithTraceIdFromHeader() {
         // 设置请求头中的 traceId
         String expectedTraceId = "test-trace-id-12345";
-        when(request.getHeader(CommonConstants.TRACE_ID_HEADER)).thenReturn(expectedTraceId);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn(expectedTraceId);
 
         // 执行拦截器
         boolean result = traceInterceptor.preHandle(request, response, handler);
@@ -71,7 +71,7 @@ class TraceInterceptorTest {
         assertEquals(expectedTraceId, org.slf4j.MDC.get("traceId"));
 
         // 验证 traceId 已设置到响应头
-        verify(response).setHeader(CommonConstants.TRACE_ID_HEADER, expectedTraceId);
+        verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, expectedTraceId);
     }
 
     /**
@@ -80,7 +80,7 @@ class TraceInterceptorTest {
     @Test
     void testPreHandleWithGeneratedTraceId() {
         // 请求头中没有 traceId
-        when(request.getHeader(CommonConstants.TRACE_ID_HEADER)).thenReturn(null);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn(null);
 
         // 执行拦截器
         boolean result = traceInterceptor.preHandle(request, response, handler);
@@ -96,7 +96,7 @@ class TraceInterceptorTest {
         assertEquals(32, traceId.length());
 
         // 验证 traceId 已设置到响应头
-        verify(response).setHeader(eq(CommonConstants.TRACE_ID_HEADER), anyString());
+        verify(response).setHeader(eq(HttpHeaderConstants.TRACE_ID_HEADER), anyString());
     }
 
     /**
@@ -109,7 +109,7 @@ class TraceInterceptorTest {
         org.slf4j.MDC.put("traceId", existingTraceId);
 
         // 请求头中没有 traceId
-        when(request.getHeader(CommonConstants.TRACE_ID_HEADER)).thenReturn(null);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn(null);
 
         // 执行拦截器
         boolean result = traceInterceptor.preHandle(request, response, handler);
@@ -121,7 +121,7 @@ class TraceInterceptorTest {
         assertEquals(existingTraceId, org.slf4j.MDC.get("traceId"));
 
         // 验证 traceId 已设置到响应头
-        verify(response).setHeader(CommonConstants.TRACE_ID_HEADER, existingTraceId);
+        verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, existingTraceId);
     }
 
     /**
@@ -134,7 +134,7 @@ class TraceInterceptorTest {
 
         // 请求头中有不同的 traceId
         String headerTraceId = "header-trace-id";
-        when(request.getHeader(CommonConstants.TRACE_ID_HEADER)).thenReturn(headerTraceId);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn(headerTraceId);
 
         // 执行拦截器
         boolean result = traceInterceptor.preHandle(request, response, handler);
@@ -146,7 +146,7 @@ class TraceInterceptorTest {
         assertEquals(headerTraceId, org.slf4j.MDC.get("traceId"));
 
         // 验证 traceId 已设置到响应头
-        verify(response).setHeader(CommonConstants.TRACE_ID_HEADER, headerTraceId);
+        verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, headerTraceId);
     }
 
     /**

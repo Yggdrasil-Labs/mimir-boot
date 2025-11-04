@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 public class ConfigDecryptProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(ConfigDecryptProcessor.class);
+    private static final String DECRYPTED_PROPERTIES = "decryptedProperties";
 
     private final NacosEncryptProperties properties;
     private final Pattern encryptPattern;
@@ -65,7 +66,7 @@ public class ConfigDecryptProcessor {
         // 检查是否已经处理过，避免重复处理
         boolean alreadyProcessed = false;
         for (PropertySource<?> propertySource : environment.getPropertySources()) {
-            if ("decryptedProperties".equals(propertySource.getName())) {
+            if (DECRYPTED_PROPERTIES.equals(propertySource.getName())) {
                 alreadyProcessed = true;
                 break;
             }
@@ -80,7 +81,7 @@ public class ConfigDecryptProcessor {
         List<PropertySource<?>> propertySources = new ArrayList<>();
         for (PropertySource<?> propertySource : environment.getPropertySources()) {
             // 跳过已经解密的属性源
-            if (!"decryptedProperties".equals(propertySource.getName())) {
+            if (!DECRYPTED_PROPERTIES.equals(propertySource.getName())) {
                 propertySources.add(propertySource);
             }
         }
@@ -103,7 +104,7 @@ public class ConfigDecryptProcessor {
         // 将解密后的属性添加到环境配置中（最高优先级）
         if (!decryptedProperties.isEmpty()) {
             PropertySource<Map<String, Object>> decryptedPropertySource =
-                    new PropertySource<>("decryptedProperties", decryptedProperties) {
+                    new PropertySource<>(DECRYPTED_PROPERTIES, decryptedProperties) {
                         @Override
                         public Object getProperty(String name) {
                             return source.get(name);

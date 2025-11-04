@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.web.interceptor;
 
 import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,8 @@ import java.util.UUID;
 @Slf4j
 public class TraceInterceptor implements HandlerInterceptor {
 
+    public static final String TRACE_ID = CommonConstants.TRACE_ID;
+
     /**
      * 请求处理前
      * <p>
@@ -45,7 +48,7 @@ public class TraceInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 检查请求头中是否有 traceId
-        String headerTraceId = request.getHeader(CommonConstants.TRACE_ID_HEADER);
+        String headerTraceId = request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER);
         boolean hasHeaderTraceId = StringUtils.hasText(headerTraceId);
 
         // 获取或生成 traceId
@@ -53,12 +56,12 @@ public class TraceInterceptor implements HandlerInterceptor {
 
         // 设置到 MDC
         // 如果请求头中有 traceId，或者 MDC 中还没有 traceId，则更新 MDC
-        if (hasHeaderTraceId || !StringUtils.hasText(org.slf4j.MDC.get("traceId"))) {
-            org.slf4j.MDC.put("traceId", traceId);
+        if (hasHeaderTraceId || !StringUtils.hasText(org.slf4j.MDC.get(TRACE_ID))) {
+            org.slf4j.MDC.put(TRACE_ID, traceId);
         }
 
         // 将 traceId 添加到响应头
-        response.setHeader(CommonConstants.TRACE_ID_HEADER, traceId);
+        response.setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
 
         return true;
     }
@@ -99,13 +102,13 @@ public class TraceInterceptor implements HandlerInterceptor {
      */
     private String getOrGenerateTraceId(HttpServletRequest request) {
         // 优先从请求头获取 traceId
-        String traceId = request.getHeader(CommonConstants.TRACE_ID_HEADER);
+        String traceId = request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER);
         if (StringUtils.hasText(traceId)) {
             return traceId;
         }
 
         // 从 MDC 获取（可能已被其他组件设置，如 Micrometer Tracing）
-        traceId = org.slf4j.MDC.get("traceId");
+        traceId = org.slf4j.MDC.get(TRACE_ID);
         if (StringUtils.hasText(traceId)) {
             return traceId;
         }

@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.web.advice;
 
 import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.web.config.WebProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,7 +117,7 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
      */
     private String getTraceId() {
         // 优先从 MDC 的 traceId 获取（Micrometer Tracing 自动注入）
-        String traceId = org.slf4j.MDC.get("traceId");
+        String traceId = org.slf4j.MDC.get(CommonConstants.TRACE_ID);
         if (traceId != null && !traceId.isEmpty()) {
             return traceId;
         }

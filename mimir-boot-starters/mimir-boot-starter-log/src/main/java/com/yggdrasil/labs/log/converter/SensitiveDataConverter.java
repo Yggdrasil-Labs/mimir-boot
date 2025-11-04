@@ -2,6 +2,7 @@ package com.yggdrasil.labs.log.converter;
 
 import ch.qos.logback.classic.pattern.ClassicConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import com.yggdrasil.labs.common.constant.CommonConstants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +44,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     public static final String MASK_CUSTOM_PATTERNS_PROPERTY = "mimir.boot.log.mask.customPatterns";
     public static final String MASK_REPLACEMENT_PROPERTY = "mimir.boot.log.mask.replacement";
 
-    private static final String DEFAULT_REPLACEMENT = "******";
+    private static final String DEFAULT_REPLACEMENT = CommonConstants.MASKED;
 
     private static volatile List<Pattern> patterns;
     private volatile String replacement;

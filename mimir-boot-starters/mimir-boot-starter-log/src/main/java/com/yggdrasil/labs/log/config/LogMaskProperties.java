@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.log.config;
 
+import com.yggdrasil.labs.common.constant.CommonConstants;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ public class LogMaskProperties {
     /**
      * 替换字符（默认：******）
      */
-    private String replacement = "******";
+    private String replacement = CommonConstants.MASKED;
 
     public List<String> getEnabledPatterns() {
         return enabledPatterns;

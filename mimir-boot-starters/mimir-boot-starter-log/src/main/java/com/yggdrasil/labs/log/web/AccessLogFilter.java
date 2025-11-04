@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.log.web;
 
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 import com.yggdrasil.labs.common.util.LogSanitizer;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +31,7 @@ public class AccessLogFilter implements Filter {
 
     private static final Logger ACCESS_LOG = LoggerFactory.getLogger("access.log");
     private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
+    private static final String UNKNOWN = CommonConstants.UNKNOWN;
 
     private final long slowThresholdMs;
 
@@ -153,8 +156,8 @@ public class AccessLogFilter implements Filter {
      * @return 客户端真实 IP
      */
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(ip) && !"unknown".equalsIgnoreCase(ip)) {
+        String ip = request.getHeader(HttpHeaderConstants.X_FORWARDED_FOR);
+        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
             // 可能存在多个代理，取第一个 IP
             int index = ip.indexOf(',');
             if (index != -1) {
@@ -163,18 +166,18 @@ public class AccessLogFilter implements Filter {
             return ip.trim();
         }
 
-        ip = request.getHeader("X-Real-IP");
-        if (StringUtils.hasText(ip) && !"unknown".equalsIgnoreCase(ip)) {
+        ip = request.getHeader(HttpHeaderConstants.X_REAL_IP);
+        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
             return ip;
         }
 
-        ip = request.getHeader("Proxy-Client-IP");
-        if (StringUtils.hasText(ip) && !"unknown".equalsIgnoreCase(ip)) {
+        ip = request.getHeader(HttpHeaderConstants.PROXY_CLIENT_IP);
+        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
             return ip;
         }
 
-        ip = request.getHeader("WL-Proxy-Client-IP");
-        if (StringUtils.hasText(ip) && !"unknown".equalsIgnoreCase(ip)) {
+        ip = request.getHeader(HttpHeaderConstants.WL_PROXY_CLIENT_IP);
+        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
             return ip;
         }
 
