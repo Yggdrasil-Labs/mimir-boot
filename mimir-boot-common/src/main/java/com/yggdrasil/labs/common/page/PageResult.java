@@ -15,7 +15,7 @@ import java.util.List;
  * @since 1.0.0
  */
 @Data
-public class PageResult<T> implements Serializable {
+public class PageResult<T extends Serializable> implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -64,10 +64,10 @@ public class PageResult<T> implements Serializable {
     /**
      * 构造方法
      *
-     * @param data      数据列表
+     * @param data       数据列表
      * @param totalCount 总记录数
-     * @param pageIndex 页码
-     * @param pageSize  页大小
+     * @param pageIndex  页码
+     * @param pageSize   页大小
      */
     public PageResult(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
         this.data = data;
@@ -82,14 +82,14 @@ public class PageResult<T> implements Serializable {
     /**
      * 创建分页结果
      *
-     * @param data      数据列表
+     * @param data       数据列表
      * @param totalCount 总记录数
-     * @param pageIndex 页码
-     * @param pageSize  页大小
-     * @param <T>       数据类型
+     * @param pageIndex  页码
+     * @param pageSize   页大小
+     * @param <T>        数据类型
      * @return 分页结果
      */
-    public static <T> PageResult<T> of(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
+    public static <T extends Serializable> PageResult<T> of(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
         return new PageResult<>(data, totalCount, pageIndex, pageSize);
     }
 
@@ -101,7 +101,7 @@ public class PageResult<T> implements Serializable {
      * @param <T>       数据类型
      * @return 空分页结果
      */
-    public static <T> PageResult<T> empty(Long pageIndex, Long pageSize) {
+    public static <T extends Serializable> PageResult<T> empty(Long pageIndex, Long pageSize) {
         return new PageResult<>(List.of(), 0L, pageIndex, pageSize);
     }
 
@@ -112,7 +112,7 @@ public class PageResult<T> implements Serializable {
      * @param <T>         数据类型
      * @return 空分页结果
      */
-    public static <T> PageResult<T> empty(PageRequest pageRequest) {
+    public static <T extends Serializable> PageResult<T> empty(PageRequest pageRequest) {
         return empty(pageRequest.getPageIndex(), pageRequest.getPageSize());
     }
 }

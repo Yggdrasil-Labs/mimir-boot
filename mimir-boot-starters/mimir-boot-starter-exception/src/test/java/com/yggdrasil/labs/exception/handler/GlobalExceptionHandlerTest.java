@@ -18,6 +18,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +53,7 @@ class GlobalExceptionHandlerTest {
     void testHandleBizException() {
         BizException exception = new BizException("20001", "用户不存在");
 
-        R<Void> response = handler.handleBizException(exception, request);
+        R<Serializable> response = handler.handleBizException(exception, request);
 
         assertNotNull(response);
         assertEquals("20001", response.getCode());
@@ -67,7 +68,7 @@ class GlobalExceptionHandlerTest {
     void testHandleBizExceptionWithErrorCode() {
         BizException exception = new BizException(ErrorCode.DATA_NOT_FOUND);
 
-        R<Void> response = handler.handleBizException(exception, request);
+        R<Serializable> response = handler.handleBizException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), response.getCode());
@@ -81,7 +82,7 @@ class GlobalExceptionHandlerTest {
     void testHandleSystemException() {
         SystemException exception = new SystemException("10000", "系统错误");
 
-        R<Void> response = handler.handleSystemException(exception, request);
+        R<Serializable> response = handler.handleSystemException(exception, request);
 
         assertNotNull(response);
         assertEquals("10000", response.getCode());
@@ -96,7 +97,7 @@ class GlobalExceptionHandlerTest {
     void testHandleSystemExceptionWithErrorCode() {
         SystemException exception = new SystemException(ErrorCode.SYSTEM_ERROR);
 
-        R<Void> response = handler.handleSystemException(exception, request);
+        R<Serializable> response = handler.handleSystemException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
@@ -111,7 +112,7 @@ class GlobalExceptionHandlerTest {
         BaseException exception = new BaseException("99999", "基础异常") {
         };
 
-        R<Void> response = handler.handleBaseException(exception, request);
+        R<Serializable> response = handler.handleBaseException(exception, request);
 
         assertNotNull(response);
         assertEquals("99999", response.getCode());
@@ -125,7 +126,7 @@ class GlobalExceptionHandlerTest {
     void testHandleMethodArgumentNotValidException() {
         MethodArgumentNotValidException exception = mockMethodArgumentNotValidException();
 
-        R<List<String>> response = handler.handleMethodArgumentNotValidException(exception, request);
+        R<ArrayList<String>> response = handler.handleMethodArgumentNotValidException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
@@ -141,7 +142,7 @@ class GlobalExceptionHandlerTest {
     void testHandleBindException() {
         BindException exception = mockBindException();
 
-        R<List<String>> response = handler.handleBindException(exception, request);
+        R<ArrayList<String>> response = handler.handleBindException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
@@ -157,7 +158,7 @@ class GlobalExceptionHandlerTest {
         MissingServletRequestParameterException exception =
                 new MissingServletRequestParameterException("userId", "String");
 
-        R<Void> response = handler.handleMissingServletRequestParameterException(exception, request);
+        R<Serializable> response = handler.handleMissingServletRequestParameterException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_MISSING.getCode(), response.getCode());
@@ -174,7 +175,7 @@ class GlobalExceptionHandlerTest {
         when(exception.getName()).thenReturn("userId");
         when(exception.getRequiredType()).thenAnswer(invocation -> Integer.class);
 
-        R<Void> response = handler.handleMethodArgumentTypeMismatchException(exception, request);
+        R<Serializable> response = handler.handleMethodArgumentTypeMismatchException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
@@ -191,7 +192,7 @@ class GlobalExceptionHandlerTest {
         HttpMessageNotReadableException exception =
                 new HttpMessageNotReadableException("JSON parse error", new Exception());
 
-        R<Void> response = handler.handleHttpMessageNotReadableException(exception, request);
+        R<Serializable> response = handler.handleHttpMessageNotReadableException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
@@ -208,7 +209,7 @@ class GlobalExceptionHandlerTest {
         when(exception.getMethod()).thenReturn("DELETE");
         when(exception.getSupportedMethods()).thenReturn(new String[]{"GET", "POST"});
 
-        R<Void> response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
+        R<Serializable> response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), response.getCode());
@@ -225,7 +226,7 @@ class GlobalExceptionHandlerTest {
         when(exception.getHttpMethod()).thenReturn("GET");
         when(exception.getRequestURL()).thenReturn(null);
 
-        R<Void> response = handler.handleNoHandlerFoundException(exception, request);
+        R<Serializable> response = handler.handleNoHandlerFoundException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), response.getCode());
@@ -241,7 +242,7 @@ class GlobalExceptionHandlerTest {
         IException exception = new BaseException("99999", "未知异常") {
         };
 
-        R<Void> response = handler.handleException((Exception) exception, request);
+        R<Serializable> response = handler.handleException((Exception) exception, request);
 
         assertNotNull(response);
         assertEquals("99999", response.getCode());
@@ -255,7 +256,7 @@ class GlobalExceptionHandlerTest {
     void testHandleExceptionWithoutIException() {
         Exception exception = new RuntimeException("普通运行时异常");
 
-        R<Void> response = handler.handleException(exception, request);
+        R<Serializable> response = handler.handleException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
@@ -269,7 +270,7 @@ class GlobalExceptionHandlerTest {
     void testHandleNullPointerException() {
         NullPointerException exception = new NullPointerException("空指针异常");
 
-        R<Void> response = handler.handleException(exception, request);
+        R<Serializable> response = handler.handleException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
@@ -287,7 +288,7 @@ class GlobalExceptionHandlerTest {
 
         // 应该不会抛出异常，即使 URI 包含特殊字符
         assertDoesNotThrow(() -> {
-            R<Void> response = handler.handleBizException(exception, request);
+            R<Serializable> response = handler.handleBizException(exception, request);
             assertNotNull(response);
         });
     }
@@ -300,7 +301,7 @@ class GlobalExceptionHandlerTest {
         MissingServletRequestParameterException exception =
                 new MissingServletRequestParameterException("user\nName", "String");
 
-        R<Void> response = handler.handleMissingServletRequestParameterException(exception, request);
+        R<Serializable> response = handler.handleMissingServletRequestParameterException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_MISSING.getCode(), response.getCode());
@@ -315,7 +316,7 @@ class GlobalExceptionHandlerTest {
     void testHandleBindExceptionWithEmptyErrors() {
         BindException exception = mockBindExceptionWithEmptyErrors();
 
-        R<List<String>> response = handler.handleBindException(exception, request);
+        R<ArrayList<String>> response = handler.handleBindException(exception, request);
 
         assertNotNull(response);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());

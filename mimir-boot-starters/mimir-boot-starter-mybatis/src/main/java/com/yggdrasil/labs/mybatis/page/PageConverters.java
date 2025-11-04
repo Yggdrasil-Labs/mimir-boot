@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yggdrasil.labs.common.page.PageRequest;
 import com.yggdrasil.labs.common.page.PageResult;
 
+import java.io.Serializable;
 import java.util.List;
 
 public final class PageConverters {
 
-    private PageConverters() {}
+    private PageConverters() {
+    }
 
     public static <T> Page<T> toMybatisPage(PageRequest request) {
         if (request == null) {
@@ -21,7 +23,7 @@ public final class PageConverters {
         return new Page<>(current, size);
     }
 
-    public static <T> PageResult<T> toPageResult(IPage<T> page) {
+    public static <T extends Serializable> PageResult<T> toPageResult(IPage<T> page) {
         List<T> records = page.getRecords();
         long total = page.getTotal();
         long current = page.getCurrent();

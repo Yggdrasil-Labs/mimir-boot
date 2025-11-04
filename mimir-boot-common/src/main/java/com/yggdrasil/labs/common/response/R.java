@@ -13,7 +13,7 @@ import java.io.Serializable;
  * @since 1.0.0
  */
 @Data
-public class R<T> implements Serializable {
+public class R<T extends Serializable> implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -70,7 +70,7 @@ public class R<T> implements Serializable {
      * @param <T> 数据类型
      * @return 成功响应
      */
-    public static <T> R<T> success() {
+    public static <T extends Serializable> R<T> success() {
         return new R<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), null);
     }
 
@@ -81,7 +81,7 @@ public class R<T> implements Serializable {
      * @param <T>  数据类型
      * @return 成功响应
      */
-    public static <T> R<T> success(T data) {
+    public static <T extends Serializable> R<T> success(T data) {
         return new R<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), data);
     }
 
@@ -93,7 +93,7 @@ public class R<T> implements Serializable {
      * @param <T>     数据类型
      * @return 成功响应
      */
-    public static <T> R<T> success(String message, T data) {
+    public static <T extends Serializable> R<T> success(String message, T data) {
         return new R<>(ErrorCode.SUCCESS.getCode(), message, data);
     }
 
@@ -105,7 +105,7 @@ public class R<T> implements Serializable {
      * @param <T>     数据类型
      * @return 失败响应
      */
-    public static <T> R<T> fail(String code, String message) {
+    public static <T extends Serializable> R<T> fail(String code, String message) {
         return new R<>(code, message, null);
     }
 
@@ -116,7 +116,7 @@ public class R<T> implements Serializable {
      * @param <T>     数据类型
      * @return 失败响应
      */
-    public static <T> R<T> fail(String message) {
+    public static <T extends Serializable> R<T> fail(String message) {
         return new R<>(ErrorCode.FAIL.getCode(), message, null);
     }
 

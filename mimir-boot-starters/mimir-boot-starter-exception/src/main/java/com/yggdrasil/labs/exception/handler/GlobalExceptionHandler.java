@@ -17,7 +17,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import java.util.List;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -50,7 +51,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BizException.class)
     @ResponseStatus(HttpStatus.OK)
-    public R<Void> handleBizException(BizException e, HttpServletRequest request) {
+    public R<Serializable> handleBizException(BizException e, HttpServletRequest request) {
         log.warn("业务异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
@@ -67,7 +68,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Void> handleSystemException(SystemException e, HttpServletRequest request) {
+    public R<Serializable> handleSystemException(SystemException e, HttpServletRequest request) {
         log.error("系统异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
@@ -89,7 +90,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BaseException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Void> handleBaseException(BaseException e, HttpServletRequest request) {
+    public R<Serializable> handleBaseException(BaseException e, HttpServletRequest request) {
         log.error("框架异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
@@ -108,11 +109,11 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<List<String>> handleMethodArgumentNotValidException(
+    public R<ArrayList<String>> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
-        List<String> errors = e.getBindingResult().getFieldErrors().stream()
+        ArrayList<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> sanitizeForLog(error.getField()) + ": " + sanitizeForLog(error.getDefaultMessage()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new));
         log.warn("参数校验异常: errors={}, uri={}",
                 errors,
                 sanitizeForLog(request.getRequestURI()));
@@ -132,10 +133,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<List<String>> handleBindException(BindException e, HttpServletRequest request) {
-        List<String> errors = e.getBindingResult().getFieldErrors().stream()
+    public R<ArrayList<String>> handleBindException(BindException e, HttpServletRequest request) {
+        ArrayList<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> sanitizeForLog(error.getDefaultMessage()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new));
         log.warn("参数绑定异常: errors={}, uri={}",
                 errors,
                 sanitizeForLog(request.getRequestURI()));
@@ -155,7 +156,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Void> handleMissingServletRequestParameterException(
+    public R<Serializable> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e, HttpServletRequest request) {
         String sanitizedParamName = sanitizeForLog(e.getParameterName());
         String message = String.format("缺少必需参数: %s", sanitizedParamName);
@@ -174,7 +175,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Void> handleMethodArgumentTypeMismatchException(
+    public R<Serializable> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         String sanitizedParamName = sanitizeForLog(e.getName());
         String expectedType = Objects.requireNonNull(e.getRequiredType()).getSimpleName();
@@ -194,7 +195,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Void> handleHttpMessageNotReadableException(
+    public R<Serializable> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException e, HttpServletRequest request) {
         log.warn("HTTP 消息不可读异常: {}, uri={}",
                 sanitizeForLog(e.getMessage()),
@@ -211,7 +212,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
-    public R<Void> handleHttpRequestMethodNotSupportedException(
+    public R<Serializable> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getMethod());
         String supportedMethods = sanitizeForLog(String.join(", ", Objects.requireNonNull(e.getSupportedMethods())));
@@ -231,7 +232,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(NoHandlerFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public R<Void> handleNoHandlerFoundException(
+    public R<Serializable> handleNoHandlerFoundException(
             NoHandlerFoundException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getHttpMethod());
         String sanitizedUrl = sanitizeForLog(e.getRequestURL());
@@ -254,7 +255,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Void> handleException(Exception e, HttpServletRequest request) {
+    public R<Serializable> handleException(Exception e, HttpServletRequest request) {
         // 如果异常实现了 IException 接口，使用其错误码和消息
         if (e instanceof IException ie) {
             log.error("框架异常（未捕获）: code={}, message={}, uri={}",
