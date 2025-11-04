@@ -97,7 +97,7 @@ public class SensitiveDataConverter extends ClassicConverter {
 
         // 2. 加载配置中的自定义规则
         List<String> customPatternsList = getCustomPatterns();
-        if (customPatternsList != null && !customPatternsList.isEmpty()) {
+        if (!customPatternsList.isEmpty()) {
             compilePatterns(result, customPatternsList, "Invalid custom mask pattern: ");
         }
 
@@ -126,10 +126,10 @@ public class SensitiveDataConverter extends ClassicConverter {
     private List<String> getCustomPatterns() {
         return getConfigAsList(MASK_CUSTOM_PATTERNS_PROPERTY);
     }
-    
+
     /**
      * 通用方法：从配置获取列表值
-     * 
+     *
      * @param key 配置键
      * @return 配置值列表（逗号分隔）
      */
@@ -148,19 +148,19 @@ public class SensitiveDataConverter extends ClassicConverter {
 
         return result;
     }
-    
+
     /**
      * 通用方法：编译正则表达式模式
-     * 
+     *
      * @param targetPatterns 目标列表
      * @param patternStrings 正则表达式字符串列表
-     * @param errorPrefix 错误信息前缀
+     * @param errorPrefix    错误信息前缀
      */
     private void compilePatterns(List<Pattern> targetPatterns, List<String> patternStrings, String errorPrefix) {
         if (patternStrings == null || patternStrings.isEmpty()) {
             return;
         }
-        
+
         for (String patternStr : patternStrings) {
             try {
                 targetPatterns.add(Pattern.compile(patternStr.trim()));
@@ -238,7 +238,7 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     /**
      * 对敏感信息进行脱敏
-     * 
+     *
      * @param message 原始消息
      * @return 脱敏后的消息
      */
@@ -249,7 +249,7 @@ public class SensitiveDataConverter extends ClassicConverter {
         if (message.isEmpty()) {
             return message;
         }
-        
+
         String result = message;
 
         for (Pattern pattern : getPatterns()) {
