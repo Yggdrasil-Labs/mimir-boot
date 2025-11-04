@@ -31,7 +31,7 @@ public class CryptoUtils {
             SecretKey secretKey = keyGenerator.generateKey();
             return Base64.getEncoder().encodeToString(secretKey.getEncoded());
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate key", e);
+            throw new IllegalStateException("Failed to generate key", e);
         }
     }
 
@@ -53,7 +53,7 @@ public class CryptoUtils {
             System.arraycopy(ciphertext, 0, output, iv.length, ciphertext.length);
             return Base64.getEncoder().encodeToString(output);
         } catch (Exception e) {
-            throw new RuntimeException("Encryption failed", e);
+            throw new IllegalStateException("Encryption failed", e);
         }
     }
 
@@ -77,7 +77,7 @@ public class CryptoUtils {
             byte[] decrypted = cipher.doFinal(actualCiphertext);
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("Decryption failed", e);
+            throw new IllegalStateException("Decryption failed", e);
         }
     }
 }
