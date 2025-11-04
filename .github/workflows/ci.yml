@@ -76,6 +76,9 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
+      - name: Build and test
+        run: ./mvnw -B clean verify
+
       - name: Run Sonar analysis
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,4 +91,5 @@ jobs:
             -Dsonar.organization=${SONAR_ORGANIZATION} \
             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
             -Dsonar.coverage.jacoco.xmlReportPaths="**/target/site/jacoco/jacoco.xml" \
-            -Dsonar.ci.automaticAnalysis=false
+            -Dsonar.ci.automaticAnalysis=false \
+            -Dsonar.exclusions=pom.xml
