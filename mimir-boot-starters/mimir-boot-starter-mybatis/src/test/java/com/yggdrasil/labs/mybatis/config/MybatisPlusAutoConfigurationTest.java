@@ -25,7 +25,7 @@ class MybatisPlusAutoConfigurationTest {
 
     @BeforeEach
     void setUp() {
-        configuration = new MybatisPlusAutoConfiguration();
+        configuration = new MybatisPlusAutoConfiguration(Collections.emptyList());
         properties = new MybatisProperties();
         environment = new StandardEnvironment();
     }

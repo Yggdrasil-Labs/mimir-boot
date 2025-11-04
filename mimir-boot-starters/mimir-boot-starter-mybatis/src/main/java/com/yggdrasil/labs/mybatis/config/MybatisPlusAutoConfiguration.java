@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInt
 import org.apache.ibatis.logging.stdout.StdOutImpl;
 import org.mybatis.spring.boot.autoconfigure.ConfigurationCustomizer;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -27,8 +26,11 @@ import java.util.List;
 @EnableConfigurationProperties(MybatisProperties.class)
 public class MybatisPlusAutoConfiguration {
 
-    @Autowired(required = false)
-    private List<InnerInterceptor> innerInterceptors;
+    private final List<InnerInterceptor> innerInterceptors;
+
+    public MybatisPlusAutoConfiguration(List<InnerInterceptor> innerInterceptors) {
+        this.innerInterceptors = innerInterceptors;
+    }
 
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor(
@@ -42,7 +44,7 @@ public class MybatisPlusAutoConfiguration {
         // 乐观锁
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         // 装配外部或其他配置类提供的自定义拦截器
-        if (innerInterceptors != null) {
+        if (!innerInterceptors.isEmpty()) {
             innerInterceptors.forEach(interceptor::addInnerInterceptor);
         }
         return interceptor;
