@@ -46,7 +46,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     private static final String DEFAULT_REPLACEMENT = "******";
 
     private static volatile List<Pattern> patterns;
-    private static volatile String replacement;
+    private volatile String replacement;
     private static final List<String> customPatterns = new ArrayList<>();
     private static final Object LOCK = new Object();
 
@@ -291,7 +291,6 @@ public class SensitiveDataConverter extends ClassicConverter {
      */
     public static void reloadConfig() {
         patterns = null;
-        replacement = null;
     }
 
     /**
