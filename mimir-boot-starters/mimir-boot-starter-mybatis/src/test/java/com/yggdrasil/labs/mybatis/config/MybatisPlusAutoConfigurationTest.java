@@ -36,7 +36,7 @@ class MybatisPlusAutoConfigurationTest {
 
         assertNotNull(interceptor);
         // 验证拦截器已注册（至少包含乐观锁拦截器）
-        assertTrue(interceptor.getInterceptors().size() > 0);
+        assertFalse(interceptor.getInterceptors().isEmpty());
     }
 
     @Test
