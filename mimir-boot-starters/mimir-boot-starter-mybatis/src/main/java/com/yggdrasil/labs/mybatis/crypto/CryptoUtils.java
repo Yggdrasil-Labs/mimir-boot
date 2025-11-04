@@ -3,6 +3,7 @@ package com.yggdrasil.labs.mybatis.crypto;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -11,13 +12,17 @@ import java.util.Base64;
 /**
  * 简单的对称加解密工具（AES）。
  *
- * <p>说明：当前实现使用默认模式/填充（通常为 ECB/PKCS5Padding），主要用于演示与
- * 开发测试。生产环境请优先采用 GCM 等更安全的模式并妥善管理密钥与 IV。</p>
+ * <p>说明：采用 AES/GCM/NoPadding，并使用随机 12 字节 IV，密文按如下格式编码：
+ * Base64( IV(12 bytes) || CIPHERTEXT )。GCM 认证标签包含在 CIPHERTEXT 中。</p>
  */
 public class CryptoUtils {
 
     private static final String ALGORITHM = "AES";
+    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int KEY_SIZE = 128;
+    private static final int GCM_IV_LENGTH = 12; // 96 bits per NIST recommendation
+    private static final int GCM_TAG_LENGTH = 128; // in bits
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public static String generateKey() {
         try {
@@ -35,10 +40,18 @@ public class CryptoUtils {
         try {
             SecretKeySpec secretKey = new SecretKeySpec(
                 Base64.getDecoder().decode(key), ALGORITHM);
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            byte[] encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(encrypted);
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            SECURE_RANDOM.nextBytes(iv);
+
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
+            byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+
+            byte[] output = new byte[iv.length + ciphertext.length];
+            System.arraycopy(iv, 0, output, 0, iv.length);
+            System.arraycopy(ciphertext, 0, output, iv.length, ciphertext.length);
+            return Base64.getEncoder().encodeToString(output);
         } catch (Exception e) {
             throw new RuntimeException("Encryption failed", e);
         }
@@ -49,9 +62,19 @@ public class CryptoUtils {
         try {
             SecretKeySpec secretKey = new SecretKeySpec(
                 Base64.getDecoder().decode(key), ALGORITHM);
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey);
-            byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(ciphertext));
+            byte[] input = Base64.getDecoder().decode(ciphertext);
+            if (input.length < GCM_IV_LENGTH + 1) {
+                throw new IllegalArgumentException("Invalid ciphertext");
+            }
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            byte[] actualCiphertext = new byte[input.length - GCM_IV_LENGTH];
+            System.arraycopy(input, 0, iv, 0, GCM_IV_LENGTH);
+            System.arraycopy(input, GCM_IV_LENGTH, actualCiphertext, 0, actualCiphertext.length);
+
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+            byte[] decrypted = cipher.doFinal(actualCiphertext);
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new RuntimeException("Decryption failed", e);
