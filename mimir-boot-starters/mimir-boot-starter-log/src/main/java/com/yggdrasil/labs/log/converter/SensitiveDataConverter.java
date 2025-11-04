@@ -7,6 +7,7 @@ import com.yggdrasil.labs.common.constant.CommonConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 敏感信息脱敏转换器
@@ -46,7 +47,7 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     private static final String DEFAULT_REPLACEMENT = CommonConstants.MASKED;
 
-    private static volatile List<Pattern> patterns;
+    private static volatile CopyOnWriteArrayList<Pattern> patterns;
     private volatile String replacement;
     private static final List<String> customPatterns = new ArrayList<>();
     private static final Object LOCK = new Object();
@@ -71,7 +72,7 @@ public class SensitiveDataConverter extends ClassicConverter {
      * 使用双重检查锁定保证线程安全
      */
     private List<Pattern> getPatterns() {
-        List<Pattern> result = patterns;
+        CopyOnWriteArrayList<Pattern> result = patterns;
         if (result == null) {
             synchronized (LOCK) {
                 result = patterns;
@@ -87,7 +88,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     /**
      * 加载脱敏规则
      */
-    private List<Pattern> loadPatterns() {
+    private CopyOnWriteArrayList<Pattern> loadPatterns() {
         List<Pattern> result = new ArrayList<>();
 
         // 1. 加载启用的预置规则
@@ -111,7 +112,7 @@ public class SensitiveDataConverter extends ClassicConverter {
             compilePatterns(result, programmaticPatterns, "Invalid programmatic mask pattern: ");
         }
 
-        return result;
+        return new CopyOnWriteArrayList<>(result);
     }
 
     /**
