@@ -268,7 +268,7 @@ public class SensitiveDataConverter extends ClassicConverter {
      * 对匹配到的值进行脱敏处理
      */
     private String maskValue(String matched) {
-        String replacement = getReplacement();
+        String replacementText = getReplacement();
 
         // 提取等号/冒号后的值进行替换
         if (matched.contains("=")) {
@@ -281,10 +281,10 @@ public class SensitiveDataConverter extends ClassicConverter {
             String quote = hasQuote ? suffix.substring(0, 1) : "";
 
             // 返回: 前缀 + 引号(如果有) + 替换字符 + 引号(如果有)
-            return prefix + quote + replacement + quote;
+            return prefix + quote + replacementText + quote;
         } else {
             // 纯数字或其他格式，直接替换整个匹配项
-            return replacement;
+            return replacementText;
         }
     }
 
