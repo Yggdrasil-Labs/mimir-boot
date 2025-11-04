@@ -21,6 +21,15 @@ jobs:
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
 
+      - name: Add 🚀 release label to PR
+        if: ${{ steps.release.outputs.pull_request_number != '' }}
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          number: ${{ steps.release.outputs.pull_request_number }}
+          labels: |
+            🚀 release
+
       - name: Output release info
         if: steps.release.outputs.release_created
         run: |
