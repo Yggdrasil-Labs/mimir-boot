@@ -81,13 +81,19 @@ class MdcUtilTest {
     @Test
     void testPutAllWithNull() {
         MdcUtil.putAll(null);
-        // 不应该抛出异常
+        // 不应该抛出异常，且上下文应保持为空
+        Map<String, String> all = MdcUtil.getAll();
+        assertNotNull(all);
+        assertTrue(all.isEmpty());
     }
 
     @Test
     void testPutAllWithEmptyMap() {
         MdcUtil.putAll(new HashMap<>());
-        // 不应该抛出异常
+        // 不应该抛出异常，且上下文应保持为空
+        Map<String, String> all = MdcUtil.getAll();
+        assertNotNull(all);
+        assertTrue(all.isEmpty());
     }
 
     @Test
