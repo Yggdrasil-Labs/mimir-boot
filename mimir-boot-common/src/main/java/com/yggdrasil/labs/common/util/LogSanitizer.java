@@ -2,7 +2,6 @@ package com.yggdrasil.labs.common.util;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 日志内容清理工具，防止日志注入攻击。
@@ -61,7 +60,7 @@ public final class LogSanitizer {
         if (inputs == null) {
             return List.of();
         }
-        return inputs.stream().map(LogSanitizer::escapeControls).collect(Collectors.toList());
+        return inputs.stream().map(LogSanitizer::escapeControls).toList();
     }
 }
 
