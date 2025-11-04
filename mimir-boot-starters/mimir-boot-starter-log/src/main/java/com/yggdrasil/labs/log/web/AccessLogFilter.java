@@ -28,6 +28,7 @@ import java.io.IOException;
 public class AccessLogFilter implements Filter {
 
     private static final Logger ACCESS_LOG = LoggerFactory.getLogger("access.log");
+    private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
 
     private final long slowThresholdMs;
 
@@ -97,18 +98,18 @@ public class AccessLogFilter implements Filter {
      *
      * @param ip         客户端 IP
      * @param method     HTTP 方法
-     * @param fullUri   完整的 URI
+     * @param fullUri    完整的 URI
      * @param statusCode HTTP 状态码
      * @param durationMs 耗时（毫秒）
      * @param userAgent  User-Agent
      */
     private void logAccessByStatus(String ip, String method, String fullUri, int statusCode, long durationMs, String userAgent) {
         boolean isSlow = durationMs > slowThresholdMs;
-        
+
         // 使用参数化日志，防止日志注入攻击
         String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Duration=[{}ms], UserAgent=[{}]";
         Object[] args = new Object[]{ip, method, fullUri, statusCode, durationMs, userAgent};
-        
+
         // 判断状态码范围
         if (statusCode >= 500) {
             // 5xx: 服务器错误，记录为 ERROR
@@ -118,7 +119,7 @@ public class AccessLogFilter implements Filter {
             // 4xx: 客户端错误，记录为 WARN
             // 示例：400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests
             if (isSlow) {
-                ACCESS_LOG.warn(message + " [慢接口]", args);
+                ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
             } else {
                 ACCESS_LOG.warn(message, args);
             }
@@ -126,7 +127,7 @@ public class AccessLogFilter implements Filter {
             // 3xx: 重定向，记录为 INFO
             // 示例：301 Moved Permanently, 302 Found, 304 Not Modified
             if (isSlow) {
-                ACCESS_LOG.warn(message + " [慢接口]", args);
+                ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
             } else {
                 ACCESS_LOG.info(message, args);
             }
@@ -134,7 +135,7 @@ public class AccessLogFilter implements Filter {
             // 2xx: 成功，记录为 INFO
             // 示例：200 OK, 201 Created, 204 No Content
             if (isSlow) {
-                ACCESS_LOG.warn(message + " [慢接口]", args);
+                ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
             } else {
                 ACCESS_LOG.info(message, args);
             }
