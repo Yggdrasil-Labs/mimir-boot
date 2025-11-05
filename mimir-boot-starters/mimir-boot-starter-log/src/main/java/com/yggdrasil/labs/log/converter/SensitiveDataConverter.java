@@ -177,20 +177,20 @@ public class SensitiveDataConverter extends ClassicConverter {
      * 获取启用的预置规则
      */
     private List<Pattern> getPresetPatterns(List<String> enabledNames) {
-        List<Pattern> patterns = new ArrayList<>();
+        List<Pattern> result = new ArrayList<>();
 
         for (String name : enabledNames) {
             SensitiveDataPattern patternEnum = SensitiveDataPattern.fromName(name.trim());
             if (patternEnum != null) {
                 try {
-                    patterns.add(Pattern.compile(patternEnum.getPattern()));
+                    result.add(Pattern.compile(patternEnum.getPattern()));
                 } catch (Exception e) {
                     logger.warn("Invalid preset pattern: {}", name, e);
                 }
             }
         }
 
-        return patterns;
+        return result;
     }
 
     /**
