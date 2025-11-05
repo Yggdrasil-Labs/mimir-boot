@@ -24,6 +24,10 @@ public class CryptoUtils {
     private static final int GCM_TAG_LENGTH = 128; // in bits
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    private CryptoUtils() {
+        throw new IllegalStateException("Utility class");
+    }
+
     public static String generateKey() {
         try {
             KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM);
