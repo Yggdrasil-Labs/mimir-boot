@@ -15,6 +15,7 @@ import org.springframework.core.env.Profiles;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * MyBatis-Plus 自动配置，注册常用拦截器。
@@ -26,9 +27,14 @@ import java.util.List;
 @EnableConfigurationProperties(MybatisProperties.class)
 public class MybatisPlusAutoConfiguration {
 
-    private final List<InnerInterceptor> innerInterceptors;
+    private final Optional<List<InnerInterceptor>> innerInterceptors;
 
-    public MybatisPlusAutoConfiguration(List<InnerInterceptor> innerInterceptors) {
+    /**
+     * 构造器注入
+     *
+     * @param innerInterceptors 自定义拦截器列表（可选，如果不存在则注入 Optional.empty()）
+     */
+    public MybatisPlusAutoConfiguration(Optional<List<InnerInterceptor>> innerInterceptors) {
         this.innerInterceptors = innerInterceptors;
     }
 
@@ -44,9 +50,11 @@ public class MybatisPlusAutoConfiguration {
         // 乐观锁
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         // 装配外部或其他配置类提供的自定义拦截器
-        if (!innerInterceptors.isEmpty()) {
-            innerInterceptors.forEach(interceptor::addInnerInterceptor);
-        }
+        innerInterceptors.ifPresent(interceptors -> {
+            if (!interceptors.isEmpty()) {
+                interceptors.forEach(interceptor::addInnerInterceptor);
+            }
+        });
         return interceptor;
     }
 

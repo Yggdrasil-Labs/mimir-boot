@@ -2,8 +2,6 @@ package com.yggdrasil.labs.web.config;
 
 import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
 import com.yggdrasil.labs.web.interceptor.WebInterceptor;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -24,18 +22,22 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Configuration
-@RequiredArgsConstructor
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final WebInterceptor webInterceptor;
+    private final Optional<TraceInterceptor> traceInterceptor;
 
     /**
-     * Trace 拦截器（可选）
-     * 如果存在则注入，不存在则忽略（由 starter-trace 或 Micrometer Tracing 接管）
+     * 构造器注入
+     *
+     * @param webInterceptor Web 拦截器（必需）
+     * @param traceInterceptor Trace 拦截器（可选，如果存在则注入，不存在则忽略）
      */
-    @Autowired(required = false)
-    private TraceInterceptor traceInterceptor;
+    public WebMvcConfig(WebInterceptor webInterceptor, Optional<TraceInterceptor> traceInterceptor) {
+        this.webInterceptor = webInterceptor;
+        this.traceInterceptor = traceInterceptor;
+    }
 
     /**
      * 注册拦截器
@@ -46,7 +48,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册 Trace 拦截器（如果存在）
         // 优先级：TraceInterceptor 应该在 WebInterceptor 之前执行
-        Optional.ofNullable(traceInterceptor).ifPresent(interceptor ->
+        traceInterceptor.ifPresent(interceptor ->
                 registry.addInterceptor(interceptor)
                         .addPathPatterns("/**")
                         .excludePathPatterns(

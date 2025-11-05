@@ -8,6 +8,7 @@ import org.springframework.core.env.StandardEnvironment;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -25,7 +26,7 @@ class MybatisPlusAutoConfigurationTest {
 
     @BeforeEach
     void setUp() {
-        configuration = new MybatisPlusAutoConfiguration(Collections.emptyList());
+        configuration = new MybatisPlusAutoConfiguration(Optional.empty());
         properties = new MybatisProperties();
         environment = new StandardEnvironment();
     }
