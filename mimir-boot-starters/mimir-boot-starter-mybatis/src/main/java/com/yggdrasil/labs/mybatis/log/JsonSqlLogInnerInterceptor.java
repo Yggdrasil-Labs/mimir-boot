@@ -23,6 +23,9 @@ public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
 
     @Override
     public void beforePrepare(StatementHandler sh, Connection connection, Integer transactionTimeout) {
+        if (!LOGGER.isInfoEnabled()) {
+            return;
+        }
         try {
             BoundSql boundSql = sh.getBoundSql();
             Map<String, Object> payload = new HashMap<>();
