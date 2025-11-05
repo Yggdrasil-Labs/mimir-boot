@@ -1,14 +1,12 @@
 package com.yggdrasil.labs.log.web;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.common.util.IpUtils;
 import com.yggdrasil.labs.common.util.LogSanitizer;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
@@ -31,8 +29,6 @@ public class AccessLogFilter implements Filter {
 
     private static final Logger ACCESS_LOG = LoggerFactory.getLogger("access.log");
     private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
-    private static final String UNKNOWN = CommonConstants.UNKNOWN;
-
     private final long slowThresholdMs;
 
     public AccessLogFilter(long slowThresholdMs) {
@@ -156,32 +152,7 @@ public class AccessLogFilter implements Filter {
      * @return 客户端真实 IP
      */
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader(HttpHeaderConstants.X_FORWARDED_FOR);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            // 可能存在多个代理，取第一个 IP
-            int index = ip.indexOf(',');
-            if (index != -1) {
-                ip = ip.substring(0, index);
-            }
-            return ip.trim();
-        }
-
-        ip = request.getHeader(HttpHeaderConstants.X_REAL_IP);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            return ip;
-        }
-
-        ip = request.getHeader(HttpHeaderConstants.PROXY_CLIENT_IP);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            return ip;
-        }
-
-        ip = request.getHeader(HttpHeaderConstants.WL_PROXY_CLIENT_IP);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            return ip;
-        }
-
-        return request.getRemoteAddr();
+        return IpUtils.resolveClientIp(request::getHeader, request::getRemoteAddr);
     }
 
     /**
@@ -196,4 +167,3 @@ public class AccessLogFilter implements Filter {
         return LogSanitizer.escapeControls(input);
     }
 }
-

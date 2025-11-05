@@ -1,7 +1,6 @@
 package com.yggdrasil.labs.web.interceptor;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.common.util.IpUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +27,6 @@ import org.springframework.web.servlet.HandlerInterceptor;
  */
 @Slf4j
 public class WebInterceptor implements HandlerInterceptor {
-
-    private static final String UNKNOWN = CommonConstants.UNKNOWN;
-
     /**
      * 请求处理前
      * <p>
@@ -89,40 +85,6 @@ public class WebInterceptor implements HandlerInterceptor {
      * @return 客户端真实 IP
      */
     private String getClientIp(HttpServletRequest request) {
-        String[] candidateHeaders = new String[] {
-                HttpHeaderConstants.X_FORWARDED_FOR,
-                HttpHeaderConstants.X_REAL_IP,
-                HttpHeaderConstants.PROXY_CLIENT_IP,
-                HttpHeaderConstants.WL_PROXY_CLIENT_IP
-        };
-
-        for (String header : candidateHeaders) {
-            String extracted = extractClientIpFromHeader(request, header);
-            if (StringUtils.hasText(extracted)) {
-                return extracted;
-            }
-        }
-
-        return request.getRemoteAddr();
-    }
-
-    /**
-     * 从指定请求头提取客户端 IP。
-     * 对 X-Forwarded-For 做首个 IP 提取，其它请求头直接返回非 unknown 的值。
-     */
-    private String extractClientIpFromHeader(HttpServletRequest request, String headerName) {
-        String value = request.getHeader(headerName);
-        if (!StringUtils.hasText(value) || UNKNOWN.equalsIgnoreCase(value)) {
-            return null;
-        }
-        if (HttpHeaderConstants.X_FORWARDED_FOR.equalsIgnoreCase(headerName)) {
-            int index = value.indexOf(',');
-            if (index != -1) {
-                value = value.substring(0, index);
-            }
-            return value.trim();
-        }
-        return value.trim();
+        return IpUtils.resolveClientIp(request::getHeader, request::getRemoteAddr);
     }
 }
-
