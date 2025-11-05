@@ -89,36 +89,40 @@ public class WebInterceptor implements HandlerInterceptor {
      * @return 客户端真实 IP
      */
     private String getClientIp(HttpServletRequest request) {
-        // 检查 X-Forwarded-For 请求头（可能包含多个 IP，取第一个）
-        String ip = request.getHeader(HttpHeaderConstants.X_FORWARDED_FOR);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            int index = ip.indexOf(',');
-            if (index != -1) {
-                ip = ip.substring(0, index);
+        String[] candidateHeaders = new String[] {
+                HttpHeaderConstants.X_FORWARDED_FOR,
+                HttpHeaderConstants.X_REAL_IP,
+                HttpHeaderConstants.PROXY_CLIENT_IP,
+                HttpHeaderConstants.WL_PROXY_CLIENT_IP
+        };
+
+        for (String header : candidateHeaders) {
+            String extracted = extractClientIpFromHeader(request, header);
+            if (StringUtils.hasText(extracted)) {
+                return extracted;
             }
-            return ip.trim();
         }
 
-        // 检查 X-Real-IP 请求头
-        ip = request.getHeader(HttpHeaderConstants.X_REAL_IP);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            return ip;
-        }
-
-        // 检查 Proxy-Client-IP 请求头
-        ip = request.getHeader(HttpHeaderConstants.PROXY_CLIENT_IP);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            return ip;
-        }
-
-        // 检查 WL-Proxy-Client-IP 请求头
-        ip = request.getHeader(HttpHeaderConstants.WL_PROXY_CLIENT_IP);
-        if (StringUtils.hasText(ip) && !UNKNOWN.equalsIgnoreCase(ip)) {
-            return ip;
-        }
-
-        // 使用 getRemoteAddr() 作为兜底
         return request.getRemoteAddr();
+    }
+
+    /**
+     * 从指定请求头提取客户端 IP。
+     * 对 X-Forwarded-For 做首个 IP 提取，其它请求头直接返回非 unknown 的值。
+     */
+    private String extractClientIpFromHeader(HttpServletRequest request, String headerName) {
+        String value = request.getHeader(headerName);
+        if (!StringUtils.hasText(value) || UNKNOWN.equalsIgnoreCase(value)) {
+            return null;
+        }
+        if (HttpHeaderConstants.X_FORWARDED_FOR.equalsIgnoreCase(headerName)) {
+            int index = value.indexOf(',');
+            if (index != -1) {
+                value = value.substring(0, index);
+            }
+            return value.trim();
+        }
+        return value.trim();
     }
 }
 
