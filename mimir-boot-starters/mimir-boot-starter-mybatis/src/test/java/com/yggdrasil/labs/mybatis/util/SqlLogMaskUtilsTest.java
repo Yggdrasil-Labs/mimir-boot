@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.mybatis.util;
 
+import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
 import org.junit.jupiter.api.Test;
 
@@ -16,202 +17,79 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SqlLogMaskUtilsTest {
 
-    // 测试类
-    static class TestUser {
+    static class User {
         @SensitiveField(strategy = SensitiveField.MaskStrategy.PHONE)
-        private String phone;
+        String phone;
 
         @SensitiveField(strategy = SensitiveField.MaskStrategy.ID_CARD)
-        private String idCard;
+        String idCard;
 
         @SensitiveField(strategy = SensitiveField.MaskStrategy.BANK_CARD)
-        private String bankCard;
+        String bank;
 
         @SensitiveField(strategy = SensitiveField.MaskStrategy.EMAIL)
-        private String email;
+        String email;
 
-        @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
-        private String password;
+        @SensitiveField(strategy = SensitiveField.MaskStrategy.CUSTOM, replacement = "***")
+        String token;
 
-        @SensitiveField(strategy = SensitiveField.MaskStrategy.CUSTOM, replacement = "***MASKED***")
-        private String customField;
+        String name; // 非敏感字段
 
-        private String normalField;
-
-        public TestUser(String phone, String idCard, String bankCard, String email, 
-                       String password, String customField, String normalField) {
+        User(String phone, String idCard, String bank, String email, String token, String name) {
             this.phone = phone;
             this.idCard = idCard;
-            this.bankCard = bankCard;
+            this.bank = bank;
             this.email = email;
-            this.password = password;
-            this.customField = customField;
-            this.normalField = normalField;
+            this.token = token;
+            this.name = name;
         }
     }
 
     @Test
-    void testMaskParamsNull() {
-        Object result = SqlLogMaskUtils.maskParams(null);
-        assertNull(result);
+    void mask_object_fields_with_annotations_and_nested_map() {
+        User user = new User("13800138000", "110105199001010015", "6222021234567890", "user@example.com", "abcd", "Alice");
+        Map<String, Object> wrapper = new HashMap<>();
+        wrapper.put("user", user);
+        wrapper.put("extra", "keep");
+
+        Object masked = SqlLogMaskUtils.maskParams(wrapper);
+        assertTrue(masked instanceof Map);
+
+        Map<?, ?> m = (Map<?, ?>) masked;
+        assertEquals("keep", m.get("extra"));
+
+        // Map 下按 key 对应字段名进行匹配脱敏
+        Map<?, ?> maskedUser = (Map<?, ?>) m.get("user");
+        assertEquals("138****8000", maskedUser.get("phone"));
+        assertEquals("110105********0015", maskedUser.get("idCard"));
+        assertEquals("6222****7890", maskedUser.get("bank"));
+        assertEquals("u****@example.com", maskedUser.get("email"));
+        assertEquals("***", maskedUser.get("token"));
+        assertEquals("Alice", maskedUser.get("name"));
     }
 
     @Test
-    void testMaskParamsPrimitive() {
-        assertEquals(123, SqlLogMaskUtils.maskParams(123));
-        assertEquals("test", SqlLogMaskUtils.maskParams("test"));
-        assertEquals(123L, SqlLogMaskUtils.maskParams(123L));
-        assertEquals(3.14, SqlLogMaskUtils.maskParams(3.14));
+    void mask_map_with_nulls_and_primitives_passthrough() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("num", 123);
+        map.put("str", "text");
+        map.put("nil", null);
+
+        Object out = SqlLogMaskUtils.maskParams(map);
+        Map<?, ?> m = (Map<?, ?>) out;
+        assertEquals(123, m.get("num"));
+        assertEquals("text", m.get("str"));
+        assertNull(m.get("nil"));
     }
 
     @Test
-    void testMaskParamsString() {
-        String result = (String) SqlLogMaskUtils.maskParams("hello");
-        assertEquals("hello", result);
-    }
-
-    @Test
-    void testMaskParamsMap() {
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", 123);
-        params.put("name", "test");
-
-        Object result = SqlLogMaskUtils.maskParams(params);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-    }
-
-    @Test
-    void testMaskParamsObject() {
-        TestUser user = new TestUser(
-            "13812345678",
-            "110101199001011234",
-            "6222021234567890",
-            "user@example.com",
-            "password123",
-            "customValue",
-            "normalValue"
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-    }
-
-    @Test
-    void testMaskParamsObjectWithPhone() {
-        TestUser user = new TestUser(
-            "13812345678", null, null, null, null, null, null
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) result;
-        Object phone = map.get("phone");
-        assertNotNull(phone);
-        // 手机号脱敏：保留前3位后4位
-        assertTrue(phone.toString().startsWith("138"));
-        assertTrue(phone.toString().contains("5678"));
-    }
-
-    @Test
-    void testMaskParamsObjectWithIdCard() {
-        TestUser user = new TestUser(
-            null, "110101199001011234", null, null, null, null, null
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) result;
-        Object idCard = map.get("idCard");
-        assertNotNull(idCard);
-        // 身份证脱敏：保留前6位后4位
-        assertTrue(idCard.toString().startsWith("110101"));
-        assertTrue(idCard.toString().endsWith("1234"));
-    }
-
-    @Test
-    void testMaskParamsObjectWithEmail() {
-        TestUser user = new TestUser(
-            null, null, null, "user@example.com", null, null, null
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) result;
-        Object email = map.get("email");
-        assertNotNull(email);
-        // 邮箱脱敏：保留首字符和@后的部分
-        assertTrue(email.toString().startsWith("u"));
-        assertTrue(email.toString().contains("@example.com"));
-    }
-
-    @Test
-    void testMaskParamsObjectWithPassword() {
-        TestUser user = new TestUser(
-            null, null, null, null, "password123", null, null
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) result;
-        Object password = map.get("password");
-        assertEquals("******", password);
-    }
-
-    @Test
-    void testMaskParamsObjectWithCustomField() {
-        TestUser user = new TestUser(
-            null, null, null, null, null, "customValue", null
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) result;
-        Object customField = map.get("customField");
-        assertEquals("***MASKED***", customField);
-    }
-
-    @Test
-    void testMaskParamsObjectWithNormalField() {
-        TestUser user = new TestUser(
-            null, null, null, null, null, null, "normalValue"
-        );
-
-        Object result = SqlLogMaskUtils.maskParams(user);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) result;
-        Object normalField = map.get("normalField");
-        assertEquals("normalValue", normalField);
-    }
-
-    @Test
-    void testMaskParamsMapWithNullValues() {
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", 123);
-        params.put("name", null);
-
-        Object result = SqlLogMaskUtils.maskParams(params);
-        assertNotNull(result);
-        assertTrue(result instanceof Map);
+    void mask_value_strategy_all_defaults_to_masked() {
+        class Holder {
+            @SensitiveField
+            String secret = "x";
+        }
+        Object out = SqlLogMaskUtils.maskParams(new Holder());
+        Map<?, ?> m = (Map<?, ?>) out;
+        assertEquals(CommonConstants.MASKED, m.get("secret"));
     }
 }
-

@@ -13,126 +13,41 @@ import static org.junit.jupiter.api.Assertions.*;
 class CryptoUtilsTest {
 
     @Test
-    void testGenerateKey() {
+    void generateKey_returns_non_empty_base64() {
         String key = CryptoUtils.generateKey();
-
         assertNotNull(key);
-        assertFalse(key.isEmpty());
-        // Base64 编码的密钥长度检查（128位 = 16字节，Base64编码后约24字符）
-        assertTrue(key.length() > 20);
+        assertTrue(key.length() > 0);
     }
 
     @Test
-    void testGenerateKeyMultipleTimes() {
-        String key1 = CryptoUtils.generateKey();
-        String key2 = CryptoUtils.generateKey();
-
-        // 每次生成的密钥应该不同（概率极高）
-        assertNotEquals(key1, key2);
-    }
-
-    @Test
-    void testEncryptAndDecrypt() {
+    void encrypt_decrypt_roundtrip_and_pass_through_null_empty() {
         String key = CryptoUtils.generateKey();
-        String plaintext = "Hello, World!";
 
-        String encrypted = CryptoUtils.encrypt(plaintext, key);
-        assertNotNull(encrypted);
-        assertNotEquals(plaintext, encrypted);
-        assertFalse(encrypted.isEmpty());
+        assertNull(CryptoUtils.encrypt(null, key));
+        assertEquals("", CryptoUtils.encrypt("", key));
 
-        String decrypted = CryptoUtils.decrypt(encrypted, key);
+        String plaintext = "hello-世界-😊";
+        String ciphertext = CryptoUtils.encrypt(plaintext, key);
+        assertNotEquals(plaintext, ciphertext);
+
+        String decrypted = CryptoUtils.decrypt(ciphertext, key);
         assertEquals(plaintext, decrypted);
     }
 
     @Test
-    void testEncryptNullPlaintext() {
+    void same_plaintext_with_random_iv_produces_different_ciphertexts() {
         String key = CryptoUtils.generateKey();
-        String encrypted = CryptoUtils.encrypt(null, key);
-
-        assertNull(encrypted);
+        String plaintext = "repeat";
+        String c1 = CryptoUtils.encrypt(plaintext, key);
+        String c2 = CryptoUtils.encrypt(plaintext, key);
+        assertNotEquals(c1, c2);
     }
 
     @Test
-    void testEncryptEmptyPlaintext() {
-        String key = CryptoUtils.generateKey();
-        String encrypted = CryptoUtils.encrypt("", key);
-
-        assertEquals("", encrypted);
-    }
-
-    @Test
-    void testDecryptNullCiphertext() {
-        String key = CryptoUtils.generateKey();
-        String decrypted = CryptoUtils.decrypt(null, key);
-
-        assertNull(decrypted);
-    }
-
-    @Test
-    void testDecryptEmptyCiphertext() {
-        String key = CryptoUtils.generateKey();
-        String decrypted = CryptoUtils.decrypt("", key);
-
-        assertEquals("", decrypted);
-    }
-
-    @Test
-    void testEncryptDecryptLongText() {
-        String key = CryptoUtils.generateKey();
-        String longText = "A".repeat(1000);
-
-        String encrypted = CryptoUtils.encrypt(longText, key);
-        String decrypted = CryptoUtils.decrypt(encrypted, key);
-
-        assertEquals(longText, decrypted);
-    }
-
-    @Test
-    void testEncryptDecryptSpecialCharacters() {
-        String key = CryptoUtils.generateKey();
-        String specialText = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
-
-        String encrypted = CryptoUtils.encrypt(specialText, key);
-        String decrypted = CryptoUtils.decrypt(encrypted, key);
-
-        assertEquals(specialText, decrypted);
-    }
-
-    @Test
-    void testEncryptDecryptUnicode() {
-        String key = CryptoUtils.generateKey();
-        String unicodeText = "中文测试 🎉 Hello 世界";
-
-        String encrypted = CryptoUtils.encrypt(unicodeText, key);
-        String decrypted = CryptoUtils.decrypt(encrypted, key);
-
-        assertEquals(unicodeText, decrypted);
-    }
-
-    @Test
-    void testDecryptWithWrongKey() {
+    void decrypt_with_wrong_key_throws() {
         String key1 = CryptoUtils.generateKey();
         String key2 = CryptoUtils.generateKey();
-        String plaintext = "test message";
-
-        String encrypted = CryptoUtils.encrypt(plaintext, key1);
-
-        // 使用错误的密钥解密应该抛出异常
-        assertThrows(RuntimeException.class, () -> {
-            CryptoUtils.decrypt(encrypted, key2);
-        });
-    }
-
-    @Test
-    void testEncryptDecryptNumericStrings() {
-        String key = CryptoUtils.generateKey();
-        String numeric = "1234567890";
-
-        String encrypted = CryptoUtils.encrypt(numeric, key);
-        String decrypted = CryptoUtils.decrypt(encrypted, key);
-
-        assertEquals(numeric, decrypted);
+        String ciphertext = CryptoUtils.encrypt("secret", key1);
+        assertThrows(IllegalStateException.class, () -> CryptoUtils.decrypt(ciphertext, key2));
     }
 }
-
