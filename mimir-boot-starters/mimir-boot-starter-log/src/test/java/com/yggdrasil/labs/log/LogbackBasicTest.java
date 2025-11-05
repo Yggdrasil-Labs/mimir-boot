@@ -248,12 +248,25 @@ class LogbackBasicTest {
         org.slf4j.MDC.put("userId", "12345");
         org.slf4j.MDC.put("requestId", "req-001");
 
+        // 验证 MDC 值已正确设置
+        assertEquals("12345", org.slf4j.MDC.get("userId"), "userId MDC 值应该是 12345");
+        assertEquals("req-001", org.slf4j.MDC.get("requestId"), "requestId MDC 值应该是 req-001");
+
         logger.info("带 MDC 的日志");
+
+        // 验证日志事件包含 MDC 信息
+        assertEquals(1, listAppender.list.size(), "应该捕获 1 条日志");
+        ILoggingEvent event = listAppender.list.get(0);
+        assertNotNull(event.getMDCPropertyMap(), "日志事件应该包含 MDC 属性映射");
+        assertEquals("12345", event.getMDCPropertyMap().get("userId"), "日志中的 userId MDC 值应该是 12345");
+        assertEquals("req-001", event.getMDCPropertyMap().get("requestId"), "日志中的 requestId MDC 值应该是 req-001");
 
         // 验证 MDC 可以通过其他方式访问
         logger.info("再次测试");
+        assertEquals(2, listAppender.list.size(), "应该捕获 2 条日志");
 
         org.slf4j.MDC.clear();
+        assertNull(org.slf4j.MDC.get("userId"), "清理后 userId MDC 值应该为 null");
     }
 
     /**
