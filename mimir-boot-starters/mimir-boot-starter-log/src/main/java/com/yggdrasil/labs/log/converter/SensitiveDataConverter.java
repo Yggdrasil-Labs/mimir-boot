@@ -3,11 +3,14 @@ package com.yggdrasil.labs.log.converter;
 import ch.qos.logback.classic.pattern.ClassicConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.yggdrasil.labs.common.constant.CommonConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 敏感信息脱敏转换器
@@ -40,6 +43,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class SensitiveDataConverter extends ClassicConverter {
 
+    private static final Logger logger = LoggerFactory.getLogger(SensitiveDataConverter.class);
+
     // 配置属性名称常量
     public static final String MASK_ENABLED_PATTERNS_PROPERTY = "mimir.boot.log.mask.enabledPatterns";
     public static final String MASK_CUSTOM_PATTERNS_PROPERTY = "mimir.boot.log.mask.customPatterns";
@@ -47,15 +52,11 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     private static final String DEFAULT_REPLACEMENT = CommonConstants.MASKED;
 
-    private static volatile CopyOnWriteArrayList<Pattern> patterns;
-    private volatile String replacement;
+    private static final AtomicReference<List<Pattern>> patterns = new AtomicReference<>();
+    private String replacement;
     private static final List<String> customPatterns = new ArrayList<>();
     private static final Object LOCK = new Object();
-
-    @Override
-    public void start() {
-        super.start();
-    }
+    private final Object replacementLock = new Object();
 
     @Override
     public String convert(ILoggingEvent event) {
@@ -69,16 +70,16 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     /**
      * 获取脱敏规则
-     * 使用双重检查锁定保证线程安全
+     * 使用 AtomicReference 保证线程安全
      */
     private List<Pattern> getPatterns() {
-        CopyOnWriteArrayList<Pattern> result = patterns;
+        List<Pattern> result = patterns.get();
         if (result == null) {
             synchronized (LOCK) {
-                result = patterns;
+                result = patterns.get();
                 if (result == null) {
-                    patterns = loadPatterns();
-                    result = patterns;
+                    result = loadPatterns();
+                    patterns.set(result);
                 }
             }
         }
@@ -88,7 +89,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     /**
      * 加载脱敏规则
      */
-    private CopyOnWriteArrayList<Pattern> loadPatterns() {
+    private List<Pattern> loadPatterns() {
         List<Pattern> result = new ArrayList<>();
 
         // 1. 加载启用的预置规则
@@ -167,7 +168,7 @@ public class SensitiveDataConverter extends ClassicConverter {
             try {
                 targetPatterns.add(Pattern.compile(patternStr.trim()));
             } catch (Exception e) {
-                System.err.println(errorPrefix + patternStr);
+                logger.warn("{}{}", errorPrefix, patternStr, e);
             }
         }
     }
@@ -184,7 +185,7 @@ public class SensitiveDataConverter extends ClassicConverter {
                 try {
                     patterns.add(Pattern.compile(patternEnum.getPattern()));
                 } catch (Exception e) {
-                    System.err.println("Invalid preset pattern: " + name);
+                    logger.warn("Invalid preset pattern: {}", name, e);
                 }
             }
         }
@@ -200,7 +201,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     public static void addCustomPattern(String pattern) {
         synchronized (LOCK) {
             customPatterns.add(pattern);
-            patterns = null; // 清空缓存，重新加载
+            patterns.set(null); // 清空缓存，重新加载
         }
     }
 
@@ -210,22 +211,30 @@ public class SensitiveDataConverter extends ClassicConverter {
     public static void clearCustomPatterns() {
         synchronized (LOCK) {
             customPatterns.clear();
-            patterns = null; // 清空缓存，重新加载
+            patterns.set(null); // 清空缓存，重新加载
         }
     }
 
     /**
      * 获取替换字符
+     * 使用双重检查锁定保证线程安全
      */
     private String getReplacement() {
-        if (replacement == null) {
-            String value = getContextProperty(MASK_REPLACEMENT_PROPERTY);
-            if (value == null || value.isEmpty()) {
-                value = System.getProperty(MASK_REPLACEMENT_PROPERTY, DEFAULT_REPLACEMENT);
+        String result = replacement;
+        if (result == null) {
+            synchronized (replacementLock) {
+                result = replacement;
+                if (result == null) {
+                    String value = getContextProperty(MASK_REPLACEMENT_PROPERTY);
+                    if (value == null || value.isEmpty()) {
+                        value = System.getProperty(MASK_REPLACEMENT_PROPERTY, DEFAULT_REPLACEMENT);
+                    }
+                    replacement = value;
+                    result = replacement;
+                }
             }
-            replacement = value;
         }
-        return replacement;
+        return result;
     }
 
     /**
@@ -292,7 +301,7 @@ public class SensitiveDataConverter extends ClassicConverter {
      * 重新加载配置（用于配置动态更新）
      */
     public static void reloadConfig() {
-        patterns = null;
+        patterns.set(null);
     }
 
     /**
