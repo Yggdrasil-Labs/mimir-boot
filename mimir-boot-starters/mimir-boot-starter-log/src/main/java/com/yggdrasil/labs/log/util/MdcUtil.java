@@ -56,6 +56,11 @@ public class MdcUtil {
     /** 租户 ID 键名 */
     public static final String TENANT_ID = "tenantId";
 
+
+    private MdcUtil() {
+        throw new IllegalStateException("Utility class");
+    }
+    
     /**
      * 设置用户 ID
      */
