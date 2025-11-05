@@ -19,26 +19,32 @@ class AutoMybatisProcessorTest {
 
     @Test
     void generatesMapperServiceAndImpl() {
-        String entitySrc = "package demo.entity;\n" +
-                "import com.yggdrasil.labs.mybatis.annotation.AutoMybatis;\n" +
-                "@AutoMybatis(mapperPackage=\"mapper\", servicePackage=\"service\", serviceImplPackage=\"service.impl\")\n" +
-                "public class User {\n" +
-                "  private Long id;\n" +
-                "  private String name;\n" +
-                "}\n";
+        String entitySrc = """
+                package demo.entity;
+                import com.yggdrasil.labs.mybatis.annotation.AutoMybatis;
+                @AutoMybatis(mapperPackage="mapper", servicePackage="service", serviceImplPackage="service.impl")
+                public class User {
+                  private Long id;
+                  private String name;
+                }
+                """;
 
         JavaFileObject entity = JavaFileObjects.forSourceString("demo.entity.User", entitySrc);
 
         // 提供最小桩类型，避免引入外部 mybatis-plus 依赖
         JavaFileObject iServiceStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.extension.service.IService",
-                "package com.baomidou.mybatisplus.extension.service;\n" +
-                        "public interface IService<T> {}\n");
+                """
+                package com.baomidou.mybatisplus.extension.service;
+                public interface IService<T> {}
+                """);
 
         JavaFileObject serviceImplStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
-                "package com.baomidou.mybatisplus.extension.service.impl;\n" +
-                        "public class ServiceImpl<M, T> {}\n");
+                """
+                package com.baomidou.mybatisplus.extension.service.impl;
+                public class ServiceImpl<M, T> {}
+                """);
 
         Compilation compilation = Compiler.javac()
                 .withClasspathFrom(this.getClass().getClassLoader())
