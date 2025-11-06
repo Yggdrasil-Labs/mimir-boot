@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
+import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.SystemException;
 import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
 import org.apache.ibatis.type.BaseTypeHandler;
@@ -63,7 +65,7 @@ public abstract class AbstractCryptoTypeHandler<T> extends BaseTypeHandler<T> {
             String decrypted = CryptoUtils.decrypt(encrypted, keyProvider.getKey());
             return fromString(decrypted);
         } catch (Exception e) {
-            throw new RuntimeException("Decrypt failed for column value", e);
+            throw new SystemException(ErrorCode.SYSTEM_ERROR, e);
         }
     }
 }
