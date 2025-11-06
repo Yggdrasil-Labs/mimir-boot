@@ -280,12 +280,20 @@ public class SensitiveDataConverter extends ClassicConverter {
         String replacementText = getReplacement();
 
         // 提取等号/冒号后的值进行替换
+        int separatorIndex = -1;
+        
+        // 优先检查等号，再检查冒号
         if (matched.contains("=")) {
-            int index = matched.indexOf("=");
-            String prefix = matched.substring(0, index + 1);  // 包含等号的前缀
+            separatorIndex = matched.indexOf("=");
+        } else if (matched.contains(":")) {
+            separatorIndex = matched.indexOf(":");
+        }
+        
+        if (separatorIndex >= 0) {
+            String prefix = matched.substring(0, separatorIndex + 1);  // 包含分隔符的前缀
 
             // 保留原始值中的引号格式
-            String suffix = matched.substring(index + 1);
+            String suffix = matched.substring(separatorIndex + 1);
             boolean hasQuote = suffix.startsWith("\"") || suffix.startsWith("'");
             String quote = hasQuote ? suffix.substring(0, 1) : "";
 
