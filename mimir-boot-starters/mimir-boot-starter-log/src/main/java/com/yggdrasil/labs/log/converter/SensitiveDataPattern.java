@@ -40,8 +40,8 @@ public enum SensitiveDataPattern {
     /** 姓名相关字段 */
     NAME("name", "(?i)(name|realname|真实姓名)\\s*[=:]\\s*['\"]?[^'\"\\s]+"),
     
-    /** 纯身份证号（15位或18位） */
-    ID_CARD_NUMBER("id_card_number", "\\d{15}|\\d{18}"),
+    /** 纯身份证号（18位优先，再匹配15位） */
+    ID_CARD_NUMBER("id_card_number", "\\d{18}|\\d{15}"),
     
     /** 纯手机号（11位） */
     PHONE_NUMBER("phone_number", "1[3-9]\\d{9}"),
