@@ -2,6 +2,12 @@ package com.yggdrasil.labs.mybatis.audit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,51 +40,49 @@ class AuditMetaObjectHandlerTest {
         assertInstanceOf(AuditMetaObjectHandler.class, handler);
     }
 
-    @Test
-    void testSafeAuditorWithValidUser() {
-        when(auditorProvider.currentAuditor()).thenReturn("valid-user");
-        AuditMetaObjectHandler handler = new AuditMetaObjectHandler(auditorProvider);
+    @ParameterizedTest
+    @ValueSource(strings = {"valid-user", "", "   "})
+    void testSafeAuditorWithVariousValues(String auditorValue) {
+        when(auditorProvider.currentAuditor()).thenReturn(auditorValue);
+        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(auditorProvider);
         
-        // 通过反射测试 safeAuditor 方法
-        // 实际上 safeAuditor 是私有方法，我们通过 public 方法来间接测试
-        assertNotNull(handler);
+        // 验证 handler 可以正常创建
+        assertNotNull(testHandler);
     }
 
-    @Test
-    void testSafeAuditorWithNull() {
-        when(auditorProvider.currentAuditor()).thenReturn(null);
-        AuditMetaObjectHandler handler = new AuditMetaObjectHandler(auditorProvider);
+    @ParameterizedTest
+    @MethodSource("provideHandlerCreationScenarios")
+    void testHandlerCreationWithVariousScenarios(String scenario) {
+        // 根据场景设置不同的 mock 行为
+        switch (scenario) {
+            case "null":
+                when(auditorProvider.currentAuditor()).thenReturn(null);
+                break;
+            case "exception":
+                when(auditorProvider.currentAuditor()).thenThrow(new RuntimeException("Test exception"));
+                break;
+            case "normal":
+                // 使用默认的 mock 设置
+                break;
+            default:
+                fail("Unknown scenario: " + scenario);
+        }
         
-        // safeAuditor 应该返回 "system" 当 auditor 为 null
-        assertNotNull(handler);
-        verify(auditorProvider, never()).currentAuditor();
+        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(auditorProvider);
+        assertNotNull(testHandler);
+        
+        // null 场景需要额外的验证
+        if ("null".equals(scenario)) {
+            verify(auditorProvider, never()).currentAuditor();
+        }
     }
 
-    @Test
-    void testSafeAuditorWithEmpty() {
-        when(auditorProvider.currentAuditor()).thenReturn("");
-        AuditMetaObjectHandler handler = new AuditMetaObjectHandler(auditorProvider);
-        
-        // safeAuditor 应该返回 "system" 当 auditor 为空字符串
-        assertNotNull(handler);
-    }
-
-    @Test
-    void testSafeAuditorWithBlank() {
-        when(auditorProvider.currentAuditor()).thenReturn("   ");
-        AuditMetaObjectHandler handler = new AuditMetaObjectHandler(auditorProvider);
-        
-        // safeAuditor 应该返回 "system" 当 auditor 为空白字符串
-        assertNotNull(handler);
-    }
-
-    @Test
-    void testSafeAuditorWithException() {
-        when(auditorProvider.currentAuditor()).thenThrow(new RuntimeException("Test exception"));
-        AuditMetaObjectHandler handler = new AuditMetaObjectHandler(auditorProvider);
-        
-        // safeAuditor 应该捕获异常并返回 "system"
-        assertNotNull(handler);
+    private static Stream<Arguments> provideHandlerCreationScenarios() {
+        return Stream.of(
+                Arguments.of("null"),
+                Arguments.of("exception"),
+                Arguments.of("normal")
+        );
     }
 
     @Test
@@ -92,15 +96,5 @@ class AuditMetaObjectHandlerTest {
         assertNotNull(handler1);
         assertNotNull(handler2);
         assertNotSame(handler1, handler2);
-    }
-
-    @Test
-    void testHandlerDoesNotThrowOnNullMetaObject() {
-        // 注意：实际调用 insertFill/updateFill 需要有效的 MetaObject
-        // 这里只验证 handler 对象创建不会抛出异常
-        assertDoesNotThrow(() -> {
-            AuditMetaObjectHandler handler = new AuditMetaObjectHandler(auditorProvider);
-            assertNotNull(handler);
-        });
     }
 }

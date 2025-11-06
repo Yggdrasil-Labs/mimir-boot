@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 /**
  * 响应体增强器测试
@@ -52,16 +52,16 @@ class ResponseBodyEnhancerTest {
     private ServerHttpResponse response;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
         // 设置默认配置
         when(webProperties.getResponse()).thenReturn(responseConfig);
         when(responseConfig.isEnabled()).thenReturn(true);
         when(responseConfig.isAutoFillTraceId()).thenReturn(true);
-        
+
         responseBodyEnhancer = new ResponseBodyEnhancer(webProperties);
-        
+
         // 清理 MDC
         org.slf4j.MDC.clear();
     }
@@ -192,7 +192,7 @@ class ResponseBodyEnhancerTest {
      * 测试 null 响应体
      */
     @Test
-    void testBeforeBodyWriteWithNullBody() throws Exception {
+    void testBeforeBodyWriteWithNullBody() {
         R<?> result = responseBodyEnhancer.beforeBodyWrite(
                 null,
                 returnType,
@@ -258,7 +258,7 @@ class ResponseBodyEnhancerTest {
      * 测试 MDC 中没有 traceId 和 requestId
      */
     @Test
-    void testBeforeBodyWriteWithNoTraceId() throws Exception {
+    void testBeforeBodyWriteWithNoTraceId() {
         // MDC 为空
         R<String> responseBody = R.success("test data");
 
