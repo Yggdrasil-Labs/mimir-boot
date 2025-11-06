@@ -17,6 +17,10 @@ import java.util.Map;
  */
 public class SqlLogMaskUtils {
 
+    private SqlLogMaskUtils(){
+        throw new IllegalStateException("Utility class");
+    }
+
     public static Object maskParams(Object params) {
         if (params == null) return null;
         if (params instanceof Map) {
