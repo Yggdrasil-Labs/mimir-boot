@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -22,13 +21,12 @@ import static org.mockito.Mockito.*;
 class StringCryptoTypeHandlerTest {
 
     private StringCryptoTypeHandler handler;
-    private CryptoKeyProvider keyProvider;
     private String testKey;
 
     @BeforeEach
     void setUp() {
         testKey = CryptoUtils.generateKey();
-        keyProvider = () -> testKey;
+        CryptoKeyProvider keyProvider = () -> testKey;
         handler = new StringCryptoTypeHandler(keyProvider);
     }
 
@@ -46,7 +44,7 @@ class StringCryptoTypeHandlerTest {
     @Test
     void testSetNonNullParameterWithNullValue() {
         PreparedStatement ps = mock(PreparedStatement.class);
-        
+
         // toString 方法将 null 转为空字符串
         assertDoesNotThrow(() -> {
             handler.setNonNullParameter(ps, 1, null, null);
@@ -57,7 +55,7 @@ class StringCryptoTypeHandlerTest {
     void testGetNullableResultFromColumnName() throws SQLException {
         ResultSet rs = mock(ResultSet.class);
         String encrypted = CryptoUtils.encrypt("test-value", testKey);
-        
+
         when(rs.getString("column_name")).thenReturn(encrypted);
 
         String result = handler.getNullableResult(rs, "column_name");
@@ -69,7 +67,7 @@ class StringCryptoTypeHandlerTest {
     void testGetNullableResultFromColumnIndex() throws SQLException {
         ResultSet rs = mock(ResultSet.class);
         String encrypted = CryptoUtils.encrypt("test-value", testKey);
-        
+
         when(rs.getString(1)).thenReturn(encrypted);
 
         String result = handler.getNullableResult(rs, 1);
@@ -100,19 +98,19 @@ class StringCryptoTypeHandlerTest {
     @Test
     void testRoundTrip() throws SQLException {
         String originalValue = "original-text";
-        
+
         // 加密
         PreparedStatement ps = mock(PreparedStatement.class);
         handler.setNonNullParameter(ps, 1, originalValue, null);
-        
+
         // 获取加密后的值
         verify(ps).setString(eq(1), anyString());
-        
+
         // 解密
         String encrypted = CryptoUtils.encrypt(originalValue, testKey);
         ResultSet rs = mock(ResultSet.class);
         when(rs.getString("column_name")).thenReturn(encrypted);
-        
+
         String decrypted = handler.getNullableResult(rs, "column_name");
         assertEquals(originalValue, decrypted);
     }
@@ -121,7 +119,7 @@ class StringCryptoTypeHandlerTest {
     void testGetNullableResultFromCallableStatement() throws SQLException {
         java.sql.CallableStatement cs = mock(java.sql.CallableStatement.class);
         String encrypted = CryptoUtils.encrypt("test-value", testKey);
-        
+
         when(cs.getString(1)).thenReturn(encrypted);
 
         String result = handler.getNullableResult(cs, 1);

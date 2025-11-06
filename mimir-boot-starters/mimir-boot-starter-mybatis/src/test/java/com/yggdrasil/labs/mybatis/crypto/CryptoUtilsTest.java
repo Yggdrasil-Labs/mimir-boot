@@ -19,7 +19,7 @@ class CryptoUtilsTest {
     void generateKey_returns_non_empty_base64() {
         String key = CryptoUtils.generateKey();
         assertNotNull(key);
-        assertTrue(key.length() > 0);
+        assertFalse(key.isEmpty());
     }
 
     @Test

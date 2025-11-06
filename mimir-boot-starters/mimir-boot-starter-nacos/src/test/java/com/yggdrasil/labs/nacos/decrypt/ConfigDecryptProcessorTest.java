@@ -5,7 +5,6 @@ import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.StandardEnvironment;
 
 import java.util.HashMap;
@@ -186,7 +185,7 @@ class ConfigDecryptProcessorTest {
         environment.getPropertySources().addFirst(propertySource);
 
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
-        
+
         // 解密失败时不应该抛出异常，应该返回原值
         assertDoesNotThrow(() -> processor.process(environment));
         assertEquals("ENC(invalid-encrypted-value)", environment.getProperty("test.key"));
@@ -242,7 +241,7 @@ class ConfigDecryptProcessorTest {
         environment.getPropertySources().addFirst(propertySource);
 
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
-        
+
         // 第一次处理
         processor.process(environment);
         assertEquals(plaintext, environment.getProperty("test.key"));

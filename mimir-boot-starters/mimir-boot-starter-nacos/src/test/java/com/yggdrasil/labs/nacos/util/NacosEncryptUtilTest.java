@@ -1,6 +1,5 @@
 package com.yggdrasil.labs.nacos.util;
 
-import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
