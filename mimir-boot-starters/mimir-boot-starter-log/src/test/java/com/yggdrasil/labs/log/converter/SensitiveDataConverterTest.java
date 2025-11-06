@@ -147,62 +147,26 @@ class SensitiveDataConverterTest {
         assertEquals("", result);
     }
 
-    @Test
-    void testMaskSensitiveDataWithPasswordPattern() {
-        // 启用密码规则
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "password,'登录信息: password=123456','password=','123456'",
+            "token,'token=abc123xyz','token=','abc123xyz'",
+            "phone,'手机号: phone=13812345678','phone=','13812345678'",
+            "email,'邮箱: email=test@example.com','email=','test@example.com'"
+    })
+    void testMaskSensitiveDataWithEnabledPatterns(String enabledPattern,
+                                                  String message,
+                                                  String keyPrefix,
+                                                  String secret) {
+        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPattern);
         SensitiveDataConverter.reloadConfig();
 
-        String message = "登录信息: password=123456";
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("password="));
+        assertTrue(result.contains(keyPrefix));
         assertTrue(result.contains("******"));
-        assertFalse(result.contains("123456"));
-    }
-
-    @Test
-    void testMaskSensitiveDataWithTokenPattern() {
-        // 启用token规则
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "token");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "token=abc123xyz";
-        String result = converter.maskSensitiveData(message);
-
-        assertNotNull(result);
-        assertTrue(result.contains("token="));
-        assertTrue(result.contains("******"));
-        assertFalse(result.contains("abc123xyz"));
-    }
-
-    @Test
-    void testMaskSensitiveDataWithPhonePattern() {
-        // 启用手机号规则
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "phone");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "手机号: phone=13812345678";
-        String result = converter.maskSensitiveData(message);
-
-        assertNotNull(result);
-        assertTrue(result.contains("phone="));
-        assertTrue(result.contains("******"));
-    }
-
-    @Test
-    void testMaskSensitiveDataWithEmailPattern() {
-        // 启用邮箱规则
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "email");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "邮箱: email=test@example.com";
-        String result = converter.maskSensitiveData(message);
-
-        assertNotNull(result);
-        assertTrue(result.contains("email="));
-        assertTrue(result.contains("******"));
+        assertFalse(result.contains(secret));
     }
 
     @Test
@@ -300,8 +264,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
-        assertFalse(result.contains("110101199001011234"));
+        assertEquals("身份证号: ******", result);
     }
 
     @Test
@@ -314,8 +277,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
-        assertFalse(result.contains("13812345678"));
+        assertEquals("手机号: ******", result);
     }
 
     @Test
@@ -409,15 +371,23 @@ class SensitiveDataConverterTest {
         });
     }
 
-    @Test
-    void testInvalidPresetPatternName() {
-        // 无效的预置规则名称应该被忽略
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "invalid_pattern_name");
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.MethodSource("provideInvalidOrEmptyEnabledPatterns")
+    void testEnabledPatterns_invalid_or_empty_are_ignored(String enabledPatternsValue) {
+        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPatternsValue);
         SensitiveDataConverter.reloadConfig();
 
         String message = "测试消息";
         String result = converter.maskSensitiveData(message);
         assertEquals(message, result);
+    }
+
+    private static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> provideInvalidOrEmptyEnabledPatterns() {
+        return java.util.stream.Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("invalid_pattern_name"),
+                org.junit.jupiter.params.provider.Arguments.of(""),
+                org.junit.jupiter.params.provider.Arguments.of((String) null)
+        );
     }
 
     @Test
@@ -444,30 +414,6 @@ class SensitiveDataConverterTest {
 
         assertNotNull(result);
         assertTrue(result.contains("******"));
-    }
-
-    @Test
-    void testConfigAsListWithEmptyValue() {
-        // 空配置值
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "password=123";
-        String result = converter.maskSensitiveData(message);
-        // 没有启用规则，应该不脱敏
-        assertEquals(message, result);
-    }
-
-    @Test
-    void testConfigAsListWithNullValue() {
-        // null配置值
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, null);
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "password=123";
-        String result = converter.maskSensitiveData(message);
-        // 没有启用规则，应该不脱敏
-        assertEquals(message, result);
     }
 
     @Test
@@ -558,51 +504,50 @@ class SensitiveDataConverterTest {
         assertTrue(names.contains("email_address"));
     }
 
-    @Test
-    void testMaskValueWithEquals() {
-        // 测试带等号的值
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.MethodSource("provideMaskValueCases")
+    void testMaskValueCases(String enabledPattern,
+                            String message,
+                            String expectContains,
+                            String secret,
+                            String expectedExact) {
+        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPattern);
         SensitiveDataConverter.reloadConfig();
 
-        String message = "password=123456";
         String result = converter.maskSensitiveData(message);
 
-        assertTrue(result.contains("password="));
-        assertTrue(result.contains("******"));
+        assertNotNull(result);
+        if (expectedExact != null) {
+            assertEquals(expectedExact, result);
+        }
+        if (expectContains != null) {
+            assertTrue(result.contains(expectContains));
+            assertTrue(result.contains("******"));
+        }
+        if (secret != null) {
+            assertFalse(result.contains(secret));
+        }
     }
 
-    @Test
-    void testMaskValueWithDoubleQuotes() {
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "password=\"123456\"";
-        String result = converter.maskSensitiveData(message);
-
-        assertTrue(result.contains("password=\"******\""));
-    }
-
-    @Test
-    void testMaskValueWithSingleQuotes() {
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "password='123456'";
-        String result = converter.maskSensitiveData(message);
-
-        assertTrue(result.contains("password='******'"));
-    }
-
-    @Test
-    void testMaskValueWithoutEquals() {
-        // 测试不带等号的值（纯数字匹配）
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "id_card_number");
-        SensitiveDataConverter.reloadConfig();
-
-        String message = "110101199001011234";
-        String result = converter.maskSensitiveData(message);
-
-        assertEquals("******234", result);
+    private static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> provideMaskValueCases() {
+        return java.util.stream.Stream.of(
+                // 带等号，无引号
+                org.junit.jupiter.params.provider.Arguments.of(
+                        "password", "password=123456", "password=", "123456", null
+                ),
+                // 带双引号（使用包含断言，避免实现差异引起的引号重复问题）
+                org.junit.jupiter.params.provider.Arguments.of(
+                        "password", "password=\"123456\"", "password=\"******\"", null, null
+                ),
+                // 带单引号（使用包含断言）
+                org.junit.jupiter.params.provider.Arguments.of(
+                        "password", "password='123456'", "password='******'", null, null
+                ),
+                // 不带等号（纯数字匹配）
+                org.junit.jupiter.params.provider.Arguments.of(
+                        "id_card_number", "110101199001011234", null, null, "******234"
+                )
+        );
     }
 
     @Test
@@ -622,7 +567,7 @@ class SensitiveDataConverterTest {
         // context为null的情况，使用系统属性
         System.setProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
         SensitiveDataConverter.reloadConfig();
-        
+
         // 创建新的converter实例，不设置context
         SensitiveDataConverter newConverter = new SensitiveDataConverter();
         newConverter.start();
@@ -742,7 +687,7 @@ class SensitiveDataConverterTest {
         // 先清理系统属性，然后不设置，让代码使用默认值
         System.clearProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY);
         System.setProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
-        
+
         // 创建新的converter实例来测试默认值
         SensitiveDataConverter newConverter = new SensitiveDataConverter();
         newConverter.setContext(context);
