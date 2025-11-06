@@ -545,7 +545,7 @@ class SensitiveDataConverterTest {
                 ),
                 // 不带等号（纯数字匹配）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "id_card_number", "110101199001011234", null, null, "******234"
+                        "id_card_number", "110101199001011234", null, null, "******"
                 )
         );
     }
