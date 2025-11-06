@@ -3,8 +3,8 @@ package com.yggdrasil.labs.common.util;
 import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 
-import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 /**
  * 客户端 IP 解析工具。
@@ -25,7 +25,7 @@ public final class IpUtils {
      * @param remoteAddrSupplier 兜底 remoteAddr 供应器，如 request::getRemoteAddr
      * @return 客户端真实 IP
      */
-    public static String resolveClientIp(Function<String, String> headerGetter, Supplier<String> remoteAddrSupplier) {
+    public static String resolveClientIp(UnaryOperator<String> headerGetter, Supplier<String> remoteAddrSupplier) {
         String[] candidateHeaders = new String[]{
                 HttpHeaderConstants.X_FORWARDED_FOR,
                 HttpHeaderConstants.X_REAL_IP,
