@@ -14,6 +14,12 @@
     <name>Mimir Boot Starter Nacos</name>
 
     <dependencies>
+        <!-- Mimir Boot Common -->
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-common</artifactId>
+        </dependency>
+
         <!-- Spring Cloud Alibaba Nacos Config -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

@@ -1,5 +1,8 @@
 package com.yggdrasil.labs.nacos.crypto;
 
+import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.SystemException;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -26,6 +29,10 @@ public class ConfigCryptoUtils {
     private static final String DEFAULT_ALGORITHM = "AES";
     private static final int KEY_SIZE = 128;
 
+    private ConfigCryptoUtils() {
+        throw new IllegalStateException("Utility class");
+    }
+
     /**
      * 生成加密密钥
      *
@@ -48,7 +55,7 @@ public class ConfigCryptoUtils {
             SecretKey secretKey = keyGenerator.generateKey();
             return Base64.getEncoder().encodeToString(secretKey.getEncoded());
         } catch (Exception e) {
-            throw new RuntimeException("生成密钥失败: " + algorithm, e);
+            throw new SystemException(ErrorCode.SYSTEM_ERROR.getCode(), "生成密钥失败: " + algorithm, e);
         }
     }
 
@@ -83,7 +90,7 @@ public class ConfigCryptoUtils {
             byte[] encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception e) {
-            throw new RuntimeException("加密失败", e);
+            throw new SystemException(ErrorCode.SYSTEM_ERROR.getCode(), "加密失败", e);
         }
     }
 
@@ -118,7 +125,7 @@ public class ConfigCryptoUtils {
             byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(ciphertext));
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("解密失败", e);
+            throw new SystemException(ErrorCode.SYSTEM_ERROR.getCode(), "解密失败", e);
         }
     }
 }
