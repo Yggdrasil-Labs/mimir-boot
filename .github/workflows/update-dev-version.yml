@@ -1,0 +1,85 @@
+name: Update Development Version
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get released version from tag
+        id: get_version
+        run: |
+          # 获取触发此 workflow 的 tag
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          echo "Released version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Calculate next development version
+        id: next_version
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # 移除可能的 -SNAPSHOT 后缀（如果有）
+          VERSION=${VERSION%-SNAPSHOT}
+          
+          # 解析版本号：主版本.次版本.修订版本
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          # 计算下一个开发版本（patch + 1，然后加上 -SNAPSHOT）
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}-SNAPSHOT"
+          
+          echo "Current released version: $VERSION"
+          echo "Next development version: $NEXT_VERSION"
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Checkout main branch
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Update version in pom.xml
+        run: |
+          NEXT_VERSION="${{ steps.next_version.outputs.next_version }}"
+          
+          # 使用 sed 更新 pom.xml 中的版本号（Linux/Mac）
+          sed -i.bak "s|<revision>[^<]*</revision>|<revision>$NEXT_VERSION</revision>|g" pom.xml
+          rm -f pom.xml.bak
+          
+          echo "Updated pom.xml to version: $NEXT_VERSION"
+
+      - name: Verify pom.xml changes
+        run: |
+          echo "Updated pom.xml content:"
+          grep -A 2 -B 2 "<revision>" pom.xml
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add pom.xml
+          
+          # 检查是否有更改
+          if git diff --staged --quiet; then
+            echo "No changes to commit (version may already be updated)"
+          else
+            NEXT_VERSION="${{ steps.next_version.outputs.next_version }}"
+            git commit -m "chore: bump version to $NEXT_VERSION for next development cycle"
+            git push origin main
+            echo "Successfully updated version to $NEXT_VERSION"
+          fi
+
