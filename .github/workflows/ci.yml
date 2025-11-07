@@ -92,4 +92,4 @@ jobs:
             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
             -Dsonar.coverage.jacoco.xmlReportPaths="**/target/site/jacoco/jacoco.xml" \
             -Dsonar.ci.automaticAnalysis=false \
-            -Dsonar.exclusions=pom.xml
+            -Dsonar.exclusions=**/pom.xml

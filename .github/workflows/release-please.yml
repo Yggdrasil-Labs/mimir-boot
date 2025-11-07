@@ -13,7 +13,7 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38
         id: release
         with:
           # 使用默认的 GITHUB_TOKEN（已启用 "Allow GitHub Actions to create and approve pull requests"）
@@ -23,7 +23,7 @@ jobs:
 
       - name: Add 🚀 release label to PR
         if: ${{ steps.release.outputs.pull_request_number != '' }}
-        uses: actions-ecosystem/action-add-labels@v1
+        uses: actions-ecosystem/action-add-labels@bd52874380e3909a1ac983768df6976535ece7f8
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           number: ${{ steps.release.outputs.pull_request_number }}
