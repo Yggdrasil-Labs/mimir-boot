@@ -1,4 +1,8 @@
+<div align="center">
+
 # Mimir Boot
+
+</div>
 
 <div align="center">
 
@@ -6,6 +10,7 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.13-brightgreen.svg)
 ![Maven](https://img.shields.io/badge/Maven-3.9.9-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Yggdrasil-Labs_mimir-boot&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Yggdrasil-Labs_mimir-boot)
 
 > Yggdrasil-Labs 的 Java 企业级基础框架  
 > 统一依赖版本、公共组件、自定义 Starter 与编译期代码生成工具。
@@ -26,64 +31,66 @@
 
 ## 📦 模块说明
 
-| 模块 | 描述 | 状态 |
-|------|------|------|
-| `mimir-boot-parent` | 父 POM，提供插件版本和构建配置 | ✅ 已完成 |
-| `mimir-boot-bom` | 依赖版本统一管理（BOM） | ✅ 已完成 |
-| `mimir-boot-common` | 公共模型与工具类 | ✅ 已完成 |
-| `mimir-boot-starter-log` | 日志启动器（Logback + 脱敏 + 访问日志） | ✅ 已完成 |
-| `mimir-boot-starter-exception` | 异常处理启动器（全局异常处理、统一响应） | ✅ 已完成 |
-| `mimir-boot-starter-web` | Web 层启动器（CORS、Trace、响应增强） | ✅ 已完成 |
-| `mimir-boot-starter-mybatis` | MyBatis 启动器（分页、审计、加密字段） | ✅ 已完成 |
+| 模块                                     | 描述                           | 状态    |
+|----------------------------------------|------------------------------|-------|
+| `mimir-boot-parent`                    | 父 POM，提供插件版本和构建配置            | ✅ 已完成 |
+| `mimir-boot-bom`                       | 依赖版本统一管理（BOM）                | ✅ 已完成 |
+| `mimir-boot-common`                    | 公共模型与工具类                     | ✅ 已完成 |
+| `mimir-boot-starter-log`               | 日志启动器（Logback + 脱敏 + 访问日志）   | ✅ 已完成 |
+| `mimir-boot-starter-exception`         | 异常处理启动器（全局异常处理、统一响应）         | ✅ 已完成 |
+| `mimir-boot-starter-web`               | Web 层启动器（CORS、Trace、响应增强）    | ✅ 已完成 |
+| `mimir-boot-starter-mybatis`           | MyBatis 启动器（分页、审计、加密字段）      | ✅ 已完成 |
 | `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（自动 Mapper 扫描） | ✅ 已完成 |
-| `mimir-boot-starter-nacos` | Nacos 配置加密启动器（ENC() 格式解密） | ✅ 已完成 |
-| `examples` | 示例项目集合 | ✅ 进行中 |
+| `mimir-boot-starter-nacos`             | Nacos 配置加密启动器（ENC() 格式解密）    | ✅ 已完成 |
+| `examples`                             | 示例项目集合                       | 进行中   |
 
 ## 🚀 快速开始
 
 ### 1. 继承 Parent POM 并引入 BOM
 
 ```xml
+
 <parent>
-  <groupId>com.yggdrasil.labs</groupId>
-  <artifactId>mimir-boot-parent</artifactId>
-  <version>1.0.0</version>
+    <groupId>com.yggdrasil.labs</groupId>
+    <artifactId>mimir-boot-parent</artifactId>
+    <version>1.0.0</version>
 </parent>
 
 <dependencyManagement>
-  <dependencies>
+<dependencies>
     <dependency>
-      <groupId>com.yggdrasil.labs</groupId>
-      <artifactId>mimir-boot-bom</artifactId>
-      <version>1.0.0</version>
-      <type>pom</type>
-      <scope>import</scope>
+        <groupId>com.yggdrasil.labs</groupId>
+        <artifactId>mimir-boot-bom</artifactId>
+        <version>1.0.0</version>
+        <type>pom</type>
+        <scope>import</scope>
     </dependency>
-  </dependencies>
+</dependencies>
 </dependencyManagement>
 ```
 
 ### 2. 添加依赖
 
 ```xml
+
 <dependencies>
-  <!-- Spring Boot Web -->
-  <dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-  </dependency>
+    <!-- Spring Boot Web -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
 
-  <!-- Mimir Boot Log Starter - 日志模块 -->
-  <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
-    <artifactId>mimir-boot-starter-log</artifactId>
-  </dependency>
+    <!-- Mimir Boot Log Starter - 日志模块 -->
+    <dependency>
+        <groupId>com.yggdrasil.labs</groupId>
+        <artifactId>mimir-boot-starter-log</artifactId>
+    </dependency>
 
-  <!-- Mimir Boot Common - 公共组件 -->
-  <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
-    <artifactId>mimir-boot-common</artifactId>
-  </dependency>
+    <!-- Mimir Boot Common - 公共组件 -->
+    <dependency>
+        <groupId>com.yggdrasil.labs</groupId>
+        <artifactId>mimir-boot-common</artifactId>
+    </dependency>
 </dependencies>
 ```
 
@@ -139,17 +146,17 @@ mvn spotless:apply
 
 ## 📋 技术栈
 
-| 类别 | 主要技术 |
-|------|---------|
-| **运行环境** | Java 17 (LTS) |
-| **应用框架** | Spring Boot 3.3.13 |
-| **微服务** | Spring Cloud 2023.0.6 (Leyton) |
-| **配置中心** | Spring Cloud Alibaba Nacos 2023.0.3.4 |
-| **数据库** | MyBatis-Plus 3.5.14, MySQL 8.4, PostgreSQL 42.7 |
-| **工具类** | Hutool 5.8.41, Lombok 1.18.42, MapStruct 1.6.3 |
-| **日志** | Logback, SLF4J 2.0.17 |
-| **测试** | JUnit 5, Mockito, Testcontainers |
-| **监控** | Micrometer, Prometheus, JaCoCo |
+| 类别       | 主要技术                                            |
+|----------|-------------------------------------------------|
+| **运行环境** | Java 17 (LTS)                                   |
+| **应用框架** | Spring Boot 3.3.13                              |
+| **微服务**  | Spring Cloud 2023.0.6 (Leyton)                  |
+| **配置中心** | Spring Cloud Alibaba Nacos 2023.0.3.4           |
+| **数据库**  | MyBatis-Plus 3.5.14, MySQL 8.4, PostgreSQL 42.7 |
+| **工具类**  | Hutool 5.8.41, Lombok 1.18.42, MapStruct 1.6.3  |
+| **日志**   | Logback, SLF4J 2.0.17                           |
+| **测试**   | JUnit 5, Mockito, Testcontainers                |
+| **监控**   | Micrometer, Prometheus, JaCoCo                  |
 
 完整技术栈列表请参考 [mimir-boot-bom/pom.xml](mimir-boot-bom/pom.xml)
 
@@ -166,22 +173,26 @@ mvn spotless:apply
 引入 `mimir-boot-starter-log` 后自动提供：
 
 #### ✨ 自动敏感信息脱敏
+
 ```java
-log.info("用户登录，用户名: {}, 密码: {}", "admin", "123456");
+log.info("用户登录，用户名: {}, 密码: {}","admin","123456");
 // 输出: 用户登录，用户名: admin, 密码: ******
 ```
 
 #### 🔍 TraceId & SpanId 支持
+
 ```log
 2025-01-28 10:23:45.123 [http-nio-8080-exec-1] INFO  [abc-123] [span-456] com.yggdrasil.labs.example.GeneralWebProject - Hello World
 ```
 
 #### 📊 访问日志
+
 - 自动记录每个 HTTP 请求
 - 自动识别慢接口（超过阈值自动 WARN）
 - 文件：`logs/{app-name}/access.log`
 
 #### 🌈 多环境配置
+
 - **开发环境**: 彩色控制台输出 + 文件输出
 - **测试环境**: 控制台 + 文件
 - **生产环境**: 仅文件输出，配置优化
@@ -193,19 +204,24 @@ log.info("用户登录，用户名: {}, 密码: {}", "admin", "123456");
 引入 `mimir-boot-starter-nacos` 后提供配置加密功能：
 
 #### ✨ 自动解密配置
+
 在 Nacos 配置中心使用 `ENC(encrypted_value)` 格式：
+
 ```yaml
 # Nacos 配置
 database:
   password: ENC(encrypted_base64_string)
-  
+
 # 应用运行时自动解密
 # database.password = "decrypted_plaintext"
 ```
 
 #### 🔄 动态刷新支持
+
 配置刷新时自动重新解密：
+
 ```java
+
 @RefreshScope
 @Component
 public class ConfigBean {
@@ -215,6 +231,7 @@ public class ConfigBean {
 ```
 
 #### 🛠️ 工具类支持
+
 ```java
 // 生成密钥
 String key = NacosEncryptUtil.generateKey();
@@ -232,7 +249,9 @@ String encValue = NacosEncryptUtil.wrapWithEnc(encrypted);
 引入 `mimir-boot-starter-web` 后自动提供：
 
 #### 🎯 统一响应格式
+
 ```java
+
 @GetMapping("/api/user/{id}")
 public R<UserVO> getUser(@PathVariable Long id) {
     return R.success(userService.getById(id));
@@ -241,6 +260,7 @@ public R<UserVO> getUser(@PathVariable Long id) {
 ```
 
 #### 🔍 Trace 追踪
+
 - 自动生成或获取 traceId
 - 设置到 MDC 和响应头
 - 支持分布式追踪
@@ -252,12 +272,15 @@ public R<UserVO> getUser(@PathVariable Long id) {
 引入 `mimir-boot-starter-mybatis` 后自动提供：
 
 #### ✨ 自动配置拦截器
+
 - 分页拦截器（自动识别 Page 对象）
 - 乐观锁拦截器（自动版本控制）
 - 审计字段自动填充（createdBy、updatedTime 等）
 
 #### 🔐 字段加解密
+
 ```java
+
 @TableField(typeHandler = StringCryptoTypeHandler.class)
 private String phoneNumber;  // 自动加密存储、解密读取
 ```
@@ -271,7 +294,8 @@ private String phoneNumber;  // 自动加密存储、解密读取
 - [mimir-boot-starter-exception](mimir-boot-starters/mimir-boot-starter-exception/README.md) - 异常处理启动器文档
 - [mimir-boot-starter-web](mimir-boot-starters/mimir-boot-starter-web/README.md) - Web 层启动器文档
 - [mimir-boot-starter-mybatis](mimir-boot-starters/mimir-boot-starter-mybatis/README.md) - MyBatis 启动器文档
-- [mimir-boot-starter-mybatis-processor](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) - MyBatis 编译期处理器文档
+- [mimir-boot-starter-mybatis-processor](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) - MyBatis
+  编译期处理器文档
 - [mimir-boot-starter-nacos](mimir-boot-starters/mimir-boot-starter-nacos/README.md) - Nacos 配置加密启动器文档
 
 ## 🏗️ 项目结构
@@ -300,50 +324,57 @@ mimir-boot/
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-  - 在 push 到 `main`/`develop` 和 PR 时运行：`./mvnw -B -U spotless:check verify`
-  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
-  - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
+    - 在 push 到 `main`/`develop` 和 PR 时运行：`./mvnw -B -U spotless:check verify`
+    - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
+    - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
 
 - **Release PR 与自动打 Tag（.github/workflows/release-please.yml）**
-  - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
-  - 合并该 PR 后，自动创建 `vX.Y.Z` Tag 与 GitHub Release
+    - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
+    - 合并该 PR 后，自动创建 `vX.Y.Z` Tag 与 GitHub Release
 
 - **发布（.github/workflows/release.yml）**
-  - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
-  - 随后发布制品到 GitHub Packages（GPR）
+    - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
+    - 随后发布制品到 GitHub Packages（GPR）
 
 ### 使用 GitHub Packages（消费者）
+
 在使用方开发机/CI 的 `~/.m2/settings.xml` 配置凭据（无需改动本仓 POM）：
 
 ```xml
+
 <settings>
-  <servers>
-    <server>
-      <id>github</id>
-      <username>GITHUB_USER</username>
-      <password>GITHUB_TOKEN</password>
-    </server>
-  </servers>
+    <servers>
+        <server>
+            <id>github</id>
+            <username>GITHUB_USER</username>
+            <password>GITHUB_TOKEN</password>
+        </server>
+    </servers>
 </settings>
 ```
 
 在使用方项目的 `pom.xml` 增加仓库（或放到其 `settings.xml` 的 `mirrors/profiles` 中统一管理）：
 
 ```xml
+
 <repositories>
-  <repository>
-    <id>github</id>
-    <name>GitHub Packages</name>
-    <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
-    <releases><enabled>true</enabled></releases>
-    <snapshots><enabled>false</enabled></snapshots>
-  </repository>
-  <!-- 仍需中央仓 -->
-  <repository>
-    <id>central</id>
-    <url>https://repo1.maven.org/maven2/</url>
-  </repository>
-  
+    <repository>
+        <id>github</id>
+        <name>GitHub Packages</name>
+        <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
+        <releases>
+            <enabled>true</enabled>
+        </releases>
+        <snapshots>
+            <enabled>false</enabled>
+        </snapshots>
+    </repository>
+    <!-- 仍需中央仓 -->
+    <repository>
+        <id>central</id>
+        <url>https://repo1.maven.org/maven2/</url>
+    </repository>
+
 </repositories>
 ```
 
