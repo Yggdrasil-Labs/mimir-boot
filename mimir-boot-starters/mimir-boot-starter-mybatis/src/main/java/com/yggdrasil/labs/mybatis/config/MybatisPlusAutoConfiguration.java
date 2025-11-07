@@ -88,7 +88,7 @@ public class MybatisPlusAutoConfiguration {
             Class<?> clazz = Class.forName("com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor");
             Object instance = clazz.getDeclaredConstructor().newInstance();
             return (InnerInterceptor) instance;
-        } catch (Throwable ignore) {
+        } catch (Exception ignore) {
             return null;
         }
     }
