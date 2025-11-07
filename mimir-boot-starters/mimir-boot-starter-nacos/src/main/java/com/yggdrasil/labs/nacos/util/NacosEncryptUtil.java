@@ -33,6 +33,10 @@ import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
  */
 public class NacosEncryptUtil {
 
+    private NacosEncryptUtil() {
+        throw new IllegalStateException("Utility class");
+    }
+
     /**
      * 生成加密密钥
      *
@@ -56,7 +60,7 @@ public class NacosEncryptUtil {
      * 加密配置值
      *
      * @param plaintext 明文
-     * @param key      Base64 编码的密钥
+     * @param key       Base64 编码的密钥
      * @return Base64 编码的密文
      */
     public static String encrypt(String plaintext, String key) {
