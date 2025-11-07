@@ -460,4 +460,293 @@ class MybatisPlusAutoConfigurationTest {
         assertNotNull(cfg1.mybatisPlusInterceptor(props, env));
         assertNotNull(cfg2.mybatisPlusInterceptor(props, env));
     }
+
+    @Test
+    void testOptimisticLockerInterceptorIsAlwaysAdded() throws Exception {
+        // 验证乐观锁拦截器总是被添加
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        StandardEnvironment env = new StandardEnvironment();
+
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env);
+
+        // 通过反射获取内部拦截器列表（尝试多个可能的字段名）
+        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+
+        assertNotNull(innerInterceptors);
+        assertFalse(innerInterceptors.isEmpty());
+
+        // 验证乐观锁拦截器存在
+        boolean hasOptimisticLocker = innerInterceptors.stream()
+                .anyMatch(i -> i instanceof com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor);
+        assertTrue(hasOptimisticLocker, "乐观锁拦截器应该总是被添加");
+    }
+
+    /**
+     * 通过反射获取 MybatisPlusInterceptor 的内部拦截器列表
+     * 尝试多个可能的字段名以兼容不同版本
+     */
+    @SuppressWarnings("unchecked")
+    private List<InnerInterceptor> getInnerInterceptors(MybatisPlusInterceptor interceptor) throws Exception {
+        // 尝试常见的字段名
+        String[] possibleFieldNames = {"interceptors", "interceptorList", "innerInterceptors"};
+
+        for (String fieldName : possibleFieldNames) {
+            try {
+                java.lang.reflect.Field field = MybatisPlusInterceptor.class.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                Object value = field.get(interceptor);
+                if (value instanceof List) {
+                    return (List<InnerInterceptor>) value;
+                }
+            } catch (NoSuchFieldException e) {
+                // 继续尝试下一个字段名
+            }
+        }
+
+        // 如果所有字段名都失败，尝试查找所有 List 类型的字段
+        java.lang.reflect.Field[] fields = MybatisPlusInterceptor.class.getDeclaredFields();
+        for (java.lang.reflect.Field field : fields) {
+            if (List.class.isAssignableFrom(field.getType())) {
+                field.setAccessible(true);
+                Object value = field.get(interceptor);
+                if (value instanceof List && !((List<?>) value).isEmpty()) {
+                    Object first = ((List<?>) value).get(0);
+                    if (first instanceof InnerInterceptor) {
+                        return (List<InnerInterceptor>) value;
+                    }
+                }
+            }
+        }
+
+        throw new IllegalStateException("无法通过反射获取 MybatisPlusInterceptor 的内部拦截器列表");
+    }
+
+    @Test
+    void testPaginationInterceptorMayBeAdded() throws Exception {
+        // 验证分页拦截器在类存在时可能被添加（如果 MyBatis-Plus 版本支持）
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        StandardEnvironment env = new StandardEnvironment();
+
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env);
+
+        // 通过反射获取内部拦截器列表
+        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+
+        assertNotNull(innerInterceptors);
+        // 至少应该有乐观锁拦截器
+        assertFalse(innerInterceptors.isEmpty());
+
+        // 检查是否有分页拦截器（如果类存在则会被添加）
+        // 先尝试加载分页拦截器类，如果存在则使用 instanceof 检查
+        Class<?> paginationClass;
+        try {
+            paginationClass = Class.forName("com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor");
+        } catch (ClassNotFoundException e) {
+            // 分页拦截器类不存在于类路径中，这是正常的
+            paginationClass = null;
+        }
+
+        final Class<?> finalPaginationClass = paginationClass;
+        final boolean hasPagination = finalPaginationClass != null && innerInterceptors.stream()
+                .anyMatch(finalPaginationClass::isInstance);
+
+        // 分页拦截器可能存在也可能不存在（取决于类路径），但至少应该不抛异常
+        assertDoesNotThrow(() -> {
+            // 如果分页拦截器存在，验证其类型
+            if (hasPagination) {
+                InnerInterceptor pagination = innerInterceptors.stream()
+                        .filter(finalPaginationClass::isInstance)
+                        .findFirst()
+                        .orElse(null);
+                assertNotNull(pagination);
+            }
+        });
+    }
+
+    @Test
+    void testCustomInterceptorsAreAdded() throws Exception {
+        // 验证自定义拦截器被正确添加
+        InnerInterceptor custom1 = Mockito.mock(InnerInterceptor.class);
+        InnerInterceptor custom2 = Mockito.mock(InnerInterceptor.class);
+        List<InnerInterceptor> customInterceptors = Arrays.asList(custom1, custom2);
+
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.of(customInterceptors));
+        MybatisProperties props = new MybatisProperties();
+        StandardEnvironment env = new StandardEnvironment();
+
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env);
+
+        // 通过反射获取内部拦截器列表
+        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+
+        assertNotNull(innerInterceptors);
+        // 应该至少包含：分页（可选）+ 乐观锁 + 2个自定义拦截器
+        assertTrue(innerInterceptors.size() >= 3, "应该至少包含乐观锁和2个自定义拦截器");
+
+        // 验证自定义拦截器存在
+        assertTrue(innerInterceptors.contains(custom1), "自定义拦截器1应该被添加");
+        assertTrue(innerInterceptors.contains(custom2), "自定义拦截器2应该被添加");
+    }
+
+    @Test
+    void testInterceptorOrder() throws Exception {
+        // 验证拦截器的顺序：分页（可选） -> 乐观锁 -> 自定义拦截器
+        InnerInterceptor custom1 = Mockito.mock(InnerInterceptor.class);
+        InnerInterceptor custom2 = Mockito.mock(InnerInterceptor.class);
+        List<InnerInterceptor> customInterceptors = Arrays.asList(custom1, custom2);
+
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.of(customInterceptors));
+        MybatisProperties props = new MybatisProperties();
+        StandardEnvironment env = new StandardEnvironment();
+
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env);
+
+        // 通过反射获取内部拦截器列表
+        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+
+        assertNotNull(innerInterceptors);
+
+        // 查找乐观锁拦截器的位置
+        int optimisticLockerIndex = -1;
+        for (int i = 0; i < innerInterceptors.size(); i++) {
+            if (innerInterceptors.get(i) instanceof com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor) {
+                optimisticLockerIndex = i;
+                break;
+            }
+        }
+        assertTrue(optimisticLockerIndex >= 0, "乐观锁拦截器应该存在");
+
+        // 查找自定义拦截器的位置
+        int custom1Index = innerInterceptors.indexOf(custom1);
+        int custom2Index = innerInterceptors.indexOf(custom2);
+
+        assertTrue(custom1Index >= 0, "自定义拦截器1应该存在");
+        assertTrue(custom2Index >= 0, "自定义拦截器2应该存在");
+
+        // 验证顺序：乐观锁应该在自定义拦截器之前
+        assertTrue(optimisticLockerIndex < custom1Index, "乐观锁拦截器应该在自定义拦截器之前");
+        assertTrue(optimisticLockerIndex < custom2Index, "乐观锁拦截器应该在自定义拦截器之前");
+        assertTrue(custom1Index < custom2Index, "自定义拦截器应该保持原有顺序");
+    }
+
+    @Test
+    void testMapperScannerConfigurerBasePackage() throws Exception {
+        // 验证 mapperScannerConfigurer 正确设置 basePackage
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Arrays.asList("com.example.mapper", "com.example.other.mapper"));
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        assertNotNull(basePackage);
+        assertEquals("com.example.mapper,com.example.other.mapper", basePackage);
+    }
+
+    @Test
+    void testMapperScannerConfigurerBasePackageWithSinglePackage() throws Exception {
+        // 验证单个包的情况
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Collections.singletonList("com.example.mapper"));
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        assertNotNull(basePackage);
+        assertEquals("com.example.mapper", basePackage);
+    }
+
+    @Test
+    void testMapperScannerConfigurerBasePackageWithEmptyPackages() throws Exception {
+        // 验证空包列表的情况，basePackage 应该为 null
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Collections.emptyList());
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        // 当包列表为空时，basePackage 应该为 null（因为 CollectionUtils.isEmpty 返回 true）
+        assertNull(basePackage);
+    }
+
+    @Test
+    void testMapperScannerConfigurerBasePackageWithNullPackages() throws Exception {
+        // 验证 null 包列表的情况
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(null);
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        // 当包列表为 null 时，basePackage 应该为 null
+        assertNull(basePackage);
+    }
+
+    @Test
+    void testEmptyCustomInterceptorsListIsSkipped() throws Exception {
+        // 验证空的自定义拦截器列表会被跳过
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.of(Collections.emptyList()));
+        MybatisProperties props = new MybatisProperties();
+        StandardEnvironment env = new StandardEnvironment();
+
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env);
+
+        // 通过反射获取内部拦截器列表
+        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+
+        assertNotNull(innerInterceptors);
+        // 应该只包含乐观锁拦截器（可能还有分页拦截器）
+        assertFalse(innerInterceptors.isEmpty());
+        assertTrue(innerInterceptors.size() <= 2, "空列表时不应该添加自定义拦截器");
+    }
+
+    @Test
+    void testConfigurationCustomizerMultipleCalls() {
+        // 验证 ConfigurationCustomizer 可以多次调用而不出错
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setEnableSqlStdout(true);
+        StandardEnvironment env = new StandardEnvironment();
+
+        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
+        assertNotNull(customizer);
+
+        Configuration config1 = new Configuration();
+        Configuration config2 = new Configuration();
+        Configuration config3 = new Configuration();
+
+        // 多次调用应该都能正常工作
+        customizer.customize(config1);
+        customizer.customize(config2);
+        customizer.customize(config3);
+
+        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config1.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config2.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config3.getLogImpl());
+    }
 }
