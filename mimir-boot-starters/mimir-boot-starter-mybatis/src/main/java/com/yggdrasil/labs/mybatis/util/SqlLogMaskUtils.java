@@ -17,7 +17,7 @@ import java.util.Map;
  */
 public class SqlLogMaskUtils {
 
-    private SqlLogMaskUtils(){
+    private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
     }
 
@@ -96,25 +96,35 @@ public class SqlLogMaskUtils {
 
     private static String maskPhone(String phone) {
         if (phone == null || phone.length() < 7) return CommonConstants.MASKED;
-        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+        int len = phone.length();
+        // 常规手机号长度为11位，保留前3位和后4位；非常规长度使用更保守方案，保留前3位和后2位
+        int prefixLength = 3;
+        int suffixLength = len == 11 ? 4 : 2;
+        return phone.substring(0, prefixLength) + CommonConstants.MASKED + phone.substring(len - suffixLength);
     }
 
     private static String maskIdCard(String idCard) {
         if (idCard == null || idCard.length() < 10) return CommonConstants.MASKED;
         int len = idCard.length();
-        return idCard.substring(0, 6) + "********" + idCard.substring(len - 4);
+        // 常规身份证长度为15位或18位，保留前6位和后4位；非常规长度使用更保守方案，保留前4位和后4位
+        int prefixLength = (len == 15 || len == 18) ? 6 : 4;
+        return idCard.substring(0, prefixLength) + CommonConstants.MASKED + idCard.substring(len - 4);
     }
 
     private static String maskBankCard(String card) {
         if (card == null || card.length() < 8) return CommonConstants.MASKED;
-        return card.substring(0, 4) + "****" + card.substring(card.length() - 4);
+        int len = card.length();
+        // 常规银行卡长度为16位或19位，保留前4位和后4位；非常规长度使用更保守方案，保留前3位和后3位
+        int prefixLength = (len == 16 || len == 19) ? 4 : 3;
+        int suffixLength = (len == 16 || len == 19) ? 4 : 3;
+        return card.substring(0, prefixLength) + CommonConstants.MASKED + card.substring(len - suffixLength);
     }
 
     private static String maskEmail(String email) {
         if (email == null || !email.contains("@")) return CommonConstants.MASKED;
         int atIndex = email.indexOf("@");
         if (atIndex <= 1) return CommonConstants.MASKED;
-        return email.charAt(0) + "****" + email.substring(atIndex);
+        return email.charAt(0) + CommonConstants.MASKED + email.substring(atIndex);
     }
 
     private static Field findField(Object obj, String fieldName) {
