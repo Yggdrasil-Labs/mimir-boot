@@ -165,7 +165,7 @@ class SensitiveDataConverterTest {
 
         assertNotNull(result);
         assertTrue(result.contains(keyPrefix));
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains(secret));
     }
 
@@ -180,7 +180,7 @@ class SensitiveDataConverterTest {
 
         assertNotNull(result);
         assertTrue(result.contains("idCard="));
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -193,7 +193,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("123456"));
         assertFalse(result.contains("abc123"));
     }
@@ -208,7 +208,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("test123"));
     }
 
@@ -221,7 +221,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("custom456"));
     }
 
@@ -233,11 +233,11 @@ class SensitiveDataConverterTest {
 
         String message1 = "password=\"secret123\"";
         String result1 = converter.maskSensitiveData(message1);
-        assertTrue(result1.contains("password=\"******\""));
+        assertTrue(result1.contains("password=\"****\""));
 
         String message2 = "password='secret123'";
         String result2 = converter.maskSensitiveData(message2);
-        assertTrue(result2.contains("password='******'"));
+        assertTrue(result2.contains("password='****'"));
     }
 
     @Test
@@ -251,7 +251,7 @@ class SensitiveDataConverterTest {
 
         assertNotNull(result);
         assertTrue(result.contains("password:"));
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -264,7 +264,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertEquals("身份证号: ******", result);
+        assertEquals("身份证号: ****", result);
     }
 
     @Test
@@ -277,7 +277,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertEquals("手机号: ******", result);
+        assertEquals("手机号: ****", result);
     }
 
     @Test
@@ -290,7 +290,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("test@example.com"));
     }
 
@@ -304,7 +304,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("6222021234567890123"));
     }
 
@@ -400,7 +400,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -413,7 +413,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -424,7 +424,7 @@ class SensitiveDataConverterTest {
 
         String message1 = "password=123";
         String result1 = converter.maskSensitiveData(message1);
-        assertTrue(result1.contains("******"));
+        assertTrue(result1.contains("****"));
 
         // 重新加载配置，清空规则
         context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, null);
@@ -444,7 +444,7 @@ class SensitiveDataConverterTest {
         String result = converter.maskSensitiveData(message);
 
         assertNotNull(result);
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("secret123"));
     }
 
@@ -456,11 +456,11 @@ class SensitiveDataConverterTest {
 
         String message1 = "pattern1123";
         String result1 = converter.maskSensitiveData(message1);
-        assertTrue(result1.contains("******"));
+        assertTrue(result1.contains("****"));
 
         String message2 = "pattern2456";
         String result2 = converter.maskSensitiveData(message2);
-        assertTrue(result2.contains("******"));
+        assertTrue(result2.contains("****"));
     }
 
     @Test
@@ -470,7 +470,7 @@ class SensitiveDataConverterTest {
 
         String message1 = "test123";
         String result1 = converter.maskSensitiveData(message1);
-        assertTrue(result1.contains("******"));
+        assertTrue(result1.contains("****"));
 
         // 清空规则
         SensitiveDataConverter.clearCustomPatterns();
@@ -522,7 +522,7 @@ class SensitiveDataConverterTest {
         }
         if (expectContains != null) {
             assertTrue(result.contains(expectContains));
-            assertTrue(result.contains("******"));
+            assertTrue(result.contains("****"));
         }
         if (secret != null) {
             assertFalse(result.contains(secret));
@@ -537,15 +537,15 @@ class SensitiveDataConverterTest {
                 ),
                 // 带双引号（使用包含断言，避免实现差异引起的引号重复问题）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "password", "password=\"123456\"", "password=\"******\"", null, null
+                        "password", "password=\"123456\"", "password=\"****\"", null, null
                 ),
                 // 带单引号（使用包含断言）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "password", "password='123456'", "password='******'", null, null
+                        "password", "password='123456'", "password='****'", null, null
                 ),
                 // 不带等号（纯数字匹配）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "id_card_number", "110101199001011234", null, null, "******"
+                        "id_card_number", "110101199001011234", null, null, "****"
                 )
         );
     }
@@ -575,7 +575,7 @@ class SensitiveDataConverterTest {
         String message = "password=123";
         String result = newConverter.maskSensitiveData(message);
 
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -651,7 +651,7 @@ class SensitiveDataConverterTest {
 
         assertNotNull(result);
         // 应该包含脱敏标记
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
         assertFalse(result.contains("123456"));
         assertFalse(result.contains("abc789"));
         assertFalse(result.contains("13812345678"));
@@ -666,7 +666,7 @@ class SensitiveDataConverterTest {
         String message = "password=123";
         String result = converter.maskSensitiveData(message);
 
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -678,7 +678,7 @@ class SensitiveDataConverterTest {
         String message = "password=123";
         String result = converter.maskSensitiveData(message);
 
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 
     @Test
@@ -697,7 +697,7 @@ class SensitiveDataConverterTest {
         String message = "password=123";
         String result = newConverter.maskSensitiveData(message);
 
-        assertTrue(result.contains("******"));
+        assertTrue(result.contains("****"));
     }
 }
 
