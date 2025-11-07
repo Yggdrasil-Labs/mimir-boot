@@ -20,9 +20,6 @@ jobs:
           # 如需使用 PAT，可配置 token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
-          # bootstrap-sha: 指定起始 commit SHA，release-please 会从这个 commit 开始分析变更
-          # 首次发布 1.0.0 版本，设置为当前 commit，后续变更将基于此进行分析
-          bootstrap-sha: 086df7080b78a28f4ba98abfb0b195f35cc87e7c
 
       - name: Add 🚀 release label to PR
         if: ${{ steps.release.outputs.pull_request_number != '' }}
