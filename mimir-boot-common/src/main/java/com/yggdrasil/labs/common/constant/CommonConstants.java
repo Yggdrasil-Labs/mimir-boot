@@ -61,7 +61,7 @@ public class CommonConstants {
     /**
      * 通用脱敏占位
      */
-    public static final String MASKED = "******";
+    public static final String MASKED = "****";
 
     /**
      * 私有构造方法，防止实例化
