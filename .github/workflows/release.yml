@@ -61,6 +61,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
+
       - name: Final verification
         run: ./mvnw -B -U clean verify
 
@@ -79,6 +82,9 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
 
       - name: Configure Maven for GitHub Packages
         run: |
