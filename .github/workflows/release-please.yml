@@ -20,6 +20,8 @@ jobs:
           # 如需使用 PAT，可配置 token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
+          # 禁用自动添加标签（如 autorelease: snapshot），由后续步骤手动添加自定义标签
+          skip-labeling: true
 
       - name: Add 🚀 release label to PR
         if: ${{ steps.release.outputs.pull_request_number != '' }}
@@ -29,6 +31,32 @@ jobs:
           number: ${{ steps.release.outputs.pull_request_number }}
           labels: |
             🚀 release
+      
+      - name: Find and label release PR (fallback)
+        if: ${{ steps.release.outputs.pull_request_number == '' && steps.release.outcome == 'success' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
+              sort: 'created',
+              direction: 'desc',
+              per_page: 1
+            });
+            
+            if (prs.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prs[0].number,
+                labels: ['🚀 release']
+              });
+              console.log(`Added 🚀 release label to PR #${prs[0].number}`);
+            }
 
       - name: Output release info
         if: steps.release.outputs.release_created
