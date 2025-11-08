@@ -62,24 +62,26 @@ jobs:
             }
 
       - name: Checkout code for tag creation
-        if: steps.release.outputs.release_created == 'true' && github.event_name == 'push'
+        if: steps.release.outputs.release_created == 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true))
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          # 如果是 PR 合并事件，checkout 到 main 分支（PR 已合并）
+          ref: ${{ github.event_name == 'pull_request' && 'main' || github.ref }}
 
       - name: Create and push tag
-        if: steps.release.outputs.release_created == 'true' && github.event_name == 'push'
+        if: steps.release.outputs.release_created == 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true))
         env:
           TAG_NAME: ${{ steps.release.outputs.tag_name }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          echo "=== Release Info ==="
+          echo "=== Creating Tag for Release ==="
           echo "Release created: ${{ steps.release.outputs.release_created }}"
           echo "Tag name from release-please: $TAG_NAME"
           echo "Version from release-please: $VERSION"
           echo "Event name: ${{ github.event_name }}"
-          echo "==================="
+          echo "================================="
           
           # 确定 tag 名称
           if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" == "" ]; then
@@ -90,6 +92,12 @@ jobs:
             fi
             TAG_NAME="v$VERSION"
             echo "Generated tag name: $TAG_NAME from version: $VERSION"
+          fi
+          
+          # 确保 tag 名称以 'v' 开头
+          if [[ ! "$TAG_NAME" =~ ^v ]]; then
+            TAG_NAME="v$TAG_NAME"
+            echo "Adjusted tag name to: $TAG_NAME"
           fi
           
           # 获取当前 commit SHA
@@ -105,6 +113,7 @@ jobs:
               echo "⚠ Warning: Tag $TAG_NAME exists but points to different commit"
               echo "  Existing: $EXISTING_SHA"
               echo "  Current:  $COMMIT_SHA"
+              exit 1
             fi
           else
             # 创建 tag（指向当前 HEAD，即合并后的 commit）
@@ -114,12 +123,6 @@ jobs:
             git tag -a "$TAG_NAME" -m "Release $VERSION"
             git push origin "$TAG_NAME"
             echo "✓ Successfully created and pushed tag: $TAG_NAME"
+            echo "This will trigger the Release workflow for building and publishing"
           fi
-
-      - name: Output release info
-        if: steps.release.outputs.release_created == 'true'
-        run: |
-          echo "Release PR: #${{ steps.release.outputs.pull_request_number }}"
-          echo "Tag: ${{ steps.release.outputs.tag_name }}"
-          echo "Version: ${{ steps.release.outputs.version }}"
 
