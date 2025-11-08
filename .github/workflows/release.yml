@@ -34,7 +34,15 @@ jobs:
           cache: 'maven'
 
       - name: Make Maven Wrapper executable
-        run: chmod +x mvnw
+        run: |
+          if [ -f "mvnw" ]; then
+            chmod +x mvnw
+            ls -la mvnw
+            echo "Maven Wrapper made executable"
+          else
+            echo "Error: mvnw not found"
+            exit 1
+          fi
 
       - name: Verify build (tests + coverage)
         run: ./mvnw -B -U spotless:check verify
@@ -70,7 +78,14 @@ jobs:
           cache: 'maven'
 
       - name: Make Maven Wrapper executable
-        run: chmod +x mvnw
+        run: |
+          if [ -f "mvnw" ]; then
+            chmod +x mvnw
+            echo "Maven Wrapper made executable"
+          else
+            echo "Error: mvnw not found"
+            exit 1
+          fi
 
       - name: Final verification
         run: ./mvnw -B -U clean verify
@@ -96,7 +111,15 @@ jobs:
           cache: 'maven'
 
       - name: Make Maven Wrapper executable
-        run: chmod +x mvnw
+        run: |
+          if [ -f "mvnw" ]; then
+            chmod +x mvnw
+            ls -la mvnw
+            echo "Maven Wrapper made executable"
+          else
+            echo "Error: mvnw not found"
+            exit 1
+          fi
 
       - name: Configure Maven for GitHub Packages
         run: |
