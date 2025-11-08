@@ -118,6 +118,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # checkout 可以使用 GITHUB_TOKEN，推送 tag 时会使用 RELEASE_TOKEN
           token: ${{ secrets.GITHUB_TOKEN }}
           # 如果是 PR 合并事件，checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
           ref: ${{ github.event_name == 'pull_request' && (github.event.pull_request.merge_commit_sha || 'main') || github.ref }}
@@ -176,6 +177,10 @@ jobs:
         env:
           TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
           VERSION: ${{ steps.get_version.outputs.version }}
+          # 使用 RELEASE_TOKEN (PAT) 来推送 tag，这样能自动触发 release 工作流
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           echo "=== Creating Tag for Release ==="
           echo "Event name: ${{ github.event_name }}"
@@ -217,84 +222,22 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG_NAME" -m "Release $VERSION"
-            git push origin "$TAG_NAME"
-            echo "✓ Successfully created and pushed tag: $TAG_NAME"
             
-            # 注意：使用 GITHUB_TOKEN 推送 tag 不会触发其他工作流
-            # 因此我们需要手动触发 release 工作流
-            echo "Triggering Release workflow via repository_dispatch..."
+            # 使用 RELEASE_TOKEN (PAT) 推送 tag，这样能自动触发 release 工作流
+            # 如果 RELEASE_TOKEN 不存在，回退到 GITHUB_TOKEN（但不会触发工作流）
+            if [ -n "$RELEASE_TOKEN" ] && [ "$RELEASE_TOKEN" != "" ]; then
+              echo "Using RELEASE_TOKEN to push tag (will trigger Release workflow automatically)"
+              # 配置 git 使用 PAT 进行推送
+              git remote set-url origin https://${GITHUB_ACTOR}:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+              git push origin "$TAG_NAME"
+              echo "✓ Successfully created and pushed tag: $TAG_NAME using RELEASE_TOKEN"
+              echo "✓ This will automatically trigger the Release workflow"
+            else
+              echo "⚠️  RELEASE_TOKEN not found, using GITHUB_TOKEN (will NOT trigger Release workflow)"
+              echo "   Please configure RELEASE_TOKEN secret to enable automatic workflow triggering"
+              git push origin "$TAG_NAME"
+              echo "✓ Tag pushed, but Release workflow will NOT be triggered automatically"
+              echo "   You need to manually trigger it or configure RELEASE_TOKEN secret"
+            fi
           fi
-
-      - name: Trigger Release workflow
-        if: steps.get_version.outputs.tag_name != '' && steps.get_version.outputs.version != ''
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tagName = '${{ steps.get_version.outputs.tag_name }}';
-            const version = '${{ steps.get_version.outputs.version }}';
-            
-            console.log(`=== Triggering Release Workflow ===`);
-            console.log(`Tag: ${tagName}`);
-            console.log(`Version: ${version}`);
-            console.log(`Event: ${context.eventName}`);
-            
-            if (!tagName || !version || tagName === '' || version === '') {
-              console.log('⚠️  Skipping workflow trigger: tag name or version is empty');
-              console.log(`   tagName: "${tagName}", version: "${version}"`);
-              return;
-            }
-            
-            try {
-              // 获取工作流列表
-              const { data: workflows } = await github.rest.actions.listWorkflowsForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo
-              });
-              
-              console.log(`Found ${workflows.total_count} workflows`);
-              
-              // 查找 Release 工作流
-              const releaseWorkflow = workflows.workflows.find(w => 
-                w.name === 'Release' || 
-                w.path === '.github/workflows/release.yml' ||
-                w.path.endsWith('release.yml')
-              );
-              
-              if (!releaseWorkflow) {
-                console.log('⚠️  Release workflow not found');
-                console.log('Available workflows:');
-                workflows.workflows.forEach(w => {
-                  console.log(`  - ${w.name} (${w.path})`);
-                });
-                return;
-              }
-              
-              console.log(`Found Release workflow: ${releaseWorkflow.name} (ID: ${releaseWorkflow.id})`);
-              
-              // 触发工作流，使用 main 分支作为 ref（工作流会 checkout 到 tag）
-              // ref 必须是分支名，不能是 tag
-              const result = await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: releaseWorkflow.id,
-                ref: 'main', // 必须使用分支名，不能使用 tag
-                inputs: {
-                  version: version
-                }
-              });
-              
-              console.log(`✓ Successfully triggered Release workflow`);
-              console.log(`   Workflow will checkout tag: ${tagName}`);
-              console.log(`   Version: ${version}`);
-            } catch (error) {
-              console.log(`❌ Failed to trigger workflow via API`);
-              console.log(`   Error: ${error.message}`);
-              if (error.response) {
-                console.log(`   Status: ${error.response.status}`);
-                console.log(`   Response: ${JSON.stringify(error.response.data)}`);
-              }
-              console.log(`   You may need to manually trigger the Release workflow from the Actions tab.`);
-              throw error; // 重新抛出错误，让工作流知道失败了
-            }
 
