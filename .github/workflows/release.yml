@@ -153,20 +153,32 @@ jobs:
     needs: [ publish-gpr ]
     permissions:
       contents: write
-    # 只在 tag 推送时执行（不是 workflow_dispatch）
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # 在 tag 推送或 workflow_dispatch 时执行
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          # workflow_dispatch 时，ref 参数已经是 tag，所以直接使用 github.ref
           ref: ${{ github.ref }}
           fetch-depth: 0
 
-      - name: Get version from tag
+      - name: Get version from tag or input
         id: get_version
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # 从 workflow_dispatch 输入获取版本
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v$VERSION"
+            echo "Using version from workflow_dispatch input: $VERSION"
+          else
+            # 从 tag 获取版本（github.ref 在 workflow_dispatch 时也是 tag ref）
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+            echo "Using version from tag: $VERSION"
+          fi
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
@@ -248,8 +260,10 @@ jobs:
     needs: [ publish-gpr ]
     permissions:
       contents: write
-    # 只在 tag 推送时执行（不是 workflow_dispatch）
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # 在 tag 推送或 workflow_dispatch 时执行
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -257,12 +271,20 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Get released version from tag
+      - name: Get released version from tag or input
         id: get_version
         run: |
-          # 获取触发此 workflow 的 tag
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # 从 workflow_dispatch 输入获取版本
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v$VERSION"
+            echo "Using version from workflow_dispatch input: $VERSION"
+          else
+            # 从 tag 获取版本
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+            echo "Using version from tag: $VERSION"
+          fi
           echo "Released version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
