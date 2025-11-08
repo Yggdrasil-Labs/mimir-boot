@@ -20,7 +20,7 @@
     <properties>
         <!-- 📌 版本号统一管理：只修改这里即可，所有子模块自动继承 -->
         <!-- 开发阶段使用 SNAPSHOT 版本，release-please 会在 Release PR 中自动处理 -->
-        <revision>1.0.1-SNAPSHOT</revision>
+        <revision>1.0.0-SNAPSHOT</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
