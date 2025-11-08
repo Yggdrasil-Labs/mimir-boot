@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, closed]
     branches: [ main ]
   workflow_dispatch: {}
 
@@ -15,6 +15,14 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # 避免重复执行：
+    # - 当 PR 合并时，会同时触发 push 和 pull_request 事件
+    # - 我们只在 push 事件时执行，忽略 pull_request closed 事件（因为会触发 push）
+    # - 但保留 pull_request opened/synchronize 事件（用于更新 release PR）
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed') ||
+      (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false)
     steps:
       - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38
         id: release
@@ -26,6 +34,64 @@ jobs:
           manifest-file: .github/.release-please-manifest.json
           # 禁用自动添加标签（如 autorelease: snapshot），由后续步骤手动添加自定义标签
           skip-labeling: true
+
+      - name: Update revision in Release PR
+        if: steps.release.outputs.pull_request_number != '' && steps.release.outputs.version != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = '${{ steps.release.outputs.pull_request_number }}';
+            const version = '${{ steps.release.outputs.version }}';
+            
+            if (!prNumber || !version) {
+              console.log('No PR number or version, skipping revision update');
+              return;
+            }
+            
+            console.log(`Updating revision in PR #${prNumber} to ${version}`);
+            
+            // 获取 PR 信息
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            
+            // 获取 PR 分支的 pom.xml 内容
+            const { data: pomContent } = await github.rest.repos.getContent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'pom.xml',
+              ref: pr.head.ref
+            });
+            
+            const currentPom = Buffer.from(pomContent.content, 'base64').toString('utf-8');
+            
+            // 更新 revision（移除 -SNAPSHOT 后缀）
+            const releaseVersion = version.replace(/-SNAPSHOT$/, '');
+            const updatedPom = currentPom.replace(
+              /<revision>[^<]*<\/revision>/,
+              `<revision>${releaseVersion}</revision>`
+            );
+            
+            if (updatedPom === currentPom) {
+              console.log('No changes needed (revision already updated)');
+              return;
+            }
+            
+            // 更新文件
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'pom.xml',
+              message: `chore: update revision to ${releaseVersion} for release`,
+              content: Buffer.from(updatedPom).toString('base64'),
+              sha: pomContent.sha,
+              branch: pr.head.ref
+            });
+            
+            console.log(`✓ Updated revision to ${releaseVersion} in PR #${prNumber}`);
 
       - name: Check for existing release PR
         if: steps.release.outcome == 'failure'

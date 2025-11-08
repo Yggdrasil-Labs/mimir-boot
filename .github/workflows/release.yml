@@ -116,6 +116,42 @@ jobs:
             exit 1
           fi
 
+      - name: Get version from tag
+        id: get_version
+        run: |
+          # 从 tag 获取版本号
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          echo "Tag: $TAG_NAME"
+          echo "Version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version in pom.xml for release
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          
+          if [ -z "$VERSION" ]; then
+            echo "Error: Version is empty"
+            exit 1
+          fi
+          
+          echo "Updating pom.xml revision to: $VERSION"
+          
+          # 使用 sed 更新 pom.xml 中的版本号（GitHub Actions runner 是 Linux）
+          sed -i "s|<revision>[^<]*</revision>|<revision>$VERSION</revision>|g" pom.xml
+          
+          echo "Updated pom.xml:"
+          grep -A 2 -B 2 "<revision>" pom.xml
+          
+          # 验证所有子模块的 pom.xml 也会使用正确的版本号
+          echo ""
+          echo "Verifying version in submodules..."
+          find . -name "pom.xml" -type f | head -5 | while read pom; do
+            if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
+              echo "  ✓ $pom uses \${revision}"
+            fi
+          done
+
       - name: Configure Maven for GitHub Packages
         run: |
           mkdir -p ~/.m2

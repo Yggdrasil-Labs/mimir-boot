@@ -1,10 +1,9 @@
 {
-  "bootstrap-sha": "10aa32c4c2ea6c05fd2272206d2c25eea5905c26",
+  "bootstrap-sha": "3d99d205b71e0fb5cadc439aeeb0901b04ba3579",
   "packages": {
     ".": {
       "release-type": "java",
       "package-name": "mimir-boot",
-      "version-file": "pom.xml",
       "changelog-path": "CHANGELOG.md",
       "release-as": "1.0.0",
       "extra-files": [
