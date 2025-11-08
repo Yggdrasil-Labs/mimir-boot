@@ -228,7 +228,8 @@ jobs:
             if [ -n "$RELEASE_TOKEN" ] && [ "$RELEASE_TOKEN" != "" ]; then
               echo "Using RELEASE_TOKEN to push tag (will trigger Release workflow automatically)"
               # 配置 git 使用 PAT 进行推送
-              git remote set-url origin https://${GITHUB_ACTOR}:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+              # 注意：PAT 需要使用 'x-access-token' 作为用户名，而不是实际的 GitHub 用户名
+              git remote set-url origin https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
               git push origin "$TAG_NAME"
               echo "✓ Successfully created and pushed tag: $TAG_NAME using RELEASE_TOKEN"
               echo "✓ This will automatically trigger the Release workflow"

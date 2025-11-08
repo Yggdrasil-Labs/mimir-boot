@@ -1,11 +1,6 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (optional when tag pushed)'
-        required: false
   push:
     tags:
       - 'v*'
@@ -20,24 +15,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Determine checkout ref
-        id: checkout_ref
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            # workflow_dispatch 时，从 version 输入构造 tag
-            TAG_NAME="v${{ github.event.inputs.version }}"
-            echo "ref=refs/tags/${TAG_NAME}" >> $GITHUB_OUTPUT
-            echo "Using tag: ${TAG_NAME}"
-          else
-            # push 事件时，使用 github.ref（已经是 tag ref）
-            echo "ref=${{ github.ref }}" >> $GITHUB_OUTPUT
-            echo "Using ref: ${{ github.ref }}"
-          fi
-      
       - uses: actions/checkout@v4
         with:
-          # 根据事件类型决定 checkout 的 ref
-          ref: ${{ steps.checkout_ref.outputs.ref || github.ref }}
+          # push 事件时，使用 github.ref（已经是 tag ref）
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -78,24 +59,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Determine checkout ref
-        id: checkout_ref
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            # workflow_dispatch 时，从 version 输入构造 tag
-            TAG_NAME="v${{ github.event.inputs.version }}"
-            echo "ref=refs/tags/${TAG_NAME}" >> $GITHUB_OUTPUT
-            echo "Using tag: ${TAG_NAME}"
-          else
-            # push 事件时，使用 github.ref（已经是 tag ref）
-            echo "ref=${{ github.ref }}" >> $GITHUB_OUTPUT
-            echo "Using ref: ${{ github.ref }}"
-          fi
-      
       - uses: actions/checkout@v4
         with:
-          # 根据事件类型决定 checkout 的 ref
-          ref: ${{ steps.checkout_ref.outputs.ref || github.ref }}
+          # push 事件时，使用 github.ref（已经是 tag ref）
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -125,24 +92,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Determine checkout ref
-        id: checkout_ref
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            # workflow_dispatch 时，从 version 输入构造 tag
-            TAG_NAME="v${{ github.event.inputs.version }}"
-            echo "ref=refs/tags/${TAG_NAME}" >> $GITHUB_OUTPUT
-            echo "Using tag: ${TAG_NAME}"
-          else
-            # push 事件时，使用 github.ref（已经是 tag ref）
-            echo "ref=${{ github.ref }}" >> $GITHUB_OUTPUT
-            echo "Using ref: ${{ github.ref }}"
-          fi
-      
       - uses: actions/checkout@v4
         with:
-          # 根据事件类型决定 checkout 的 ref
-          ref: ${{ steps.checkout_ref.outputs.ref || github.ref }}
+          # push 事件时，使用 github.ref（已经是 tag ref）
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -195,32 +148,19 @@ jobs:
     needs: [ publish-gpr ]
     permissions:
       contents: write
-    # 在 tag 推送或 workflow_dispatch 时执行
-    if: |
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # workflow_dispatch 时，ref 参数已经是 tag，所以直接使用 github.ref
           ref: ${{ github.ref }}
           fetch-depth: 0
 
-      - name: Get version from tag or input
+      - name: Get version from tag
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            # 从 workflow_dispatch 输入获取版本
-            VERSION="${{ github.event.inputs.version }}"
-            TAG_NAME="v$VERSION"
-            echo "Using version from workflow_dispatch input: $VERSION"
-          else
-            # 从 tag 获取版本（github.ref 在 workflow_dispatch 时也是 tag ref）
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
-            echo "Using version from tag: $VERSION"
-          fi
+          # 从 tag 获取版本
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
@@ -302,10 +242,6 @@ jobs:
     needs: [ publish-gpr ]
     permissions:
       contents: write
-    # 在 tag 推送或 workflow_dispatch 时执行
-    if: |
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -313,20 +249,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Get released version from tag or input
+      - name: Get released version from tag
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            # 从 workflow_dispatch 输入获取版本
-            VERSION="${{ github.event.inputs.version }}"
-            TAG_NAME="v$VERSION"
-            echo "Using version from workflow_dispatch input: $VERSION"
-          else
-            # 从 tag 获取版本
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
-            echo "Using version from tag: $VERSION"
-          fi
+          # 从 tag 获取版本
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
           echo "Released version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
