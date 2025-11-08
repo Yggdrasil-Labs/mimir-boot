@@ -26,6 +26,32 @@ jobs:
           # 禁用自动添加标签（如 autorelease: snapshot），由后续步骤手动添加自定义标签
           skip-labeling: true
 
+      - name: Check for existing release PR
+        if: steps.release.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
+              sort: 'created',
+              direction: 'desc',
+              per_page: 1
+            });
+            
+            if (prs.length > 0) {
+              console.log(`ℹ️  Release PR already exists: #${prs[0].number}`);
+              console.log(`   PR URL: ${prs[0].html_url}`);
+              console.log(`   This is normal - release-please will update the existing PR when new changes are pushed.`);
+              console.log(`   If you want to create a new PR, please close and delete the existing PR first.`);
+            } else {
+              console.log('⚠️  No existing release PR found, but release-please failed.');
+              console.log('   This might be a temporary issue. Please check the error message above.');
+            }
+
       - name: Add 🚀 release label to PR
         if: ${{ steps.release.outputs.pull_request_number != '' }}
         uses: actions-ecosystem/action-add-labels@bd52874380e3909a1ac983768df6976535ece7f8
