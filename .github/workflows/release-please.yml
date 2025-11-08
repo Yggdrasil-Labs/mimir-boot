@@ -35,17 +35,82 @@ jobs:
           # 禁用自动添加标签（如 autorelease: snapshot），由后续步骤手动添加自定义标签
           skip-labeling: true
 
+      - name: Debug release-please outputs
+        if: always()
+        run: |
+          echo "=== Release Please Outputs ==="
+          echo "pull_request_number: '${{ steps.release.outputs.pull_request_number }}'"
+          echo "version: '${{ steps.release.outputs.version }}'"
+          echo "release_created: '${{ steps.release.outputs.release_created }}'"
+          echo "outcome: '${{ steps.release.outcome }}'"
+          echo "=============================="
+
       - name: Update revision in Release PR
-        if: steps.release.outputs.pull_request_number != '' && steps.release.outputs.version != ''
+        if: steps.release.outcome == 'success' || steps.release.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prNumber = '${{ steps.release.outputs.pull_request_number }}';
-            const version = '${{ steps.release.outputs.version }}';
+            // 首先尝试从 release-please 输出获取 PR 号和版本
+            let prNumber = '${{ steps.release.outputs.pull_request_number }}';
+            let version = '${{ steps.release.outputs.version }}';
             
-            if (!prNumber || !version) {
-              console.log('No PR number or version, skipping revision update');
+            console.log(`Initial PR number from release-please: ${prNumber || 'empty'}`);
+            console.log(`Initial version from release-please: ${version || 'empty'}`);
+            
+            // 如果没有从 release-please 获取到，尝试查找现有的 release PR
+            if (!prNumber) {
+              console.log('No PR number from release-please, searching for existing release PR...');
+              const { data: prs } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
+                sort: 'created',
+                direction: 'desc',
+                per_page: 1
+              });
+              
+              if (prs.length > 0) {
+                prNumber = prs[0].number.toString();
+                console.log(`Found existing release PR: #${prNumber}`);
+                
+                // 从 PR 标题或描述中提取版本号
+                const titleMatch = prs[0].title.match(/release\s+(\d+\.\d+\.\d+)/i);
+                if (titleMatch) {
+                  version = titleMatch[1];
+                  console.log(`Extracted version from PR title: ${version}`);
+                }
+              }
+            }
+            
+            // 如果还是没有版本号，尝试从 manifest 文件获取
+            if (!version) {
+              try {
+                const { data: manifest } = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: '.github/.release-please-manifest.json',
+                  ref: 'main'
+                });
+                
+                const manifestContent = JSON.parse(
+                  Buffer.from(manifest.content, 'base64').toString('utf-8')
+                );
+                version = manifestContent['.'] || '';
+                console.log(`Version from manifest: ${version}`);
+              } catch (error) {
+                console.log('Could not read manifest file');
+              }
+            }
+            
+            if (!prNumber) {
+              console.log('No release PR found, skipping revision update');
+              return;
+            }
+            
+            if (!version) {
+              console.log('No version found, skipping revision update');
               return;
             }
             
@@ -55,7 +120,7 @@ jobs:
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: prNumber
+              pull_number: parseInt(prNumber)
             });
             
             // 获取 PR 分支的 pom.xml 内容
@@ -79,6 +144,9 @@ jobs:
               console.log('No changes needed (revision already updated)');
               return;
             }
+            
+            console.log(`Current revision in PR: ${currentPom.match(/<revision>([^<]*)<\/revision>/)?.[1] || 'not found'}`);
+            console.log(`Updating to: ${releaseVersion}`);
             
             // 更新文件
             await github.rest.repos.createOrUpdateFileContents({
