@@ -226,9 +226,7 @@ jobs:
           fi
 
       - name: Trigger Release workflow
-        if: |
-          (steps.release.outputs.release_created == 'true' && github.event_name == 'push') ||
-          (github.event_name == 'pull_request' && github.event.pull_request.merged == true && steps.check_release_pr.outcome == 'success' && steps.check_release_pr.outputs.is_release_pr == 'true')
+        if: steps.get_version.outputs.tag_name != '' && steps.get_version.outputs.version != ''
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -236,44 +234,67 @@ jobs:
             const tagName = '${{ steps.get_version.outputs.tag_name }}';
             const version = '${{ steps.get_version.outputs.version }}';
             
-            if (!tagName || !version) {
-              console.log('Skipping workflow trigger: tag name or version is empty');
+            console.log(`=== Triggering Release Workflow ===`);
+            console.log(`Tag: ${tagName}`);
+            console.log(`Version: ${version}`);
+            console.log(`Event: ${context.eventName}`);
+            
+            if (!tagName || !version || tagName === '' || version === '') {
+              console.log('⚠️  Skipping workflow trigger: tag name or version is empty');
+              console.log(`   tagName: "${tagName}", version: "${version}"`);
               return;
             }
             
-            console.log(`Triggering Release workflow for tag: ${tagName}, version: ${version}`);
-            
-            // 使用 workflow_dispatch API 触发 release 工作流
-            // 注意：workflow_id 应该是工作流文件名（不包含路径）
             try {
-              // 首先获取工作流 ID
+              // 获取工作流列表
               const { data: workflows } = await github.rest.actions.listWorkflowsForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo
               });
               
-              const releaseWorkflow = workflows.workflows.find(w => w.name === 'Release' || w.path === '.github/workflows/release.yml');
+              console.log(`Found ${workflows.total_count} workflows`);
+              
+              // 查找 Release 工作流
+              const releaseWorkflow = workflows.workflows.find(w => 
+                w.name === 'Release' || 
+                w.path === '.github/workflows/release.yml' ||
+                w.path.endsWith('release.yml')
+              );
               
               if (!releaseWorkflow) {
                 console.log('⚠️  Release workflow not found');
+                console.log('Available workflows:');
+                workflows.workflows.forEach(w => {
+                  console.log(`  - ${w.name} (${w.path})`);
+                });
                 return;
               }
               
-              // 触发工作流，直接使用 tag 作为 ref
-              await github.rest.actions.createWorkflowDispatch({
+              console.log(`Found Release workflow: ${releaseWorkflow.name} (ID: ${releaseWorkflow.id})`);
+              
+              // 触发工作流，使用 main 分支作为 ref（工作流会 checkout 到 tag）
+              // ref 必须是分支名，不能是 tag
+              const result = await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: releaseWorkflow.id,
-                ref: tagName, // 直接使用 tag 作为 ref
+                ref: 'main', // 必须使用分支名，不能使用 tag
                 inputs: {
                   version: version
                 }
               });
-              console.log(`✓ Successfully triggered Release workflow for ${tagName}`);
+              
+              console.log(`✓ Successfully triggered Release workflow`);
+              console.log(`   Workflow will checkout tag: ${tagName}`);
+              console.log(`   Version: ${version}`);
             } catch (error) {
-              console.log(`⚠️  Failed to trigger workflow via API: ${error.message}`);
-              console.log(`   Error details: ${JSON.stringify(error)}`);
+              console.log(`❌ Failed to trigger workflow via API`);
+              console.log(`   Error: ${error.message}`);
+              if (error.response) {
+                console.log(`   Status: ${error.response.status}`);
+                console.log(`   Response: ${JSON.stringify(error.response.data)}`);
+              }
               console.log(`   You may need to manually trigger the Release workflow from the Actions tab.`);
-              console.log(`   Or wait a few minutes - sometimes tag push events take time to propagate.`);
+              throw error; // 重新抛出错误，让工作流知道失败了
             }
 

@@ -20,10 +20,24 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Determine checkout ref
+        id: checkout_ref
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # workflow_dispatch 时，从 version 输入构造 tag
+            TAG_NAME="v${{ github.event.inputs.version }}"
+            echo "ref=refs/tags/${TAG_NAME}" >> $GITHUB_OUTPUT
+            echo "Using tag: ${TAG_NAME}"
+          else
+            # push 事件时，使用 github.ref（已经是 tag ref）
+            echo "ref=${{ github.ref }}" >> $GITHUB_OUTPUT
+            echo "Using ref: ${{ github.ref }}"
+          fi
+      
       - uses: actions/checkout@v4
         with:
-          # 如果是由 tag 触发，checkout 到 tag 对应的 commit，确保版本号正确
-          ref: ${{ github.ref }}
+          # 根据事件类型决定 checkout 的 ref
+          ref: ${{ steps.checkout_ref.outputs.ref || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -64,10 +78,24 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Determine checkout ref
+        id: checkout_ref
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # workflow_dispatch 时，从 version 输入构造 tag
+            TAG_NAME="v${{ github.event.inputs.version }}"
+            echo "ref=refs/tags/${TAG_NAME}" >> $GITHUB_OUTPUT
+            echo "Using tag: ${TAG_NAME}"
+          else
+            # push 事件时，使用 github.ref（已经是 tag ref）
+            echo "ref=${{ github.ref }}" >> $GITHUB_OUTPUT
+            echo "Using ref: ${{ github.ref }}"
+          fi
+      
       - uses: actions/checkout@v4
         with:
-          # 如果是由 tag 触发，checkout 到 tag 对应的 commit，确保版本号正确
-          ref: ${{ github.ref }}
+          # 根据事件类型决定 checkout 的 ref
+          ref: ${{ steps.checkout_ref.outputs.ref || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -97,10 +125,24 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Determine checkout ref
+        id: checkout_ref
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # workflow_dispatch 时，从 version 输入构造 tag
+            TAG_NAME="v${{ github.event.inputs.version }}"
+            echo "ref=refs/tags/${TAG_NAME}" >> $GITHUB_OUTPUT
+            echo "Using tag: ${TAG_NAME}"
+          else
+            # push 事件时，使用 github.ref（已经是 tag ref）
+            echo "ref=${{ github.ref }}" >> $GITHUB_OUTPUT
+            echo "Using ref: ${{ github.ref }}"
+          fi
+      
       - uses: actions/checkout@v4
         with:
-          # 如果是由 tag 触发，checkout 到 tag 对应的 commit，确保版本号正确
-          ref: ${{ github.ref }}
+          # 根据事件类型决定 checkout 的 ref
+          ref: ${{ steps.checkout_ref.outputs.ref || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
