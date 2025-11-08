@@ -75,16 +75,38 @@ jobs:
                 prNumber = prs[0].number.toString();
                 console.log(`Found existing release PR: #${prNumber}`);
                 
-                // 从 PR 标题或描述中提取版本号
-                const titleMatch = prs[0].title.match(/release\s+(\d+\.\d+\.\d+)/i);
+                // 从 PR 标题中提取版本号（支持多种格式）
+                // 例如: "chore(main): release mimir-boot 1.0.0" 或 "release 1.0.0"
+                const titleMatch = prs[0].title.match(/(?:release|版本)\s+(?:mimir-boot\s+)?(\d+\.\d+\.\d+)/i) ||
+                                  prs[0].title.match(/(\d+\.\d+\.\d+)/);
                 if (titleMatch) {
                   version = titleMatch[1];
                   console.log(`Extracted version from PR title: ${version}`);
                 }
+                
+                // 如果从标题提取失败，尝试从 PR 分支的 manifest 文件获取
+                if (!version) {
+                  try {
+                    const { data: manifest } = await github.rest.repos.getContent({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      path: '.github/.release-please-manifest.json',
+                      ref: prs[0].head.ref  // 使用 PR 分支，而不是 main 分支
+                    });
+                    
+                    const manifestContent = JSON.parse(
+                      Buffer.from(manifest.content, 'base64').toString('utf-8')
+                    );
+                    version = manifestContent['.'] || '';
+                    console.log(`Version from PR branch manifest: ${version}`);
+                  } catch (error) {
+                    console.log('Could not read manifest file from PR branch');
+                  }
+                }
               }
             }
             
-            // 如果还是没有版本号，尝试从 manifest 文件获取
+            // 如果还是没有版本号，尝试从 main 分支的 manifest 文件获取（最后的后备方案）
             if (!version) {
               try {
                 const { data: manifest } = await github.rest.repos.getContent({
@@ -98,9 +120,10 @@ jobs:
                   Buffer.from(manifest.content, 'base64').toString('utf-8')
                 );
                 version = manifestContent['.'] || '';
-                console.log(`Version from manifest: ${version}`);
+                console.log(`Version from main branch manifest: ${version}`);
+                console.log('⚠️  Warning: Using version from main branch manifest, which may be outdated');
               } catch (error) {
-                console.log('Could not read manifest file');
+                console.log('Could not read manifest file from main branch');
               }
             }
             
