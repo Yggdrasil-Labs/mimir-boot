@@ -61,8 +61,63 @@ jobs:
               console.log(`Added 🚀 release label to PR #${prs[0].number}`);
             }
 
+      - name: Checkout code for tag creation
+        if: steps.release.outputs.release_created == 'true' && github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push tag
+        if: steps.release.outputs.release_created == 'true' && github.event_name == 'push'
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          echo "=== Release Info ==="
+          echo "Release created: ${{ steps.release.outputs.release_created }}"
+          echo "Tag name from release-please: $TAG_NAME"
+          echo "Version from release-please: $VERSION"
+          echo "Event name: ${{ github.event_name }}"
+          echo "==================="
+          
+          # 确定 tag 名称
+          if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" == "" ]; then
+            # 如果没有 tag_name，根据 version 生成（格式：v{version}）
+            if [ -z "$VERSION" ] || [ "$VERSION" == "" ]; then
+              echo "Error: Both TAG_NAME and VERSION are empty, cannot create tag"
+              exit 1
+            fi
+            TAG_NAME="v$VERSION"
+            echo "Generated tag name: $TAG_NAME from version: $VERSION"
+          fi
+          
+          # 获取当前 commit SHA
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Current commit SHA: $COMMIT_SHA"
+          
+          # 检查 tag 是否已存在
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            EXISTING_SHA=$(git rev-parse "$TAG_NAME")
+            if [ "$EXISTING_SHA" == "$COMMIT_SHA" ]; then
+              echo "✓ Tag $TAG_NAME already exists and points to the same commit, skipping creation"
+            else
+              echo "⚠ Warning: Tag $TAG_NAME exists but points to different commit"
+              echo "  Existing: $EXISTING_SHA"
+              echo "  Current:  $COMMIT_SHA"
+            fi
+          else
+            # 创建 tag（指向当前 HEAD，即合并后的 commit）
+            echo "Creating annotated tag: $TAG_NAME"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG_NAME" -m "Release $VERSION"
+            git push origin "$TAG_NAME"
+            echo "✓ Successfully created and pushed tag: $TAG_NAME"
+          fi
+
       - name: Output release info
-        if: steps.release.outputs.release_created
+        if: steps.release.outputs.release_created == 'true'
         run: |
           echo "Release PR: #${{ steps.release.outputs.pull_request_number }}"
           echo "Tag: ${{ steps.release.outputs.tag_name }}"
