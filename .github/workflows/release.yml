@@ -171,6 +171,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Flatten POM files before deploy
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          echo "Executing flatten:flatten to replace \${revision} variables with version: $VERSION"
+          ./mvnw -B -U -Drevision=$VERSION flatten:flatten
+          echo "Flatten completed. Verifying flattened POMs..."
+          find . -name ".flattened-pom.xml" -type f | head -3 | while read pom; do
+            echo "Checking: $pom"
+            if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
+              echo "  ⚠️  WARNING: $pom still contains \${revision}"
+            else
+              echo "  ✓ $pom has been flattened correctly"
+            fi
+          done
+
       - name: Publish to GitHub Packages (Maven)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

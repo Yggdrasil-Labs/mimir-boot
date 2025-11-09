@@ -192,6 +192,10 @@
                     <configuration>
                         <updatePomFile>true</updatePomFile>
                         <flattenMode>oss</flattenMode>
+                        <pomElements>
+                            <dependencies>resolve</dependencies>
+                            <dependencyManagement>resolve</dependencyManagement>
+                        </pomElements>
                     </configuration>
                     <executions>
                         <execution>

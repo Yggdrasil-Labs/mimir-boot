@@ -43,6 +43,8 @@
 
         <!-- Spotless 插件版本（用于根 POM 前缀解析与无源校验） -->
         <spotless.plugin.version>2.43.0</spotless.plugin.version>
+        <!-- Flatten 插件版本 -->
+        <flatten.plugin.version>1.7.3</flatten.plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
@@ -102,11 +104,40 @@
                     <artifactId>spotless-maven-plugin</artifactId>
                     <version>${spotless.plugin.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>${flatten.plugin.version}</version>
+                    <configuration>
+                        <updatePomFile>true</updatePomFile>
+                        <flattenMode>oss</flattenMode>
+                        <pomElements>
+                            <dependencies>resolve</dependencies>
+                            <dependencyManagement>resolve</dependencyManagement>
+                        </pomElements>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>flatten</id>
+                            <phase>process-resources</phase>
+                            <goals>
+                                <goal>flatten</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>flatten.clean</id>
+                            <phase>clean</phase>
+                            <goals>
+                                <goal>clean</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
 
         <plugins>
-            <!-- 在根模块声明一个“无源”的 Spotless，使 `spotless:*` 在根执行不报错 -->
+            <!-- 在根模块声明一个"无源"的 Spotless，使 `spotless:*` 在根执行不报错 -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
@@ -121,6 +152,11 @@
                         </googleJavaFormat>
                     </java>
                 </configuration>
+            </plugin>
+            <!-- Flatten Plugin (版本管理) - 确保所有模块都能正确替换 ${revision} -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
