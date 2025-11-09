@@ -192,6 +192,7 @@ jobs:
         run: |
           ./mvnw -B -U -DskipTests=true \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }} \
+            -pl '!examples' \
             deploy
 
   create-github-release:
