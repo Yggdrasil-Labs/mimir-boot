@@ -186,13 +186,24 @@ jobs:
             fi
           done
 
+      - name: Build packages (jar files)
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          echo "Building packages with version: $VERSION"
+          ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
+            -pl '!example' \
+            package
+          echo "Verifying jar files were built..."
+          find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
+
       - name: Publish to GitHub Packages (Maven)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./mvnw -B -U -DskipTests=true \
+          VERSION="${{ steps.get_version.outputs.version }}"
+          ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }} \
-            -pl '!examples' \
+            -pl '!example' \
             deploy
 
   create-github-release:
