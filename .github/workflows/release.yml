@@ -191,7 +191,7 @@ jobs:
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Building packages with version: $VERSION"
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
-            -pl '!example' \
+            -pl '!examples' \
             package
           echo "Verifying jar files were built..."
           find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
@@ -203,7 +203,7 @@ jobs:
           VERSION="${{ steps.get_version.outputs.version }}"
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }} \
-            -pl '!example' \
+            -pl '!examples' \
             deploy
 
   create-github-release:
