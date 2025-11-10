@@ -29,7 +29,7 @@
         <!-- 数据库相关 -->
         <mybatis.plus.version>3.5.14</mybatis.plus.version>
         <mybatis.version>3.5.19</mybatis.version>
-        <mybatis.spring.boot.version>3.0.3</mybatis.spring.boot.version>
+        <mybatis.spring.boot.version>3.0.5</mybatis.spring.boot.version>
 
         <!-- 工具类 -->
         <mapstruct.version>1.6.3</mapstruct.version>
