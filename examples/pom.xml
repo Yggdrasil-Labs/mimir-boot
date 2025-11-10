@@ -13,6 +13,25 @@
 
     <name>Examples</name>
 
+    <properties>
+        <!-- 跳过部署 Maven 仓库 -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- 配置 Deploy 插件跳过部署 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>${maven.deploy.plugin.version}</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <modules>
         <module>example-general-web-project</module>
     </modules>
