@@ -375,6 +375,26 @@
                 <artifactId>mimir-boot-starter-exception</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-web</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-nacos</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-mybatis</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-mybatis-processor</artifactId>
+                <version>${revision}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
