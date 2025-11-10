@@ -47,7 +47,7 @@ jobs:
 
       - name: Update revision in Release PR
         if: steps.release.outcome == 'success' || steps.release.outcome == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -186,7 +186,7 @@ jobs:
 
       - name: Check for existing release PR
         if: steps.release.outcome == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -221,7 +221,7 @@ jobs:
       
       - name: Find and label release PR (fallback)
         if: ${{ steps.release.outputs.pull_request_number == '' && steps.release.outcome == 'success' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
