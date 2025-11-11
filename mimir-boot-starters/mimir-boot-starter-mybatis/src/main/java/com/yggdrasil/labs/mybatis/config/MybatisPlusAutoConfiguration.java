@@ -12,8 +12,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
-import org.springframework.util.CollectionUtils;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -62,9 +60,8 @@ public class MybatisPlusAutoConfiguration {
     @ConditionalOnMissingBean(MapperScannerConfigurer.class)
     public MapperScannerConfigurer mapperScannerConfigurer(MybatisProperties properties) {
         MapperScannerConfigurer configurer = new MapperScannerConfigurer();
-        if (!CollectionUtils.isEmpty(properties.getMapperPackages())) {
-            configurer.setBasePackage(String.join(",", properties.getMapperPackages()));
-        }
+        // 使用 Properties 中的方法获取最终扫描包（包含默认包）
+        configurer.setBasePackage(properties.getFinalMapperPackages());
         return configurer;
     }
 

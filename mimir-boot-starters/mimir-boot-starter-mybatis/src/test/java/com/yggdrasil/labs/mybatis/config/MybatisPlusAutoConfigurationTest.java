@@ -647,7 +647,7 @@ class MybatisPlusAutoConfigurationTest {
         String basePackage = (String) field.get(configurer);
 
         assertNotNull(basePackage);
-        assertEquals("com.example.mapper,com.example.other.mapper", basePackage);
+        assertEquals("com.yggdrasil.labs.**.mapper,com.example.mapper,com.example.other.mapper", basePackage);
     }
 
     @Test
@@ -666,12 +666,31 @@ class MybatisPlusAutoConfigurationTest {
         String basePackage = (String) field.get(configurer);
 
         assertNotNull(basePackage);
-        assertEquals("com.example.mapper", basePackage);
+        assertEquals("com.yggdrasil.labs.**.mapper,com.example.mapper", basePackage);
+    }
+
+    @Test
+    void testMapperScannerConfigurerDefaultPackage() throws Exception {
+        // 验证默认扫描包功能
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        // 不设置 mapperPackages，使用默认值（空列表）
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        // 应该使用默认扫描包 com.yggdrasil.labs.**.mapper
+        assertEquals("com.yggdrasil.labs.**.mapper", basePackage);
     }
 
     @Test
     void testMapperScannerConfigurerBasePackageWithEmptyPackages() throws Exception {
-        // 验证空包列表的情况，basePackage 应该为 null
+        // 验证空包列表的情况，应该使用默认扫描包
         MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(Collections.emptyList());
@@ -684,13 +703,13 @@ class MybatisPlusAutoConfigurationTest {
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
-        // 当包列表为空时，basePackage 应该为 null（因为 CollectionUtils.isEmpty 返回 true）
-        assertNull(basePackage);
+        // 当包列表为空时，应该使用默认扫描包 com.yggdrasil.labs.**.mapper
+        assertEquals("com.yggdrasil.labs.**.mapper", basePackage);
     }
 
     @Test
     void testMapperScannerConfigurerBasePackageWithNullPackages() throws Exception {
-        // 验证 null 包列表的情况
+        // 验证 null 包列表的情况，应该使用默认扫描包
         MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(null);
@@ -703,8 +722,8 @@ class MybatisPlusAutoConfigurationTest {
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
-        // 当包列表为 null 时，basePackage 应该为 null
-        assertNull(basePackage);
+        // 当包列表为 null 时，应该使用默认扫描包 com.yggdrasil.labs.**.mapper
+        assertEquals("com.yggdrasil.labs.**.mapper", basePackage);
     }
 
     @Test

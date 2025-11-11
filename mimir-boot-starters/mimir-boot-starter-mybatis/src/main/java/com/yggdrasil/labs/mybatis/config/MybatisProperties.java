@@ -1,15 +1,21 @@
 package com.yggdrasil.labs.mybatis.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * MyBatis 配置属性。
  */
 @ConfigurationProperties(prefix = "mimir.mybatis")
 public class MybatisProperties {
+
+    /** 默认 Mapper 扫描包 */
+    public static final String DEFAULT_MAPPER_PACKAGE = "com.yggdrasil.labs.**.mapper";
 
     /** Mapper 扫描包，支持多个 */
     private List<String> mapperPackages = new ArrayList<>();
@@ -29,6 +35,23 @@ public class MybatisProperties {
 
     public void setMapperPackages(List<String> mapperPackages) {
         this.mapperPackages = mapperPackages;
+    }
+
+    /**
+     * 获取最终的 Mapper 扫描包列表（包含默认包和用户配置的包）。
+     * 默认包始终包含，用户配置的包会追加到列表中。
+     *
+     * @return 最终的扫描包列表，用逗号分隔的字符串
+     */
+    public String getFinalMapperPackages() {
+        Set<String> packages = new LinkedHashSet<>();
+        // 始终包含默认包
+        packages.add(DEFAULT_MAPPER_PACKAGE);
+        // 添加用户配置的包
+        if (!CollectionUtils.isEmpty(mapperPackages)) {
+            packages.addAll(mapperPackages);
+        }
+        return String.join(",", packages);
     }
 
     public Boolean getEnableSqlStdout() {

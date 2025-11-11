@@ -105,5 +105,68 @@ class MybatisPropertiesTest {
         assertTrue(properties.getEnableJsonSqlLog());
         assertEquals("test-key", properties.getCryptoKey());
     }
+
+    @Test
+    void testGetFinalMapperPackages_WithDefaultOnly() {
+        // 不设置 mapperPackages，应该只包含默认包
+        String finalPackages = properties.getFinalMapperPackages();
+        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+    }
+
+    @Test
+    void testGetFinalMapperPackages_WithEmptyList() {
+        // 设置空列表，应该只包含默认包
+        properties.setMapperPackages(Collections.emptyList());
+        String finalPackages = properties.getFinalMapperPackages();
+        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+    }
+
+    @Test
+    void testGetFinalMapperPackages_WithNullList() {
+        // 设置 null，应该只包含默认包
+        properties.setMapperPackages(null);
+        String finalPackages = properties.getFinalMapperPackages();
+        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+    }
+
+    @Test
+    void testGetFinalMapperPackages_WithCustomPackages() {
+        // 设置自定义包，应该包含默认包和自定义包
+        List<String> packages = Arrays.asList("com.example.mapper", "com.example.other.mapper");
+        properties.setMapperPackages(packages);
+        String finalPackages = properties.getFinalMapperPackages();
+        
+        // 应该包含默认包和自定义包，默认包在前
+        assertTrue(finalPackages.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        assertTrue(finalPackages.contains("com.example.mapper"));
+        assertTrue(finalPackages.contains("com.example.other.mapper"));
+        // 验证格式：默认包,自定义包1,自定义包2
+        assertEquals(
+            MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper,com.example.other.mapper",
+            finalPackages
+        );
+    }
+
+    @Test
+    void testGetFinalMapperPackages_WithSingleCustomPackage() {
+        // 设置单个自定义包
+        properties.setMapperPackages(Collections.singletonList("com.example.mapper"));
+        String finalPackages = properties.getFinalMapperPackages();
+        
+        assertEquals(
+            MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper",
+            finalPackages
+        );
+    }
+
+    @Test
+    void testGetFinalMapperPackages_WithDuplicatePackages() {
+        // 测试去重功能：如果用户配置的包与默认包相同，应该去重
+        properties.setMapperPackages(Collections.singletonList(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        String finalPackages = properties.getFinalMapperPackages();
+        
+        // 应该只包含一个默认包（去重后）
+        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+    }
 }
 

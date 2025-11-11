@@ -279,6 +279,8 @@ public class UserController {
 mimir:
   mybatis:
     # Mapper 扫描包（多个用逗号分隔）
+    # 无论是否配置，这个 Starter 都会始终包含默认扫描包：com.yggdrasil.labs.**.mapper
+    # 若配置了自定义包，将与默认包一起生效（逗号分隔）
     mapper-packages:
       - com.example.mapper
       - com.example.other.mapper
