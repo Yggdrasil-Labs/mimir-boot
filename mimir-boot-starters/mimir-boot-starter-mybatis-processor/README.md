@@ -207,7 +207,7 @@ public class User {
 - **Mapper 包路径**：`实体类包名 + mapperPackage`
 - **Service 包路径**：`实体类包名 + servicePackage`
 - **ServiceImpl 包路径**：`实体类包名 + serviceImplPackage`
-- **类名**：`实体类名 + 对应后缀`
+- **类名**：`实体类名 + 对应后缀`（如果实体类名以 `DO` 结尾，会自动去除 `DO` 后缀）
 
 ### 示例说明
 
@@ -225,6 +225,31 @@ public class User {
 - `com.example.entity.mapper.UserMapper`
 - `com.example.entity.service.UserService`
 - `com.example.entity.service.impl.UserServiceImpl`
+
+#### DO 后缀自动处理
+
+如果实体类名以 `DO` 结尾，生成 Mapper、Service 类名时会自动去除 `DO` 后缀：
+
+```java
+package com.example.entity;
+
+@AutoMybatis
+public class UserDO {
+    // ...
+}
+```
+
+生成的代码位置（注意类名去掉了 DO）：
+- `com.example.entity.mapper.UserMapper`（不是 `UserDOMapper`）
+- `com.example.entity.service.UserService`（不是 `UserDOService`）
+- `com.example.entity.service.impl.UserServiceImpl`（不是 `UserDOServiceImpl`）
+
+生成的代码中，实体类引用仍然使用原始类名 `UserDO`：
+```java
+public interface UserMapper extends BaseMapper<UserDO> {
+    // 实体类引用保持原样
+}
+```
 
 ## 最佳实践
 

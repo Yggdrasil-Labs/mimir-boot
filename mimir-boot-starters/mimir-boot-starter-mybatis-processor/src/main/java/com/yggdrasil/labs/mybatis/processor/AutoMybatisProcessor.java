@@ -54,9 +54,11 @@ public class AutoMybatisProcessor extends AbstractProcessor {
         String servicePkg = joinPackage(basePackage, config.servicePackage());
         String serviceImplPkg = joinPackage(basePackage, config.serviceImplPackage());
 
-        String mapperName = entitySimpleName + config.mapperSuffix();
-        String serviceName = entitySimpleName + config.serviceSuffix();
-        String serviceImplName = entitySimpleName + config.serviceImplSuffix();
+        // 去除实体类名末尾的 DO 后缀（如果存在），用于生成 Mapper、Service 类名
+        String baseName = removeDoSuffix(entitySimpleName);
+        String mapperName = baseName + config.mapperSuffix();
+        String serviceName = baseName + config.serviceSuffix();
+        String serviceImplName = baseName + config.serviceImplSuffix();
 
         ClassName entityClass = ClassName.bestGuess(entityQualifiedName);
 
@@ -111,6 +113,20 @@ public class AutoMybatisProcessor extends AbstractProcessor {
         if (base == null || base.isEmpty()) return sub;
         if (sub == null || sub.isEmpty()) return base;
         return base + "." + sub;
+    }
+
+    /**
+     * 去除类名末尾的 DO 后缀（如果存在）。
+     * 例如：UserDO -> User, OrderDO -> Order, User -> User
+     *
+     * @param className 原始类名
+     * @return 去除 DO 后缀后的类名
+     */
+    private static String removeDoSuffix(String className) {
+        if (className != null && className.endsWith("DO") && className.length() > 2) {
+            return className.substring(0, className.length() - 2);
+        }
+        return className;
     }
 }
 

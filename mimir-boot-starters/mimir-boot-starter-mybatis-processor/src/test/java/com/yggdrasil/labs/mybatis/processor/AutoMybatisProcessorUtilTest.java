@@ -81,5 +81,54 @@ class AutoMybatisProcessorUtilTest {
         // 这只是测试当前实现的边界情况
         assertEquals("com.example..mapper", testJoinPackage("com.example", ".mapper"));
     }
+
+    // 使用反射调用 private static 方法进行测试
+    private static String testRemoveDoSuffix(String className) {
+        try {
+            Method method = AutoMybatisProcessor.class.getDeclaredMethod("removeDoSuffix", String.class);
+            method.setAccessible(true);
+            return (String) method.invoke(null, className);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to invoke removeDoSuffix method", e);
+        }
+    }
+
+    @Test
+    void testRemoveDoSuffix_WithDoSuffix() {
+        assertEquals("User", testRemoveDoSuffix("UserDO"));
+        assertEquals("Order", testRemoveDoSuffix("OrderDO"));
+        assertEquals("Product", testRemoveDoSuffix("ProductDO"));
+    }
+
+    @Test
+    void testRemoveDoSuffix_WithoutDoSuffix() {
+        assertEquals("User", testRemoveDoSuffix("User"));
+        assertEquals("Order", testRemoveDoSuffix("Order"));
+        assertEquals("Product", testRemoveDoSuffix("Product"));
+    }
+
+    @Test
+    void testRemoveDoSuffix_WithOnlyDO() {
+        // 如果类名就是 "DO"，不应该被处理（长度 <= 2）
+        assertEquals("DO", testRemoveDoSuffix("DO"));
+    }
+
+    @Test
+    void testRemoveDoSuffix_WithNull() {
+        assertNull(testRemoveDoSuffix(null));
+    }
+
+    @Test
+    void testRemoveDoSuffix_WithEmptyString() {
+        assertEquals("", testRemoveDoSuffix(""));
+    }
+
+    @Test
+    void testRemoveDoSuffix_WithCaseSensitive() {
+        // 只处理大写的 DO，不处理小写的 do
+        assertEquals("Userdo", testRemoveDoSuffix("Userdo"));
+        assertEquals("UserDo", testRemoveDoSuffix("UserDo"));
+        assertEquals("User", testRemoveDoSuffix("UserDO"));
+    }
 }
 
