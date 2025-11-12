@@ -32,7 +32,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 @AutoConfiguration
 @ConditionalOnClass(name = "com.alibaba.cloud.nacos.NacosConfigProperties")
 @ConditionalOnProperty(
-        prefix = "mimir.nacos.encrypt",
+        prefix = "mimir.boot.nacos.encrypt",
         name = "enabled",
         havingValue = "true",
         matchIfMissing = true
