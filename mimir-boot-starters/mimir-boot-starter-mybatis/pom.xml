@@ -19,16 +19,10 @@
             <artifactId>mimir-boot-common</artifactId>
         </dependency>
         
-        <!-- MyBatis-Plus Starter -->
+        <!-- MyBatis-Plus Starter for Spring Boot 3.x -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
-        </dependency>
-
-        <!-- MyBatis Spring Boot Autoconfigure -->
-        <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-autoconfigure</artifactId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
         <!-- Spring Boot AutoConfiguration support -->

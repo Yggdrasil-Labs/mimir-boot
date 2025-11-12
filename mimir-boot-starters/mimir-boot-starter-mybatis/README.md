@@ -26,6 +26,29 @@
 
 **注意**：需要同时配置数据源（如 HikariCP、Druid 等）。
 
+### 与 Processor 配合使用
+
+如果使用了 `mimir-boot-starter-mybatis-processor` 自动生成 Mapper，Starter 会自动检测并扫描生成的 Mapper，无需额外配置：
+
+- ✅ **自动检测**：自动扫描所有以 `.mapper` 结尾的包（processor 默认生成的包路径）
+- ✅ **无需配置**：即使 Mapper 不在 `com.yggdrasil.labs` 包下，也会被自动扫描到
+- ✅ **支持自定义**：如果 processor 使用了自定义的 `mapperPackage`，可以通过配置 `mimir.mybatis.mapper-packages` 手动指定
+
+**示例**：
+
+```java
+// 实体类在 com.example.entity 包下
+package com.example.entity;
+
+@AutoMybatis  // processor 会生成 com.example.entity.mapper.UserMapper
+@TableName("sys_user")
+public class User {
+    // ...
+}
+```
+
+生成的 `com.example.entity.mapper.UserMapper` 会被自动扫描到，无需额外配置。
+
 ### 基础配置
 
 ```yaml
@@ -281,6 +304,9 @@ mimir:
     # Mapper 扫描包（多个用逗号分隔）
     # 无论是否配置，这个 Starter 都会始终包含默认扫描包：com.yggdrasil.labs.**.mapper
     # 若配置了自定义包，将与默认包一起生效（逗号分隔）
+    # 
+    # 注意：如果使用了 mimir-boot-starter-mybatis-processor 生成 mapper，
+    # 即使 mapper 不在 com.yggdrasil.labs 包下，也会自动检测并扫描（通过检测所有 .mapper 包）
     mapper-packages:
       - com.example.mapper
       - com.example.other.mapper

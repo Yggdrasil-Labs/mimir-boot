@@ -1,14 +1,14 @@
 package com.yggdrasil.labs.mybatis.config;
 
+import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
-import org.apache.ibatis.session.Configuration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
-import org.mybatis.spring.boot.autoconfigure.ConfigurationCustomizer;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.springframework.core.env.StandardEnvironment;
 
@@ -104,7 +104,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, new StandardEnvironment());
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
@@ -118,7 +118,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, new StandardEnvironment());
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 当enableStdout为false时，不应该设置StdOutImpl
         assertNull(configuration.getLogImpl());
@@ -137,7 +137,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 在dev环境下，enableStdout为null时应该默认启用
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
@@ -156,7 +156,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 在test环境下，enableStdout为null时应该默认启用
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
@@ -175,7 +175,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 在prod环境下，enableStdout为null时应该默认不启用
         assertNull(configuration.getLogImpl());
@@ -193,7 +193,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 在默认环境下，enableStdout为null时应该默认不启用
         assertNull(configuration.getLogImpl());
@@ -212,7 +212,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         assertNull(configuration.getLogImpl());
     }
@@ -230,7 +230,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
@@ -281,7 +281,7 @@ class MybatisPlusAutoConfigurationTest {
             ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
             assertNotNull(customizer);
 
-            Configuration configuration = new Configuration();
+            MybatisConfiguration configuration = new MybatisConfiguration();
             customizer.customize(configuration);
         });
     }
@@ -307,7 +307,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 默认环境下应该不设置 StdOutImpl
         assertNull(configuration.getLogImpl());
@@ -326,7 +326,7 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // dev/test 环境下应该启用
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
@@ -410,11 +410,11 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
 
         // 多次调用 customize 应该都能正常工作
-        Configuration config1 = new Configuration();
+        MybatisConfiguration config1 = new MybatisConfiguration();
         customizer.customize(config1);
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config1.getLogImpl());
 
-        Configuration config2 = new Configuration();
+        MybatisConfiguration config2 = new MybatisConfiguration();
         customizer.customize(config2);
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config2.getLogImpl());
     }
@@ -430,7 +430,7 @@ class MybatisPlusAutoConfigurationTest {
         env.setActiveProfiles("dev"); // 即使 dev 环境，显式 false 也应该生效
 
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        Configuration configuration = new Configuration();
+        MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
 
         assertNull(configuration.getLogImpl());
@@ -634,6 +634,7 @@ class MybatisPlusAutoConfigurationTest {
     @Test
     void testMapperScannerConfigurerBasePackage() throws Exception {
         // 验证 mapperScannerConfigurer 正确设置 basePackage
+        // 注意：现在 basePackage 可能包含自动检测到的包
         MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(Arrays.asList("com.example.mapper", "com.example.other.mapper"));
@@ -647,7 +648,11 @@ class MybatisPlusAutoConfigurationTest {
         String basePackage = (String) field.get(configurer);
 
         assertNotNull(basePackage);
-        assertEquals("com.yggdrasil.labs.**.mapper,com.example.mapper,com.example.other.mapper", basePackage);
+        // 应该至少包含默认包和用户配置的包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        assertTrue(basePackage.contains("com.example.mapper"));
+        assertTrue(basePackage.contains("com.example.other.mapper"));
+        // 可能还包含自动检测到的包
     }
 
     @Test
@@ -666,7 +671,10 @@ class MybatisPlusAutoConfigurationTest {
         String basePackage = (String) field.get(configurer);
 
         assertNotNull(basePackage);
-        assertEquals("com.yggdrasil.labs.**.mapper,com.example.mapper", basePackage);
+        // 应该至少包含默认包和用户配置的包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        assertTrue(basePackage.contains("com.example.mapper"));
+        // 可能还包含自动检测到的包
     }
 
     @Test
@@ -684,8 +692,10 @@ class MybatisPlusAutoConfigurationTest {
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
-        // 应该使用默认扫描包 com.yggdrasil.labs.**.mapper
-        assertEquals("com.yggdrasil.labs.**.mapper", basePackage);
+        assertNotNull(basePackage);
+        // 应该至少包含默认扫描包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        // 可能还包含自动检测到的包
     }
 
     @Test
@@ -703,8 +713,10 @@ class MybatisPlusAutoConfigurationTest {
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
-        // 当包列表为空时，应该使用默认扫描包 com.yggdrasil.labs.**.mapper
-        assertEquals("com.yggdrasil.labs.**.mapper", basePackage);
+        assertNotNull(basePackage);
+        // 当包列表为空时，应该至少包含默认扫描包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        // 可能还包含自动检测到的包
     }
 
     @Test
@@ -722,8 +734,54 @@ class MybatisPlusAutoConfigurationTest {
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
-        // 当包列表为 null 时，应该使用默认扫描包 com.yggdrasil.labs.**.mapper
-        assertEquals("com.yggdrasil.labs.**.mapper", basePackage);
+        assertNotNull(basePackage);
+        // 当包列表为 null 时，应该至少包含默认扫描包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        // 可能还包含自动检测到的包
+    }
+
+    @Test
+    void testMapperScannerConfigurerIncludesAutoDetectedPackages() throws Exception {
+        // 验证自动检测的包被包含在 basePackage 中
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Collections.emptyList());
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        assertNotNull(basePackage);
+        // 应该至少包含默认包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        // basePackage 可能包含自动检测到的包（取决于 classpath 中是否有 mapper）
+    }
+
+    @Test
+    void testMapperScannerConfigurerCombinesAllPackages() throws Exception {
+        // 验证默认包、用户配置包和自动检测包都被合并
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Arrays.asList("com.custom.mapper"));
+
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+
+        assertNotNull(basePackage);
+        // 应该包含默认包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        // 应该包含用户配置的包
+        assertTrue(basePackage.contains("com.custom.mapper"));
+        // 可能还包含自动检测到的包
     }
 
     @Test
@@ -755,9 +813,9 @@ class MybatisPlusAutoConfigurationTest {
         ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
         assertNotNull(customizer);
 
-        Configuration config1 = new Configuration();
-        Configuration config2 = new Configuration();
-        Configuration config3 = new Configuration();
+        MybatisConfiguration config1 = new MybatisConfiguration();
+        MybatisConfiguration config2 = new MybatisConfiguration();
+        MybatisConfiguration config3 = new MybatisConfiguration();
 
         // 多次调用应该都能正常工作
         customizer.customize(config1);

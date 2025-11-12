@@ -11,22 +11,32 @@ import java.util.Set;
 /**
  * MyBatis 配置属性。
  */
-@ConfigurationProperties(prefix = "mimir.mybatis")
+@ConfigurationProperties(prefix = "mimir.boot.mybatis")
 public class MybatisProperties {
 
-    /** 默认 Mapper 扫描包 */
+    /**
+     * 默认 Mapper 扫描包
+     */
     public static final String DEFAULT_MAPPER_PACKAGE = "com.yggdrasil.labs.**.mapper";
 
-    /** Mapper 扫描包，支持多个 */
+    /**
+     * Mapper 扫描包，支持多个
+     */
     private List<String> mapperPackages = new ArrayList<>();
 
-    /** 是否启用控制台SQL日志（优先根据环境自动判断，可被此配置覆盖） */
+    /**
+     * 是否启用控制台SQL日志（优先根据环境自动判断，可被此配置覆盖）
+     */
     private Boolean enableSqlStdout;
 
-    /** 是否启用 JSON 结构化 SQL 日志拦截器 */
+    /**
+     * 是否启用 JSON 结构化 SQL 日志拦截器
+     */
     private Boolean enableJsonSqlLog;
 
-    /** 加解密密钥（Base64编码），未配置时自动生成（仅用于开发测试） */
+    /**
+     * 加解密密钥（Base64编码），未配置时自动生成（仅用于开发测试）
+     */
     private String cryptoKey;
 
     public List<String> getMapperPackages() {
