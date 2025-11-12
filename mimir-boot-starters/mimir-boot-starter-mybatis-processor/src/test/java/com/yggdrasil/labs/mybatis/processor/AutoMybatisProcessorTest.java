@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.tools.JavaFileObject;
 
-import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 
 /**
@@ -35,32 +34,45 @@ class AutoMybatisProcessorTest {
         JavaFileObject baseMapperStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.core.mapper.BaseMapper",
                 """
-                package com.baomidou.mybatisplus.core.mapper;
-                public interface BaseMapper<T> {}
-                """);
+                        package com.baomidou.mybatisplus.core.mapper;
+                        public interface BaseMapper<T> {}
+                        """);
 
         JavaFileObject iServiceStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.extension.service.IService",
                 """
-                package com.baomidou.mybatisplus.extension.service;
-                public interface IService<T> {}
-                """);
+                        package com.baomidou.mybatisplus.extension.service;
+                        public interface IService<T> {}
+                        """);
 
         JavaFileObject serviceImplStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
                 """
-                package com.baomidou.mybatisplus.extension.service.impl;
-                public class ServiceImpl<M, T> {}
-                """);
+                        package com.baomidou.mybatisplus.extension.service.impl;
+                        public class ServiceImpl<M, T> {}
+                        """);
+
+        // 提供 @Mapper 注解的桩类型
+        JavaFileObject mapperAnnotationStub = JavaFileObjects.forSourceString(
+                "org.apache.ibatis.annotations.Mapper",
+                """
+                        package org.apache.ibatis.annotations;
+                        public @interface Mapper {}
+                        """);
 
         Compilation compilation = Compiler.javac()
                 .withClasspathFrom(this.getClass().getClassLoader())
                 .withProcessors(new AutoMybatisProcessor())
-                .compile(entity, baseMapperStub, iServiceStub, serviceImplStub);
+                .compile(entity, baseMapperStub, iServiceStub, serviceImplStub, mapperAnnotationStub);
 
         assertThat(compilation).succeeded();
 
-        // 断言生成的类型存在
+        // 断言生成的类型存在，且包含 @Mapper 注解
+        assertThat(compilation)
+                .generatedSourceFile("demo.entity.mapper.UserMapper")
+                .contentsAsUtf8String()
+                .contains("@Mapper");
+
         assertThat(compilation)
                 .generatedSourceFile("demo.entity.mapper.UserMapper")
                 .contentsAsUtf8String()
@@ -96,38 +108,51 @@ class AutoMybatisProcessorTest {
         JavaFileObject baseMapperStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.core.mapper.BaseMapper",
                 """
-                package com.baomidou.mybatisplus.core.mapper;
-                public interface BaseMapper<T> {}
-                """);
+                        package com.baomidou.mybatisplus.core.mapper;
+                        public interface BaseMapper<T> {}
+                        """);
 
         JavaFileObject iServiceStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.extension.service.IService",
                 """
-                package com.baomidou.mybatisplus.extension.service;
-                public interface IService<T> {}
-                """);
+                        package com.baomidou.mybatisplus.extension.service;
+                        public interface IService<T> {}
+                        """);
 
         JavaFileObject serviceImplStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
                 """
-                package com.baomidou.mybatisplus.extension.service.impl;
-                public class ServiceImpl<M, T> {}
-                """);
+                        package com.baomidou.mybatisplus.extension.service.impl;
+                        public class ServiceImpl<M, T> {}
+                        """);
+
+        // 提供 @Mapper 注解的桩类型
+        JavaFileObject mapperAnnotationStub = JavaFileObjects.forSourceString(
+                "org.apache.ibatis.annotations.Mapper",
+                """
+                        package org.apache.ibatis.annotations;
+                        public @interface Mapper {}
+                        """);
 
         Compilation compilation = Compiler.javac()
                 .withClasspathFrom(this.getClass().getClassLoader())
                 .withProcessors(new AutoMybatisProcessor())
-                .compile(entity, baseMapperStub, iServiceStub, serviceImplStub);
+                .compile(entity, baseMapperStub, iServiceStub, serviceImplStub, mapperAnnotationStub);
 
         assertThat(compilation).succeeded();
 
-        // 断言生成的类型存在，且类名去掉了 DO 后缀
+        // 断言生成的类型存在，且类名去掉了 DO 后缀，且包含 @Mapper 注解
         // 验证生成的类名是 UserMapper（不是 UserDOMapper）
         assertThat(compilation)
                 .generatedSourceFile("demo.entity.mapper.UserMapper")
                 .contentsAsUtf8String()
                 .contains("interface UserMapper");
-        
+
+        assertThat(compilation)
+                .generatedSourceFile("demo.entity.mapper.UserMapper")
+                .contentsAsUtf8String()
+                .contains("@Mapper");
+
         // 验证实体类引用保持原样（UserDO），JavaPoet 可能使用导入或完全限定名
         assertThat(compilation)
                 .generatedSourceFile("demo.entity.mapper.UserMapper")

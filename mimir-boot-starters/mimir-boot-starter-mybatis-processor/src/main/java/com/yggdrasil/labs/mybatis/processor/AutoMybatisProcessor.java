@@ -64,8 +64,12 @@ public class AutoMybatisProcessor extends AbstractProcessor {
 
         // Mapper: interface XxxMapper extends BaseMapper<Xxx>
         ClassName baseMapper = ClassName.get("com.baomidou.mybatisplus.core.mapper", "BaseMapper");
+        ClassName mapperAnnotation = ClassName.get("org.apache.ibatis.annotations", "Mapper");
+        AnnotationSpec mapperAnno = AnnotationSpec.builder(mapperAnnotation).build();
+        
         TypeSpec mapperType = TypeSpec.interfaceBuilder(mapperName)
             .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(mapperAnno)
             .addSuperinterface(ParameterizedTypeName.get(baseMapper, entityClass))
             .build();
         writeJavaFile(mapperPkg, mapperType);
