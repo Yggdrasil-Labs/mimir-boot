@@ -3,8 +3,8 @@
   "packages": {
     ".": {
       "release-type": "java",
-      "package-name": "mimir-boot",
       "changelog-path": "CHANGELOG.md",
+      "include-v-in-tag": true,
       "extra-files": [
         {
           "type": "xml",
