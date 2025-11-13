@@ -195,6 +195,8 @@
                         <pomElements>
                             <dependencies>resolve</dependencies>
                             <dependencyManagement>resolve</dependencyManagement>
+                            <pluginManagement>resolve</pluginManagement>
+                            <profiles>resolve</profiles>
                         </pomElements>
                     </configuration>
                     <executions>
@@ -294,104 +296,126 @@
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
 
-            <!-- JaCoCo Plugin -->
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-            </plugin>
-
-            <!-- Flatten Plugin -->
+            <!-- Flatten Plugin - 所有模块都需要版本管理 -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Spotless Plugin -->
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-            </plugin>
         </plugins>
     </build>
 
     <!-- Maven Profiles -->
     <profiles>
-        <!-- 开发环境 -->
+        <!-- 1. dev - 默认开发环境，快速构建，不检查覆盖率 -->
         <profile>
             <id>dev</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <spring.profiles.active>dev</spring.profiles.active>
                 <maven.test.skip>false</maven.test.skip>
-            </properties>
-        </profile>
-
-        <!-- 测试环境 -->
-        <profile>
-            <id>test</id>
-            <properties>
-                <spring.profiles.active>test</spring.profiles.active>
-                <maven.test.skip>false</maven.test.skip>
-            </properties>
-        </profile>
-
-        <!-- 生产环境 -->
-        <profile>
-            <id>prod</id>
-            <properties>
-                <spring.profiles.active>prod</spring.profiles.active>
-                <maven.test.skip>true</maven.test.skip>
-            </properties>
-        </profile>
-
-        <!-- 跳过测试 -->
-        <profile>
-            <id>skip-tests</id>
-            <properties>
-                <maven.test.skip>true</maven.test.skip>
-                <maven.failsafe.skip>true</maven.failsafe.skip>
-            </properties>
-        </profile>
-
-        <!-- 代码质量检查 -->
-        <profile>
-            <id>quality</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- 性能测试 -->
-        <profile>
-            <id>performance</id>
-            <properties>
-                <maven.test.skip>false</maven.test.skip>
-                <maven.failsafe.skip>false</maven.failsafe.skip>
+                <jacoco.skip>true</jacoco.skip>
+                <spotless.check.skip>true</spotless.check.skip>
             </properties>
             <build>
                 <plugins>
+                    <!-- 禁用 JaCoCo 覆盖率检查 -->
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
                         <configuration>
-                            <includes>
-                                <include>**/*PerformanceTest.java</include>
-                                <include>**/*LoadTest.java</include>
-                            </includes>
+                            <skip>true</skip>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
 
+        <!-- 2. precheck - 提交前检查：单测与覆盖率 -->
+        <profile>
+            <id>precheck</id>
+            <properties>
+                <maven.test.skip>false</maven.test.skip>
+                <jacoco.skip>false</jacoco.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- JaCoCo Plugin - 代码覆盖率检查 -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 
+        <!-- 3. ci - CI 流水线严格门禁：格式、覆盖率、lint -->
+        <profile>
+            <id>ci</id>
+            <properties>
+                <maven.test.skip>false</maven.test.skip>
+                <jacoco.skip>false</jacoco.skip>
+                <spotless.check.skip>false</spotless.check.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- JaCoCo Plugin - 代码覆盖率检查 -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                    </plugin>
+                    <!-- Spotless Plugin - 代码格式化检查 -->
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>check</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Maven Enforcer Plugin - 依赖和规则检查 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>enforce</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- 4. prod - 生产发布：打包、上传仓库 -->
+        <profile>
+            <id>prod</id>
+            <properties>
+                <maven.test.skip>true</maven.test.skip>
+                <jacoco.skip>true</jacoco.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- 禁用 JaCoCo -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <!-- Maven 仓库配置 -->
