@@ -61,15 +61,32 @@ jobs:
             // 如果没有从 release-please 获取到，尝试查找现有的 release PR
             if (!prNumber) {
               console.log('No PR number from release-please, searching for existing release PR...');
-              const { data: prs } = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
-                sort: 'created',
-                direction: 'desc',
-                per_page: 1
-              });
+              // simple release type 使用不同的分支格式，尝试两种格式
+              let prs = [];
+              try {
+                const result = await github.rest.pulls.list({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'open',
+                  head: `${context.repo.owner}:release-please--branches--main`,
+                  sort: 'created',
+                  direction: 'desc',
+                  per_page: 1
+                });
+                prs = result.data;
+              } catch (e) {
+                // 如果 simple 格式找不到，尝试 java 格式
+                const result = await github.rest.pulls.list({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'open',
+                  head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
+                  sort: 'created',
+                  direction: 'desc',
+                  per_page: 1
+                });
+                prs = result.data;
+              }
               
               if (prs.length > 0) {
                 prNumber = prs[0].number.toString();
@@ -190,15 +207,32 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
-              sort: 'created',
-              direction: 'desc',
-              per_page: 1
-            });
+            // simple release type 使用不同的分支格式，尝试两种格式
+            let prs = [];
+            try {
+              const result = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:release-please--branches--main`,
+                sort: 'created',
+                direction: 'desc',
+                per_page: 1
+              });
+              prs = result.data;
+            } catch (e) {
+              // 如果 simple 格式找不到，尝试 java 格式
+              const result = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
+                sort: 'created',
+                direction: 'desc',
+                per_page: 1
+              });
+              prs = result.data;
+            }
             
             if (prs.length > 0) {
               console.log(`ℹ️  Release PR already exists: #${prs[0].number}`);
@@ -225,15 +259,32 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
-              sort: 'created',
-              direction: 'desc',
-              per_page: 1
-            });
+            // simple release type 使用不同的分支格式，尝试两种格式
+            let prs = [];
+            try {
+              const result = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:release-please--branches--main`,
+                sort: 'created',
+                direction: 'desc',
+                per_page: 1
+              });
+              prs = result.data;
+            } catch (e) {
+              // 如果 simple 格式找不到，尝试 java 格式
+              const result = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
+                sort: 'created',
+                direction: 'desc',
+                per_page: 1
+              });
+              prs = result.data;
+            }
             
             if (prs.length > 0) {
               await github.rest.issues.addLabels({

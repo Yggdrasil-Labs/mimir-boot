@@ -2,7 +2,8 @@
   "bootstrap-sha": "42c8c5cb94a21f7f8d376f4e0e6a58a797894938",
   "packages": {
     ".": {
-      "release-type": "java",
+      "release-type": "simple",
+      "package-name": "mimir-boot",
       "changelog-path": "CHANGELOG.md",
       "include-v-in-tag": true,
       "extra-files": [
