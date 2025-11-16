@@ -54,7 +54,10 @@ jobs:
               
               const mergedAt = new Date(pr.merged_at);
               const isRecent = mergedAt > fiveMinutesAgo;
-              const isReleasePR = pr.head.ref.startsWith('release-please--branches--main--components--') ||
+              // 支持两种分支格式：
+              // 1. simple release type: release-please--branches--main
+              // 2. java release type: release-please--branches--main--components--*
+              const isReleasePR = pr.head.ref.startsWith('release-please--branches--main') ||
                                 pr.title.match(/chore\(main\): release/) ||
                                 pr.title.includes('release');
               
@@ -93,30 +96,65 @@ jobs:
           # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
           ref: ${{ needs.check-release-pr-merged.outputs.merge_commit_sha || 'main' }}
 
-      - name: Extract version from pom.xml
+      - name: Extract version from manifest
         id: get_version
         run: |
-          # 从 pom.xml 中提取版本号
-          if [ -f "pom.xml" ]; then
-            # 提取 <revision> 标签中的版本号（使用 sed，更兼容）
-            VERSION=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml | head -1)
-            if [ -z "$VERSION" ]; then
-              # 如果没有 revision，尝试提取 <version>
-              VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' pom.xml | head -1)
+          echo "=== Extracting Version ==="
+          echo "Current commit SHA: $(git rev-parse HEAD)"
+          echo "Current branch: $(git branch --show-current)"
+          
+          # 优先从 .release-please-manifest.json 中提取版本号（Release Please 的权威版本源）
+          if [ -f ".github/.release-please-manifest.json" ]; then
+            echo "Manifest file exists, reading..."
+            cat .github/.release-please-manifest.json
+            VERSION=$(jq -r '.["."]' .github/.release-please-manifest.json 2>/dev/null || echo "")
+            if [ -n "$VERSION" ] && [ "$VERSION" != "null" ]; then
+              echo "✓ Extracted version from manifest: $VERSION"
+            else
+              echo "⚠ Manifest exists but version is empty or null: '$VERSION'"
             fi
-            if [ -z "$VERSION" ]; then
-              echo "Error: Could not extract version from pom.xml"
-              echo "pom.xml content (first 50 lines):"
-              head -50 pom.xml
-              exit 1
-            fi
-            echo "Extracted version from pom.xml: $VERSION"
           else
-            echo "Error: pom.xml not found"
+            echo "⚠ Manifest file not found at .github/.release-please-manifest.json"
+          fi
+          
+          # 如果从 manifest 获取失败，尝试从 CHANGELOG.md 中提取最新版本
+          if [ -z "$VERSION" ] || [ "$VERSION" == "null" ]; then
+            if [ -f "CHANGELOG.md" ]; then
+              # 从 CHANGELOG 中提取第一个版本号（格式：## [1.1.0] 或 ## 1.1.0）
+              VERSION=$(grep -m 1 -E '^## \[?[0-9]+\.[0-9]+\.[0-9]+\]?' CHANGELOG.md | sed -E 's/^## \[?([0-9]+\.[0-9]+\.[0-9]+)\]?.*/\1/' | head -1)
+              if [ -n "$VERSION" ]; then
+                echo "Extracted version from CHANGELOG: $VERSION"
+              fi
+            fi
+          fi
+          
+          # 如果还是失败，回退到从 pom.xml 中提取（兼容旧版本）
+          if [ -z "$VERSION" ] || [ "$VERSION" == "null" ]; then
+            if [ -f "pom.xml" ]; then
+              # 提取 <revision> 标签中的版本号（使用 sed，更兼容）
+              VERSION=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml | head -1)
+              if [ -z "$VERSION" ]; then
+                # 如果没有 revision，尝试提取 <version>
+                VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' pom.xml | head -1)
+              fi
+              if [ -n "$VERSION" ]; then
+                echo "Extracted version from pom.xml: $VERSION"
+                # 移除 -SNAPSHOT 后缀（如果有）
+                VERSION=${VERSION%-SNAPSHOT}
+              fi
+            fi
+          fi
+          
+          if [ -z "$VERSION" ] || [ "$VERSION" == "null" ]; then
+            echo "Error: Could not extract version from manifest, CHANGELOG, or pom.xml"
+            echo "Manifest content:"
+            cat .github/.release-please-manifest.json 2>/dev/null || echo "Manifest not found"
+            echo "CHANGELOG first 10 lines:"
+            head -10 CHANGELOG.md 2>/dev/null || echo "CHANGELOG not found"
             exit 1
           fi
           
-          # 移除 -SNAPSHOT 后缀（如果有）
+          # 移除 -SNAPSHOT 后缀（如果有，虽然 manifest 中通常不会有）
           VERSION=${VERSION%-SNAPSHOT}
           
           # 生成 tag 名称（确保以 v 开头）
