@@ -29,10 +29,10 @@
         <maven.clean.plugin.version>3.4.0</maven.clean.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
         <maven.install.plugin.version>3.1.1</maven.install.plugin.version>
-        <maven.deploy.plugin.version>3.1.2</maven.deploy.plugin.version>
+        <maven.deploy.plugin.version>3.1.4</maven.deploy.plugin.version>
         <maven.versions.plugin.version>2.19.1</maven.versions.plugin.version>
         <maven.dependency.plugin.version>3.9.0</maven.dependency.plugin.version>
-        <maven.spring.boot.plugin.version>3.3.13</maven.spring.boot.plugin.version>
+        <maven.spring.boot.plugin.version>3.5.7</maven.spring.boot.plugin.version>
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
