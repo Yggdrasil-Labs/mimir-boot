@@ -1,0 +1,31 @@
+# 测试环境配置
+spring:
+  # 应用配置
+  application:
+    name: mimir-boot-test
+
+  # 数据源配置（测试环境通常使用内存数据库或 Testcontainers）
+  datasource:
+    # 可以根据需要配置测试数据库
+    # url: jdbc:h2:mem:testdb
+    # driver-class-name: org.h2.Driver
+    # username: sa
+    # password:
+
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.yggdrasil.labs: DEBUG
+    org.springframework: WARN
+    org.hibernate: DEBUG
+

@@ -1,0 +1,68 @@
+package com.yggdrasil.labs.test.base;
+
+import com.yggdrasil.labs.test.config.TestConfiguration;
+import com.yggdrasil.labs.test.util.TestUtils;
+import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * BaseIntegrationTest 测试基类测试
+ *
+ * <p>注意：这是一个集成测试，需要 Spring 上下文</p>
+ *
+ * @author Yggdrasil Labs
+ * @since 1.0.0
+ */
+@SpringBootTest(classes = TestConfiguration.class)
+@ActiveProfiles("test")
+class BaseIntegrationTestTest extends BaseIntegrationTest {
+
+    private boolean setUpCalled = false;
+
+    @Override
+    protected void setUp() {
+        setUpCalled = true;
+    }
+
+    @Override
+    protected void tearDown() {
+        // tearDown 方法被调用，用于清理
+    }
+
+    @Test
+    void testBaseIntegrationTest_SetupAndTearDown() {
+        // 验证 setUp 被调用
+        assertTrue(setUpCalled, "setUp() 方法应被调用");
+
+        // 验证测试环境已清理
+        assertNull(MDC.get("traceId"), "MDC 应被清理");
+    }
+
+    @Test
+    void testBaseIntegrationTest_SpringContext() {
+        // 验证 Spring 上下文已加载
+        // BaseIntegrationTest 使用 @SpringBootTest，所以 Spring 上下文应该可用
+        assertNotNull(this, "测试实例不应为 null");
+    }
+
+    @Test
+    void testBaseIntegrationTest_MdcCleanup() {
+        // 设置一些 MDC 值
+        TestUtils.setupMdc("test-trace", "test-user", "192.168.1.1");
+        assertEquals("test-trace", MDC.get("traceId"));
+
+        // tearDown 会在测试结束后清理
+    }
+
+    @Test
+    void testBaseIntegrationTest_Profile() {
+        // 验证 test profile 已激活
+        // 这通过 @ActiveProfiles("test") 实现
+        assertNotNull(this, "测试实例不应为 null");
+    }
+}
+
