@@ -1,13 +1,13 @@
 package com.yggdrasil.labs.web.interceptor;
 
 import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class TraceInterceptorTest {
+class TraceInterceptorTest extends BaseUnitTest {
 
     private TraceInterceptor traceInterceptor;
 
@@ -38,18 +38,17 @@ class TraceInterceptorTest {
     @Mock
     private Object handler;
 
+    @Override
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    protected void setUp() {
+        super.setUp();
         traceInterceptor = new TraceInterceptor();
-        // 清理 MDC
-        org.slf4j.MDC.clear();
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
-        // 清理 MDC
-        org.slf4j.MDC.clear();
+    protected void tearDown() {
+        super.tearDown();
     }
 
     /**

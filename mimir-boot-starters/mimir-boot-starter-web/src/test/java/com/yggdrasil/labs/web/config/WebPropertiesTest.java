@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.web.config;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -20,12 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class WebPropertiesTest {
+class WebPropertiesTest extends BaseUnitTest {
 
     private WebProperties webProperties;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         webProperties = new WebProperties();
     }
 

@@ -1,12 +1,12 @@
 package com.yggdrasil.labs.web.advice;
 
 import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.web.config.WebProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class ResponseBodyEnhancerTest {
+class ResponseBodyEnhancerTest extends BaseUnitTest {
 
     private ResponseBodyEnhancer responseBodyEnhancer;
 
@@ -51,24 +51,17 @@ class ResponseBodyEnhancerTest {
     @Mock
     private ServerHttpResponse response;
 
+    @Override
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-
-        // 设置默认配置
-        when(webProperties.getResponse()).thenReturn(responseConfig);
-        when(responseConfig.isEnabled()).thenReturn(true);
-        when(responseConfig.isAutoFillTraceId()).thenReturn(true);
-
+    public void setUp() {
+        super.setUp();
         responseBodyEnhancer = new ResponseBodyEnhancer(webProperties);
-
-        // 清理 MDC
-        org.slf4j.MDC.clear();
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
-        org.slf4j.MDC.clear();
+    public void tearDown() {
+        super.tearDown();
     }
 
     /**
@@ -76,6 +69,10 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testSupportsWithRType() throws Exception {
+        // 设置配置：只需要 isEnabled()，不需要 isAutoFillTraceId()
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isEnabled()).thenReturn(true);
+
         // 使用真实的 @RestController 类进行测试
         @RestController
         class TestController {
@@ -98,6 +95,10 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testSupportsWithNonRType() throws Exception {
+        // 设置配置：只需要 isEnabled()，不需要 isAutoFillTraceId()
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isEnabled()).thenReturn(true);
+
         @RestController
         class TestController {
             public String test() {
@@ -119,6 +120,7 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testSupportsWhenDisabled() throws Exception {
+        when(webProperties.getResponse()).thenReturn(responseConfig);
         when(responseConfig.isEnabled()).thenReturn(false);
 
         @RestController
@@ -142,6 +144,10 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testBeforeBodyWriteFillsTraceId() throws Exception {
+        // 设置配置：只需要 isAutoFillTraceId()，不需要 isEnabled()
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isAutoFillTraceId()).thenReturn(true);
+
         // 在 MDC 中设置 traceId
         String traceId = "test-trace-id-123";
         org.slf4j.MDC.put("traceId", traceId);
@@ -167,6 +173,10 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testBeforeBodyWriteSkipsExistingTraceId() throws Exception {
+        // 设置配置：只需要 isAutoFillTraceId()，不需要 isEnabled()
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isAutoFillTraceId()).thenReturn(true);
+
         // 在 MDC 中设置 traceId
         org.slf4j.MDC.put("traceId", "mdc-trace-id");
 
@@ -210,6 +220,7 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testBeforeBodyWriteWhenAutoFillDisabled() throws Exception {
+        when(webProperties.getResponse()).thenReturn(responseConfig);
         when(responseConfig.isAutoFillTraceId()).thenReturn(false);
 
         org.slf4j.MDC.put("traceId", "test-trace-id");
@@ -235,6 +246,10 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testBeforeBodyWriteUsesRequestId() throws Exception {
+        // 设置配置：只需要 isAutoFillTraceId()，不需要 isEnabled()
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isAutoFillTraceId()).thenReturn(true);
+
         // MDC 中没有 traceId，但有 requestId
         String requestId = "request-id-123";
         org.slf4j.MDC.put("requestId", requestId);
@@ -259,6 +274,10 @@ class ResponseBodyEnhancerTest {
      */
     @Test
     void testBeforeBodyWriteWithNoTraceId() {
+        // 设置配置：只需要 isAutoFillTraceId()，不需要 isEnabled()
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isAutoFillTraceId()).thenReturn(true);
+
         // MDC 为空
         R<String> responseBody = R.success("test data");
 

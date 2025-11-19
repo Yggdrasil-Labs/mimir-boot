@@ -1,12 +1,12 @@
 package com.yggdrasil.labs.web.interceptor;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class WebInterceptorTest {
+class WebInterceptorTest extends BaseUnitTest {
 
     private WebInterceptor webInterceptor;
 
@@ -37,18 +37,17 @@ class WebInterceptorTest {
     @Mock
     private Object handler;
 
+    @Override
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    protected void setUp() {
+        super.setUp();
         webInterceptor = new WebInterceptor();
-        // 清理 MDC
-        org.slf4j.MDC.clear();
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
-        // 清理 MDC
-        org.slf4j.MDC.clear();
+    protected void tearDown() {
+        super.tearDown();
     }
 
     /**
@@ -57,7 +56,7 @@ class WebInterceptorTest {
     @Test
     void testPreHandleWithXForwardedFor() {
         when(request.getHeader("X-Forwarded-For")).thenReturn("192.168.1.100");
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        // getRemoteAddr() 不会被调用，因为 X-Forwarded-For 有值
 
         boolean result = webInterceptor.preHandle(request, response, handler);
 
@@ -71,7 +70,7 @@ class WebInterceptorTest {
     @Test
     void testPreHandleWithMultipleIpsInXForwardedFor() {
         when(request.getHeader("X-Forwarded-For")).thenReturn("192.168.1.100, 10.0.0.1, 172.16.0.1");
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        // getRemoteAddr() 不会被调用，因为 X-Forwarded-For 有值
 
         boolean result = webInterceptor.preHandle(request, response, handler);
 
@@ -86,7 +85,7 @@ class WebInterceptorTest {
     void testPreHandleWithXRealIp() {
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn("192.168.1.200");
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        // getRemoteAddr() 不会被调用，因为 X-Real-IP 有值
 
         boolean result = webInterceptor.preHandle(request, response, handler);
 
@@ -102,7 +101,7 @@ class WebInterceptorTest {
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn(null);
         when(request.getHeader("Proxy-Client-IP")).thenReturn("192.168.1.300");
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        // getRemoteAddr() 不会被调用，因为 Proxy-Client-IP 有值
 
         boolean result = webInterceptor.preHandle(request, response, handler);
 
@@ -119,7 +118,7 @@ class WebInterceptorTest {
         when(request.getHeader("X-Real-IP")).thenReturn(null);
         when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
         when(request.getHeader("WL-Proxy-Client-IP")).thenReturn("192.168.1.400");
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        // getRemoteAddr() 不会被调用，因为 WL-Proxy-Client-IP 有值
 
         boolean result = webInterceptor.preHandle(request, response, handler);
 

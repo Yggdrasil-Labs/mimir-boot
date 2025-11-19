@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.web.config;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.web.advice.ResponseBodyEnhancer;
 import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
 import com.yggdrasil.labs.web.interceptor.WebInterceptor;
@@ -21,13 +22,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class WebAutoConfigurationTest {
+class WebAutoConfigurationTest extends BaseUnitTest {
 
     private WebAutoConfiguration configuration;
     private WebProperties webProperties;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         webProperties = new WebProperties();
         configuration = new WebAutoConfiguration();
     }
