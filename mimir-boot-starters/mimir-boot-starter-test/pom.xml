@@ -96,6 +96,20 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- Jakarta Servlet API（用于 HttpServletRequest/Response/FilterChain mock） -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Logback Classic（用于日志测试工具类） -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Mimir Boot Common（用于测试工具类） -->
         <dependency>
             <groupId>com.yggdrasil.labs</groupId>

@@ -77,6 +77,70 @@ public final class TestUtils {
                 random.nextInt(256));
     }
 
+    // ========== Web 测试数据生成 ==========
+
+    /**
+     * 生成随机 URI
+     *
+     * @return 随机 URI（格式：/api/resource/{id}）
+     */
+    public static String randomUri() {
+        return "/api/resource/" + ThreadLocalRandom.current().nextInt(1000, 9999);
+    }
+
+    /**
+     * 生成随机 URI（指定路径）
+     *
+     * @param path 路径前缀
+     * @return 随机 URI
+     */
+    public static String randomUri(String path) {
+        return path + "/" + ThreadLocalRandom.current().nextInt(1000, 9999);
+    }
+
+    /**
+     * 生成随机 User-Agent
+     *
+     * @return 随机 User-Agent
+     */
+    public static String randomUserAgent() {
+        String[] userAgents = {
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                "Apache-HttpClient/4.5",
+                "curl/7.68.0"
+        };
+        return userAgents[ThreadLocalRandom.current().nextInt(userAgents.length)];
+    }
+
+    /**
+     * 生成随机 HTTP 方法
+     *
+     * @return 随机 HTTP 方法（GET, POST, PUT, DELETE, PATCH）
+     */
+    public static String randomHttpMethod() {
+        String[] methods = {"GET", "POST", "PUT", "DELETE", "PATCH"};
+        return methods[ThreadLocalRandom.current().nextInt(methods.length)];
+    }
+
+    /**
+     * 生成随机查询字符串
+     *
+     * @return 随机查询字符串（格式：key1=value1&key2=value2）
+     */
+    public static String randomQueryString() {
+        int paramCount = ThreadLocalRandom.current().nextInt(1, 4);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < paramCount; i++) {
+            if (i > 0) {
+                sb.append("&");
+            }
+            sb.append("key").append(i + 1).append("=value").append(i + 1);
+        }
+        return sb.toString();
+    }
+
     // ========== MDC 上下文管理 ==========
 
     /**
