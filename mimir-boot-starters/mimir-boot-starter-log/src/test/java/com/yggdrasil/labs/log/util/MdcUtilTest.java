@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.log.util;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.TestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,10 +16,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MdcUtilTest {
+class MdcUtilTest extends BaseUnitTest {
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         MdcUtil.clear();
     }
 

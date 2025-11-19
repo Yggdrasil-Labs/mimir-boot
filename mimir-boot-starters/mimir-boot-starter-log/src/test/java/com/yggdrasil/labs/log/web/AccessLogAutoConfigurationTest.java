@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.log.web;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,12 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class AccessLogAutoConfigurationTest {
+class AccessLogAutoConfigurationTest extends BaseUnitTest {
 
     private AccessLogAutoConfiguration configuration;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         AccessLogProperties properties = new AccessLogProperties();
         configuration = new AccessLogAutoConfiguration(properties);
     }

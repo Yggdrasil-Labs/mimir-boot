@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.log.config;
 
 import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,12 +17,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class LogMaskPropertiesTest {
+class LogMaskPropertiesTest extends BaseUnitTest {
 
     private LogMaskProperties properties;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         properties = new LogMaskProperties();
     }
 

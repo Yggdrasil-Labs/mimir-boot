@@ -2,6 +2,7 @@ package com.yggdrasil.labs.log.config;
 
 import ch.qos.logback.classic.LoggerContext;
 import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,14 +21,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class LogMaskAutoConfigurationTest {
+class LogMaskAutoConfigurationTest extends BaseUnitTest {
 
     private LogMaskAutoConfiguration configuration;
     private LoggerContext loggerContext;
     private GenericApplicationContext applicationContext;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         // 清理之前的配置
         loggerContext.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, null);
@@ -38,8 +41,9 @@ class LogMaskAutoConfigurationTest {
         applicationContext.refresh();
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
+    public void tearDown() {
         if (applicationContext != null) {
             applicationContext.close();
         }
@@ -47,6 +51,7 @@ class LogMaskAutoConfigurationTest {
         loggerContext.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, null);
         loggerContext.putProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY, null);
         loggerContext.putProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, null);
+        super.tearDown();
     }
 
     /**

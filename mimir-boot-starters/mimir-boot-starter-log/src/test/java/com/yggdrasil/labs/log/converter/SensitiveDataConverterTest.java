@@ -2,6 +2,7 @@ package com.yggdrasil.labs.log.converter;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,13 +23,15 @@ import static org.mockito.Mockito.when;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class SensitiveDataConverterTest {
+class SensitiveDataConverterTest extends BaseUnitTest {
 
     private SensitiveDataConverter converter;
     private LoggerContext context;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         converter = new SensitiveDataConverter();
         // 设置 Logback context
         context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
@@ -49,8 +52,10 @@ class SensitiveDataConverterTest {
         }
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
+    public void tearDown() {
+        super.tearDown();
         SensitiveDataConverter.clearCustomPatterns();
         SensitiveDataConverter.reloadConfig();
         // 清理系统属性

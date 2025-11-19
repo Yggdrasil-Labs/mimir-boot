@@ -5,6 +5,11 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
+import com.yggdrasil.labs.test.util.FilterChainMockBuilder;
+import com.yggdrasil.labs.test.util.HttpServletRequestMockBuilder;
+import com.yggdrasil.labs.test.util.LogTestUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,11 +17,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * 访问日志过滤器测试
@@ -25,38 +30,27 @@ import static org.mockito.Mockito.when;
  * @since 1.0.0
  */
 @SuppressWarnings("deprecation")
-class AccessLogFilterTest {
+class AccessLogFilterTest extends BaseUnitTest {
 
     private AccessLogFilter filter;
     private ListAppender<ILoggingEvent> listAppender;
     private Logger accessLogger;
 
+    @Override
     @BeforeEach
-    void setUp() {
-        // 创建过滤器，设置慢接口阈值为 1000ms
+    public void setUp() {
+        super.setUp();
         filter = new AccessLogFilter(1000);
-
-        // 设置访问日志的 appender
+        listAppender = LogTestUtils.setupLogger("access.log");
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         accessLogger = context.getLogger("access.log");
-
-        listAppender = new ListAppender<>();
-        listAppender.setContext(context);
-        listAppender.start();
-        accessLogger.addAppender(listAppender);
-        accessLogger.setLevel(Level.ALL);
-        accessLogger.setAdditive(false);
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
-        if (accessLogger != null && listAppender != null) {
-            accessLogger.detachAppender(listAppender);
-        }
-        if (listAppender != null) {
-            listAppender.stop();
-        }
-        listAppender.list.clear();
+    public void tearDown() {
+        LogTestUtils.cleanupLogger(accessLogger, listAppender);
+        super.tearDown();
     }
 
     /**
@@ -64,25 +58,26 @@ class AccessLogFilterTest {
      */
     @Test
     void testSuccessRequest() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
-        FilterChain chain = mock(FilterChain.class);
-
-        when(request.getRequestURI()).thenReturn("/api/user/123");
-        when(request.getQueryString()).thenReturn(null);
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(200);
+        HttpServletRequest request = HttpServletRequestMockBuilder.create()
+                .uri("/api/user/123")
+                .method("GET")
+                .userAgent("Mozilla/5.0")
+                .remoteAddr("192.168.1.100")
+                .defaultIpHeaders()
+                .build();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = FilterChainMockBuilder.create()
+                .statusCode(200)
+                .build();
 
         filter.doFilter(request, response, chain);
 
-        assertEquals(1, listAppender.list.size());
+        AssertUtils.assertLogSize(listAppender, 1);
         ILoggingEvent event = listAppender.list.get(0);
-        assertEquals(Level.INFO, event.getLevel());
-        assertTrue(event.getFormattedMessage().contains("Status=[200]"));
-        assertTrue(event.getFormattedMessage().contains("GET"));
-        assertTrue(event.getFormattedMessage().contains("/api/user/123"));
+        AssertUtils.assertLogLevel(event, Level.INFO);
+        AssertUtils.assertLogStatus(event, 200);
+        AssertUtils.assertLogContains(event, "GET");
+        AssertUtils.assertLogContains(event, "/api/user/123");
     }
 
     /**
@@ -91,7 +86,7 @@ class AccessLogFilterTest {
     @Test
     void testClientErrorRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/user/999");
@@ -99,14 +94,26 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(404);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(404);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
-        assertEquals(Level.WARN, event.getLevel());
-        assertTrue(event.getFormattedMessage().contains("Status=[404]"));
+        String message = event.getFormattedMessage();
+        assertTrue(message.contains("Status=[404]"),
+                "日志消息应该包含 Status=[404]，但实际是: " + message);
+        assertEquals(Level.WARN, event.getLevel(),
+                "4xx 状态码应该记录为 WARN 级别，但实际是: " + event.getLevel() + ", 消息: " + message);
     }
 
     /**
@@ -115,7 +122,7 @@ class AccessLogFilterTest {
     @Test
     void testServerErrorRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/process");
@@ -123,7 +130,16 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(500);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(500);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -135,12 +151,11 @@ class AccessLogFilterTest {
 
     /**
      * 测试慢接口（超过阈值）
-     * 注意：因为使用了 ContentCachingResponseWrapper，实际测试中直接模拟耗时计算
      */
     @Test
     void testSlowRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/export");
@@ -148,14 +163,21 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("User-Agent")).thenReturn("Apache-HttpClient/4.5");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(200);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
-        // 直接调用，过滤器内部会计算耗时
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
+
         filter.doFilter(request, response, chain);
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
-        // 实际耗时很短，所以是 INFO 级别，这是正常行为
         assertTrue(event.getLevel() == Level.INFO || event.getLevel() == Level.WARN);
         assertTrue(event.getFormattedMessage().contains("Status=[200]"));
     }
@@ -166,7 +188,7 @@ class AccessLogFilterTest {
     @Test
     void testRequestWithQueryString() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/search");
@@ -174,7 +196,16 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(200);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -189,7 +220,7 @@ class AccessLogFilterTest {
     @Test
     void testRealIpFromXForwardedFor() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test");
@@ -197,8 +228,12 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(response.getStatus()).thenReturn(200);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -213,7 +248,7 @@ class AccessLogFilterTest {
     @Test
     void testRealIpFromXRealIp() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test");
@@ -222,8 +257,12 @@ class AccessLogFilterTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn("203.0.113.2");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(response.getStatus()).thenReturn(200);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -238,7 +277,7 @@ class AccessLogFilterTest {
     @Test
     void testRedirectRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/redirect");
@@ -246,7 +285,16 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(302);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(302);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -274,7 +322,7 @@ class AccessLogFilterTest {
             Level expectedLevel = expectedLevels[i];
 
             HttpServletRequest request = mock(HttpServletRequest.class);
-            HttpServletResponse response = mock(HttpServletResponse.class);
+            MockHttpServletResponse response = new MockHttpServletResponse();
             FilterChain chain = mock(FilterChain.class);
 
             when(request.getRequestURI()).thenReturn("/api/test");
@@ -282,7 +330,17 @@ class AccessLogFilterTest {
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
             when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-            when(response.getStatus()).thenReturn(statusCode);
+            when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+            when(request.getHeader("X-Real-IP")).thenReturn(null);
+            when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+            when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+            final int finalStatusCode = statusCode;
+            doAnswer(invocation -> {
+                HttpServletResponse resp = invocation.getArgument(1);
+                resp.setStatus(finalStatusCode);
+                return null;
+            }).when(chain).doFilter(any(), any());
 
             filter.doFilter(request, response, chain);
 
@@ -303,27 +361,32 @@ class AccessLogFilterTest {
     @Test
     void testLogInjectionPrevention() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
-        // 模拟恶意输入：URI 中包含换行符
         when(request.getRequestURI()).thenReturn("/api/test\n[伪造日志]");
         when(request.getQueryString()).thenReturn("param=value\r\n伪造的日志");
         when(request.getMethod()).thenReturn("GET");
-        // User-Agent 中也包含恶意字符
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0\r\n伪造的日志");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(200);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
         String message = event.getFormattedMessage();
-        
-        // 验证换行符被转义为 \n
+
         assertTrue(message.contains("\\n"), "换行符应该被转义为 \\n");
-        // 验证不存在未转义的换行符导致的额外日志行
         assertEquals(1, listAppender.list.size(), "应该只有一条日志，不应该被注入额外的日志条目");
     }
 
@@ -333,7 +396,7 @@ class AccessLogFilterTest {
     @Test
     void testTabCharacterInInput() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpServletResponse response = mock(HttpServletResponse.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test\twith\ttab");
@@ -341,15 +404,23 @@ class AccessLogFilterTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(response.getStatus()).thenReturn(200);
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
+
+        doAnswer(invocation -> {
+            HttpServletResponse resp = invocation.getArgument(1);
+            resp.setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
         String message = event.getFormattedMessage();
-        
-        // 验证制表符被转义为 \t
+
         assertTrue(message.contains("\\t"), "制表符应该被转义为 \\t");
     }
 }

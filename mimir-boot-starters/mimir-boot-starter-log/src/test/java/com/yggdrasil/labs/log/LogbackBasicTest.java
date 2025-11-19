@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,13 +28,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class LogbackBasicTest {
+class LogbackBasicTest extends BaseUnitTest {
 
     private Logger logger;
     private ListAppender<ILoggingEvent> listAppender;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         // 获取 LoggerContext
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 
@@ -49,8 +52,9 @@ class LogbackBasicTest {
         logger.setAdditive(false); // 避免继承父 logger 的 appender
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
+    public void tearDown() {
         // 清理 appender
         if (logger != null && listAppender != null) {
             logger.detachAppender(listAppender);
@@ -58,6 +62,7 @@ class LogbackBasicTest {
         if (listAppender != null) {
             listAppender.stop();
         }
+        super.tearDown();
     }
 
     /**

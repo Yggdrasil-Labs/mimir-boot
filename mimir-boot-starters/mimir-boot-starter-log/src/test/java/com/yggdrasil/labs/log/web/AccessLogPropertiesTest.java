@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.log.web;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class AccessLogPropertiesTest {
+class AccessLogPropertiesTest extends BaseUnitTest {
 
     @Test
     void testDefaultValues() {
