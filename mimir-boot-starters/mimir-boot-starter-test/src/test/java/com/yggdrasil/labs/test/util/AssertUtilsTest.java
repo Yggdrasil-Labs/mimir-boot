@@ -1,6 +1,14 @@
 package com.yggdrasil.labs.test.util;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -238,6 +246,164 @@ class AssertUtilsTest {
         List<String> list1 = Arrays.asList("a", "b", "c");
         List<String> list2 = Arrays.asList("a", "b", "c");
         AssertUtils.assertEquals(list1, list2);
+    }
+
+    // ========== 日志断言测试 ==========
+
+    private static final String TEST_LOGGER_NAME = "test.assert.logger";
+    private ListAppender<ILoggingEvent> appender;
+    private Logger logger;
+
+    @BeforeEach
+    void setUpLogger() {
+        appender = LogTestUtils.setupLogger(TEST_LOGGER_NAME);
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        logger = context.getLogger(TEST_LOGGER_NAME);
+    }
+
+    @AfterEach
+    void tearDownLogger() {
+        LogTestUtils.cleanupLogger(logger, appender);
+    }
+
+    @Test
+    void testAssertLogLevel_Success() {
+        logger.info("Test message");
+        ILoggingEvent event = appender.list.get(0);
+
+        assertDoesNotThrow(() -> {
+            AssertUtils.assertLogLevel(event, Level.INFO);
+            AssertUtils.assertLogLevel(event, Level.INFO, "自定义消息");
+        });
+    }
+
+    @Test
+    void testAssertLogLevel_Failure() {
+        logger.info("Test message");
+        ILoggingEvent event = appender.list.get(0);
+
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogLevel(event, Level.ERROR);
+        }, "日志级别不匹配应抛出异常");
+    }
+
+    @Test
+    void testAssertLogLevel_NullEvent() {
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogLevel(null, Level.INFO);
+        }, "null 事件应抛出异常");
+    }
+
+    @Test
+    void testAssertLogLevel_WithDifferentLevels() {
+        logger.trace("Trace");
+        logger.debug("Debug");
+        logger.info("Info");
+        logger.warn("Warn");
+        logger.error("Error");
+
+        AssertUtils.assertLogLevel(appender.list.get(0), Level.TRACE);
+        AssertUtils.assertLogLevel(appender.list.get(1), Level.DEBUG);
+        AssertUtils.assertLogLevel(appender.list.get(2), Level.INFO);
+        AssertUtils.assertLogLevel(appender.list.get(3), Level.WARN);
+        AssertUtils.assertLogLevel(appender.list.get(4), Level.ERROR);
+    }
+
+    @Test
+    void testAssertLogContains_Success() {
+        logger.info("Test message with Status=[200]");
+        ILoggingEvent event = appender.list.get(0);
+
+        assertDoesNotThrow(() -> {
+            AssertUtils.assertLogContains(event, "Status=[200]");
+            AssertUtils.assertLogContains(event, "Test message");
+            AssertUtils.assertLogContains(event, "Status=[200]", "自定义消息");
+        });
+    }
+
+    @Test
+    void testAssertLogContains_Failure() {
+        logger.info("Test message");
+        ILoggingEvent event = appender.list.get(0);
+
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogContains(event, "Not found");
+        }, "日志不包含指定文本应抛出异常");
+    }
+
+    @Test
+    void testAssertLogContains_NullEvent() {
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogContains(null, "test");
+        }, "null 事件应抛出异常");
+    }
+
+    @Test
+    void testAssertLogStatus_Success() {
+        logger.info("Request completed with Status=[200]");
+        ILoggingEvent event = appender.list.get(0);
+
+        assertDoesNotThrow(() -> {
+            AssertUtils.assertLogStatus(event, 200);
+            AssertUtils.assertLogStatus(event, 200, "自定义消息");
+        });
+    }
+
+    @Test
+    void testAssertLogStatus_Failure() {
+        logger.info("Request completed with Status=[200]");
+        ILoggingEvent event = appender.list.get(0);
+
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogStatus(event, 404);
+        }, "状态码不匹配应抛出异常");
+    }
+
+    @Test
+    void testAssertLogStatus_WithDifferentStatusCodes() {
+        logger.info("Status=[200]");
+        logger.warn("Status=[404]");
+        logger.error("Status=[500]");
+
+        AssertUtils.assertLogStatus(appender.list.get(0), 200);
+        AssertUtils.assertLogStatus(appender.list.get(1), 404);
+        AssertUtils.assertLogStatus(appender.list.get(2), 500);
+    }
+
+    @Test
+    void testAssertLogSize_Success() {
+        logger.info("Message 1");
+        logger.info("Message 2");
+        logger.info("Message 3");
+
+        assertDoesNotThrow(() -> {
+            AssertUtils.assertLogSize(appender, 3);
+            AssertUtils.assertLogSize(appender, 3, "自定义消息");
+        });
+    }
+
+    @Test
+    void testAssertLogSize_Failure() {
+        logger.info("Message 1");
+        logger.info("Message 2");
+
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogSize(appender, 3);
+        }, "日志数量不匹配应抛出异常");
+    }
+
+    @Test
+    void testAssertLogSize_NullAppender() {
+        assertThrows(AssertionError.class, () -> {
+            AssertUtils.assertLogSize(null, 0);
+        }, "null appender 应抛出异常");
+    }
+
+    @Test
+    void testAssertLogSize_EmptyList() {
+        assertDoesNotThrow(() -> {
+            AssertUtils.assertLogSize(appender, 0);
+        });
     }
 }
 

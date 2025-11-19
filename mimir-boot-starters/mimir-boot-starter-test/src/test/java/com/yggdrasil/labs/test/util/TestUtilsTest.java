@@ -39,7 +39,7 @@ class TestUtilsTest {
         assertNotNull(uuid1, "UUID 不应为 null");
         assertNotNull(uuid2, "UUID 不应为 null");
         assertNotEquals(uuid1, uuid2, "两次生成的 UUID 应该不同");
-        assertTrue(uuid1.length() > 0, "UUID 长度应大于 0");
+        assertFalse(uuid1.isEmpty(), "UUID 长度应大于 0");
         // UUID 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
         assertTrue(uuid1.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"),
                 "UUID 格式应正确");
@@ -74,7 +74,7 @@ class TestUtilsTest {
         String userId1 = TestUtils.randomUserId();
         // 等待一小段时间确保时间戳不同
         try {
-            Thread.sleep(1);
+            Thread.sleep(1); // NOSONAR - 测试需要确保时间戳不同
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -200,6 +200,114 @@ class TestUtilsTest {
                 + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
                 + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
         assertTrue(ipPattern.matcher(ip).matches(), "IP 地址格式应正确");
+    }
+
+    // ========== Web 测试数据生成 ==========
+
+    @Test
+    void testRandomUri() {
+        String uri1 = TestUtils.randomUri();
+        String uri2 = TestUtils.randomUri();
+
+        assertNotNull(uri1, "URI 不应为 null");
+        assertNotNull(uri2, "URI 不应为 null");
+        assertTrue(uri1.startsWith("/api/resource/"), "URI 应以 '/api/resource/' 开头");
+        assertTrue(uri2.startsWith("/api/resource/"), "URI 应以 '/api/resource/' 开头");
+        // URI 格式：/api/resource/{id}，id 在 1000-9999 范围内
+        String id1 = uri1.substring("/api/resource/".length());
+        String id2 = uri2.substring("/api/resource/".length());
+        int numId1 = Integer.parseInt(id1);
+        int numId2 = Integer.parseInt(id2);
+        assertTrue(numId1 >= 1000 && numId1 < 10000, "ID 应在 1000-9999 范围内");
+        assertTrue(numId2 >= 1000 && numId2 < 10000, "ID 应在 1000-9999 范围内");
+    }
+
+    @Test
+    void testRandomUri_WithPath() {
+        String path = "/api/users";
+        String uri1 = TestUtils.randomUri(path);
+        String uri2 = TestUtils.randomUri(path);
+
+        assertNotNull(uri1, "URI 不应为 null");
+        assertNotNull(uri2, "URI 不应为 null");
+        assertTrue(uri1.startsWith(path + "/"), "URI 应以指定路径开头");
+        assertTrue(uri2.startsWith(path + "/"), "URI 应以指定路径开头");
+    }
+
+    @Test
+    void testRandomUserAgent() {
+        String[] validUserAgents = {
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                "Apache-HttpClient/4.5",
+                "curl/7.68.0"
+        };
+
+        // 生成多个 User-Agent 进行测试
+        for (int i = 0; i < 50; i++) {
+            String userAgent = TestUtils.randomUserAgent();
+            assertNotNull(userAgent, "User-Agent 不应为 null");
+            boolean found = false;
+            for (String valid : validUserAgents) {
+                if (valid.equals(userAgent)) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(found, "User-Agent 应在有效列表中: " + userAgent);
+        }
+    }
+
+    @Test
+    void testRandomHttpMethod() {
+        String[] validMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"};
+
+        // 生成多个 HTTP 方法进行测试
+        for (int i = 0; i < 50; i++) {
+            String method = TestUtils.randomHttpMethod();
+            assertNotNull(method, "HTTP 方法不应为 null");
+            boolean found = false;
+            for (String valid : validMethods) {
+                if (valid.equals(method)) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(found, "HTTP 方法应在有效列表中: " + method);
+        }
+    }
+
+    @Test
+    void testRandomQueryString() {
+        // 生成多个查询字符串进行测试
+        for (int i = 0; i < 50; i++) {
+            String queryString = TestUtils.randomQueryString();
+            assertNotNull(queryString, "查询字符串不应为 null");
+            assertFalse(queryString.isEmpty(), "查询字符串不应为空");
+
+            // 验证格式：key1=value1&key2=value2&...
+            String[] params = queryString.split("&");
+            assertTrue(params.length >= 1 && params.length <= 3,
+                    "参数数量应在 1-3 之间: " + params.length);
+
+            for (String param : params) {
+                assertTrue(param.contains("="), "每个参数应包含 '=': " + param);
+                String[] keyValue = param.split("=", 2);
+                assertEquals(2, keyValue.length, "参数应包含 key 和 value: " + param);
+                assertTrue(keyValue[0].startsWith("key"), "key 应以 'key' 开头: " + keyValue[0]);
+                assertTrue(keyValue[1].startsWith("value"), "value 应以 'value' 开头: " + keyValue[1]);
+            }
+        }
+    }
+
+    @Test
+    void testRandomQueryString_Format() {
+        String queryString = TestUtils.randomQueryString();
+
+        // 验证格式正确性
+        assertTrue(queryString.matches("key\\d+=value\\d+(&key\\d+=value\\d+)*"),
+                "查询字符串格式应正确: " + queryString);
     }
 
     // ========== 测试环境清理 ==========
