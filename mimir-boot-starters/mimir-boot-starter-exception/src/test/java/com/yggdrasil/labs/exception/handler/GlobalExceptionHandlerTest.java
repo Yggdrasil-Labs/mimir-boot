@@ -2,12 +2,13 @@ package com.yggdrasil.labs.exception.handler;
 
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
+import com.yggdrasil.labs.test.util.TestUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
@@ -32,18 +33,19 @@ import static org.mockito.Mockito.when;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-@ExtendWith(MockitoExtension.class)
-class GlobalExceptionHandlerTest {
+class GlobalExceptionHandlerTest extends BaseUnitTest {
 
     private GlobalExceptionHandler handler;
 
     @Mock
     private HttpServletRequest request;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        super.setUp();
         handler = new GlobalExceptionHandler();
-        when(request.getRequestURI()).thenReturn("/test/api");
+        when(request.getRequestURI()).thenReturn(TestUtils.randomUri("/test/api"));
     }
 
     /**
@@ -56,8 +58,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleBizException(exception, request);
 
         assertNotNull(response);
-        assertEquals("20001", response.getCode());
-        assertEquals("用户不存在", response.getMessage());
+        AssertUtils.assertEquals("20001", response.getCode());
+        AssertUtils.assertEquals("用户不存在", response.getMessage());
         assertNull(response.getData());
     }
 
@@ -71,8 +73,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleBizException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), response.getCode());
-        assertEquals(ErrorCode.DATA_NOT_FOUND.getMessage(), response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.DATA_NOT_FOUND.getMessage(), response.getMessage());
     }
 
     /**
@@ -85,8 +87,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleSystemException(exception, request);
 
         assertNotNull(response);
-        assertEquals("10000", response.getCode());
-        assertEquals("系统错误", response.getMessage());
+        AssertUtils.assertEquals("10000", response.getCode());
+        AssertUtils.assertEquals("系统错误", response.getMessage());
         assertNull(response.getData());
     }
 
@@ -100,8 +102,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleSystemException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
-        assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), response.getMessage());
     }
 
     /**
@@ -115,8 +117,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleBaseException(exception, request);
 
         assertNotNull(response);
-        assertEquals("99999", response.getCode());
-        assertEquals("基础异常", response.getMessage());
+        AssertUtils.assertEquals("99999", response.getCode());
+        AssertUtils.assertEquals("基础异常", response.getMessage());
     }
 
     /**
@@ -129,8 +131,8 @@ class GlobalExceptionHandlerTest {
         R<ArrayList<String>> response = handler.handleMethodArgumentNotValidException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
-        assertEquals(ErrorCode.PARAM_INVALID.getMessage(), response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getMessage(), response.getMessage());
         assertNotNull(response.getData());
         assertFalse(response.getData().isEmpty());
     }
@@ -145,8 +147,8 @@ class GlobalExceptionHandlerTest {
         R<ArrayList<String>> response = handler.handleBindException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
-        assertEquals(ErrorCode.PARAM_INVALID.getMessage(), response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getMessage(), response.getMessage());
         assertNotNull(response.getData());
     }
 
@@ -161,7 +163,7 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleMissingServletRequestParameterException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_MISSING.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.PARAM_MISSING.getCode(), response.getCode());
         assertTrue(response.getMessage().contains("userId"));
     }
 
@@ -178,7 +180,7 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleMethodArgumentTypeMismatchException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
         assertTrue(response.getMessage().contains("userId"));
         assertTrue(response.getMessage().contains("Integer"));
     }
@@ -195,8 +197,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleHttpMessageNotReadableException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
-        assertEquals("请求体格式错误", response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
+        AssertUtils.assertEquals("请求体格式错误", response.getMessage());
     }
 
     /**
@@ -212,7 +214,7 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), response.getCode());
         assertTrue(response.getMessage().contains("DELETE"));
         assertTrue(response.getMessage().contains("GET"));
     }
@@ -229,7 +231,7 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleNoHandlerFoundException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), response.getCode());
         assertTrue(response.getMessage().contains("GET"));
         assertTrue(response.getMessage().contains("null"));
     }
@@ -245,8 +247,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleException((Exception) exception, request);
 
         assertNotNull(response);
-        assertEquals("99999", response.getCode());
-        assertEquals("未知异常", response.getMessage());
+        AssertUtils.assertEquals("99999", response.getCode());
+        AssertUtils.assertEquals("未知异常", response.getMessage());
     }
 
     /**
@@ -259,8 +261,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
-        assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), response.getMessage());
     }
 
     /**
@@ -273,8 +275,8 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
-        assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), response.getMessage());
+        AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), response.getMessage());
     }
 
     /**
@@ -304,7 +306,7 @@ class GlobalExceptionHandlerTest {
         R<Serializable> response = handler.handleMissingServletRequestParameterException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_MISSING.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.PARAM_MISSING.getCode(), response.getCode());
         // 应该已经清理了特殊字符
         assertNotNull(response.getMessage());
     }
@@ -319,7 +321,7 @@ class GlobalExceptionHandlerTest {
         R<ArrayList<String>> response = handler.handleBindException(exception, request);
 
         assertNotNull(response);
-        assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
+        AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), response.getCode());
         assertNotNull(response.getData());
         assertTrue(response.getData().isEmpty());
     }

@@ -1,6 +1,9 @@
 package com.yggdrasil.labs.exception.config;
 
 import com.yggdrasil.labs.exception.handler.GlobalExceptionHandler;
+import com.yggdrasil.labs.test.base.BaseIntegrationTest;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,12 +17,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class ExceptionAutoConfigurationTest {
+class ExceptionAutoConfigurationTest extends BaseUnitTest {
 
     private ExceptionAutoConfiguration configuration;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         configuration = new ExceptionAutoConfiguration();
     }
 
