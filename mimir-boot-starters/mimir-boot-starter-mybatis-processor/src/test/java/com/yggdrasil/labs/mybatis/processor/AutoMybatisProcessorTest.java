@@ -3,6 +3,7 @@ package com.yggdrasil.labs.mybatis.processor;
 import com.google.testing.compile.Compilation;
 import com.google.testing.compile.Compiler;
 import com.google.testing.compile.JavaFileObjects;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 
 import javax.tools.JavaFileObject;
@@ -14,7 +15,7 @@ import static com.google.testing.compile.CompilationSubject.assertThat;
  * 编译一个带有 @AutoMybatis 的实体类，断言生成 Mapper / Service / ServiceImpl。
  */
 @SuppressWarnings("deprecation")
-class AutoMybatisProcessorTest {
+class AutoMybatisProcessorTest extends BaseUnitTest {
 
     @Test
     void generatesMapperServiceAndImpl() {

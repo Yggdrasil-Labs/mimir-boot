@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.mybatis.annotation;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Documented;
@@ -15,14 +17,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class AutoMybatisTest {
+class AutoMybatisTest extends BaseUnitTest {
 
     @Test
     void testAnnotationRetention() {
         // 验证注解保留策略为 SOURCE（编译期）
         Retention retention = AutoMybatis.class.getAnnotation(Retention.class);
         assertNotNull(retention);
-        assertEquals(java.lang.annotation.RetentionPolicy.SOURCE, retention.value());
+        AssertUtils.assertEquals(java.lang.annotation.RetentionPolicy.SOURCE, retention.value());
     }
 
     @Test
@@ -49,27 +51,27 @@ class AutoMybatisTest {
 
         Method mapperPackageMethod = annotationClass.getMethod("mapperPackage");
         Object mapperPackageDefault = mapperPackageMethod.getDefaultValue();
-        assertEquals("mapper", mapperPackageDefault);
+        AssertUtils.assertEquals("mapper", mapperPackageDefault);
 
         Method servicePackageMethod = annotationClass.getMethod("servicePackage");
         Object servicePackageDefault = servicePackageMethod.getDefaultValue();
-        assertEquals("service", servicePackageDefault);
+        AssertUtils.assertEquals("service", servicePackageDefault);
 
         Method serviceImplPackageMethod = annotationClass.getMethod("serviceImplPackage");
         Object serviceImplPackageDefault = serviceImplPackageMethod.getDefaultValue();
-        assertEquals("service.impl", serviceImplPackageDefault);
+        AssertUtils.assertEquals("service.impl", serviceImplPackageDefault);
 
         Method mapperSuffixMethod = annotationClass.getMethod("mapperSuffix");
         Object mapperSuffixDefault = mapperSuffixMethod.getDefaultValue();
-        assertEquals("Mapper", mapperSuffixDefault);
+        AssertUtils.assertEquals("Mapper", mapperSuffixDefault);
 
         Method serviceSuffixMethod = annotationClass.getMethod("serviceSuffix");
         Object serviceSuffixDefault = serviceSuffixMethod.getDefaultValue();
-        assertEquals("Service", serviceSuffixDefault);
+        AssertUtils.assertEquals("Service", serviceSuffixDefault);
 
         Method serviceImplSuffixMethod = annotationClass.getMethod("serviceImplSuffix");
         Object serviceImplSuffixDefault = serviceImplSuffixMethod.getDefaultValue();
-        assertEquals("ServiceImpl", serviceImplSuffixDefault);
+        AssertUtils.assertEquals("ServiceImpl", serviceImplSuffixDefault);
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.mybatis.processor;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -14,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class AutoMybatisProcessorUtilTest {
+class AutoMybatisProcessorUtilTest extends BaseUnitTest {
 
     // 使用反射调用 private static 方法进行测试
     private static String testJoinPackage(String base, String sub) {
@@ -29,57 +31,57 @@ class AutoMybatisProcessorUtilTest {
 
     @Test
     void testJoinPackageWithBothNonEmpty() {
-        assertEquals("com.example.mapper", testJoinPackage("com.example", "mapper"));
-        assertEquals("com.example.service", testJoinPackage("com.example", "service"));
-        assertEquals("com.example.service.impl", testJoinPackage("com.example", "service.impl"));
+        AssertUtils.assertEquals("com.example.mapper", testJoinPackage("com.example", "mapper"));
+        AssertUtils.assertEquals("com.example.service", testJoinPackage("com.example", "service"));
+        AssertUtils.assertEquals("com.example.service.impl", testJoinPackage("com.example", "service.impl"));
     }
 
     @Test
     void testJoinPackageWithEmptyBase() {
-        assertEquals("mapper", testJoinPackage("", "mapper"));
-        assertEquals("service", testJoinPackage("", "service"));
+        AssertUtils.assertEquals("mapper", testJoinPackage("", "mapper"));
+        AssertUtils.assertEquals("service", testJoinPackage("", "service"));
     }
 
     @Test
     void testJoinPackageWithNullBase() {
-        assertEquals("mapper", testJoinPackage(null, "mapper"));
-        assertEquals("service", testJoinPackage(null, "service"));
+        AssertUtils.assertEquals("mapper", testJoinPackage(null, "mapper"));
+        AssertUtils.assertEquals("service", testJoinPackage(null, "service"));
     }
 
     @Test
     void testJoinPackageWithEmptySub() {
-        assertEquals("com.example", testJoinPackage("com.example", ""));
-        assertEquals("com.example", testJoinPackage("com.example", null));
+        AssertUtils.assertEquals("com.example", testJoinPackage("com.example", ""));
+        AssertUtils.assertEquals("com.example", testJoinPackage("com.example", null));
     }
 
     @Test
     void testJoinPackageWithBothEmpty() {
         // 当 base 为空时，返回 sub
         // 当 sub 也为空时，返回 null（因为 sub 是 null）
-        assertEquals("", testJoinPackage("", ""));
+        AssertUtils.assertEquals("", testJoinPackage("", ""));
         assertNull(testJoinPackage(null, null));
         assertNull(testJoinPackage("", null));
-        assertEquals("", testJoinPackage(null, ""));
+        AssertUtils.assertEquals("", testJoinPackage(null, ""));
     }
 
     @Test
     void testJoinPackageWithComplexPackages() {
-        assertEquals("com.yggdrasil.labs.mybatis.mapper", 
+        AssertUtils.assertEquals("com.yggdrasil.labs.mybatis.mapper", 
                      testJoinPackage("com.yggdrasil.labs.mybatis", "mapper"));
-        assertEquals("com.yggdrasil.labs.mybatis.service.impl", 
+        AssertUtils.assertEquals("com.yggdrasil.labs.mybatis.service.impl", 
                      testJoinPackage("com.yggdrasil.labs.mybatis", "service.impl"));
     }
 
     @Test
     void testJoinPackageWithSingleLevelBase() {
-        assertEquals("example.mapper", testJoinPackage("example", "mapper"));
+        AssertUtils.assertEquals("example.mapper", testJoinPackage("example", "mapper"));
     }
 
     @Test
     void testJoinPackageWithSubStartingWithDot() {
         // 注意：如果 sub 以 . 开头，joinPackage 不会处理这种情况
         // 这只是测试当前实现的边界情况
-        assertEquals("com.example..mapper", testJoinPackage("com.example", ".mapper"));
+        AssertUtils.assertEquals("com.example..mapper", testJoinPackage("com.example", ".mapper"));
     }
 
     // 使用反射调用 private static 方法进行测试
@@ -95,22 +97,22 @@ class AutoMybatisProcessorUtilTest {
 
     @Test
     void testRemoveDoSuffix_WithDoSuffix() {
-        assertEquals("User", testRemoveDoSuffix("UserDO"));
-        assertEquals("Order", testRemoveDoSuffix("OrderDO"));
-        assertEquals("Product", testRemoveDoSuffix("ProductDO"));
+        AssertUtils.assertEquals("User", testRemoveDoSuffix("UserDO"));
+        AssertUtils.assertEquals("Order", testRemoveDoSuffix("OrderDO"));
+        AssertUtils.assertEquals("Product", testRemoveDoSuffix("ProductDO"));
     }
 
     @Test
     void testRemoveDoSuffix_WithoutDoSuffix() {
-        assertEquals("User", testRemoveDoSuffix("User"));
-        assertEquals("Order", testRemoveDoSuffix("Order"));
-        assertEquals("Product", testRemoveDoSuffix("Product"));
+        AssertUtils.assertEquals("User", testRemoveDoSuffix("User"));
+        AssertUtils.assertEquals("Order", testRemoveDoSuffix("Order"));
+        AssertUtils.assertEquals("Product", testRemoveDoSuffix("Product"));
     }
 
     @Test
     void testRemoveDoSuffix_WithOnlyDO() {
         // 如果类名就是 "DO"，不应该被处理（长度 <= 2）
-        assertEquals("DO", testRemoveDoSuffix("DO"));
+        AssertUtils.assertEquals("DO", testRemoveDoSuffix("DO"));
     }
 
     @Test
@@ -120,15 +122,15 @@ class AutoMybatisProcessorUtilTest {
 
     @Test
     void testRemoveDoSuffix_WithEmptyString() {
-        assertEquals("", testRemoveDoSuffix(""));
+        AssertUtils.assertEquals("", testRemoveDoSuffix(""));
     }
 
     @Test
     void testRemoveDoSuffix_WithCaseSensitive() {
         // 只处理大写的 DO，不处理小写的 do
-        assertEquals("Userdo", testRemoveDoSuffix("Userdo"));
-        assertEquals("UserDo", testRemoveDoSuffix("UserDo"));
-        assertEquals("User", testRemoveDoSuffix("UserDO"));
+        AssertUtils.assertEquals("Userdo", testRemoveDoSuffix("Userdo"));
+        AssertUtils.assertEquals("UserDo", testRemoveDoSuffix("UserDo"));
+        AssertUtils.assertEquals("User", testRemoveDoSuffix("UserDO"));
     }
 }
 
