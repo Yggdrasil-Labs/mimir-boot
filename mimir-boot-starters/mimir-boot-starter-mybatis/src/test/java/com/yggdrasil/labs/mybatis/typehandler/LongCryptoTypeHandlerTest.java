@@ -2,6 +2,7 @@ package com.yggdrasil.labs.mybatis.typehandler;
 
 import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,14 +17,16 @@ import static org.mockito.Mockito.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class LongCryptoTypeHandlerTest {
+class LongCryptoTypeHandlerTest extends BaseUnitTest {
 
     private LongCryptoTypeHandler handler;
     private CryptoKeyProvider keyProvider;
     private String testKey;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         testKey = CryptoUtils.generateKey();
         keyProvider = () -> testKey;
         handler = new LongCryptoTypeHandler(keyProvider);

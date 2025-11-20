@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.mybatis.util;
 
 import com.yggdrasil.labs.mybatis.config.MybatisConstants;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -24,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MapperPackageDetectorTest {
+class MapperPackageDetectorTest extends BaseUnitTest {
 
     @Test
     void testDetectMapperPackages_returnsSet() {

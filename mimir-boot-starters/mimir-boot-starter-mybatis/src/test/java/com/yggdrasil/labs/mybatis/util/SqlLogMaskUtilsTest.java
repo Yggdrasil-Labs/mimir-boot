@@ -2,6 +2,7 @@ package com.yggdrasil.labs.mybatis.util;
 
 import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -22,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class SqlLogMaskUtilsTest {
+class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     static class User {
         @SensitiveField(strategy = SensitiveField.MaskStrategy.PHONE)

@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.mybatis.crypto;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
@@ -13,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class CryptoUtilsTest {
+class CryptoUtilsTest extends BaseUnitTest {
 
     @Test
     void generateKey_returns_non_empty_base64() {

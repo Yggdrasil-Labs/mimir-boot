@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.mybatis.util;
 
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -11,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class ReflectionUtilsTest {
+class ReflectionUtilsTest extends BaseUnitTest {
 
     @Test
     void testCreatePaginationInnerInterceptor_doesNotThrowException() {

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -26,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MybatisPlusAutoConfigurationTest {
+class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
     @ParameterizedTest
     @MethodSource("provideInterceptorTestCases")
@@ -106,7 +108,7 @@ class MybatisPlusAutoConfigurationTest {
 
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
+        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
 
     @Test
@@ -140,7 +142,7 @@ class MybatisPlusAutoConfigurationTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 在dev环境下，enableStdout为null时应该默认启用
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
+        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
 
     @Test
@@ -159,7 +161,7 @@ class MybatisPlusAutoConfigurationTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // 在test环境下，enableStdout为null时应该默认启用
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
+        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
 
     @Test
@@ -232,7 +234,7 @@ class MybatisPlusAutoConfigurationTest {
 
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
+        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
 
     @Test
@@ -329,7 +331,7 @@ class MybatisPlusAutoConfigurationTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // dev/test 环境下应该启用
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
+        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
     }
 
     @Test

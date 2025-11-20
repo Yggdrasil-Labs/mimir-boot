@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.mybatis.config;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,12 +17,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MybatisPropertiesTest {
+class MybatisPropertiesTest extends BaseUnitTest {
 
     private MybatisProperties properties;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         properties = new MybatisProperties();
     }
 
@@ -38,7 +42,7 @@ class MybatisPropertiesTest {
         List<String> packages = Arrays.asList("com.example.mapper", "com.example.other.mapper");
         properties.setMapperPackages(packages);
 
-        assertEquals(2, properties.getMapperPackages().size());
+        AssertUtils.assertEquals(2, properties.getMapperPackages().size());
         assertTrue(properties.getMapperPackages().contains("com.example.mapper"));
         assertTrue(properties.getMapperPackages().contains("com.example.other.mapper"));
     }
@@ -83,13 +87,13 @@ class MybatisPropertiesTest {
     void testCryptoKey() {
         String key = "base64encodedkey1234567890";
         properties.setCryptoKey(key);
-        assertEquals(key, properties.getCryptoKey());
+        AssertUtils.assertEquals(key, properties.getCryptoKey());
 
         properties.setCryptoKey(null);
         assertNull(properties.getCryptoKey());
 
         properties.setCryptoKey("");
-        assertEquals("", properties.getCryptoKey());
+        AssertUtils.assertEquals("", properties.getCryptoKey());
     }
 
     @Test
@@ -100,17 +104,17 @@ class MybatisPropertiesTest {
         properties.setEnableJsonSqlLog(true);
         properties.setCryptoKey("test-key");
 
-        assertEquals(1, properties.getMapperPackages().size());
+        AssertUtils.assertEquals(1, properties.getMapperPackages().size());
         assertTrue(properties.getEnableSqlStdout());
         assertTrue(properties.getEnableJsonSqlLog());
-        assertEquals("test-key", properties.getCryptoKey());
+        AssertUtils.assertEquals("test-key", properties.getCryptoKey());
     }
 
     @Test
     void testGetFinalMapperPackages_WithDefaultOnly() {
         // 不设置 mapperPackages，应该只包含默认包
         String finalPackages = properties.getFinalMapperPackages();
-        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
     }
 
     @Test
@@ -118,7 +122,7 @@ class MybatisPropertiesTest {
         // 设置空列表，应该只包含默认包
         properties.setMapperPackages(Collections.emptyList());
         String finalPackages = properties.getFinalMapperPackages();
-        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
     }
 
     @Test
@@ -126,7 +130,7 @@ class MybatisPropertiesTest {
         // 设置 null，应该只包含默认包
         properties.setMapperPackages(null);
         String finalPackages = properties.getFinalMapperPackages();
-        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
     }
 
     @Test
@@ -141,7 +145,7 @@ class MybatisPropertiesTest {
         assertTrue(finalPackages.contains("com.example.mapper"));
         assertTrue(finalPackages.contains("com.example.other.mapper"));
         // 验证格式：默认包,自定义包1,自定义包2
-        assertEquals(
+        AssertUtils.assertEquals(
             MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper,com.example.other.mapper",
             finalPackages
         );
@@ -153,7 +157,7 @@ class MybatisPropertiesTest {
         properties.setMapperPackages(Collections.singletonList("com.example.mapper"));
         String finalPackages = properties.getFinalMapperPackages();
         
-        assertEquals(
+        AssertUtils.assertEquals(
             MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper",
             finalPackages
         );
@@ -166,7 +170,7 @@ class MybatisPropertiesTest {
         String finalPackages = properties.getFinalMapperPackages();
         
         // 应该只包含一个默认包（去重后）
-        assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
     }
 }
 

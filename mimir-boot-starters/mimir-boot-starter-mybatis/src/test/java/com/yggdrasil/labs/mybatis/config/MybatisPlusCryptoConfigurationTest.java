@@ -4,6 +4,8 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 import com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler;
 import com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler;
 import com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,13 +17,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MybatisPlusCryptoConfigurationTest {
+class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
 
     private MybatisPlusCryptoConfiguration configuration;
     private MybatisProperties properties;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         configuration = new MybatisPlusCryptoConfiguration();
         properties = new MybatisProperties();
     }
@@ -32,7 +36,7 @@ class MybatisPlusCryptoConfigurationTest {
         CryptoKeyProvider provider = configuration.defaultCryptoKeyProvider(properties);
 
         assertNotNull(provider);
-        assertEquals("test-crypto-key-12345", provider.getKey());
+        AssertUtils.assertEquals("test-crypto-key-12345", provider.getKey());
     }
 
     @Test

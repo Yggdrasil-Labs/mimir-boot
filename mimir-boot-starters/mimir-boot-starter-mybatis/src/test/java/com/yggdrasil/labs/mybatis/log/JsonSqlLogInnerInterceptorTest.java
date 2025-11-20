@@ -4,6 +4,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.LogTestUtils;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
 import org.junit.jupiter.api.AfterEach;
@@ -23,27 +25,28 @@ import static org.mockito.Mockito.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class JsonSqlLogInnerInterceptorTest {
+class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
 
     private JsonSqlLogInnerInterceptor interceptor;
-    private Logger logger;
     private ListAppender<ILoggingEvent> listAppender;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         interceptor = new JsonSqlLogInnerInterceptor();
         
         // 配置日志捕获
-        logger = (Logger) LoggerFactory.getLogger("SQL.JSON");
-        listAppender = new ListAppender<>();
-        listAppender.start();
-        logger.addAppender(listAppender);
+        listAppender = LogTestUtils.setupLogger("SQL.JSON");
+        Logger logger = (Logger) LoggerFactory.getLogger("SQL.JSON");
         logger.setLevel(Level.INFO);
     }
 
+    @Override
     @AfterEach
-    void tearDown() {
-        logger.detachAppender(listAppender);
+    protected void tearDown() {
+        LogTestUtils.cleanupLogger("SQL.JSON", listAppender);
+        super.tearDown();
     }
 
     @Test

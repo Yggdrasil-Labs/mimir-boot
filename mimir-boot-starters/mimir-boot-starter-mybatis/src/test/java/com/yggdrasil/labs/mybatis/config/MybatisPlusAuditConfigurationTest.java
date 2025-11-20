@@ -3,6 +3,8 @@ package com.yggdrasil.labs.mybatis.config;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.yggdrasil.labs.mybatis.audit.AuditorProvider;
 import com.yggdrasil.labs.mybatis.audit.AuditMetaObjectHandler;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,12 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MybatisPlusAuditConfigurationTest {
+class MybatisPlusAuditConfigurationTest extends BaseUnitTest {
 
     private MybatisPlusAuditConfiguration configuration;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         configuration = new MybatisPlusAuditConfiguration();
     }
 
@@ -28,7 +32,7 @@ class MybatisPlusAuditConfigurationTest {
         AuditorProvider provider = configuration.defaultAuditorProvider();
 
         assertNotNull(provider);
-        assertEquals("system", provider.currentAuditor());
+        AssertUtils.assertEquals("system", provider.currentAuditor());
     }
 
     @Test

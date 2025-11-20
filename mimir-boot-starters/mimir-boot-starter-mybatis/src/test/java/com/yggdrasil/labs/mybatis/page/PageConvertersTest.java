@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yggdrasil.labs.common.page.PageRequest;
 import com.yggdrasil.labs.common.page.PageResult;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -18,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class PageConvertersTest {
+class PageConvertersTest extends BaseUnitTest {
 
     @Test
     void testToMybatisPageWithNullRequest() {
@@ -38,8 +40,8 @@ class PageConvertersTest {
         Page<String> page = PageConverters.toMybatisPage(request);
 
         assertNotNull(page);
-        assertEquals(2L, page.getCurrent());
-        assertEquals(20L, page.getSize());
+        AssertUtils.assertEquals(2L, page.getCurrent());
+        AssertUtils.assertEquals(20L, page.getSize());
     }
 
     @Test
@@ -66,10 +68,10 @@ class PageConvertersTest {
         PageResult<String> result = PageConverters.toPageResult(page);
 
         assertNotNull(result);
-        assertEquals(records, result.getData());
-        assertEquals(100L, result.getTotalCount());
-        assertEquals(1L, result.getPageIndex());
-        assertEquals(10L, result.getPageSize());
+        AssertUtils.assertEquals(records, result.getData());
+        AssertUtils.assertEquals(100L, result.getTotalCount());
+        AssertUtils.assertEquals(1L, result.getPageIndex());
+        AssertUtils.assertEquals(10L, result.getPageSize());
     }
 
     @Test
@@ -82,7 +84,7 @@ class PageConvertersTest {
 
         assertNotNull(result);
         assertTrue(result.getData().isEmpty());
-        assertEquals(0L, result.getTotalCount());
+        AssertUtils.assertEquals(0L, result.getTotalCount());
     }
 
     @Test
@@ -116,10 +118,10 @@ class PageConvertersTest {
         PageResult<String> result = PageConverters.toPageResult(mybatisPage);
 
         // 验证
-        assertEquals(3L, result.getPageIndex());
-        assertEquals(15L, result.getPageSize());
-        assertEquals(records, result.getData());
-        assertEquals(100L, result.getTotalCount());
+        AssertUtils.assertEquals(3L, result.getPageIndex());
+        AssertUtils.assertEquals(15L, result.getPageSize());
+        AssertUtils.assertEquals(records, result.getData());
+        AssertUtils.assertEquals(100L, result.getTotalCount());
     }
 
     @Test
@@ -132,10 +134,10 @@ class PageConvertersTest {
         PageResult<String> result = PageConverters.toPageResult(page);
 
         assertNotNull(result);
-        assertEquals(100000L, result.getTotalCount());
-        assertEquals(100L, result.getPageIndex());
-        assertEquals(1000L, result.getPageSize());
-        assertEquals(1000, result.getData().size());
+        AssertUtils.assertEquals(100000L, result.getTotalCount());
+        AssertUtils.assertEquals(100L, result.getPageIndex());
+        AssertUtils.assertEquals(1000L, result.getPageSize());
+        AssertUtils.assertEquals(1000, result.getData().size());
     }
 }
 

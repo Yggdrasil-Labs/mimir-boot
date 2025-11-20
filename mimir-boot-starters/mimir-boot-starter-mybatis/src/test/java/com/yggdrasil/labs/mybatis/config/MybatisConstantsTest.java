@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.mybatis.config;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
@@ -13,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MybatisConstantsTest {
+class MybatisConstantsTest extends BaseUnitTest {
 
     @Test
     void testConstantsValues() {
@@ -34,37 +36,37 @@ class MybatisConstantsTest {
 
     @Test
     void testMapperPackageSeparator() {
-        assertEquals("/mapper/", MybatisConstants.MAPPER_PACKAGE_SEPARATOR);
+        AssertUtils.assertEquals("/mapper/", MybatisConstants.MAPPER_PACKAGE_SEPARATOR);
     }
 
     @Test
     void testMapperPackageSuffix() {
-        assertEquals(".mapper", MybatisConstants.MAPPER_PACKAGE_SUFFIX);
+        AssertUtils.assertEquals(".mapper", MybatisConstants.MAPPER_PACKAGE_SUFFIX);
     }
 
     @Test
     void testPackageWildcardSuffix() {
-        assertEquals(".**", MybatisConstants.PACKAGE_WILDCARD_SUFFIX);
+        AssertUtils.assertEquals(".**", MybatisConstants.PACKAGE_WILDCARD_SUFFIX);
     }
 
     @Test
     void testDefaultPackagePrefix() {
-        assertEquals("com.yggdrasil.labs", MybatisConstants.DEFAULT_PACKAGE_PREFIX);
+        AssertUtils.assertEquals("com.yggdrasil.labs", MybatisConstants.DEFAULT_PACKAGE_PREFIX);
     }
 
     @Test
     void testClassesDir() {
-        assertEquals("/classes/", MybatisConstants.CLASSES_DIR);
+        AssertUtils.assertEquals("/classes/", MybatisConstants.CLASSES_DIR);
     }
 
     @Test
     void testJarSeparator() {
-        assertEquals("!/", MybatisConstants.JAR_SEPARATOR);
+        AssertUtils.assertEquals("!/", MybatisConstants.JAR_SEPARATOR);
     }
 
     @Test
     void testPaginationInterceptorClassName() {
-        assertEquals(
+        AssertUtils.assertEquals(
                 "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor",
                 MybatisConstants.PAGINATION_INTERCEPTOR_CLASS_NAME
         );
@@ -72,27 +74,27 @@ class MybatisConstantsTest {
 
     @Test
     void testProfileDev() {
-        assertEquals("dev", MybatisConstants.PROFILE_DEV);
+        AssertUtils.assertEquals("dev", MybatisConstants.PROFILE_DEV);
     }
 
     @Test
     void testProfileTest() {
-        assertEquals("test", MybatisConstants.PROFILE_TEST);
+        AssertUtils.assertEquals("test", MybatisConstants.PROFILE_TEST);
     }
 
     @Test
     void testMapperScanPattern() {
-        assertEquals("**/mapper/*.class", MybatisConstants.MAPPER_SCAN_PATTERN);
+        AssertUtils.assertEquals("**/mapper/*.class", MybatisConstants.MAPPER_SCAN_PATTERN);
     }
 
     @Test
     void testConfigPrefix() {
-        assertEquals("mimir.mybatis", MybatisConstants.CONFIG_PREFIX);
+        AssertUtils.assertEquals("mimir.mybatis", MybatisConstants.CONFIG_PREFIX);
     }
 
     @Test
     void testConfigMapperPackages() {
-        assertEquals("mimir.mybatis.mapper-packages", MybatisConstants.CONFIG_MAPPER_PACKAGES);
+        AssertUtils.assertEquals("mimir.mybatis.mapper-packages", MybatisConstants.CONFIG_MAPPER_PACKAGES);
         // 验证它是由 CONFIG_PREFIX 和 ".mapper-packages" 组成的
         assertTrue(MybatisConstants.CONFIG_MAPPER_PACKAGES.startsWith(MybatisConstants.CONFIG_PREFIX));
     }

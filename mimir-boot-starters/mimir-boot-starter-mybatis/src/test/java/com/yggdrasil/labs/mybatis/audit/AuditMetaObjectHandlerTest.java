@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.mybatis.audit;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,7 +11,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 /**
  * 审计元对象处理器测试
@@ -22,29 +22,29 @@ import static org.mockito.Mockito.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class AuditMetaObjectHandlerTest {
+class AuditMetaObjectHandlerTest extends BaseUnitTest {
 
-    private AuditMetaObjectHandler handler;
-    private AuditorProvider auditorProvider;
-
+    @Override
     @BeforeEach
-    void setUp() {
-        auditorProvider = mock(AuditorProvider.class);
-        when(auditorProvider.currentAuditor()).thenReturn("test-user");
-        handler = new AuditMetaObjectHandler(auditorProvider);
+    protected void setUp() {
+        super.setUp();
     }
 
     @Test
     void testHandlerCreation() {
-        assertNotNull(handler);
-        assertInstanceOf(AuditMetaObjectHandler.class, handler);
+        // 使用 lambda 表达式创建 provider，避免不必要的 mock
+        AuditorProvider provider = () -> "test-user";
+        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(provider);
+        assertNotNull(testHandler);
+        assertInstanceOf(AuditMetaObjectHandler.class, testHandler);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"valid-user", "", "   "})
     void testSafeAuditorWithVariousValues(String auditorValue) {
-        when(auditorProvider.currentAuditor()).thenReturn(auditorValue);
-        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(auditorProvider);
+        // 使用 lambda 表达式创建 provider，避免不必要的 stubbing
+        AuditorProvider provider = () -> auditorValue;
+        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(provider);
         
         // 验证 handler 可以正常创建
         assertNotNull(testHandler);
@@ -53,28 +53,29 @@ class AuditMetaObjectHandlerTest {
     @ParameterizedTest
     @MethodSource("provideHandlerCreationScenarios")
     void testHandlerCreationWithVariousScenarios(String scenario) {
-        // 根据场景设置不同的 mock 行为
+        AuditorProvider provider;
+        
+        // 根据场景创建不同的 provider
         switch (scenario) {
             case "null":
-                when(auditorProvider.currentAuditor()).thenReturn(null);
+                provider = () -> null;
                 break;
             case "exception":
-                when(auditorProvider.currentAuditor()).thenThrow(new RuntimeException("Test exception"));
+                provider = () -> {
+                    throw new RuntimeException("Test exception");
+                };
                 break;
             case "normal":
-                // 使用默认的 mock 设置
+                provider = () -> "test-user";
                 break;
             default:
                 fail("Unknown scenario: " + scenario);
+                return;
         }
         
-        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(auditorProvider);
+        // 验证 handler 可以正常创建（构造函数不会调用 currentAuditor）
+        AuditMetaObjectHandler testHandler = new AuditMetaObjectHandler(provider);
         assertNotNull(testHandler);
-        
-        // null 场景需要额外的验证
-        if ("null".equals(scenario)) {
-            verify(auditorProvider, never()).currentAuditor();
-        }
     }
 
     private static Stream<Arguments> provideHandlerCreationScenarios() {

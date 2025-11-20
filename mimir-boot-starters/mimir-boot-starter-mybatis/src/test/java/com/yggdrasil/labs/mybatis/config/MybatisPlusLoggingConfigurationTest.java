@@ -2,6 +2,7 @@ package com.yggdrasil.labs.mybatis.config;
 
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
 import com.yggdrasil.labs.mybatis.log.JsonSqlLogInnerInterceptor;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.StandardEnvironment;
 
@@ -13,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class MybatisPlusLoggingConfigurationTest {
+class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
 
     @Test
     void jsonSqlLogInnerInterceptor_with_null_enableJson_in_dev_environment() {
