@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.nacos.config;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class NacosEncryptPropertiesTest {
+class NacosEncryptPropertiesTest extends BaseUnitTest {
 
     @Test
     void testDefaultValues() {
@@ -18,8 +20,8 @@ class NacosEncryptPropertiesTest {
 
         assertTrue(properties.getEnabled());
         assertNull(properties.getKey());
-        assertEquals("AES", properties.getAlgorithm());
-        assertEquals("ENC", properties.getPrefix());
+        AssertUtils.assertEquals("AES", properties.getAlgorithm());
+        AssertUtils.assertEquals("ENC", properties.getPrefix());
     }
 
     @Test
@@ -32,9 +34,9 @@ class NacosEncryptPropertiesTest {
         properties.setPrefix("ENCRYPTED");
 
         assertFalse(properties.getEnabled());
-        assertEquals("test-key", properties.getKey());
-        assertEquals("DES", properties.getAlgorithm());
-        assertEquals("ENCRYPTED", properties.getPrefix());
+        AssertUtils.assertEquals("test-key", properties.getKey());
+        AssertUtils.assertEquals("DES", properties.getAlgorithm());
+        AssertUtils.assertEquals("ENCRYPTED", properties.getPrefix());
     }
 
     @Test
@@ -60,7 +62,7 @@ class NacosEncryptPropertiesTest {
 
         properties.setKey(customKey);
 
-        assertEquals(customKey, properties.getKey());
+        AssertUtils.assertEquals(customKey, properties.getKey());
     }
 
     @Test
@@ -70,7 +72,7 @@ class NacosEncryptPropertiesTest {
 
         properties.setAlgorithm(customAlgorithm);
 
-        assertEquals(customAlgorithm, properties.getAlgorithm());
+        AssertUtils.assertEquals(customAlgorithm, properties.getAlgorithm());
     }
 
     @Test
@@ -80,6 +82,6 @@ class NacosEncryptPropertiesTest {
 
         properties.setPrefix(customPrefix);
 
-        assertEquals(customPrefix, properties.getPrefix());
+        AssertUtils.assertEquals(customPrefix, properties.getPrefix());
     }
 }

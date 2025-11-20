@@ -1,5 +1,8 @@
 package com.yggdrasil.labs.nacos.crypto;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
+import com.yggdrasil.labs.test.util.TestUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class ConfigCryptoUtilsTest {
+class ConfigCryptoUtilsTest extends BaseUnitTest {
 
     @Test
     void testGenerateKey() {
@@ -43,7 +46,7 @@ class ConfigCryptoUtilsTest {
     @Test
     void testEncryptAndDecrypt() {
         String key = ConfigCryptoUtils.generateKey();
-        String plaintext = "Hello, World!";
+        String plaintext = TestUtils.randomUuid();
 
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, key);
         assertNotNull(encrypted);
@@ -51,18 +54,18 @@ class ConfigCryptoUtilsTest {
         assertFalse(encrypted.isEmpty());
 
         String decrypted = ConfigCryptoUtils.decrypt(encrypted, key);
-        assertEquals(plaintext, decrypted);
+        AssertUtils.assertEquals(plaintext, decrypted);
     }
 
     @Test
     void testEncryptAndDecryptWithAlgorithm() {
         String key = ConfigCryptoUtils.generateKey("AES");
-        String plaintext = "test message";
+        String plaintext = TestUtils.randomUuid();
 
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, key, "AES");
         String decrypted = ConfigCryptoUtils.decrypt(encrypted, key, "AES");
 
-        assertEquals(plaintext, decrypted);
+        AssertUtils.assertEquals(plaintext, decrypted);
     }
 
     @Test
@@ -78,7 +81,7 @@ class ConfigCryptoUtilsTest {
         String key = ConfigCryptoUtils.generateKey();
         String encrypted = ConfigCryptoUtils.encrypt("", key);
 
-        assertEquals("", encrypted);
+        AssertUtils.assertEquals("", encrypted);
     }
 
     @Test
@@ -94,7 +97,7 @@ class ConfigCryptoUtilsTest {
         String key = ConfigCryptoUtils.generateKey();
         String decrypted = ConfigCryptoUtils.decrypt("", key);
 
-        assertEquals("", decrypted);
+        AssertUtils.assertEquals("", decrypted);
     }
 
     @Test
@@ -105,7 +108,7 @@ class ConfigCryptoUtilsTest {
         String encrypted = ConfigCryptoUtils.encrypt(longText, key);
         String decrypted = ConfigCryptoUtils.decrypt(encrypted, key);
 
-        assertEquals(longText, decrypted);
+        AssertUtils.assertEquals(longText, decrypted);
     }
 
     @Test
@@ -116,7 +119,7 @@ class ConfigCryptoUtilsTest {
         String encrypted = ConfigCryptoUtils.encrypt(specialText, key);
         String decrypted = ConfigCryptoUtils.decrypt(encrypted, key);
 
-        assertEquals(specialText, decrypted);
+        AssertUtils.assertEquals(specialText, decrypted);
     }
 
     @Test
@@ -127,14 +130,14 @@ class ConfigCryptoUtilsTest {
         String encrypted = ConfigCryptoUtils.encrypt(unicodeText, key);
         String decrypted = ConfigCryptoUtils.decrypt(encrypted, key);
 
-        assertEquals(unicodeText, decrypted);
+        AssertUtils.assertEquals(unicodeText, decrypted);
     }
 
     @Test
     void testDecryptWithWrongKey() {
         String key1 = ConfigCryptoUtils.generateKey();
         String key2 = ConfigCryptoUtils.generateKey();
-        String plaintext = "test message";
+        String plaintext = TestUtils.randomUuid();
 
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, key1);
 
@@ -152,7 +155,7 @@ class ConfigCryptoUtilsTest {
         String encrypted = ConfigCryptoUtils.encrypt(numeric, key);
         String decrypted = ConfigCryptoUtils.decrypt(encrypted, key);
 
-        assertEquals(numeric, decrypted);
+        AssertUtils.assertEquals(numeric, decrypted);
     }
 
     @Test

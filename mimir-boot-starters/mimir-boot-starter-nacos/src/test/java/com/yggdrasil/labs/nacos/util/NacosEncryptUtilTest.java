@@ -1,5 +1,8 @@
 package com.yggdrasil.labs.nacos.util;
 
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
+import com.yggdrasil.labs.test.util.TestUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class NacosEncryptUtilTest {
+class NacosEncryptUtilTest extends BaseUnitTest {
 
     @Test
     void testGenerateKey() {
@@ -32,7 +35,7 @@ class NacosEncryptUtilTest {
     @Test
     void testEncrypt() {
         String key = NacosEncryptUtil.generateKey();
-        String plaintext = "secret-value";
+        String plaintext = TestUtils.randomUuid();
 
         String encrypted = NacosEncryptUtil.encrypt(plaintext, key);
 
@@ -54,12 +57,12 @@ class NacosEncryptUtilTest {
     @Test
     void testDecrypt() {
         String key = NacosEncryptUtil.generateKey();
-        String plaintext = "secret-value";
+        String plaintext = TestUtils.randomUuid();
 
         String encrypted = NacosEncryptUtil.encrypt(plaintext, key);
         String decrypted = NacosEncryptUtil.decrypt(encrypted, key);
 
-        assertEquals(plaintext, decrypted);
+        AssertUtils.assertEquals(plaintext, decrypted);
     }
 
     @Test
@@ -70,7 +73,7 @@ class NacosEncryptUtilTest {
         String encrypted = NacosEncryptUtil.encrypt(plaintext, key, "AES");
         String decrypted = NacosEncryptUtil.decrypt(encrypted, key, "AES");
 
-        assertEquals(plaintext, decrypted);
+        AssertUtils.assertEquals(plaintext, decrypted);
     }
 
     @Test
@@ -79,7 +82,7 @@ class NacosEncryptUtilTest {
 
         String wrapped = NacosEncryptUtil.wrapWithEnc(encrypted);
 
-        assertEquals("ENC(encrypted-value-123)", wrapped);
+        AssertUtils.assertEquals("ENC(encrypted-value-123)", wrapped);
     }
 
     @Test
@@ -89,7 +92,7 @@ class NacosEncryptUtilTest {
 
         String wrapped = NacosEncryptUtil.wrapWithEnc(encrypted, customPrefix);
 
-        assertEquals("ENCRYPTED(encrypted-value-123)", wrapped);
+        AssertUtils.assertEquals("ENCRYPTED(encrypted-value-123)", wrapped);
     }
 
     @Test
@@ -103,7 +106,7 @@ class NacosEncryptUtilTest {
     void testWrapWithEncEmpty() {
         String wrapped = NacosEncryptUtil.wrapWithEnc("");
 
-        assertEquals("", wrapped);
+        AssertUtils.assertEquals("", wrapped);
     }
 
     @Test
@@ -112,7 +115,7 @@ class NacosEncryptUtilTest {
         String key = NacosEncryptUtil.generateKey();
 
         // 2. 加密配置值
-        String plaintext = "my-secret-password";
+        String plaintext = TestUtils.randomUuid();
         String encrypted = NacosEncryptUtil.encrypt(plaintext, key);
 
         // 3. 包装为 ENC() 格式
@@ -121,12 +124,12 @@ class NacosEncryptUtilTest {
         // 4. 验证格式
         assertTrue(encValue.startsWith("ENC("));
         assertTrue(encValue.endsWith(")"));
-        assertEquals("ENC(" + encrypted + ")", encValue);
+        AssertUtils.assertEquals("ENC(" + encrypted + ")", encValue);
 
         // 5. 提取并解密验证
         String extracted = encValue.substring(4, encValue.length() - 1);
         String decrypted = NacosEncryptUtil.decrypt(extracted, key);
 
-        assertEquals(plaintext, decrypted);
+        AssertUtils.assertEquals(plaintext, decrypted);
     }
 }

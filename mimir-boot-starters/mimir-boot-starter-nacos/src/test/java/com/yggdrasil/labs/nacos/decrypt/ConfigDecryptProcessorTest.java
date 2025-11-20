@@ -2,6 +2,8 @@ package com.yggdrasil.labs.nacos.decrypt;
 
 import com.yggdrasil.labs.nacos.config.NacosEncryptProperties;
 import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.MapPropertySource;
@@ -18,14 +20,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class ConfigDecryptProcessorTest {
+class ConfigDecryptProcessorTest extends BaseUnitTest {
 
     private NacosEncryptProperties properties;
     private StandardEnvironment environment;
     private String testKey;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         properties = new NacosEncryptProperties();
         testKey = ConfigCryptoUtils.generateKey();
         properties.setKey(testKey);
@@ -56,8 +60,8 @@ class ConfigDecryptProcessorTest {
         processor.process(environment);
 
         // 验证解密结果
-        assertEquals(plaintext, environment.getProperty("database.password"));
-        assertEquals("admin", environment.getProperty("database.username"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("database.password"));
+        AssertUtils.assertEquals("admin", environment.getProperty("database.username"));
     }
 
     @Test
@@ -77,9 +81,9 @@ class ConfigDecryptProcessorTest {
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
         processor.process(environment);
 
-        assertEquals("password123", environment.getProperty("app.database.password"));
-        assertEquals("api-key-123", environment.getProperty("app.api.secret-key"));
-        assertEquals("MyApp", environment.getProperty("app.name"));
+        AssertUtils.assertEquals("password123", environment.getProperty("app.database.password"));
+        AssertUtils.assertEquals("api-key-123", environment.getProperty("app.api.secret-key"));
+        AssertUtils.assertEquals("MyApp", environment.getProperty("app.name"));
     }
 
     @Test
@@ -115,7 +119,7 @@ class ConfigDecryptProcessorTest {
         processor.process(environment);
 
         // 无密钥时不应该解密
-        assertEquals("ENC(value)", environment.getProperty("test.key"));
+        AssertUtils.assertEquals("ENC(value)", environment.getProperty("test.key"));
     }
 
     @Test
@@ -132,7 +136,7 @@ class ConfigDecryptProcessorTest {
         processor.process(environment);
 
         // 空密钥时不应该解密
-        assertEquals("ENC(value)", environment.getProperty("test.key"));
+        AssertUtils.assertEquals("ENC(value)", environment.getProperty("test.key"));
     }
 
     @Test
@@ -149,9 +153,9 @@ class ConfigDecryptProcessorTest {
         processor.process(environment);
 
         // 未加密的值应该保持不变
-        assertEquals("MyApp", environment.getProperty("app.name"));
-        assertEquals("1.0.0", environment.getProperty("app.version"));
-        assertEquals("8080", environment.getProperty("server.port"));
+        AssertUtils.assertEquals("MyApp", environment.getProperty("app.name"));
+        AssertUtils.assertEquals("1.0.0", environment.getProperty("app.version"));
+        AssertUtils.assertEquals("8080", environment.getProperty("server.port"));
     }
 
     @Test
@@ -171,9 +175,9 @@ class ConfigDecryptProcessorTest {
         processor.process(environment);
 
         // 所有大小写变体都应该被解密
-        assertEquals(plaintext, environment.getProperty("test.key1"));
-        assertEquals(plaintext, environment.getProperty("test.key2"));
-        assertEquals(plaintext, environment.getProperty("test.key3"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key1"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key2"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key3"));
     }
 
     @Test
@@ -188,7 +192,7 @@ class ConfigDecryptProcessorTest {
 
         // 解密失败时不应该抛出异常，应该返回原值
         assertDoesNotThrow(() -> processor.process(environment));
-        assertEquals("ENC(invalid-encrypted-value)", environment.getProperty("test.key"));
+        AssertUtils.assertEquals("ENC(invalid-encrypted-value)", environment.getProperty("test.key"));
     }
 
     @Test
@@ -207,7 +211,7 @@ class ConfigDecryptProcessorTest {
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
         processor.process(environment);
 
-        assertEquals(plaintext, environment.getProperty("test.key"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key"));
     }
 
     @Test
@@ -226,7 +230,7 @@ class ConfigDecryptProcessorTest {
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
         processor.process(environment);
 
-        assertEquals(plaintext, environment.getProperty("test.key"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key"));
     }
 
     @Test
@@ -244,11 +248,11 @@ class ConfigDecryptProcessorTest {
 
         // 第一次处理
         processor.process(environment);
-        assertEquals(plaintext, environment.getProperty("test.key"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key"));
 
         // 第二次处理应该被跳过
         processor.process(environment);
-        assertEquals(plaintext, environment.getProperty("test.key"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("test.key"));
     }
 
     @Test
@@ -269,9 +273,9 @@ class ConfigDecryptProcessorTest {
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
         processor.process(environment);
 
-        assertEquals("password1", environment.getProperty("db1.password"));
-        assertEquals("password2", environment.getProperty("db2.password"));
-        assertEquals("localhost", environment.getProperty("db1.host"));
-        assertEquals("remote-host", environment.getProperty("db2.host"));
+        AssertUtils.assertEquals("password1", environment.getProperty("db1.password"));
+        AssertUtils.assertEquals("password2", environment.getProperty("db2.password"));
+        AssertUtils.assertEquals("localhost", environment.getProperty("db1.host"));
+        AssertUtils.assertEquals("remote-host", environment.getProperty("db2.host"));
     }
 }

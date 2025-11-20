@@ -1,6 +1,9 @@
 package com.yggdrasil.labs.nacos.config;
 
 import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
+import com.yggdrasil.labs.test.base.BaseIntegrationTest;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.MapPropertySource;
@@ -17,15 +20,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-class NacosEncryptAutoConfigurationTest {
+class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
 
     private NacosEncryptProperties properties;
     private StandardEnvironment environment;
     private NacosEncryptAutoConfiguration configuration;
     private String testKey;
 
+    @Override
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
+        super.setUp();
         properties = new NacosEncryptProperties();
         testKey = ConfigCryptoUtils.generateKey();
         properties.setKey(testKey);
@@ -57,7 +62,7 @@ class NacosEncryptAutoConfigurationTest {
         configuration.processDecrypt(environment);
 
         // 验证解密结果
-        assertEquals(plaintext, environment.getProperty("app.secret"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("app.secret"));
     }
 
     @Test
@@ -121,9 +126,9 @@ class NacosEncryptAutoConfigurationTest {
 
         configuration.processDecrypt(environment);
 
-        assertEquals("secret1", environment.getProperty("app.secret1"));
-        assertEquals("secret2", environment.getProperty("app.secret2"));
-        assertEquals("MyApp", environment.getProperty("app.name"));
+        AssertUtils.assertEquals("secret1", environment.getProperty("app.secret1"));
+        AssertUtils.assertEquals("secret2", environment.getProperty("app.secret2"));
+        AssertUtils.assertEquals("MyApp", environment.getProperty("app.name"));
     }
 
     @Test
@@ -138,8 +143,8 @@ class NacosEncryptAutoConfigurationTest {
         configuration.processDecrypt(environment);
 
         // 未加密的值应该保持不变
-        assertEquals("MyApp", environment.getProperty("app.name"));
-        assertEquals("1.0.0", environment.getProperty("app.version"));
+        AssertUtils.assertEquals("MyApp", environment.getProperty("app.name"));
+        AssertUtils.assertEquals("1.0.0", environment.getProperty("app.version"));
     }
 
     @Test
@@ -155,10 +160,10 @@ class NacosEncryptAutoConfigurationTest {
 
         // 第一次处理
         configuration.processDecrypt(environment);
-        assertEquals(plaintext, environment.getProperty("app.secret"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("app.secret"));
 
         // 第二次处理应该被跳过
         configuration.processDecrypt(environment);
-        assertEquals(plaintext, environment.getProperty("app.secret"));
+        AssertUtils.assertEquals(plaintext, environment.getProperty("app.secret"));
     }
 }
