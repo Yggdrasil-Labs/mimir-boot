@@ -79,6 +79,22 @@ jobs:
       - name: Build and test
         run: ./mvnw -B clean verify
 
+      - name: Find JaCoCo reports
+        id: jacoco-reports
+        run: |
+          # 查找所有存在的 JaCoCo XML 报告文件，移除 ./ 前缀
+          find . -path "*/target/site/jacoco/jacoco.xml" -type f | sed 's|^\./||' | sort > jacoco-reports.txt || true
+          if [ -s jacoco-reports.txt ]; then
+            # 将路径列表转换为逗号分隔的字符串
+            JACOCO_PATHS=$(cat jacoco-reports.txt | tr '\n' ',' | sed 's/,$//')
+            echo "paths=${JACOCO_PATHS}" >> $GITHUB_OUTPUT
+            echo "Found JaCoCo reports:"
+            cat jacoco-reports.txt
+          else
+            echo "paths=" >> $GITHUB_OUTPUT
+            echo "Warning: No JaCoCo reports found"
+          fi
+
       - name: Run Sonar analysis
         # 跳过 Dependabot PR 的 Sonar 分析（Dependabot 无法访问 secrets）
         # 同时检查 secrets 是否存在，避免因 secrets 缺失导致失败
@@ -88,13 +104,21 @@ jobs:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ env.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ env.SONAR_PROJECT_KEY }}
+          JACOCO_PATHS: ${{ steps.jacoco-reports.outputs.paths }}
         run: |
-          ./mvnw -B sonar:sonar \
-            -pl 'mimir-boot-parent,mimir-boot-bom,mimir-boot-common,mimir-boot-starters' \
-            -am \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.organization=${SONAR_ORGANIZATION} \
-            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-            -Dsonar.coverage.jacoco.xmlReportPaths="**/target/site/jacoco/jacoco.xml" \
-            -Dsonar.ci.automaticAnalysis=false \
+          SONAR_ARGS=(
+            -B
+            sonar:sonar
+            -pl 'mimir-boot-parent,mimir-boot-bom,mimir-boot-common,mimir-boot-starters'
+            -am
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.organization=${SONAR_ORGANIZATION}
+            -Dsonar.projectKey=${SONAR_PROJECT_KEY}
+            -Dsonar.ci.automaticAnalysis=false
             -Dsonar.exclusions=**/pom.xml,**/examples/**
+          )
+          # 如果找到了覆盖率报告，则添加路径配置
+          if [ -n "${JACOCO_PATHS}" ]; then
+            SONAR_ARGS+=(-Dsonar.coverage.jacoco.xmlReportPaths="${JACOCO_PATHS}")
+          fi
+          ./mvnw "${SONAR_ARGS[@]}"

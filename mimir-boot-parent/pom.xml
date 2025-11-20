@@ -36,6 +36,7 @@
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <spotless.plugin.version>3.1.0</spotless.plugin.version>
+        <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
 
         <!-- Jacoco Setting -->
         <jacoco.instruction.minimum>0.80</jacoco.instruction.minimum>
@@ -282,6 +283,13 @@
                             </indent>
                         </java>
                     </configuration>
+                </plugin>
+
+                <!-- SonarQube Maven Plugin (代码质量分析) -->
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar-maven-plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
