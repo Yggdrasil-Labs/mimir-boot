@@ -29,7 +29,9 @@ jobs:
         run: chmod +x mvnw
 
       - name: Build, lint and test
-        run: ./mvnw -B -U spotless:check verify
+        # 使用 precheck profile 启用 JaCoCo 覆盖率报告生成
+        # spotless:check 显式调用格式检查，不受 profile 影响
+        run: ./mvnw -B -U spotless:check verify -Pprecheck
 
       - name: Upload test reports
         if: always()
@@ -77,7 +79,9 @@ jobs:
         run: chmod +x mvnw
 
       - name: Build and test
-        run: ./mvnw -B clean verify
+        # 使用 precheck profile 启用 JaCoCo 覆盖率报告生成
+        # 注意：不使用 ci profile，因为格式检查已在 build job 中完成
+        run: ./mvnw -B clean verify -Pprecheck
 
       - name: Find JaCoCo reports
         id: jacoco-reports
