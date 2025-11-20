@@ -42,7 +42,7 @@
         <project.license.url>https://www.apache.org/licenses/LICENSE-2.0</project.license.url>
 
         <!-- Spotless 插件版本（用于根 POM 前缀解析与无源校验） -->
-        <spotless.plugin.version>2.43.0</spotless.plugin.version>
+        <spotless.plugin.version>3.1.0</spotless.plugin.version>
         <!-- Flatten 插件版本 -->
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
     </properties>
