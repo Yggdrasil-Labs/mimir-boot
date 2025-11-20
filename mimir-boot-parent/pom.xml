@@ -35,7 +35,7 @@
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
-        <spotless.plugin.version>2.43.0</spotless.plugin.version>
+        <spotless.plugin.version>3.1.0</spotless.plugin.version>
 
         <!-- Jacoco Setting -->
         <jacoco.instruction.minimum>0.80</jacoco.instruction.minimum>
