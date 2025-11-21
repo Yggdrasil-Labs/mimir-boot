@@ -109,17 +109,24 @@ jobs:
       - name: Find JaCoCo reports
         id: jacoco-reports
         run: |
-          # 查找所有存在的 JaCoCo XML 报告文件，移除 ./ 前缀
-          find . -path "*/target/site/jacoco/jacoco.xml" -type f | sed 's|^\./||' | sort > jacoco-reports.txt || true
+          # 查找所有存在的 JaCoCo XML 报告文件，移除 ./ 前缀，并过滤空行
+          find . -path "*/target/site/jacoco/jacoco.xml" -type f 2>/dev/null | \
+            sed 's|^\./||' | \
+            grep -v '^$' | \
+            sort > jacoco-reports.txt || true
           if [ -s jacoco-reports.txt ]; then
-            # 将路径列表转换为逗号分隔的字符串
-            JACOCO_PATHS=$(cat jacoco-reports.txt | tr '\n' ',' | sed 's/,$//')
+            # 将路径列表转换为逗号分隔的字符串，清理逗号前后的空格
+            JACOCO_PATHS=$(cat jacoco-reports.txt | tr '\n' ',' | sed 's/,$//' | sed 's/,[ ]*/,/g' | sed 's/^[ ]*//' | sed 's/[ ]*$//')
             echo "paths=${JACOCO_PATHS}" >> $GITHUB_OUTPUT
             echo "Found JaCoCo reports:"
             cat jacoco-reports.txt
+            echo ""
+            echo "JaCoCo paths for Sonar: ${JACOCO_PATHS}"
           else
             echo "paths=" >> $GITHUB_OUTPUT
             echo "Warning: No JaCoCo reports found"
+            echo "Searching for jacoco.xml files:"
+            find . -name "jacoco.xml" -type f 2>/dev/null || echo "No jacoco.xml files found"
           fi
 
       - name: Run Sonar analysis
@@ -147,9 +154,31 @@ jobs:
             -Dsonar.exclusions=**/pom.xml
             -Dsonar.test.exclusions=**/pom.xml
           )
-          # 如果找到了覆盖率报告，则添加路径配置
+          # 如果找到了覆盖率报告，验证文件存在后再添加路径配置
           if [ -n "${JACOCO_PATHS}" ]; then
-            SONAR_ARGS+=(-Dsonar.coverage.jacoco.xmlReportPaths="${JACOCO_PATHS}")
+            echo "Verifying JaCoCo report files exist:"
+            IFS=',' read -ra PATHS <<< "${JACOCO_PATHS}"
+            VALID_PATHS=()
+            for path in "${PATHS[@]}"; do
+              # 清理路径中的空格
+              path=$(echo "$path" | sed 's/^[ ]*//' | sed 's/[ ]*$//')
+              if [ -f "$path" ]; then
+                VALID_PATHS+=("$path")
+                echo "  ✓ Found: $path"
+              else
+                echo "  ✗ Missing: $path"
+              fi
+            done
+            if [ ${#VALID_PATHS[@]} -gt 0 ]; then
+              # 将有效路径重新组合为逗号分隔的字符串
+              VALID_PATHS_STR=$(IFS=','; echo "${VALID_PATHS[*]}")
+              SONAR_ARGS+=(-Dsonar.coverage.jacoco.xmlReportPaths="${VALID_PATHS_STR}")
+              echo "Using JaCoCo paths: ${VALID_PATHS_STR}"
+            else
+              echo "Warning: No valid JaCoCo reports found, skipping coverage import"
+            fi
+          else
+            echo "No JaCoCo paths provided, Sonar will use default locations"
           fi
           # SonarQube Maven 插件会自动发现测试报告，无需手动配置
           ./mvnw "${SONAR_ARGS[@]}"
