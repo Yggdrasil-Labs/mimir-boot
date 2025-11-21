@@ -111,22 +111,6 @@ jobs:
             echo "Warning: No JaCoCo reports found"
           fi
 
-      - name: Find test reports
-        id: test-reports
-        run: |
-          # 查找所有存在的 Surefire 测试报告文件，移除 ./ 前缀
-          find . -path "*/target/surefire-reports/TEST-*.xml" -type f | sed 's|^\./||' | sort > test-reports.txt || true
-          if [ -s test-reports.txt ]; then
-            # 将路径列表转换为逗号分隔的字符串
-            TEST_PATHS=$(cat test-reports.txt | tr '\n' ',' | sed 's/,$//')
-            echo "paths=${TEST_PATHS}" >> $GITHUB_OUTPUT
-            echo "Found test reports:"
-            cat test-reports.txt
-          else
-            echo "paths=" >> $GITHUB_OUTPUT
-            echo "Warning: No test reports found"
-          fi
-
       - name: Run Sonar analysis
         # 跳过 Dependabot PR 的 Sonar 分析（Dependabot 无法访问 secrets）
         # 同时检查 secrets 是否存在，避免因 secrets 缺失导致失败
@@ -137,7 +121,6 @@ jobs:
           SONAR_ORGANIZATION: ${{ env.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ env.SONAR_PROJECT_KEY }}
           JACOCO_PATHS: ${{ steps.jacoco-reports.outputs.paths }}
-          TEST_PATHS: ${{ steps.test-reports.outputs.paths }}
         run: |
           SONAR_ARGS=(
             -B
@@ -157,8 +140,5 @@ jobs:
           if [ -n "${JACOCO_PATHS}" ]; then
             SONAR_ARGS+=(-Dsonar.coverage.jacoco.xmlReportPaths="${JACOCO_PATHS}")
           fi
-          # 如果找到了测试报告，则添加路径配置
-          if [ -n "${TEST_PATHS}" ]; then
-            SONAR_ARGS+=(-Dsonar.junit.reportPaths="${TEST_PATHS}")
-          fi
+          # SonarQube Maven 插件会自动发现测试报告，无需手动配置
           ./mvnw "${SONAR_ARGS[@]}"
