@@ -1,7 +1,6 @@
 package com.yggdrasil.labs.exception.config;
 
 import com.yggdrasil.labs.exception.handler.GlobalExceptionHandler;
-import com.yggdrasil.labs.test.base.BaseIntegrationTest;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 import org.junit.jupiter.api.BeforeEach;

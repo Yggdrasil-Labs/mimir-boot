@@ -18,6 +18,7 @@ import java.util.UUID;
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
+@SuppressWarnings("java:S2245") // ThreadLocalRandom 用于生成测试数据，不涉及安全敏感操作
 public final class TestUtils {
 
     private TestUtils() {
