@@ -102,34 +102,7 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
-      - name: Build and test for Sonar
-        # 使用 ci profile 执行完整的构建和测试，生成覆盖率报告
-        run: ./mvnw -B clean verify -Pci
-
-      - name: Find JaCoCo reports
-        id: jacoco-reports
-        run: |
-          # 查找所有存在的 JaCoCo XML 报告文件，移除 ./ 前缀，并过滤空行
-          find . -path "*/target/site/jacoco/jacoco.xml" -type f 2>/dev/null | \
-            sed 's|^\./||' | \
-            grep -v '^$' | \
-            sort > jacoco-reports.txt || true
-          if [ -s jacoco-reports.txt ]; then
-            # 将路径列表转换为逗号分隔的字符串，清理逗号前后的空格
-            JACOCO_PATHS=$(cat jacoco-reports.txt | tr '\n' ',' | sed 's/,$//' | sed 's/,[ ]*/,/g' | sed 's/^[ ]*//' | sed 's/[ ]*$//')
-            echo "paths=${JACOCO_PATHS}" >> $GITHUB_OUTPUT
-            echo "Found JaCoCo reports:"
-            cat jacoco-reports.txt
-            echo ""
-            echo "JaCoCo paths for Sonar: ${JACOCO_PATHS}"
-          else
-            echo "paths=" >> $GITHUB_OUTPUT
-            echo "Warning: No JaCoCo reports found"
-            echo "Searching for jacoco.xml files:"
-            find . -name "jacoco.xml" -type f 2>/dev/null || echo "No jacoco.xml files found"
-          fi
-
-      - name: Run Sonar analysis
+      - name: Build and analyze
         # 跳过 Dependabot PR 的 Sonar 分析（Dependabot 无法访问 secrets）
         # 同时检查 secrets 是否存在，避免因 secrets 缺失导致失败
         if: ${{ github.actor != 'dependabot[bot]' && env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != '' }}
@@ -138,47 +111,11 @@ jobs:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ env.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ env.SONAR_PROJECT_KEY }}
-          JACOCO_PATHS: ${{ steps.jacoco-reports.outputs.paths }}
         run: |
-          SONAR_ARGS=(
-            -B
-            sonar:sonar
-            -pl 'mimir-boot-parent,mimir-boot-bom,mimir-boot-common,mimir-boot-starters'
-            -am
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.organization=${SONAR_ORGANIZATION}
+          # 按照 SonarCloud 官方推荐的方式：在 verify 阶段同时运行 Sonar 分析
+          # 使用 ci profile 执行完整的构建、测试和 Sonar 分析
+          # 分析所有模块，不排除任何模块
+          ./mvnw -B clean verify sonar:sonar -Pci \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=${SONAR_ORGANIZATION} \
             -Dsonar.projectKey=${SONAR_PROJECT_KEY}
-            -Dsonar.java.source=17
-            -Dsonar.java.target=17
-            -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.exclusions=**/pom.xml
-            -Dsonar.test.exclusions=**/pom.xml
-          )
-          # 如果找到了覆盖率报告，验证文件存在后再添加路径配置
-          if [ -n "${JACOCO_PATHS}" ]; then
-            echo "Verifying JaCoCo report files exist:"
-            IFS=',' read -ra PATHS <<< "${JACOCO_PATHS}"
-            VALID_PATHS=()
-            for path in "${PATHS[@]}"; do
-              # 清理路径中的空格
-              path=$(echo "$path" | sed 's/^[ ]*//' | sed 's/[ ]*$//')
-              if [ -f "$path" ]; then
-                VALID_PATHS+=("$path")
-                echo "  ✓ Found: $path"
-              else
-                echo "  ✗ Missing: $path"
-              fi
-            done
-            if [ ${#VALID_PATHS[@]} -gt 0 ]; then
-              # 将有效路径重新组合为逗号分隔的字符串
-              VALID_PATHS_STR=$(IFS=','; echo "${VALID_PATHS[*]}")
-              SONAR_ARGS+=(-Dsonar.coverage.jacoco.xmlReportPaths="${VALID_PATHS_STR}")
-              echo "Using JaCoCo paths: ${VALID_PATHS_STR}"
-            else
-              echo "Warning: No valid JaCoCo reports found, skipping coverage import"
-            fi
-          else
-            echo "No JaCoCo paths provided, Sonar will use default locations"
-          fi
-          # SonarQube Maven 插件会自动发现测试报告，无需手动配置
-          ./mvnw "${SONAR_ARGS[@]}"
