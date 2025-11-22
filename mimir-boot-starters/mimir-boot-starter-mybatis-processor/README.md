@@ -507,6 +507,12 @@ public class User {
 - **Java Annotation Processing**: Java 17+
 - **Maven**: 3.6+
 
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Starter MyBatis](../mimir-boot-starter-mybatis/README.md) - MyBatis 启动器（配合使用）
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明
+
 ## 许可证
 
 Apache License 2.0

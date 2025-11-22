@@ -511,6 +511,12 @@ public class CustomExceptionHandler {
 - **Java**: 17+
 - **Mimir Boot Common**: 异常体系和响应格式
 
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明（包含异常体系）
+- [Mimir Boot Starter Web](../mimir-boot-starter-web/README.md) - Web 层启动器（依赖本模块）
+
 ## 许可证
 
 Apache License 2.0

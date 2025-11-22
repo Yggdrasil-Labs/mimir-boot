@@ -253,8 +253,10 @@ Web 测试基类，提供：
 3. **清理测试环境**：测试基类会自动清理，但如有特殊需求可重写 `tearDown()` 方法
 4. **使用测试配置**：在 `application-test.yml` 中配置测试环境专用的配置
 
-## 🔗 相关链接
+## 📚 相关文档
 
-- [Mimir Boot 主文档](../../README.md)
-- [Spring Boot Testing](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.testing)
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明
+- [Mimir Boot Parent](../../mimir-boot-parent/README.md) - 父 POM 说明
+- [Spring Boot Testing](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.testing) - Spring Boot 测试文档
 

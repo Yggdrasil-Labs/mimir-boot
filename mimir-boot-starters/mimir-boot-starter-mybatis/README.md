@@ -624,6 +624,12 @@ logging:
 - **Spring Boot**: 3.3.13+
 - **Java**: 17+
 
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明（包含分页模型）
+- [Mimir Boot Starter MyBatis Processor](../mimir-boot-starter-mybatis-processor/README.md) - MyBatis 编译期处理器（配合使用）
+
 ## 许可证
 
 Apache License 2.0

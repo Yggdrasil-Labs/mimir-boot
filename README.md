@@ -289,14 +289,16 @@ private String phoneNumber;  // 自动加密存储、解密读取
 
 ## 📚 模块文档
 
+- [mimir-boot-parent](mimir-boot-parent/README.md) - 父 POM，提供插件版本和构建配置
+- [mimir-boot-bom](mimir-boot-bom/README.md) - 依赖版本统一管理（BOM）
 - [mimir-boot-common](mimir-boot-common/README.md) - 公共组件说明
 - [mimir-boot-starter-log](mimir-boot-starters/mimir-boot-starter-log/README.md) - 日志启动器文档
 - [mimir-boot-starter-exception](mimir-boot-starters/mimir-boot-starter-exception/README.md) - 异常处理启动器文档
 - [mimir-boot-starter-web](mimir-boot-starters/mimir-boot-starter-web/README.md) - Web 层启动器文档
 - [mimir-boot-starter-mybatis](mimir-boot-starters/mimir-boot-starter-mybatis/README.md) - MyBatis 启动器文档
-- [mimir-boot-starter-mybatis-processor](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) - MyBatis
-  编译期处理器文档
+- [mimir-boot-starter-mybatis-processor](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) - MyBatis 编译期处理器文档
 - [mimir-boot-starter-nacos](mimir-boot-starters/mimir-boot-starter-nacos/README.md) - Nacos 配置加密启动器文档
+- [mimir-boot-starter-test](mimir-boot-starters/mimir-boot-starter-test/README.md) - 测试启动器文档
 
 ## 🏗️ 项目结构
 

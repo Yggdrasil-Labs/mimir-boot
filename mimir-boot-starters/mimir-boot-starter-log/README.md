@@ -773,6 +773,12 @@ log.debug("Complex: {}", () -> expensiveOperation());
 - **Spring Boot**: 3.3.13+
 - **Java**: 17+
 
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../README.md) - 项目总体说明
+- [Mimir Boot Common](../mimir-boot-common/README.md) - 公共组件说明
+- [Mimir Boot Parent](../mimir-boot-parent/README.md) - 父 POM 说明
+
 ## 许可证
 
 Apache License 2.0

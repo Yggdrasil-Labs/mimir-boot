@@ -553,6 +553,12 @@ return response;
 - **Mimir Boot Starter Exception**: 异常处理
 - **Mimir Boot Common**: 统一响应格式
 
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明
+- [Mimir Boot Starter Exception](../mimir-boot-starter-exception/README.md) - 异常处理启动器（本模块依赖）
+
 ## 许可证
 
 Apache License 2.0

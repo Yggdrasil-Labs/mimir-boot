@@ -260,3 +260,9 @@ if (user == null) {
 - ✅ 使用标准 JSR-303 注解（`@NotNull`、`@NotBlank`、`@Email`）
 - ✅ 使用 Spring Validation
 - ❌ Common 模块不提供自定义校验注解
+
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../README.md) - 项目总体说明
+- [Mimir Boot Parent](../mimir-boot-parent/README.md) - 父 POM 说明
+- [Mimir Boot BOM](../mimir-boot-bom/README.md) - 依赖版本管理

@@ -524,6 +524,12 @@ password: SECRET(encrypted_value)  # 使用新前缀
 - **Spring Cloud**: 2023.0.6+
 - **Java**: 17+
 
+## 📚 相关文档
+
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明
+- [Mimir Boot BOM](../../mimir-boot-bom/README.md) - 依赖版本管理
+
 ## 许可证
 
 Apache License 2.0
