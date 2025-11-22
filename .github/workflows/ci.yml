@@ -153,6 +153,7 @@ jobs:
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.exclusions=**/pom.xml
             -Dsonar.test.exclusions=**/pom.xml
+            -Dsonar.ci.automaticAnalysis=false
           )
           # 如果找到了覆盖率报告，验证文件存在后再添加路径配置
           if [ -n "${JACOCO_PATHS}" ]; then
