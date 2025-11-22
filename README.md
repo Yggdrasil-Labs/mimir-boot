@@ -42,7 +42,6 @@
 | `mimir-boot-starter-mybatis`           | MyBatis 启动器（分页、审计、加密字段）      | ✅ 已完成 |
 | `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（自动 Mapper 扫描） | ✅ 已完成 |
 | `mimir-boot-starter-nacos`             | Nacos 配置加密启动器（ENC() 格式解密）    | ✅ 已完成 |
-| `examples`                             | 示例项目集合                       | 进行中   |
 
 ## 🚀 快速开始
 
@@ -110,18 +109,6 @@ logging:
 
 日志文件将保存在 `logs/your-app-name/` 目录下。
 
-### 4. 运行示例项目
-
-```bash
-# 进入示例项目目录
-cd examples/example-general-web-project
-
-# 运行
-mvn spring-boot:run
-```
-
-访问 `http://localhost:8080/hello` 查看效果。
-
 ## 🔧 常用命令
 
 ```bash
@@ -182,7 +169,7 @@ log.info("用户登录，用户名: {}, 密码: {}","admin","123456");
 #### 🔍 TraceId & SpanId 支持
 
 ```log
-2025-01-28 10:23:45.123 [http-nio-8080-exec-1] INFO  [abc-123] [span-456] com.yggdrasil.labs.example.GeneralWebProject - Hello World
+2025-01-28 10:23:45.123 [http-nio-8080-exec-1] INFO  [abc-123] [span-456] com.yggdrasil.labs.app.Application - Hello World
 ```
 
 #### 📊 访问日志
@@ -314,8 +301,6 @@ mimir-boot/
 │   ├── mimir-boot-starter-mybatis/        # MyBatis Starter
 │   ├── mimir-boot-starter-mybatis-processor/  # MyBatis 编译期处理器
 │   └── mimir-boot-starter-nacos/          # Nacos 配置加密 Starter
-├── examples/                              # 示例项目
-│   └── example-general-web-project/
 └── README.md                              # 本文件
 ```
 
