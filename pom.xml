@@ -8,6 +8,7 @@
     <packaging>pom</packaging>
 
     <name>Mimir Boot</name>
+    <description>Yggdrasil-Labs 的 Java 企业级基础框架，统一依赖版本、公共组件、自定义 Starter 与编译期代码生成工具</description>
 
     <modules>
         <module>mimir-boot-parent</module>
