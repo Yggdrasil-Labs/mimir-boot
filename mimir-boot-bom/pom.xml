@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
 
     <name>Mimir Boot BOM</name>
+    <description>Mimir Boot 依赖版本统一管理（BOM），集中管理所有第三方依赖版本，确保依赖兼容性和版本一致性</description>
 
     <properties>
         <java.version>17</java.version>

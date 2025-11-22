@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
 
     <name>Mimir Boot Parent</name>
+    <description>Mimir Boot 父 POM，提供统一的 Maven 插件版本管理、构建配置和代码质量工具（JaCoCo、Spotless、Maven Enforcer）</description>
 
     <properties>
         <java.version>17</java.version>

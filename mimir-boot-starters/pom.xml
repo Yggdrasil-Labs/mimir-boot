@@ -12,6 +12,7 @@
     <packaging>pom</packaging>
 
     <name>Mimir Boot Starters</name>
+    <description>Mimir Boot Starter 集合模块，包含日志、异常处理、Web、MyBatis、Nacos 配置加密、测试等启动器</description>
 
     <modules>
         <module>mimir-boot-starter-log</module>

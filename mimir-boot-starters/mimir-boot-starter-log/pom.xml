@@ -12,6 +12,7 @@
     <packaging>jar</packaging>
 
     <name>Mimir Boot Starter Log</name>
+    <description>Mimir Boot 日志启动器，基于 Logback 提供统一日志配置、敏感信息自动脱敏、TraceId/SpanId 支持和访问日志记录</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

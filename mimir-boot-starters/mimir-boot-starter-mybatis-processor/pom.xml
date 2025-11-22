@@ -11,6 +11,7 @@
     <artifactId>mimir-boot-starter-mybatis-processor</artifactId>
     <packaging>jar</packaging>
     <name>Mimir Boot MyBatis Processor</name>
+    <description>Mimir Boot MyBatis 编译期处理器，通过注解处理器自动生成 MyBatis-Plus Mapper、Service 和 ServiceImpl，减少样板代码</description>
 
     <dependencies>
         <!-- JavaPoet for code generation -->

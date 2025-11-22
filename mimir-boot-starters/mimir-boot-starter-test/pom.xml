@@ -12,6 +12,7 @@
     <packaging>jar</packaging>
 
     <name>Mimir Boot Starter Test</name>
+    <description>Mimir Boot 测试启动器，提供统一的测试依赖管理、测试工具类、测试基类（单元测试、集成测试、Web 测试）和测试配置</description>
 
     <dependencies>
         <!-- spring-boot-test contains @SpringBootTest annotation -->

@@ -12,6 +12,7 @@
     <packaging>jar</packaging>
 
     <name>Mimir Boot Starter Web</name>
+    <description>Mimir Boot Web 层启动器，提供 CORS 跨域配置、Trace 追踪、响应体增强、Jackson 序列化配置和 Web 拦截器</description>
 
     <dependencies>
         <!-- Spring Boot Web -->
