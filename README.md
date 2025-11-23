@@ -42,6 +42,12 @@
 | `mimir-boot-starter-mybatis`           | MyBatis 启动器（分页、审计、加密字段）      | ✅ 已完成 |
 | `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（自动 Mapper 扫描） | ✅ 已完成 |
 | `mimir-boot-starter-nacos`             | Nacos 配置加密启动器（ENC() 格式解密）    | ✅ 已完成 |
+| `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | 🔄 规划中 |
+| `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | 🔄 规划中 |
+| `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | 🔄 规划中 |
+| `mimir-boot-starter-governance`        | 服务治理（限流、熔断、重试）              | 🔄 规划中 |
+| `mimir-boot-starter-metrics`           | 指标监控（Metrics 采集与上报）           | 🔄 规划中 |
+| `mimir-boot-starter-security`          | 安全治理（签名、token 透传、安全增强）    | 🔄 规划中 |
 
 ## 🚀 快速开始
 
@@ -286,6 +292,12 @@ private String phoneNumber;  // 自动加密存储、解密读取
 - [mimir-boot-starter-mybatis-processor](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) - MyBatis 编译期处理器文档
 - [mimir-boot-starter-nacos](mimir-boot-starters/mimir-boot-starter-nacos/README.md) - Nacos 配置加密启动器文档
 - [mimir-boot-starter-test](mimir-boot-starters/mimir-boot-starter-test/README.md) - 测试启动器文档
+- [mimir-boot-starter-rpc-core](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md) - RPC 通用治理核心文档
+- [mimir-boot-starter-dubbo](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) - Dubbo 专用治理文档
+- [mimir-boot-starter-feign](mimir-boot-starters/mimir-boot-starter-feign/README.md) - Feign 专用治理文档
+- [mimir-boot-starter-governance](mimir-boot-starters/mimir-boot-starter-governance/README.md) - 服务治理文档
+- [mimir-boot-starter-metrics](mimir-boot-starters/mimir-boot-starter-metrics/README.md) - 指标监控文档
+- [mimir-boot-starter-security](mimir-boot-starters/mimir-boot-starter-security/README.md) - 安全治理文档
 
 ## 🏗️ 项目结构
 
@@ -300,9 +312,87 @@ mimir-boot/
 │   ├── mimir-boot-starter-web/            # Web 层 Starter
 │   ├── mimir-boot-starter-mybatis/        # MyBatis Starter
 │   ├── mimir-boot-starter-mybatis-processor/  # MyBatis 编译期处理器
-│   └── mimir-boot-starter-nacos/          # Nacos 配置加密 Starter
+│   ├── mimir-boot-starter-nacos/          # Nacos 配置加密 Starter
+│   ├── mimir-boot-starter-rpc-core/       # RPC 通用治理核心
+│   ├── mimir-boot-starter-dubbo/          # Dubbo 专用治理
+│   ├── mimir-boot-starter-feign/          # Feign 专用治理
+│   ├── mimir-boot-starter-governance/     # 服务治理（限流、熔断、重试）
+│   ├── mimir-boot-starter-metrics/        # 指标监控
+│   └── mimir-boot-starter-security/      # 安全治理
 └── README.md                              # 本文件
 ```
+
+## 📊 模块依赖关系
+
+```mermaid
+graph TD
+    Root[mimir-boot<br/>根模块] --> Parent[mimir-boot-parent<br/>父 POM]
+    Root --> BOM[mimir-boot-bom<br/>依赖版本管理]
+    Root --> Common[mimir-boot-common<br/>公共组件]
+    Root --> Starters[mimir-boot-starters<br/>Starter 聚合模块]
+    
+    Parent -.依赖管理.-> BOM
+    
+    Starters --> Log[mimir-boot-starter-log<br/>日志启动器]
+    Starters --> Exception[mimir-boot-starter-exception<br/>异常处理启动器]
+    Starters --> Web[mimir-boot-starter-web<br/>Web 层启动器]
+    Starters --> MyBatis[mimir-boot-starter-mybatis<br/>MyBatis 启动器]
+    Starters --> Processor[mimir-boot-starter-mybatis-processor<br/>MyBatis 编译期处理器]
+    Starters --> Nacos[mimir-boot-starter-nacos<br/>Nacos 配置加密启动器]
+    Starters --> Test[mimir-boot-starter-test<br/>测试启动器]
+    Starters --> RPCCore[mimir-boot-starter-rpc-core<br/>RPC 通用治理核心<br/>🔄 规划中]
+    Starters --> Dubbo[mimir-boot-starter-dubbo<br/>Dubbo 专用治理<br/>🔄 规划中]
+    Starters --> Feign[mimir-boot-starter-feign<br/>Feign 专用治理<br/>🔄 规划中]
+    Starters --> Governance[mimir-boot-starter-governance<br/>服务治理<br/>🔄 规划中]
+    Starters --> Metrics[mimir-boot-starter-metrics<br/>指标监控<br/>🔄 规划中]
+    Starters --> Security[mimir-boot-starter-security<br/>安全治理<br/>🔄 规划中]
+    
+    Log --> Common
+    Log --> Test
+    Exception --> Common
+    Exception --> Test
+    Web --> Common
+    Web --> Exception
+    Web --> Test
+    MyBatis --> Common
+    MyBatis --> Test
+    Processor --> Test
+    Nacos --> Common
+    Nacos --> Test
+    Test --> Common
+    
+    RPCCore -.规划依赖.-> Common
+    Dubbo -.规划依赖.-> RPCCore
+    Feign -.规划依赖.-> RPCCore
+    Governance -.规划依赖.-> Common
+    Metrics -.规划依赖.-> Common
+    Security -.规划依赖.-> Common
+    
+    style Root fill:#e1f5ff
+    style Parent fill:#fff4e1
+    style BOM fill:#fff4e1
+    style Common fill:#e8f5e9
+    style Starters fill:#f3e5f5
+    style Test fill:#fce4ec
+    style RPCCore fill:#f5f5f5,stroke-dasharray: 5 5
+    style Dubbo fill:#f5f5f5,stroke-dasharray: 5 5
+    style Feign fill:#f5f5f5,stroke-dasharray: 5 5
+    style Governance fill:#f5f5f5,stroke-dasharray: 5 5
+    style Metrics fill:#f5f5f5,stroke-dasharray: 5 5
+    style Security fill:#f5f5f5,stroke-dasharray: 5 5
+```
+
+### 依赖关系说明
+
+- **实线箭头**：已实现的模块依赖关系
+- **虚线箭头**：规划中的模块依赖关系
+- **颜色说明**：
+  - 🔵 蓝色：根模块
+  - 🟡 黄色：基础设施模块（Parent、BOM）
+  - 🟢 绿色：核心公共模块（Common）
+  - 🟣 紫色：Starter 聚合模块
+  - 🔴 粉色：测试模块
+  - ⚪ 灰色虚线：规划中的模块
 
 ## 📄 许可证
 
