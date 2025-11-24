@@ -24,7 +24,9 @@
 </dependency>
 ```
 
-**注意**：需要同时配置数据源（如 HikariCP、Druid 等）。
+**注意**：
+- 需要同时配置数据源（如 HikariCP、Druid 等）
+- 从 MyBatis-Plus 3.5.9 开始，分页插件需要单独引入 `mybatis-plus-jsqlparser` 依赖，本 Starter 已自动包含
 
 ### 与 Processor 配合使用
 

@@ -30,8 +30,8 @@ import java.util.Set;
 /**
  * MyBatis-Plus 自动配置，注册常用拦截器。
  * <p>
- * 为了兼容不同版本的 MyBatis-Plus，分页拦截器通过反射可选加载：
- * - 首选 com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor
+ * 分页拦截器：从 MyBatis-Plus 3.5.9 开始，分页插件需要单独引入 mybatis-plus-jsqlparser 依赖。
+ * 本 Starter 已自动包含该依赖，使用 @ConditionalOnClass 确保类存在时才创建 Bean。
  * <p>
  * 注意：此自动配置类需要在 MyBatis-Plus 的自动配置之前加载，以确保 MapperScannerConfigurer
  * 能够被正确创建。如果 MyBatis-Plus 的自动配置先创建了 MapperScannerConfigurer，
@@ -77,20 +77,36 @@ public class MybatisPlusAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnClass(name = "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor")
     public MybatisPlusInterceptor mybatisPlusInterceptor(
             MybatisProperties properties, Environment env) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        // 可选分页拦截器
+        
+        // 分页拦截器（使用反射加载，避免编译时依赖）
+        // 使用 @ConditionalOnClass 确保类存在时才创建 Bean
+        // 注意：即使有 @ConditionalOnClass，在类加载时仍可能失败，所以使用反射更安全
         InnerInterceptor pagination = ReflectionUtils.createPaginationInnerInterceptor();
         if (pagination != null) {
             interceptor.addInnerInterceptor(pagination);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("分页拦截器已添加到 MybatisPlusInterceptor");
+            }
+        } else {
+            // 如果 @ConditionalOnClass 生效，这里应该不会执行
+            // 但如果类加载失败，这里会记录警告
+            if (LOGGER.isWarnEnabled()) {
+                LOGGER.warn("分页拦截器未找到，请确认已引入 mybatis-plus-jsqlparser 依赖（MyBatis-Plus 3.5.9+ 需要）");
+            }
         }
+        
         // 乐观锁
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+        
         // 装配外部或其他配置类提供的自定义拦截器
         if (innerInterceptors != null && !innerInterceptors.isEmpty()) {
             innerInterceptors.forEach(interceptor::addInnerInterceptor);
         }
+        
         return interceptor;
     }
 

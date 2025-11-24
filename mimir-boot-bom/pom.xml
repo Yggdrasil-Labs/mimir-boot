@@ -128,6 +128,12 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- MyBatis-Plus 分页插件（从 3.5.9 开始需要单独引入） -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis.plus.version}</version>
+            </dependency>
 
             <!-- 工具类 -->
             <dependency>

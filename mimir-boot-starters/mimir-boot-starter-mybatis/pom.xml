@@ -26,6 +26,12 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
+        <!-- MyBatis-Plus 分页插件（从 3.5.9 开始需要单独引入） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+
         <!-- Spring Boot AutoConfiguration support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
