@@ -45,6 +45,8 @@
         <spotless.plugin.version>3.1.0</spotless.plugin.version>
         <!-- Flatten 插件版本 -->
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
+        <!-- SonarQube Maven 插件版本 -->
+        <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
@@ -133,6 +135,12 @@
                         </execution>
                     </executions>
                 </plugin>
+                <!-- SonarQube Maven Plugin (代码质量分析) -->
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar-maven-plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -157,6 +165,11 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
+            <!-- SonarQube Maven Plugin (代码质量分析) - 使根模块也能识别 sonar 命令 -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
