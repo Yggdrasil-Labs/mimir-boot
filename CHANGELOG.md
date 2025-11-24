@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.2.0...mimir-boot-v1.2.1) (2025-11-24)
+
+
+### Bug Fixes
+
+* 修复未加载分页插件问题 ([f84df1c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f84df1cb56764d0cc28db572899ded69112f10d4))
+* 加载顺序问题导致MybatisPlusAutoConfiguration未能正确加载；修复部分配置前缀错误 ([f842b17](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f842b17df20df148c31dcc33c50f8188910cccb5))
+
+
+### Documentation
+
+* 增加dubbo、feign相关的模块规划 ([8f0c255](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8f0c255f2a4a55cefd7a97eb603159f8a1e28e21))
+
+
+### Continuous Integration
+
+* **deps:** bump actions/checkout from 5 to 6 ([b721da2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b721da2308d260b4f6facf6e67b01ae67af905b4))
+* 自动发布后自动更新bootstrap-sha指向最新的版本hash ([f213f76](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f213f76c6542e511ce3aed6a3fa867bcdca5214a))
+
+
+### Miscellaneous Chores
+
+* bump version to 1.2.1-SNAPSHOT for next development cycle ([a508c54](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a508c5402d4309b6eab9de390f48175dbd27e9c8))
+
 ## [1.2.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.1.0...mimir-boot-v1.2.0) (2025-11-22)
 
 
