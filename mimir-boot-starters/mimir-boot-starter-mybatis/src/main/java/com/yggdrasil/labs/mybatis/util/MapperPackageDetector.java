@@ -32,6 +32,10 @@ public final class MapperPackageDetector {
      * 主要用于检测 processor 生成的 mapper，因为 processor 默认生成的 mapper 包路径
      * 是 "实体类包名.mapper"，所以通过检测所有 ".mapper" 结尾的包可以自动发现这些 mapper。
      * 注意：此方法只检测包路径，不加载类，性能较好。
+     * 
+     * 优化：如果检测到的包已经在默认包（com.yggdrasil.labs.**.mapper）的覆盖范围内，
+     * 则不会重复添加，因为默认包的通配符已经可以匹配到这些包。
+     * 只添加不在默认包覆盖范围内的包（如其他组织或项目的 mapper 包）。
      *
      * @return 检测到的 mapper 包集合（使用通配符模式，如 "com.example.**.mapper"）
      */
@@ -63,8 +67,9 @@ public final class MapperPackageDetector {
             // 将检测到的包转换为通配符模式，以便扫描子包
             for (String pkg : detectedPackages) {
                 // 如果包路径不是以默认包前缀开头，则添加到扫描列表
-                // 因为默认包已经在默认扫描包中了
-                if (!pkg.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX)) {
+                // 因为默认包 com.yggdrasil.labs.**.mapper 已经可以匹配所有 com.yggdrasil.labs 下的 .mapper 包
+                // 注意：使用 DEFAULT_PACKAGE_PREFIX + "." 确保是子包，避免误判（如 com.yggdrasil.labsx.mapper）
+                if (!pkg.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX + ".")) {
                     mapperPackages.add(pkg + MybatisConstants.PACKAGE_WILDCARD_SUFFIX);
                 }
             }

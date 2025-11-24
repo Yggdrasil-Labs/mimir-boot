@@ -61,16 +61,22 @@ class MapperPackageDetectorTest extends BaseUnitTest {
     }
 
     @Test
-    void testDetectMapperPackages_excludesDefaultPackage() {
-        // 验证检测到的包中不包含默认包前缀的包
+    void testDetectMapperPackages_includesAllPackages() {
+        // 验证检测到的包包括所有以 .mapper 结尾的包，包括默认包前缀下的包
+        // 这是为了确保所有 mapper 都能被正确扫描到，避免通配符匹配失败的问题
         Set<String> packages = MapperPackageDetector.detectMapperPackages();
         
+        // 验证所有包都添加了通配符后缀
         for (String pkg : packages) {
-            // 移除通配符后缀后检查
+            assertTrue(
+                pkg.endsWith(MybatisConstants.PACKAGE_WILDCARD_SUFFIX),
+                "检测到的包应该包含通配符后缀: " + pkg
+            );
+            // 移除通配符后缀后，包应该以 .mapper 结尾
             String packageWithoutWildcard = pkg.replace(MybatisConstants.PACKAGE_WILDCARD_SUFFIX, "");
-            assertFalse(
-                packageWithoutWildcard.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX),
-                "检测到的包不应该包含默认包前缀: " + pkg
+            assertTrue(
+                packageWithoutWildcard.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX),
+                "包应该以 .mapper 结尾: " + pkg
             );
         }
     }
@@ -537,15 +543,19 @@ class MapperPackageDetectorTest extends BaseUnitTest {
 
     @Test
     void testDetectMapperPackages_withDefaultPackagePrefix() {
-        // 测试检测到的包以默认包前缀开头的情况（应该被排除）
+        // 测试检测到的包以默认包前缀开头的情况（现在应该被包含）
+        // 这是为了确保所有 mapper 都能被正确扫描到，包括 com.yggdrasil.labs 下的包
         Set<String> packages = MapperPackageDetector.detectMapperPackages();
         assertNotNull(packages);
         
-        // 验证没有包以默认包前缀开头
+        // 验证所有包都添加了通配符后缀
         for (String pkg : packages) {
             String withoutWildcard = pkg.replace(MybatisConstants.PACKAGE_WILDCARD_SUFFIX, "");
-            assertFalse(withoutWildcard.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX),
-                "不应该包含默认包前缀: " + pkg);
+            // 现在允许包含默认包前缀的包，因为这样可以确保所有 mapper 都能被扫描到
+            assertTrue(
+                withoutWildcard.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX),
+                "包应该以 .mapper 结尾: " + pkg
+            );
         }
     }
 }

@@ -89,12 +89,12 @@ class MybatisConstantsTest extends BaseUnitTest {
 
     @Test
     void testConfigPrefix() {
-        AssertUtils.assertEquals("mimir.mybatis", MybatisConstants.CONFIG_PREFIX);
+        AssertUtils.assertEquals("mimir.boot.mybatis", MybatisConstants.CONFIG_PREFIX);
     }
 
     @Test
     void testConfigMapperPackages() {
-        AssertUtils.assertEquals("mimir.mybatis.mapper-packages", MybatisConstants.CONFIG_MAPPER_PACKAGES);
+        AssertUtils.assertEquals("mimir.boot.mybatis.mapper-packages", MybatisConstants.CONFIG_MAPPER_PACKAGES);
         // 验证它是由 CONFIG_PREFIX 和 ".mapper-packages" 组成的
         assertTrue(MybatisConstants.CONFIG_MAPPER_PACKAGES.startsWith(MybatisConstants.CONFIG_PREFIX));
     }

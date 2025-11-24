@@ -44,7 +44,7 @@ public final class MybatisConstants {
     public static final String MAPPER_SCAN_PATTERN = "**/mapper/*.class";
 
     /** 配置属性前缀 */
-    public static final String CONFIG_PREFIX = "mimir.mybatis";
+    public static final String CONFIG_PREFIX = "mimir.boot.mybatis";
 
     /** Mapper 包配置属性名 */
     public static final String CONFIG_MAPPER_PACKAGES = CONFIG_PREFIX + ".mapper-packages";

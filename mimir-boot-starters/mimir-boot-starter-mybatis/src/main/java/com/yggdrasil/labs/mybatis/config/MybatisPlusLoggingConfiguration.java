@@ -16,7 +16,7 @@ public class MybatisPlusLoggingConfiguration {
 
     @Bean
     @ConditionalOnProperty(
-            name = "mimir.mybatis.enable-json-sql-log",
+            name = "mimir.boot.mybatis.enable-json-sql-log",
             havingValue = "true",
             matchIfMissing = true
     )

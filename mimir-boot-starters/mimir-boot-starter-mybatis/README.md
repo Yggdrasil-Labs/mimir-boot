@@ -32,7 +32,7 @@
 
 - ✅ **自动检测**：自动扫描所有以 `.mapper` 结尾的包（processor 默认生成的包路径）
 - ✅ **无需配置**：即使 Mapper 不在 `com.yggdrasil.labs` 包下，也会被自动扫描到
-- ✅ **支持自定义**：如果 processor 使用了自定义的 `mapperPackage`，可以通过配置 `mimir.mybatis.mapper-packages` 手动指定
+- ✅ **支持自定义**：如果 processor 使用了自定义的 `mapperPackage`，可以通过配置 `mimir.boot.mybatis.mapper-packages` 手动指定
 
 **示例**：
 
@@ -66,6 +66,35 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 ```
+
+### 重要提示：避免 Mapper 重复注册
+
+**问题**：如果 Mapper 接口上同时使用了 `@Mapper` 注解，并且 Spring 的组件扫描也扫描到了该包，可能会导致 Mapper 被重复注册，出现警告：
+
+```
+Skipping MapperFactoryBean with name 'xxxMapper' and 'xxx.xxx.mapper.XxxMapper' mapperInterface. Bean already defined with the same name!
+```
+
+**解决方案**：
+
+1. **推荐方式**：在 Mapper 接口上使用 `@Mapper` 注解，Starter 会自动扫描并注册（推荐）
+   ```java
+   @Mapper
+   public interface UserMapper extends BaseMapper<User> {
+       // ...
+   }
+   ```
+
+2. **如果使用 `@MapperScan`**：移除 Mapper 接口上的 `@Mapper` 注解，统一使用 `@MapperScan` 扫描
+   ```java
+   @SpringBootApplication
+   @MapperScan("com.example.mapper")
+   public class Application {
+       // ...
+   }
+   ```
+
+3. **确保组件扫描不包含 Mapper 包**：如果 Mapper 接口上没有 `@Mapper` 注解，确保 Spring 的组件扫描不会扫描到 Mapper 接口所在的包
 
 ## 核心功能
 
@@ -296,11 +325,12 @@ public class UserController {
 
 ### MyBatis 配置
 
-所有配置项前缀为 `mimir.mybatis`：
+所有配置项前缀为 `mimir.boot.mybatis`：
 
 ```yaml
 mimir:
-  mybatis:
+  boot:
+    mybatis:
     # Mapper 扫描包（多个用逗号分隔）
     # 无论是否配置，这个 Starter 都会始终包含默认扫描包：com.yggdrasil.labs.**.mapper
     # 若配置了自定义包，将与默认包一起生效（逗号分隔）
