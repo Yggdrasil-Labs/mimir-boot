@@ -314,6 +314,12 @@
                 <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
 
+            <!-- SonarQube Maven Plugin (代码质量分析) -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+            </plugin>
+
         </plugins>
     </build>
 
