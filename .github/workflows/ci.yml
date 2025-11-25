@@ -114,10 +114,8 @@ jobs:
         run: |
           # 按照 SonarCloud 官方推荐的方式：在 verify 阶段同时运行 Sonar 分析
           # 使用 ci profile 执行完整的构建、测试和 Sonar 分析
-          # verify 阶段会执行 test，JaCoCo 会在 test 阶段生成报告
+          # 分析所有模块，不排除任何模块
           ./mvnw -B clean verify sonar:sonar -Pci \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=${SONAR_ORGANIZATION} \
-            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-            -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml \
-            -Dsonar.junit.reportPaths=**/target/surefire-reports
+            -Dsonar.projectKey=${SONAR_PROJECT_KEY}
