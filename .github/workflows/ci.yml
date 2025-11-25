@@ -102,19 +102,6 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
-      - name: Build and test
-        if: ${{ github.actor != 'dependabot[bot]' && env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != '' }}
-        run: |
-          # 先执行构建和测试，生成覆盖率报告
-          ./mvnw -B clean verify -Pci
-
-      - name: Verify JaCoCo reports
-        if: ${{ github.actor != 'dependabot[bot]' && env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != '' }}
-        run: |
-          # 检查 JaCoCo 报告是否生成
-          find . -name "jacoco.xml" -type f || echo "No jacoco.xml files found"
-          find . -path "*/target/site/jacoco/jacoco.xml" -type f || echo "No jacoco reports found in expected locations"
-
       - name: Build and analyze
         # 跳过 Dependabot PR 的 Sonar 分析（Dependabot 无法访问 secrets）
         # 同时检查 secrets 是否存在，避免因 secrets 缺失导致失败
@@ -125,12 +112,12 @@ jobs:
           SONAR_ORGANIZATION: ${{ env.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ env.SONAR_PROJECT_KEY }}
         run: |
-          # 执行 SonarQube 分析（测试和覆盖率报告已在上一阶段生成）
-          # 尝试多种属性名以确保兼容性
-          ./mvnw -B sonar:sonar \
+          # 按照 SonarCloud 官方推荐的方式：在 verify 阶段同时运行 Sonar 分析
+          # 使用 ci profile 执行完整的构建、测试和 Sonar 分析
+          # verify 阶段会执行 test，JaCoCo 会在 test 阶段生成报告
+          ./mvnw -B clean verify sonar:sonar -Pci \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=${SONAR_ORGANIZATION} \
             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
             -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml \
-            -Dsonar.jacoco.reportPaths=**/target/site/jacoco/jacoco.xml \
             -Dsonar.junit.reportPaths=**/target/surefire-reports

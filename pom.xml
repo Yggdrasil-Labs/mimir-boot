@@ -47,8 +47,6 @@
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <!-- SonarQube Maven 插件版本 -->
         <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
-        <!-- JaCoCo 插件版本 -->
-        <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
@@ -143,12 +141,6 @@
                     <artifactId>sonar-maven-plugin</artifactId>
                     <version>${sonar-maven-plugin.version}</version>
                 </plugin>
-                <!-- JaCoCo Plugin (代码覆盖率) - 用于根 POM 前缀解析 -->
-                <plugin>
-                    <groupId>org.jacoco</groupId>
-                    <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>${jacoco.plugin.version}</version>
-                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -178,14 +170,6 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-            </plugin>
-            <!-- JaCoCo Plugin (代码覆盖率) - 使根模块也能识别 jacoco 命令 -->
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>
