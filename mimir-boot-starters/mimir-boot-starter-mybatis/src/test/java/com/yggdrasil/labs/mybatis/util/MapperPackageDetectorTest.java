@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.Resource;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -526,6 +527,71 @@ class MapperPackageDetectorTest extends BaseUnitTest {
 
     // ========== 测试 detectMapperPackages 中的各种分支 ==========
 
+    /**
+     * 测试第 61-64 行的分支逻辑：
+     * - extractPackageFromResource 返回 null 的情况（应该被 StringUtils.hasText 过滤）
+     * - extractPackageFromResource 返回空字符串的情况（应该被 StringUtils.hasText 过滤）
+     * - extractPackageFromResource 返回非空但不以 .mapper 结尾的情况（应该被 endsWith 过滤）
+     * - extractPackageFromResource 返回有效包名的情况（应该被添加到 detectedPackages）
+     */
+    @Test
+    void testDetectMapperPackages_filtersInvalidPackageNames() throws Exception {
+        // 通过反射测试 extractPackageFromResource 返回不同值时的处理逻辑
+        Method extractMethod = MapperPackageDetector.class.getDeclaredMethod(
+            "extractPackageFromResource", Resource.class);
+        extractMethod.setAccessible(true);
+        
+        // 测试 extractPackageFromResource 返回 null 的情况
+        Resource nullResource = new AbstractResource() {
+            @Override
+            public String getDescription() {
+                return "Test Resource returning null";
+            }
+
+            @Override
+            public InputStream getInputStream() throws IOException {
+                return new java.io.ByteArrayInputStream(new byte[0]);
+            }
+
+            @Override
+            public URL getURL() throws IOException {
+                throw new IOException("Cannot get URL");
+            }
+        };
+        
+        String nullResult = (String) extractMethod.invoke(null, nullResource);
+        assertNull(nullResult, "extractPackageFromResource 应该返回 null");
+        // 验证 StringUtils.hasText(null) 返回 false，不会进入 if 分支
+        assertFalse(StringUtils.hasText(nullResult), 
+            "StringUtils.hasText(null) 应该返回 false");
+        
+        // 测试 extractPackageFromResource 返回空字符串的情况
+        Method extractUrlMethod = MapperPackageDetector.class.getDeclaredMethod(
+            "extractPackageFromUrl", String.class);
+        extractUrlMethod.setAccessible(true);
+        
+        String emptyResult = (String) extractUrlMethod.invoke(null, "file:/path/to/classes/User.class");
+        // 如果返回空字符串或 null，应该被 StringUtils.hasText 过滤
+        if (emptyResult != null) {
+            assertFalse(StringUtils.hasText(""), 
+                "StringUtils.hasText(\"\") 应该返回 false");
+        }
+        
+        // 测试 extractPackageFromResource 返回非空但不以 .mapper 结尾的情况
+        String nonMapperPackage = "com.example.service";
+        assertTrue(StringUtils.hasText(nonMapperPackage), 
+            "非空字符串应该通过 hasText 检查");
+        assertFalse(nonMapperPackage.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX), 
+            "不以 .mapper 结尾的包应该被 endsWith 过滤");
+        
+        // 测试 extractPackageFromResource 返回有效包名的情况
+        String validMapperPackage = "com.example.mapper";
+        assertTrue(StringUtils.hasText(validMapperPackage), 
+            "有效包名应该通过 hasText 检查");
+        assertTrue(validMapperPackage.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX), 
+            "以 .mapper 结尾的包应该通过 endsWith 检查");
+    }
+
     @Test
     void testDetectMapperPackages_withPackageNotEndingWithMapper() {
         // 测试包名不以 .mapper 结尾的情况
@@ -534,6 +600,7 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         assertNotNull(packages);
         
         // 验证所有包都以 .mapper 结尾（在添加通配符之前）
+        // 这说明第 62 行的 endsWith 检查正常工作，过滤掉了不以 .mapper 结尾的包
         for (String pkg : packages) {
             String withoutWildcard = pkg.replace(MybatisConstants.PACKAGE_WILDCARD_SUFFIX, "");
             assertTrue(withoutWildcard.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX),

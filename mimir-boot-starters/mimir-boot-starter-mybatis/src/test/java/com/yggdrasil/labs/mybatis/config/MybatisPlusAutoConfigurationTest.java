@@ -552,17 +552,17 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
         final Class<?> finalPaginationClass = paginationClass;
         final boolean hasPagination = finalPaginationClass != null && innerInterceptors.stream()
-                .anyMatch(finalPaginationClass::isInstance);
+                .anyMatch(inner -> finalPaginationClass.isInstance(inner));
 
         // 分页拦截器可能存在也可能不存在（取决于类路径），但至少应该不抛异常
         assertDoesNotThrow(() -> {
             // 如果分页拦截器存在，验证其类型
             if (hasPagination) {
-                InnerInterceptor pagination = innerInterceptors.stream()
-                        .filter(finalPaginationClass::isInstance)
+                InnerInterceptor paginationInterceptor = innerInterceptors.stream()
+                        .filter(inner -> finalPaginationClass.isInstance(inner))
                         .findFirst()
                         .orElse(null);
-                assertNotNull(pagination);
+                assertNotNull(paginationInterceptor);
             }
         });
     }
@@ -827,5 +827,224 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config1.getLogImpl());
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config2.getLogImpl());
         assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config3.getLogImpl());
+    }
+
+    // ========== 测试新增的构造函数 ==========
+
+    @Test
+    void testConstructorWithNoArgs() {
+        // 测试无参构造函数（新增）
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration();
+        assertNotNull(cfg);
+    }
+
+    @Test
+    void testConstructorWithListOfInterceptors() {
+        // 测试带 List<InnerInterceptor> 参数的构造函数（新增，用于 Spring 自动注入）
+        List<InnerInterceptor> interceptors = Arrays.asList(
+            Mockito.mock(InnerInterceptor.class),
+            Mockito.mock(InnerInterceptor.class)
+        );
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(interceptors);
+        assertNotNull(cfg);
+        
+        // 验证拦截器被正确使用
+        MybatisProperties props = new MybatisProperties();
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment());
+        assertNotNull(interceptor);
+    }
+
+    @Test
+    void testConstructorWithNullListOfInterceptors() {
+        // 测试带 null List 的构造函数（Spring 自动注入时可能为 null）
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration((List<InnerInterceptor>) null);
+        assertNotNull(cfg);
+        
+        // 验证可以正常工作
+        MybatisProperties props = new MybatisProperties();
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment());
+        assertNotNull(interceptor);
+    }
+
+    @Test
+    void testConstructorWithEmptyListOfInterceptors() {
+        // 测试带空 List 的构造函数
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Collections.emptyList());
+        assertNotNull(cfg);
+        
+        // 验证可以正常工作
+        MybatisProperties props = new MybatisProperties();
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment());
+        assertNotNull(interceptor);
+    }
+
+    // ========== 测试自动检测 Mapper 包功能 ==========
+
+    @Test
+    void testGetFinalMapperPackagesWithAutoDetection() throws Exception {
+        // 测试 getFinalMapperPackagesWithAutoDetection 方法（新增）
+        // 该方法包含：默认包 + 用户配置包 + 自动检测包
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Arrays.asList("com.custom.mapper", "com.other.mapper"));
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+        
+        assertNotNull(basePackage);
+        // 应该包含默认包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+            "应该包含默认包: " + basePackage);
+        // 应该包含用户配置的包
+        assertTrue(basePackage.contains("com.custom.mapper"),
+            "应该包含用户配置的包: " + basePackage);
+        assertTrue(basePackage.contains("com.other.mapper"),
+            "应该包含用户配置的包: " + basePackage);
+        // 可能还包含自动检测到的包（取决于 classpath）
+    }
+
+    @Test
+    void testGetFinalMapperPackagesWithAutoDetectionIncludesDefaultPackage() throws Exception {
+        // 验证默认包始终被包含
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        // 不设置任何用户配置的包
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+        
+        assertNotNull(basePackage);
+        // 应该始终包含默认包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+            "应该始终包含默认包: " + basePackage);
+    }
+
+    @Test
+    void testGetFinalMapperPackagesWithAutoDetectionMergesAllPackages() throws Exception {
+        // 验证默认包、用户配置包和自动检测包都被合并
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Arrays.asList("com.user1.mapper", "com.user2.mapper"));
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+        
+        assertNotNull(basePackage);
+        // 验证所有包都被包含
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+            "应该包含默认包");
+        assertTrue(basePackage.contains("com.user1.mapper"),
+            "应该包含用户配置的包1");
+        assertTrue(basePackage.contains("com.user2.mapper"),
+            "应该包含用户配置的包2");
+        
+        // 验证包之间用逗号分隔
+        String[] packages = basePackage.split(",");
+        assertTrue(packages.length >= 3, 
+            "应该至少包含默认包和2个用户配置的包，可能还有自动检测的包");
+    }
+
+    @Test
+    void testGetFinalMapperPackagesWithAutoDetectionHandlesNullPackages() throws Exception {
+        // 验证当用户配置的包为 null 时，仍然包含默认包和自动检测的包
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(null);
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+        
+        assertNotNull(basePackage);
+        // 应该至少包含默认包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+            "应该包含默认包，即使用户配置为 null");
+    }
+
+    @Test
+    void testGetFinalMapperPackagesWithAutoDetectionHandlesEmptyPackages() throws Exception {
+        // 验证当用户配置的包为空列表时，仍然包含默认包和自动检测的包
+        // 注意：此测试与 testMapperScannerConfigurerBasePackageWithEmptyPackages 类似，
+        // 但重点测试自动检测功能
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        props.setMapperPackages(Collections.emptyList());
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+        
+        assertNotNull(basePackage);
+        // 应该至少包含默认包
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+            "应该包含默认包，即使用户配置为空列表");
+        // 验证自动检测功能被调用（basePackage 可能包含自动检测的包）
+        // 注意：自动检测的包取决于 classpath，所以这里只验证方法能正常执行
+    }
+
+    @Test
+    void testGetFinalMapperPackagesWithAutoDetectionUsesLinkedHashSet() throws Exception {
+        // 验证使用 LinkedHashSet 保持顺序并去重
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        // 添加重复的包
+        props.setMapperPackages(Arrays.asList("com.example.mapper", "com.example.mapper", "com.other.mapper"));
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 basePackage
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        field.setAccessible(true);
+        String basePackage = (String) field.get(configurer);
+        
+        assertNotNull(basePackage);
+        // 验证重复的包被去重
+        String[] packages = basePackage.split(",");
+        long count = Arrays.stream(packages)
+            .filter(p -> p.trim().equals("com.example.mapper"))
+            .count();
+        assertEquals(1, count, "重复的包应该被去重");
+    }
+
+    @Test
+    void testMapperScannerConfigurerAnnotationClass() throws Exception {
+        // 验证 MapperScannerConfigurer 设置了正确的 annotationClass
+        MybatisPlusAutoConfiguration cfg = new MybatisPlusAutoConfiguration(Optional.empty());
+        MybatisProperties props = new MybatisProperties();
+        
+        MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+        assertNotNull(configurer);
+        
+        // 通过反射获取 annotationClass
+        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("annotationClass");
+        field.setAccessible(true);
+        Class<?> annotationClass = (Class<?>) field.get(configurer);
+        
+        assertEquals(org.apache.ibatis.annotations.Mapper.class, annotationClass,
+            "annotationClass 应该设置为 @Mapper");
     }
 }
