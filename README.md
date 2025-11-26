@@ -10,7 +10,7 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.13-brightgreen.svg)
 ![Maven](https://img.shields.io/badge/Maven-3.9.9-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Yggdrasil-Labs_mimir-boot&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Yggdrasil-Labs_mimir-boot)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Yggdrasil-Labs_mimir-boot&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Yggdrasil-Labs_mimir-boot)
 
 > Yggdrasil-Labs 的 Java 企业级基础框架  
 > 统一依赖版本、公共组件、自定义 Starter 与编译期代码生成工具。
