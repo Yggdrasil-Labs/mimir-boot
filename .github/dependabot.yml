@@ -11,9 +11,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "yggdrasil-labs"
+      - "YoungerYang-Y"
     assignees:
-      - "yggdrasil-labs"
+      - "YoungerYang-Y"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -134,9 +134,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "yggdrasil-labs"
+      - "YoungerYang-Y"
     assignees:
-      - "yggdrasil-labs"
+      - "YoungerYang-Y"
     commit-message:
       prefix: "ci"
       include: "scope"
