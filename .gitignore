@@ -42,3 +42,7 @@ build/
 
 ### Logs ###
 /logs/
+
+### AI ###
+.cursor/
+openspec/
