@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.2.0...mimir-boot-v1.2.1) (2025-11-29)
+
+
+### Bug Fixes
+
+* 修复未加载分页插件问题 ([f84df1c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f84df1cb56764d0cc28db572899ded69112f10d4))
+* 加载顺序问题导致MybatisPlusAutoConfiguration未能正确加载；修复部分配置前缀错误 ([f842b17](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f842b17df20df148c31dcc33c50f8188910cccb5))
+
+
+### Documentation
+
+* 增加dubbo、feign相关的模块规划 ([8f0c255](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8f0c255f2a4a55cefd7a97eb603159f8a1e28e21))
+* 更换徽章 ([814ee77](https://github.com/Yggdrasil-Labs/mimir-boot/commit/814ee77ca87c61dfe51c965410bd37d5a212c06e))
+
+
+### Tests
+
+* 补充New Code 单元测试 ([f347a6a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f347a6a00051863d2efe69b11fe9f96d68cb1eb0))
+* 补充New Code 单元测试 ([473328f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/473328fb23ccbd639f55aa7707a4464d8fc308e2))
+
+
+### Continuous Integration
+
+* **ci:** 不让sonarcloud检查覆盖率 ([a08e59c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a08e59ca804b9002c6916e492c85c7af69e1addd))
+* **ci:** 修复流水线报错 No plugin found for prefix 'sonar' ([947581a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/947581a08b3c7a6bb72bd59a796ad8f49327b8b3))
+* **ci:** 在根模块中添加sonar插件 ([6d91f72](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6d91f72d7105db7eb734c21d1bc3051bc91521b1))
+* **ci:** 流水线问题修复 ([bbe2dbc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bbe2dbc8af5dccc177da1bbb751f9085dc3f808e))
+* **ci:** 流水线问题修复 ([8a07e99](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8a07e993b5b6f2790b5ea408516911315a2725a7))
+* **ci:** 添加 JaCoCo 覆盖率报告路径配置 ([c481f0b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c481f0bc3abce7fcab42bfdde32c84ebc15e815b))
+* **ci:** 添加 JaCoCo 覆盖率报告路径配置 ([ee691af](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ee691af3a180b99ee0e5b91475e598e4a91472d8))
+* **dependabot:** eviewers 和 assignees 都设置为 YoungerYang-Y ([818ce9b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/818ce9bb7b2c7bf9ebd3b2ef18b78f1dd62c77f8))
+* **deps:** bump actions/checkout from 5 to 6 ([b721da2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b721da2308d260b4f6facf6e67b01ae67af905b4))
+* 自动发布后自动更新bootstrap-sha指向最新的版本hash ([f213f76](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f213f76c6542e511ce3aed6a3fa867bcdca5214a))
+
+
+### Miscellaneous Chores
+
+* bump version to 1.2.1-SNAPSHOT for next development cycle ([a508c54](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a508c5402d4309b6eab9de390f48175dbd27e9c8))
+* **deps:** bump com.xuxueli:xxl-job-core in the scheduling group ([b8de5d8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b8de5d8c0c1dba2c53f1f6596b5dbf47d5aa685b))
+* **deps:** bump org.codehaus.mojo:versions-maven-plugin ([6c8a71b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6c8a71bfdc035b8169b42acecc1287910984de04))
+* **deps:** bump org.sonarsource.scanner.maven:sonar-maven-plugin ([940b890](https://github.com/Yggdrasil-Labs/mimir-boot/commit/940b890519fc41da53f00973c9ae786e9c9fdf7c))
+* update .gitignore to include AI-related directories ([ea81f6c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ea81f6c11c77cd8b05feb81af32b09343ee98a82))
+
 ## [1.2.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.1.0...mimir-boot-v1.2.0) (2025-11-22)
 
 
