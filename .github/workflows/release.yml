@@ -350,100 +350,85 @@ jobs:
           git checkout main
           git pull origin main
 
-      - name: Update version in pom.xml
+      - name: Update version and bootstrap-sha
         run: |
           NEXT_VERSION="${{ steps.next_version.outputs.next_version }}"
+          TAG_SHA="${{ steps.get_version.outputs.tag_sha }}"
           
-          # 使用 sed 更新 pom.xml 中的版本号（Linux/Mac）
+          # 更新 pom.xml 中的版本号
+          echo "Updating pom.xml to version: $NEXT_VERSION"
           sed -i.bak "s|<revision>[^<]*</revision>|<revision>$NEXT_VERSION</revision>|g" pom.xml
           rm -f pom.xml.bak
           
-          echo "Updated pom.xml to version: $NEXT_VERSION"
-
-      - name: Verify pom.xml changes
-        run: |
+          # 更新 release-please-config.json 中的 bootstrap-sha
+          if [ -n "$TAG_SHA" ] && [ -f ".github/release-please-config.json" ]; then
+            echo "Updating bootstrap-sha to: $TAG_SHA"
+            # 使用 jq 更新 JSON（如果可用），否则使用 sed
+            if command -v jq &> /dev/null; then
+              OLD_SHA=$(jq -r '.bootstrap-sha' .github/release-please-config.json)
+              if [ "$OLD_SHA" = "$TAG_SHA" ]; then
+                echo "✓ bootstrap-sha is already up to date: ${TAG_SHA:0:7}"
+              else
+                jq --arg sha "$TAG_SHA" '.bootstrap-sha = $sha' .github/release-please-config.json > .github/release-please-config.json.tmp
+                mv .github/release-please-config.json.tmp .github/release-please-config.json
+                echo "✓ Updated bootstrap-sha from ${OLD_SHA:0:7} to ${TAG_SHA:0:7}"
+              fi
+            else
+              # 使用 sed 作为后备方案
+              OLD_SHA=$(grep -o '"bootstrap-sha": "[^"]*"' .github/release-please-config.json | cut -d'"' -f4)
+              if [ "$OLD_SHA" = "$TAG_SHA" ]; then
+                echo "✓ bootstrap-sha is already up to date: ${TAG_SHA:0:7}"
+              else
+                sed -i.bak "s|\"bootstrap-sha\": \"[^\"]*\"|\"bootstrap-sha\": \"$TAG_SHA\"|g" .github/release-please-config.json
+                rm -f .github/release-please-config.json.bak
+                echo "✓ Updated bootstrap-sha from ${OLD_SHA:0:7} to ${TAG_SHA:0:7}"
+              fi
+            fi
+          else
+            echo "⚠️  Skipping bootstrap-sha update (TAG_SHA: $TAG_SHA, config file exists: $([ -f .github/release-please-config.json ] && echo 'yes' || echo 'no'))"
+          fi
+          
           echo "Updated pom.xml content:"
           grep -A 2 -B 2 "<revision>" pom.xml
-
-      - name: Update bootstrap-sha in release-please-config
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tagSha = '${{ steps.get_version.outputs.tag_sha }}';
-            
-            if (!tagSha) {
-              console.log('⚠️  No tag SHA found, skipping bootstrap-sha update');
-              return;
-            }
-            
-            console.log(`Updating bootstrap-sha to: ${tagSha}`);
-            
-            // 读取当前的 release-please-config.json
-            const configPath = '.github/release-please-config.json';
-            let configContent;
-            let configSha;
-            
-            try {
-              const { data: configFile } = await github.rest.repos.getContent({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                path: configPath,
-                ref: 'main'
-              });
-              
-              configContent = JSON.parse(
-                Buffer.from(configFile.content, 'base64').toString('utf-8')
-              );
-              configSha = configFile.sha;
-            } catch (error) {
-              console.log(`Error reading config file: ${error.message}`);
-              return;
-            }
-            
-            // 检查是否需要更新
-            if (configContent['bootstrap-sha'] === tagSha) {
-              console.log('✓ bootstrap-sha is already up to date');
-              return;
-            }
-            
-            const oldBootstrapSha = configContent['bootstrap-sha'];
-            console.log(`Current bootstrap-sha: ${oldBootstrapSha}`);
-            console.log(`New bootstrap-sha: ${tagSha}`);
-            
-            // 更新 bootstrap-sha
-            configContent['bootstrap-sha'] = tagSha;
-            
-            // 写回文件
-            const updatedContent = JSON.stringify(configContent, null, 2) + '\n';
-            
-            await github.rest.repos.createOrUpdateFileContents({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              path: configPath,
-              message: `chore: update bootstrap-sha to ${tagSha.substring(0, 7)} after release`,
-              content: Buffer.from(updatedContent).toString('base64'),
-              sha: configSha,
-              branch: 'main'
-            });
-            
-            console.log(`✓ Successfully updated bootstrap-sha from ${oldBootstrapSha?.substring(0, 7) || 'N/A'} to ${tagSha.substring(0, 7)}`);
 
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # 在提交前拉取最新更改
+          echo "Pulling latest changes from main before committing..."
+          git pull --rebase origin main || git pull origin main
+          
+          # 添加所有更改的文件
           git add pom.xml
+          if [ -f ".github/release-please-config.json" ]; then
+            git add .github/release-please-config.json
+          fi
           
           # 检查是否有更改
           if git diff --staged --quiet; then
             echo "No changes to commit (version may already be updated)"
           else
             NEXT_VERSION="${{ steps.next_version.outputs.next_version }}"
-            git commit -m "chore: bump version to $NEXT_VERSION for next development cycle"
+            TAG_SHA="${{ steps.get_version.outputs.tag_sha }}"
+            
+            # 构建提交消息
+            if [ -n "$TAG_SHA" ] && git diff --staged --name-only | grep -q "release-please-config.json"; then
+              COMMIT_MSG="chore: bump version to $NEXT_VERSION for next development cycle"$'\n'$'\n'"Update bootstrap-sha to ${TAG_SHA:0:7}"
+            else
+              COMMIT_MSG="chore: bump version to $NEXT_VERSION for next development cycle"
+            fi
+            
+            git commit -m "$COMMIT_MSG"
+            
+            # 推送更改
             git push origin main
+            
             echo "Successfully updated version to $NEXT_VERSION"
+            if [ -n "$TAG_SHA" ]; then
+              echo "Successfully updated bootstrap-sha to ${TAG_SHA:0:7}"
+            fi
           fi
 
 
