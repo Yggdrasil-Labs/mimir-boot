@@ -12,7 +12,7 @@
     <packaging>jar</packaging>
 
     <name>Mimir Boot Starter Web</name>
-    <description>Mimir Boot Web 层启动器，提供 CORS 跨域配置、Trace 追踪、响应体增强、Jackson 序列化配置和 Web 拦截器</description>
+    <description>Mimir Boot Web 层启动器，提供 CORS 跨域配置、Trace 追踪、响应体增强、Jackson 序列化配置、Web 拦截器和参数校验</description>
 
     <dependencies>
         <!-- Spring Boot Web -->
@@ -25,6 +25,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-json</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
         <!-- Mimir Boot Common -->
