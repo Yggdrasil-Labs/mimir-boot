@@ -552,14 +552,14 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
         final Class<?> finalPaginationClass = paginationClass;
         final boolean hasPagination = finalPaginationClass != null && innerInterceptors.stream()
-                .anyMatch(inner -> finalPaginationClass.isInstance(inner));
+                .anyMatch(finalPaginationClass::isInstance);
 
         // 分页拦截器可能存在也可能不存在（取决于类路径），但至少应该不抛异常
         assertDoesNotThrow(() -> {
             // 如果分页拦截器存在，验证其类型
             if (hasPagination) {
                 InnerInterceptor paginationInterceptor = innerInterceptors.stream()
-                        .filter(inner -> finalPaginationClass.isInstance(inner))
+                        .filter(finalPaginationClass::isInstance)
                         .findFirst()
                         .orElse(null);
                 assertNotNull(paginationInterceptor);
