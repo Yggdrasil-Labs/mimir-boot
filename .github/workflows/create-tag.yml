@@ -108,13 +108,18 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
-          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          # 安全措施（满足 SonarCloud 要求）：
+          # 1. 明确指定只从主仓库 checkout（不从 fork checkout）
           repository: ${{ github.repository }}
-          # 使用 RELEASE_TOKEN 进行 checkout，确保后续推送使用相同的 token
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          # 安全：优先使用 main 分支，避免从可能不受信任的 PR 合并提交 checkout
-          # merge commit SHA 将在验证步骤后通过 git checkout 切换到
+          # 2. 始终 checkout main 分支（不直接使用来自 PR 的 ref）
           ref: 'main'
+          # 3. 使用受信任的 token
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # 安全声明：
+          # - Job 级别已验证仓库来源（行 103）
+          # - 不执行任何来自仓库的脚本或可执行文件
+          # - 仅读取配置文件（manifest.json, CHANGELOG.md, pom.xml）
+          # - 所有逻辑代码都在工作流文件中内联定义
 
       - name: Verify and checkout merge commit
         run: |
