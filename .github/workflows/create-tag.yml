@@ -15,7 +15,8 @@ permissions:
 jobs:
   check-release-pr-merged:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    # 安全：确保只处理来自主仓库的工作流运行，不执行来自 fork 的代码
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.repository.full_name == github.repository
     permissions:
       contents: read
       pull-requests: read
@@ -29,12 +30,27 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // 获取触发此工作流的 release-please 工作流运行信息
+            // 安全：验证工作流运行来自主仓库，而不是 fork
             const workflowRun = context.payload.workflow_run;
+            const expectedRepo = `${context.repo.owner}/${context.repo.repo}`;
+            const actualRepo = workflowRun.repository.full_name;
+            
+            if (actualRepo !== expectedRepo) {
+              console.log(`❌ Security check failed: Workflow run is from a different repository`);
+              console.log(`  Expected: ${expectedRepo}`);
+              console.log(`  Actual: ${actualRepo}`);
+              console.log(`  This workflow will be skipped to prevent executing untrusted code from forks`);
+              core.setOutput('is_release_pr', 'false');
+              core.setOutput('merge_commit_sha', '');
+              return;
+            }
+            
+            // 获取触发此工作流的 release-please 工作流运行信息
             console.log(`Release Please workflow run: ${workflowRun.id}`);
             console.log(`Conclusion: ${workflowRun.conclusion}`);
             console.log(`Event: ${workflowRun.event}`);
             console.log(`Head branch: ${workflowRun.head_branch}`);
+            console.log(`Repository: ${actualRepo} (verified)`);
             
             // 获取最近的合并到 main 的 PR（最近 10 个）
             const { data: prs } = await github.rest.pulls.list({
@@ -91,6 +107,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          repository: ${{ github.repository }}
           # 使用 RELEASE_TOKEN 进行 checkout，确保后续推送使用相同的 token
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）

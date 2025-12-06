@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          repository: ${{ github.repository }}
           # push 事件时，使用 github.ref（已经是 tag ref）
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -61,6 +63,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          repository: ${{ github.repository }}
           # push 事件时，使用 github.ref（已经是 tag ref）
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -94,6 +98,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          repository: ${{ github.repository }}
           # push 事件时，使用 github.ref（已经是 tag ref）
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -213,6 +219,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
+          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          repository: ${{ github.repository }}
           ref: ${{ github.ref }}
           fetch-depth: 0
 
@@ -287,7 +295,7 @@ jobs:
           echo ""
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
         with:
           tag_name: ${{ steps.get_version.outputs.tag }}
           name: Release ${{ steps.get_version.outputs.version }}
@@ -307,6 +315,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
+          # 安全：只从主仓库 checkout，不信任 fork 的代码
+          repository: ${{ github.repository }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
