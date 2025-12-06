@@ -154,9 +154,15 @@
                         <includes>
                             <include>__NO_SOURCES__</include>
                         </includes>
+                        <!-- 使用 Google AOSP 风格（完全符合阿里规范核心要求）
+                             AOSP = Android Open Source Project
+                             - 4 空格缩进（阿里规范）
+                             - K&R 括号风格（阿里规范）
+                             - 工具稳定、CI 友好
+                        -->
                         <googleJavaFormat>
                             <version>1.22.0</version>
-                            <style>GOOGLE</style>
+                            <style>AOSP</style>
                         </googleJavaFormat>
                     </java>
                 </configuration>
