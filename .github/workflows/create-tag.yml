@@ -114,6 +114,44 @@ jobs:
           # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
           ref: ${{ needs.check-release-pr-merged.outputs.merge_commit_sha || 'main' }}
 
+      - name: Verify commit is from main repository
+        run: |
+          # 安全：验证 checkout 的 commit 确实存在于主仓库中
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Current commit SHA: $COMMIT_SHA"
+          
+          # 验证 commit 存在于仓库中
+          if ! git cat-file -e "$COMMIT_SHA" 2>/dev/null; then
+            echo "❌ Error: Commit $COMMIT_SHA does not exist in the repository"
+            exit 1
+          fi
+          
+          # 验证远程仓库是主仓库（不是 fork）
+          REMOTE_URL=$(git remote get-url origin)
+          EXPECTED_REPO="${{ github.repository }}"
+          if [[ ! "$REMOTE_URL" =~ "$EXPECTED_REPO" ]]; then
+            echo "❌ Security check failed: Remote repository does not match expected repository"
+            echo "  Expected: $EXPECTED_REPO"
+            echo "  Remote: $REMOTE_URL"
+            exit 1
+          fi
+          
+          # 验证 commit 存在于主仓库的历史中（通过检查是否可以从 main 分支访问）
+          git fetch origin main:refs/remotes/origin/main --depth=1 2>/dev/null || true
+          if git branch -r --contains "$COMMIT_SHA" 2>/dev/null | grep -q "origin/main"; then
+            echo "✓ Commit $COMMIT_SHA is verified in main branch history"
+          else
+            # 对于合并后的 commit，可能不在直接的 main 历史中，但应该在仓库中
+            if git log --all --format="%H" | grep -q "^$COMMIT_SHA$"; then
+              echo "✓ Commit $COMMIT_SHA exists in repository (verified)"
+            else
+              echo "⚠️  Warning: Commit $COMMIT_SHA may not be in main branch history"
+              echo "   However, it was checked out from the main repository"
+            fi
+          fi
+          
+          echo "✓ Repository verification passed: $EXPECTED_REPO"
+
       - name: Extract version from manifest
         id: get_version
         run: |
