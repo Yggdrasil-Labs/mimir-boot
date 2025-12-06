@@ -99,7 +99,8 @@ jobs:
   create-and-push-tag:
     runs-on: ubuntu-latest
     needs: [check-release-pr-merged]
-    if: needs.check-release-pr-merged.outputs.is_release_pr == 'true'
+    # 安全：确保只处理来自主仓库的工作流，不执行来自 fork 的代码
+    if: needs.check-release-pr-merged.outputs.is_release_pr == 'true' && github.repository == github.event.workflow_run.repository.full_name
     permissions:
       contents: write
     steps:
@@ -111,20 +112,14 @@ jobs:
           repository: ${{ github.repository }}
           # 使用 RELEASE_TOKEN 进行 checkout，确保后续推送使用相同的 token
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
-          ref: ${{ needs.check-release-pr-merged.outputs.merge_commit_sha || 'main' }}
+          # 安全：优先使用 main 分支，避免从可能不受信任的 PR 合并提交 checkout
+          # merge commit SHA 将在验证步骤后通过 git checkout 切换到
+          ref: 'main'
 
-      - name: Verify commit is from main repository
+      - name: Verify and checkout merge commit
         run: |
-          # 安全：验证 checkout 的 commit 确实存在于主仓库中
-          COMMIT_SHA=$(git rev-parse HEAD)
-          echo "Current commit SHA: $COMMIT_SHA"
-          
-          # 验证 commit 存在于仓库中
-          if ! git cat-file -e "$COMMIT_SHA" 2>/dev/null; then
-            echo "❌ Error: Commit $COMMIT_SHA does not exist in the repository"
-            exit 1
-          fi
+          # 安全：严格验证并 checkout 合并后的 commit（如果提供）
+          MERGE_COMMIT_SHA="${{ needs.check-release-pr-merged.outputs.merge_commit_sha }}"
           
           # 验证远程仓库是主仓库（不是 fork）
           REMOTE_URL=$(git remote get-url origin)
@@ -136,18 +131,68 @@ jobs:
             exit 1
           fi
           
-          # 验证 commit 存在于主仓库的历史中（通过检查是否可以从 main 分支访问）
-          git fetch origin main:refs/remotes/origin/main --depth=1 2>/dev/null || true
-          if git branch -r --contains "$COMMIT_SHA" 2>/dev/null | grep -q "origin/main"; then
-            echo "✓ Commit $COMMIT_SHA is verified in main branch history"
-          else
-            # 对于合并后的 commit，可能不在直接的 main 历史中，但应该在仓库中
-            if git log --all --format="%H" | grep -q "^$COMMIT_SHA$"; then
-              echo "✓ Commit $COMMIT_SHA exists in repository (verified)"
-            else
-              echo "⚠️  Warning: Commit $COMMIT_SHA may not be in main branch history"
-              echo "   However, it was checked out from the main repository"
+          # 如果提供了 merge commit SHA，验证并 checkout
+          if [ -n "$MERGE_COMMIT_SHA" ] && [ "$MERGE_COMMIT_SHA" != "" ]; then
+            echo "Merge commit SHA provided: $MERGE_COMMIT_SHA"
+            
+            # 验证 commit SHA 格式（必须是 40 字符的十六进制字符串）
+            if ! [[ "$MERGE_COMMIT_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+              echo "❌ Security check failed: Invalid commit SHA format: $MERGE_COMMIT_SHA"
+              exit 1
             fi
+            
+            # 获取完整的仓库历史以验证 commit
+            echo "Fetching repository history to verify commit..."
+            git fetch origin --unshallow 2>/dev/null || git fetch origin --depth=1000 2>/dev/null || true
+            
+            # 验证 commit 存在于主仓库中
+            if ! git cat-file -e "$MERGE_COMMIT_SHA" 2>/dev/null; then
+              echo "❌ Security check failed: Commit $MERGE_COMMIT_SHA does not exist in the repository"
+              exit 1
+            fi
+            
+            # 严格验证：commit 必须在 main 分支的历史中
+            echo "Verifying commit is in main branch history..."
+            if git branch -r --contains "$MERGE_COMMIT_SHA" 2>/dev/null | grep -q "origin/main"; then
+              echo "✓ Commit $MERGE_COMMIT_SHA is verified in main branch history"
+            elif git merge-base --is-ancestor "$MERGE_COMMIT_SHA" origin/main 2>/dev/null; then
+              echo "✓ Commit $MERGE_COMMIT_SHA is an ancestor of main branch"
+            elif [ "$MERGE_COMMIT_SHA" == "$(git rev-parse origin/main 2>/dev/null)" ]; then
+              echo "✓ Commit $MERGE_COMMIT_SHA is the current main branch HEAD"
+            else
+              # 检查 commit 是否至少存在于主仓库的所有引用中
+              if git log --all --format="%H" | grep -q "^$MERGE_COMMIT_SHA$"; then
+                echo "✓ Commit $MERGE_COMMIT_SHA exists in repository"
+                # 验证 commit 的作者信息
+                COMMIT_AUTHOR=$(git log -1 --format="%an <%ae>" "$MERGE_COMMIT_SHA" 2>/dev/null || echo "")
+                if [ -z "$COMMIT_AUTHOR" ]; then
+                  echo "❌ Security check failed: Cannot verify commit author"
+                  exit 1
+                fi
+                echo "  Author: $COMMIT_AUTHOR"
+              else
+                echo "❌ Security check failed: Commit $MERGE_COMMIT_SHA not found in repository"
+                exit 1
+              fi
+            fi
+            
+            # 安全地 checkout 到验证过的 commit
+            echo "Checking out verified commit: $MERGE_COMMIT_SHA"
+            git checkout "$MERGE_COMMIT_SHA"
+            echo "✓ Successfully checked out commit: $MERGE_COMMIT_SHA"
+          else
+            echo "No merge commit SHA provided, staying on main branch"
+            CURRENT_SHA=$(git rev-parse HEAD)
+            echo "Current commit SHA: $CURRENT_SHA"
+          fi
+          
+          # 最终验证：确保当前 HEAD 来自主仓库
+          FINAL_SHA=$(git rev-parse HEAD)
+          echo "Final commit SHA: $FINAL_SHA"
+          
+          if ! git cat-file -e "$FINAL_SHA" 2>/dev/null; then
+            echo "❌ Security check failed: Final commit $FINAL_SHA does not exist"
+            exit 1
           fi
           
           echo "✓ Repository verification passed: $EXPECTED_REPO"
