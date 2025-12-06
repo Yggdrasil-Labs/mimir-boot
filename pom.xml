@@ -46,7 +46,7 @@
         <!-- Flatten 插件版本 -->
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <!-- SonarQube Maven 插件版本 -->
-        <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
+        <sonar-maven-plugin.version>5.5.0.6356</sonar-maven-plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
