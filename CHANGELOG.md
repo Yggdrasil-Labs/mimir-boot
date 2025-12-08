@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.2.1...mimir-boot-v1.3.0) (2025-12-08)
+
+
+### ✨ Features
+
+* 增加校验依赖 ([8a5a110](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8a5a110ad7cd7cb1def8f107e8ce90ce2fadce47))
+
+
+### ♻️ Code Refactoring
+
+* 使用lambda表达式 ([e84c444](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e84c4449dda786ab3d8ad8c1316f2d73bf80f12f))
+
+
+### 👷 Continuous Integration
+
+* **deps:** bump actions/github-script from 7.1.0 to 8.0.0 ([4e4b132](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4e4b13266e3dcc191cbf7b78f23e5e53287bc846))
+* **deps:** bump actions/setup-java from 4.8.0 to 5.1.0 ([6d4c1b6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6d4c1b697c3812096cd94974c60e7c6c68465a70))
+* **deps:** bump actions/upload-artifact from 4.6.2 to 5.0.0 ([94c4478](https://github.com/Yggdrasil-Labs/mimir-boot/commit/94c4478ab904a912b2b7d631db5b67750f1e8b64))
+* **release:** ✨ Feature: Release note 的标题增加图标 ([cf726d1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cf726d1ef7e48dc655b985048bb61f47188684bb)), closes [#155](https://github.com/Yggdrasil-Labs/mimir-boot/issues/155)
+* **release:** 合并更新dev version 与 更新bootstrap-sha 到同一个任务 ([c626631](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c6266311f4795a8335153443dd7be68a391ad6e7))
+* 删掉没用的配置 ([893ffe7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/893ffe7c5731b33dbe4aa9e34915019b4aa5db52))
+* 解决工作流的安全告警 ([8cd3ad2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8cd3ad213c555b403cf7e0a0d719e59d562041a1))
+* 解决工作流的安全告警 ([02b32d7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/02b32d7c96a3d084be10ae048b0213374330bb56))
+* 解决工作流的安全告警 ([b23955a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b23955a6f65efd2d9581ef42085254b998931d84))
+* 解决工作流的安全告警 ([9ed224c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9ed224cbed21f98cdf38ee1922d8f3c2e3dadef2))
+* 解决工作流的安全告警 ([334b6c9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/334b6c9e29c3c7b435175e94d5def54dce9c573a))
+* 解决工作流的安全告警 ([ade07f7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ade07f71efda75e960aff45ad4a22191833e1c2f))
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** bump cn.hutool:hutool-all in the utilities group ([5db1486](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5db1486af645e161bbfa22d58e81423b9e078589))
+* **deps:** bump com.google.protobuf:protobuf-java ([87a462c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/87a462c83f36b15355bfc4bc31ba4201cab5f124))
+* **deps:** bump org.apache.poi:poi from 5.5.0 to 5.5.1 ([cea5928](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cea5928dc1a8bfba251102ec884c2f0a3800243d))
+* **deps:** bump org.sonarsource.scanner.maven:sonar-maven-plugin ([75f1e9e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/75f1e9eaa14c743f52795df5d5cef76e3b114ed5))
+* **deps:** bump the database group with 2 updates ([3546a68](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3546a68b22cf9100fdc2eadf7d4f9ba23135b2f0))
+* update bootstrap-sha to 03b5cc5 after release ([4d7afb2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4d7afb28cbe84c3656e83fc350102e1d3169c1b6))
+* 编译时格式化，统一使用AOSP风格 ([d4a83d2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d4a83d29c96fb0b04d5c19cc56b5d5751c961ef7))
+
 ## [1.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.2.0...mimir-boot-v1.2.1) (2025-11-29)
 
 
