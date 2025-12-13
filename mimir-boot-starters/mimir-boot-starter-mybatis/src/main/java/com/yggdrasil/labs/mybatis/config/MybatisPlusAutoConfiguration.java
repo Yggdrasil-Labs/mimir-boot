@@ -9,7 +9,7 @@ import com.yggdrasil.labs.mybatis.util.ReflectionUtils;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.logging.stdout.StdOutImpl;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -23,8 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -45,41 +43,10 @@ public class MybatisPlusAutoConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MybatisPlusAutoConfiguration.class);
 
-    /**
-     * 自定义拦截器列表（可选注入）
-     * 如果用户提供了自定义的 InnerInterceptor Bean，会自动注入到这里
-     */
-    private final List<InnerInterceptor> innerInterceptors;
-
-    /**
-     * 无参构造函数，Spring 需要这个来创建自动配置 Bean
-     * 自定义拦截器通过构造器注入（@Autowired(required = false)）来提供
-     */
-    @Autowired(required = false)
-    public MybatisPlusAutoConfiguration(List<InnerInterceptor> innerInterceptors) {
-        this.innerInterceptors = innerInterceptors;
-    }
-
-    /**
-     * 无参构造函数，用于测试或手动创建实例
-     */
-    public MybatisPlusAutoConfiguration() {
-        this.innerInterceptors = null;
-    }
-
-    /**
-     * 带 Optional 参数的构造函数，用于测试（保持向后兼容）
-     * 
-     * @param innerInterceptors 自定义拦截器列表（Optional 包装）
-     */
-    public MybatisPlusAutoConfiguration(Optional<List<InnerInterceptor>> innerInterceptors) {
-        this.innerInterceptors = innerInterceptors.orElse(null);
-    }
-
     @Bean
     @ConditionalOnClass(name = "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor")
     public MybatisPlusInterceptor mybatisPlusInterceptor(
-            MybatisProperties properties, Environment env) {
+            MybatisProperties properties, Environment env, ListableBeanFactory beanFactory) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         
         // 分页拦截器（使用反射加载，避免编译时依赖）
@@ -102,9 +69,28 @@ public class MybatisPlusAutoConfiguration {
         // 乐观锁
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         
-        // 装配外部或其他配置类提供的自定义拦截器
-        if (innerInterceptors != null && !innerInterceptors.isEmpty()) {
-            innerInterceptors.forEach(interceptor::addInnerInterceptor);
+        // 从 Spring 容器中获取所有 InnerInterceptor Bean（包括 JsonSqlLogInnerInterceptor 等）
+        // 这样可以确保即使配置类加载顺序不同，也能正确获取到所有拦截器
+        try {
+            String[] beanNames = beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false);
+            if (beanNames.length > 0) {
+                for (String beanName : beanNames) {
+                    InnerInterceptor inner = beanFactory.getBean(beanName, InnerInterceptor.class);
+                    interceptor.addInnerInterceptor(inner);
+                    if (LOGGER.isInfoEnabled()) {
+                        LOGGER.info("已添加自定义拦截器: {} (bean: {})", inner.getClass().getSimpleName(), beanName);
+                    }
+                }
+            } else {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("没有找到自定义 InnerInterceptor Bean");
+                }
+            }
+        } catch (Exception e) {
+            // 如果获取 Bean 时出错，记录警告但不影响主流程
+            if (LOGGER.isWarnEnabled()) {
+                LOGGER.warn("获取 InnerInterceptor Bean 时发生异常，跳过自定义拦截器", e);
+            }
         }
         
         return interceptor;

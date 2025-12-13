@@ -24,6 +24,10 @@ public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
     @Override
     public void beforePrepare(StatementHandler sh, Connection connection, Integer transactionTimeout) {
         if (!LOGGER.isInfoEnabled()) {
+            // 如果 INFO 级别未启用，记录调试信息
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("SQL.JSON logger INFO 级别未启用，跳过 JSON SQL 日志记录");
+            }
             return;
         }
         try {
@@ -32,9 +36,13 @@ public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
             payload.put("sql", boundSql.getSql());
             Object params = boundSql.getParameterObject();
             payload.put("params", SqlLogMaskUtils.maskParams(params));
-            LOGGER.info(JSON.toJSONString(payload));
-        } catch (Exception ignore) {
-            // no-op
+            String jsonLog = JSON.toJSONString(payload);
+            LOGGER.info(jsonLog);
+        } catch (Exception e) {
+            // 记录异常，方便调试
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("记录 JSON SQL 日志时发生异常", e);
+            }
         }
     }
 }

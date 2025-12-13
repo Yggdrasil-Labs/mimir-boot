@@ -18,88 +18,93 @@ class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
 
     @Test
     void jsonSqlLogInnerInterceptor_with_null_enableJson_in_dev_environment() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("dev");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_null_enableJson_in_test_environment() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("test");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_null_enableJson_in_prod_environment() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("prod");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
-        assertNull(interceptor);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
+        // 生产环境未显式启用时，返回空操作拦截器
+        assertNotNull(interceptor);
+        assertFalse(interceptor instanceof JsonSqlLogInnerInterceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_null_enableJson_in_default_environment() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         // 不设置任何 profile
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
-        assertNull(interceptor);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
+        // 默认环境未显式启用时，返回空操作拦截器
+        assertNotNull(interceptor);
+        assertFalse(interceptor instanceof JsonSqlLogInnerInterceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_explicit_true() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(true);
 
         StandardEnvironment env = new StandardEnvironment();
         // 使用默认环境（无 profile），测试显式配置
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_explicit_false() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(false);
 
         StandardEnvironment env = new StandardEnvironment();
         // 使用默认环境（无 profile），测试显式配置
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
-        assertNull(interceptor);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
+        // 显式禁用时，返回空操作拦截器
+        assertNotNull(interceptor);
+        assertFalse(interceptor instanceof JsonSqlLogInnerInterceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_explicit_true_overrides_environment() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(true);
 
@@ -107,14 +112,14 @@ class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("prod");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_explicit_false_overrides_environment() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(false);
 
@@ -122,61 +127,66 @@ class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("dev");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
-        assertNull(interceptor);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
+        // 显式禁用时，返回空操作拦截器
+        assertNotNull(interceptor);
+        assertFalse(interceptor instanceof JsonSqlLogInnerInterceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_multiple_profiles_including_dev() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("dev", "local", "custom");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_multiple_profiles_including_test() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("test", "integration", "custom");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_multiple_profiles_excluding_dev_and_test() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(null);
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("prod", "staging", "custom");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
-        assertNull(interceptor);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
+        // 生产环境未显式启用时，返回空操作拦截器
+        assertNotNull(interceptor);
+        assertFalse(interceptor instanceof JsonSqlLogInnerInterceptor);
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_returns_new_instance_each_time() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setEnableJsonSqlLog(true);
 
         StandardEnvironment env = new StandardEnvironment();
 
-        InnerInterceptor interceptor1 = cfg.jsonSqlLogInnerInterceptor(props, env);
-        InnerInterceptor interceptor2 = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor1 = cfg.jsonSqlLogInnerInterceptor();
+        InnerInterceptor interceptor2 = cfg.jsonSqlLogInnerInterceptor();
 
         assertNotNull(interceptor1);
         assertNotNull(interceptor2);
@@ -186,28 +196,27 @@ class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
 
     @Test
     void jsonSqlLogInnerInterceptor_does_not_throw_exception() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         StandardEnvironment env = new StandardEnvironment();
 
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
         assertDoesNotThrow(() -> {
-            InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
-            // 可能为 null，也可能不为 null，取决于环境
+            InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
             // 验证方法调用不会抛出异常即可
-            assertTrue(interceptor == null || interceptor instanceof JsonSqlLogInnerInterceptor);
+            assertNotNull(interceptor);
         });
     }
 
     @Test
     void jsonSqlLogInnerInterceptor_with_default_properties() {
-        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration();
         MybatisProperties props = new MybatisProperties();
         // 不设置 enableJsonSqlLog，使用默认值 null
 
         StandardEnvironment env = new StandardEnvironment();
         env.setActiveProfiles("dev");
 
-        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor(props, env);
+        MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
+        InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
         assertNotNull(interceptor);
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
