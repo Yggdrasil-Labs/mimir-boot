@@ -4,11 +4,9 @@ import jakarta.servlet.Filter;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.boot.autoconfigure.web.servlet.ConditionalOnMissingFilterBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.annotation.Order;
 
 /**
  * 访问日志自动配置
@@ -44,8 +42,6 @@ public class AccessLogAutoConfiguration {
      * 注册访问日志过滤器
      */
     @Bean
-    @ConditionalOnMissingFilterBean
-    @Order(Integer.MIN_VALUE + 1) // 在 Spring Security 之后执行
     public FilterRegistrationBean<Filter> accessLogFilter() {
         FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<>(
                 new AccessLogFilter(properties.getSlowThresholdMs())
@@ -53,6 +49,8 @@ public class AccessLogAutoConfiguration {
 
         registrationBean.setName("accessLogFilter");
         registrationBean.addUrlPatterns("/*");
+        // 设置较高优先级，确保在其他 Filter 之前执行
+        registrationBean.setOrder(Integer.MIN_VALUE + 1);
 
         return registrationBean;
     }

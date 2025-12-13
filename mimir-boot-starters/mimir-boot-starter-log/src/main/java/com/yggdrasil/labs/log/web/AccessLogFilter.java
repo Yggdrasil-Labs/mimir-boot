@@ -57,10 +57,8 @@ public class AccessLogFilter implements Filter {
             // 记录访问日志
             logAccess(httpRequest, wrappedResponse, duration);
 
-            // 提交响应（如果还没提交）
-            if (!wrappedResponse.isCommitted()) {
-                wrappedResponse.flushBuffer();
-            }
+            // 将缓存的响应内容复制回原始响应（重要：否则响应会为空）
+            wrappedResponse.copyBodyToResponse();
         }
     }
 

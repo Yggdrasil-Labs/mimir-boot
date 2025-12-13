@@ -169,18 +169,20 @@
         <appender-ref ref="FILE_SQL"/>
     </appender>
     
-    <!-- 访问日志 Logger -->
-    <logger name="access.log" level="INFO" additivity="false">
-        <appender-ref ref="ASYNC_FILE_ACCESS"/>
-    </logger>
-
-    <!-- 结构化 SQL 日志（由 mybatis starter 的 JsonSqlLogInnerInterceptor 输出） -->
-    <logger name="SQL.JSON" level="INFO" additivity="false">
-        <appender-ref ref="ASYNC_FILE_SQL"/>
-    </logger>
-    
     <!-- 开发环境配置 -->
     <springProfile name="dev,local,development">
+        <!-- 访问日志 Logger - 开发环境输出到控制台和文件 -->
+        <logger name="access.log" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_ACCESS"/>
+        </logger>
+        
+        <!-- 结构化 SQL 日志 - 开发环境输出到控制台和文件 -->
+        <logger name="SQL.JSON" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_SQL"/>
+        </logger>
+        
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_INFO"/>
@@ -203,6 +205,18 @@
     
     <!-- 测试环境配置 -->
     <springProfile name="test">
+        <!-- 访问日志 Logger - 测试环境输出到控制台和文件 -->
+        <logger name="access.log" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_ACCESS"/>
+        </logger>
+        
+        <!-- 结构化 SQL 日志 - 测试环境输出到控制台和文件 -->
+        <logger name="SQL.JSON" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_SQL"/>
+        </logger>
+        
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_INFO"/>
@@ -218,6 +232,16 @@
     
     <!-- 生产环境配置 -->
     <springProfile name="prod,produce,production">
+        <!-- 访问日志 Logger - 生产环境只输出到文件 -->
+        <logger name="access.log" level="INFO" additivity="false">
+            <appender-ref ref="ASYNC_FILE_ACCESS"/>
+        </logger>
+        
+        <!-- 结构化 SQL 日志 - 生产环境只输出到文件 -->
+        <logger name="SQL.JSON" level="INFO" additivity="false">
+            <appender-ref ref="ASYNC_FILE_SQL"/>
+        </logger>
+        
         <root level="WARN">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_INFO"/>
@@ -249,6 +273,18 @@
     
     <!-- 默认配置（如果没有指定 spring.profiles.active） -->
     <springProfile name="!dev &amp; !test &amp; !prod &amp; !local &amp; !produce &amp; !development &amp; !production">
+        <!-- 访问日志 Logger - 默认环境输出到控制台和文件 -->
+        <logger name="access.log" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_ACCESS"/>
+        </logger>
+        
+        <!-- 结构化 SQL 日志 - 默认环境输出到控制台和文件 -->
+        <logger name="SQL.JSON" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_SQL"/>
+        </logger>
+        
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_INFO"/>
