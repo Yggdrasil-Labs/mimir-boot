@@ -75,8 +75,8 @@ public class MybatisPlusAutoConfiguration {
                 for (String beanName : beanNames) {
                     InnerInterceptor inner = beanFactory.getBean(beanName, InnerInterceptor.class);
                     interceptor.addInnerInterceptor(inner);
-                    if (LOGGER.isInfoEnabled()) {
-                        LOGGER.info("已添加自定义拦截器: {} (bean: {})", inner.getClass().getSimpleName(), beanName);
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("已添加自定义拦截器: {} (bean: {})", inner.getClass().getSimpleName(), beanName);
                     }
                 }
             } else {
@@ -110,8 +110,8 @@ public class MybatisPlusAutoConfiguration {
         // 这样可以避免与 Spring 组件扫描冲突，防止重复注册
         configurer.setAnnotationClass(Mapper.class);
         
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("MapperScannerConfigurer 已配置，扫描包: {}，注解类型: @Mapper", basePackages);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("MapperScannerConfigurer 已配置，扫描包: {}，注解类型: @Mapper", basePackages);
         }
         
         return configurer;

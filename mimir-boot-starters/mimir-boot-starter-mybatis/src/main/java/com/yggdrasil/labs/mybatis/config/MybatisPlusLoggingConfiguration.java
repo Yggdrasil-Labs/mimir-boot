@@ -66,7 +66,7 @@ public class MybatisPlusLoggingConfiguration {
         }
         
         // 启用 JSON SQL 日志
-        LOGGER.info("JSON SQL 日志已启用，将记录到 SQL.JSON logger");
+        LOGGER.debug("JSON SQL 日志已启用，将记录到 SQL.JSON logger");
         return new JsonSqlLogInnerInterceptor();
     }
 
