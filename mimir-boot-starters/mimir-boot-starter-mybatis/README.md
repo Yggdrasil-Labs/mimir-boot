@@ -343,8 +343,16 @@ mimir:
       - com.example.mapper
       - com.example.other.mapper
     
-    # 是否启用控制台 SQL 日志（开发/测试环境默认 true）
-    enable-sql-stdout: true
+    # 注意：MyBatis 日志永远使用 slf4j（日志门面），支持所有 slf4j 实现（logback、log4j2 等）
+    # 是否打印 SQL 由日志级别控制，在日志配置文件中配置 Mapper 接口的日志级别：
+    # - DEBUG 级别：会打印 SQL 语句和参数
+    # - INFO 及以上级别：不会打印 SQL
+    # 
+    # 示例（使用 logback，Spring Boot 默认）：
+    # <logger name="com.example.mapper" level="DEBUG"/> 会打印 SQL
+    # 
+    # 示例（使用 log4j2）：
+    # <Logger name="com.example.mapper" level="DEBUG"/> 会打印 SQL
     
     # 是否启用 JSON SQL 日志（开发/测试环境默认 true）
     enable-json-sql-log: true

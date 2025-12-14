@@ -25,11 +25,6 @@ public class MybatisProperties {
     private List<String> mapperPackages = new ArrayList<>();
 
     /**
-     * 是否启用控制台SQL日志（优先根据环境自动判断，可被此配置覆盖）
-     */
-    private Boolean enableSqlStdout;
-
-    /**
      * 是否启用 JSON 结构化 SQL 日志拦截器
      */
     private Boolean enableJsonSqlLog;
@@ -62,14 +57,6 @@ public class MybatisProperties {
             packages.addAll(mapperPackages);
         }
         return String.join(",", packages);
-    }
-
-    public Boolean getEnableSqlStdout() {
-        return enableSqlStdout;
-    }
-
-    public void setEnableSqlStdout(Boolean enableSqlStdout) {
-        this.enableSqlStdout = enableSqlStdout;
     }
 
     public Boolean getEnableJsonSqlLog() {

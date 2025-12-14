@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.springframework.beans.factory.ListableBeanFactory;
-import org.springframework.core.env.StandardEnvironment;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -91,7 +90,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(interceptors);
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
         assertNotNull(interceptor);
     }
 
@@ -112,7 +111,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(customInterceptors);
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
         assertNotNull(interceptor);
     }
 
@@ -154,144 +153,18 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
-    void configurationCustomizer_respects_explicit_enableStdout_flag_true() {
+    void configurationCustomizer_always_uses_slf4j() {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(true);
 
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, new StandardEnvironment());
+        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer();
         assertNotNull(customizer);
 
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
-        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
+        // MyBatis 永远使用 slf4j
+        AssertUtils.assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, configuration.getLogImpl());
     }
 
-    @Test
-    void configurationCustomizer_respects_explicit_enableStdout_flag_false() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(false);
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, new StandardEnvironment());
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // 当enableStdout为false时，不应该设置StdOutImpl
-        assertNull(configuration.getLogImpl());
-    }
-
-    @Test
-    void configurationCustomizer_with_null_enableStdout_in_dev_environment() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(null);
-
-        // 创建dev环境的Environment
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("dev");
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // 在dev环境下，enableStdout为null时应该默认启用
-        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
-    }
-
-    @Test
-    void configurationCustomizer_with_null_enableStdout_in_test_environment() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(null);
-
-        // 创建test环境的Environment
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("test");
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // 在test环境下，enableStdout为null时应该默认启用
-        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
-    }
-
-    @Test
-    void configurationCustomizer_with_null_enableStdout_in_prod_environment() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(null);
-
-        // 创建prod环境的Environment
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("prod");
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // 在prod环境下，enableStdout为null时应该默认不启用
-        assertNull(configuration.getLogImpl());
-    }
-
-    @Test
-    void configurationCustomizer_with_null_enableStdout_in_default_environment() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(null);
-
-        // 使用默认环境（无active profiles）
-        StandardEnvironment env = new StandardEnvironment();
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // 在默认环境下，enableStdout为null时应该默认不启用
-        assertNull(configuration.getLogImpl());
-    }
-
-    @Test
-    void configurationCustomizer_explicit_false_overrides_environment() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(false);
-
-        // 即使在dev环境下，显式设置为false也应该生效
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("dev");
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        assertNull(configuration.getLogImpl());
-    }
-
-    @Test
-    void configurationCustomizer_explicit_true_overrides_environment() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(true);
-
-        // 即使在prod环境下，显式设置为true也应该生效
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("prod");
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
-    }
 
     @Test
     void constructor_with_beanFactory() {
@@ -310,10 +183,9 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     void mybatisPlusInterceptor_does_not_throw_exception() {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
         assertDoesNotThrow(() -> {
-            MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, createEmptyBeanFactory());
+            MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
             assertNotNull(interceptor);
         });
     }
@@ -332,11 +204,9 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     @Test
     void configurationCustomizer_does_not_throw_exception() {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
         assertDoesNotThrow(() -> {
-            ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
+            ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer();
             assertNotNull(customizer);
 
             MybatisConfiguration configuration = new MybatisConfiguration();
@@ -356,80 +226,27 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
-    void testConfigurationCustomizerWithNullProperties() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        // enableSqlStdout 保持 null
-
-        StandardEnvironment env = new StandardEnvironment();
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // 默认环境下应该不设置 StdOutImpl
-        assertNull(configuration.getLogImpl());
-    }
-
-    @Test
-    void testConfigurationCustomizerWithMultipleProfiles() {
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(null);
-
-        // 测试多个 profile 的情况
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("dev", "test", "local");
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        assertNotNull(customizer);
-
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-        // dev/test 环境下应该启用
-        AssertUtils.assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, configuration.getLogImpl());
-    }
-
-    @Test
     void testMybatisPlusInterceptorPropertiesParameterNotUsed() {
         // 验证 properties 参数虽然传入但未使用（不影响功能）
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(List.of("test.package"));
-        props.setEnableSqlStdout(true);
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
         assertNotNull(interceptor);
         // properties 参数在 mybatisPlusInterceptor 方法中未使用，这是正常的
     }
 
     @Test
-    void testMybatisPlusInterceptorEnvironmentParameterNotUsed() {
-        // 验证 env 参数虽然传入但未使用（不影响功能）
+    void testMybatisPlusInterceptorWithoutEnvironment() {
+        // 验证方法不再需要 Environment 参数
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
 
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("custom-profile");
-
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
         assertNotNull(interceptor);
-        // env 参数在 mybatisPlusInterceptor 方法中未使用，这是正常的
     }
 
-    @Test
-    void testTryCreatePaginationInnerInterceptorHandlesException() {
-        // 测试 tryCreatePaginationInnerInterceptor 方法的异常处理
-        // 由于是私有方法，我们通过 mybatisPlusInterceptor 间接测试
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-
-        // 即使分页拦截器加载失败，也不应该抛出异常
-        assertDoesNotThrow(() -> {
-            MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), createEmptyBeanFactory());
-            assertNotNull(interceptor);
-        });
-    }
 
     @Test
     void testInnerInterceptorsIfPresentWithNonEmptyList() {
@@ -442,7 +259,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(interceptors);
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor result = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), beanFactory);
+        MybatisPlusInterceptor result = cfg.mybatisPlusInterceptor(props, beanFactory);
         assertNotNull(result);
     }
 
@@ -455,7 +272,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(emptyList);
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor result = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), beanFactory);
+        MybatisPlusInterceptor result = cfg.mybatisPlusInterceptor(props, beanFactory);
         assertNotNull(result);
     }
 
@@ -463,37 +280,17 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     void testConfigurationCustomizerLambdaExecution() {
         // 测试 ConfigurationCustomizer lambda 表达式的执行
         MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(true);
 
-        StandardEnvironment env = new StandardEnvironment();
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
+        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer();
 
         // 多次调用 customize 应该都能正常工作
         MybatisConfiguration config1 = new MybatisConfiguration();
         customizer.customize(config1);
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config1.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, config1.getLogImpl());
 
         MybatisConfiguration config2 = new MybatisConfiguration();
         customizer.customize(config2);
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config2.getLogImpl());
-    }
-
-    @Test
-    void testConfigurationCustomizerWithFalseDoesNotSetLogImpl() {
-        // 测试 enableStdout 为 false 时，不设置 LogImpl
-        MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(false);
-
-        StandardEnvironment env = new StandardEnvironment();
-        env.setActiveProfiles("dev"); // 即使 dev 环境，显式 false 也应该生效
-
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
-        MybatisConfiguration configuration = new MybatisConfiguration();
-        customizer.customize(configuration);
-
-        assertNull(configuration.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, config2.getLogImpl());
     }
 
     @Test
@@ -516,10 +313,9 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
                 Collections.singletonList(Mockito.mock(InnerInterceptor.class)));
 
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
-        assertNotNull(cfg1.mybatisPlusInterceptor(props, env, createEmptyBeanFactory()));
-        assertNotNull(cfg2.mybatisPlusInterceptor(props, env, beanFactory2));
+        assertNotNull(cfg1.mybatisPlusInterceptor(props, createEmptyBeanFactory()));
+        assertNotNull(cfg2.mybatisPlusInterceptor(props, beanFactory2));
     }
 
     @Test
@@ -527,9 +323,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 验证乐观锁拦截器总是被添加
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
 
         // 通过反射获取内部拦截器列表（尝试多个可能的字段名）
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -588,9 +383,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 验证分页拦截器在类存在时可能被添加（如果 MyBatis-Plus 版本支持）
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
 
         // 通过反射获取内部拦截器列表
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -636,9 +430,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(customInterceptors);
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
 
         // 通过反射获取内部拦截器列表
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -662,9 +455,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(customInterceptors);
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
 
         // 通过反射获取内部拦截器列表
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -860,9 +652,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(Collections.emptyList());
         MybatisProperties props = new MybatisProperties();
-        StandardEnvironment env = new StandardEnvironment();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, env, beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
 
         // 通过反射获取内部拦截器列表
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -877,11 +668,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     void testConfigurationCustomizerMultipleCalls() {
         // 验证 ConfigurationCustomizer 可以多次调用而不出错
         MybatisPlusAutoConfiguration cfg = createConfiguration();
-        MybatisProperties props = new MybatisProperties();
-        props.setEnableSqlStdout(true);
-        StandardEnvironment env = new StandardEnvironment();
 
-        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer(props, env);
+        ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer();
         assertNotNull(customizer);
 
         MybatisConfiguration config1 = new MybatisConfiguration();
@@ -893,9 +681,9 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         customizer.customize(config2);
         customizer.customize(config3);
 
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config1.getLogImpl());
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config2.getLogImpl());
-        assertEquals(org.apache.ibatis.logging.stdout.StdOutImpl.class, config3.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, config1.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, config2.getLogImpl());
+        assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, config3.getLogImpl());
     }
 
     // ========== 测试从 BeanFactory 获取拦截器 ==========
@@ -913,7 +701,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         
         // 验证拦截器被正确使用
         MybatisProperties props = new MybatisProperties();
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
         assertNotNull(interceptor);
     }
 
@@ -925,7 +713,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         
         // 验证可以正常工作
         MybatisProperties props = new MybatisProperties();
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
         assertNotNull(interceptor);
     }
 
@@ -938,7 +726,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         
         // 验证可以正常工作
         MybatisProperties props = new MybatisProperties();
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, new StandardEnvironment(), beanFactory);
+        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
         assertNotNull(interceptor);
     }
 

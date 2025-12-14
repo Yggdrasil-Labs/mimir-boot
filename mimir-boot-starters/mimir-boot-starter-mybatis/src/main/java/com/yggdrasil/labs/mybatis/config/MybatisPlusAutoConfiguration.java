@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInt
 import com.yggdrasil.labs.mybatis.util.MapperPackageDetector;
 import com.yggdrasil.labs.mybatis.util.ReflectionUtils;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.logging.stdout.StdOutImpl;
+import org.apache.ibatis.logging.slf4j.Slf4jImpl;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -16,8 +16,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +44,7 @@ public class MybatisPlusAutoConfiguration {
     @Bean
     @ConditionalOnClass(name = "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor")
     public MybatisPlusInterceptor mybatisPlusInterceptor(
-            MybatisProperties properties, Environment env, ListableBeanFactory beanFactory) {
+            MybatisProperties properties, ListableBeanFactory beanFactory) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         
         // 分页拦截器（使用反射加载，避免编译时依赖）
@@ -150,18 +148,40 @@ public class MybatisPlusAutoConfiguration {
     }
 
 
+    /**
+     * 配置 MyBatis 日志实现。
+     * <p>
+     * 强制使用 SLF4J 作为 MyBatis 的日志实现，确保日志统一管理。
+     * <p>
+     * 是否打印 SQL 由日志级别控制：
+     * <ul>
+     *   <li>在 logback-spring.xml 中配置 Mapper 接口的日志级别</li>
+     *   <li>例如：{@code <logger name="com.example.mapper" level="DEBUG"/>} 会打印 SQL</li>
+     *   <li>例如：{@code <logger name="com.example.mapper" level="INFO"/>} 不会打印 SQL</li>
+     * </ul>
+     * <p>
+     * 这样确保在其他项目引入此 starter 时，MyBatis 永远使用 slf4j，
+     * 并且可以通过日志框架统一控制是否打印 SQL。
+     *
+     * @return ConfigurationCustomizer
+     */
     @Bean
-    public ConfigurationCustomizer mybatisConfigurationCustomizer(
-            MybatisProperties properties, Environment env) {
-        boolean isDevOrTest = env.acceptsProfiles(Profiles.of(
-                MybatisConstants.PROFILE_DEV, MybatisConstants.PROFILE_TEST));
+    public ConfigurationCustomizer mybatisConfigurationCustomizer() {
         return configuration -> {
-            Boolean enableStdout = properties.getEnableSqlStdout();
-            if (enableStdout == null) {
-                enableStdout = isDevOrTest;
-            }
-            if (enableStdout) {
-                configuration.setLogImpl(StdOutImpl.class);
+            // 永远使用 slf4j：显式设置 Slf4jImpl，确保一定是 slf4j
+            // 这样即使类路径中有其他日志框架，也优先使用 slf4j
+            try {
+                configuration.setLogImpl(Slf4jImpl.class);
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("MyBatis 日志已配置为使用 slf4j，是否打印 SQL 由日志级别控制");
+                }
+            } catch (Exception e) {
+                // 如果 Slf4jImpl 不可用（理论上不应该发生，因为 Spring Boot 默认包含 slf4j）
+                // 则记录错误，但不回退到其他日志实现
+                if (LOGGER.isErrorEnabled()) {
+                    LOGGER.error("无法设置 MyBatis 使用 slf4j，请检查类路径中是否包含 slf4j 相关依赖", e);
+                }
+                throw new IllegalStateException("无法设置 MyBatis 使用 slf4j，请检查类路径中是否包含 slf4j 相关依赖", e);
             }
         };
     }

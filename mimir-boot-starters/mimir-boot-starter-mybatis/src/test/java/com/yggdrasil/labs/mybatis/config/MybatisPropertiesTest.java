@@ -32,7 +32,6 @@ class MybatisPropertiesTest extends BaseUnitTest {
     void testDefaultValues() {
         assertNotNull(properties.getMapperPackages());
         assertTrue(properties.getMapperPackages().isEmpty());
-        assertNull(properties.getEnableSqlStdout());
         assertNull(properties.getEnableJsonSqlLog());
         assertNull(properties.getCryptoKey());
     }
@@ -59,17 +58,6 @@ class MybatisPropertiesTest extends BaseUnitTest {
         assertNull(properties.getMapperPackages());
     }
 
-    @Test
-    void testEnableSqlStdout() {
-        properties.setEnableSqlStdout(true);
-        assertTrue(properties.getEnableSqlStdout());
-
-        properties.setEnableSqlStdout(false);
-        assertFalse(properties.getEnableSqlStdout());
-
-        properties.setEnableSqlStdout(null);
-        assertNull(properties.getEnableSqlStdout());
-    }
 
     @Test
     void testEnableJsonSqlLog() {
@@ -100,12 +88,10 @@ class MybatisPropertiesTest extends BaseUnitTest {
     void testAllPropertiesTogether() {
         List<String> packages = Arrays.asList("com.example.mapper");
         properties.setMapperPackages(packages);
-        properties.setEnableSqlStdout(true);
         properties.setEnableJsonSqlLog(true);
         properties.setCryptoKey("test-key");
 
         AssertUtils.assertEquals(1, properties.getMapperPackages().size());
-        assertTrue(properties.getEnableSqlStdout());
         assertTrue(properties.getEnableJsonSqlLog());
         AssertUtils.assertEquals("test-key", properties.getCryptoKey());
     }
