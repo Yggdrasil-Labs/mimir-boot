@@ -7,9 +7,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * 访问日志过滤器
@@ -30,9 +33,13 @@ public class AccessLogFilter implements Filter {
     private static final Logger ACCESS_LOG = LoggerFactory.getLogger("access.log");
     private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
     private final long slowThresholdMs;
+    private final List<String> excludePaths;
+    private final PathMatcher pathMatcher;
 
-    public AccessLogFilter(long slowThresholdMs) {
+    public AccessLogFilter(long slowThresholdMs, List<String> excludePaths) {
         this.slowThresholdMs = slowThresholdMs;
+        this.excludePaths = excludePaths != null ? excludePaths : List.of();
+        this.pathMatcher = new AntPathMatcher();
     }
 
     @Override
@@ -54,12 +61,44 @@ public class AccessLogFilter implements Filter {
             // 计算耗时
             long duration = System.currentTimeMillis() - startTime;
 
-            // 记录访问日志
-            logAccess(httpRequest, wrappedResponse, duration);
+            // 检查是否需要记录访问日志（排除配置的路径）
+            if (shouldLogAccess(httpRequest)) {
+                logAccess(httpRequest, wrappedResponse, duration);
+            }
 
             // 将缓存的响应内容复制回原始响应（重要：否则响应会为空）
             wrappedResponse.copyBodyToResponse();
         }
+    }
+
+    /**
+     * 判断是否应该记录访问日志
+     * 如果请求路径匹配排除列表中的任何模式，则不记录
+     *
+     * @param request HTTP 请求
+     * @return true 如果应该记录日志，false 如果应该排除
+     */
+    private boolean shouldLogAccess(HttpServletRequest request) {
+        if (excludePaths.isEmpty()) {
+            return true;
+        }
+
+        String requestPath = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        
+        // 移除 context path（如果有）
+        if (contextPath != null && !contextPath.isEmpty() && requestPath.startsWith(contextPath)) {
+            requestPath = requestPath.substring(contextPath.length());
+        }
+
+        // 检查是否匹配任何排除模式
+        for (String pattern : excludePaths) {
+            if (pathMatcher.match(pattern, requestPath)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

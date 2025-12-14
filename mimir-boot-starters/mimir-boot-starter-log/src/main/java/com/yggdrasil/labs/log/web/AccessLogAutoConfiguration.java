@@ -44,7 +44,7 @@ public class AccessLogAutoConfiguration {
     @Bean
     public FilterRegistrationBean<Filter> accessLogFilter() {
         FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<>(
-                new AccessLogFilter(properties.getSlowThresholdMs())
+                new AccessLogFilter(properties.getSlowThresholdMs(), properties.getExcludePaths())
         );
 
         registrationBean.setName("accessLogFilter");

@@ -40,7 +40,7 @@ class AccessLogFilterTest extends BaseUnitTest {
     @BeforeEach
     public void setUp() {
         super.setUp();
-        filter = new AccessLogFilter(1000);
+        filter = new AccessLogFilter(1000, null);
         listAppender = LogTestUtils.setupLogger("access.log");
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         accessLogger = context.getLogger("access.log");
