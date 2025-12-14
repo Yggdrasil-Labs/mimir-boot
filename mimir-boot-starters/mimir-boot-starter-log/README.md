@@ -230,7 +230,7 @@ spring:
 
 **默认值**：
 - `enabled=true` - 启用访问日志
-- `slowThresholdMs=1000` - 慢接口阈值（毫秒）
+- `slowThresholdMs=3000` - 慢接口阈值（毫秒）
 
 **示例**：
 ```yaml

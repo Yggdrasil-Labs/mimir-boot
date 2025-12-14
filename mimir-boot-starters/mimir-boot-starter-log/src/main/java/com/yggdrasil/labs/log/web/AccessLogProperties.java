@@ -26,9 +26,9 @@ public class AccessLogProperties {
     /**
      * 慢接口阈值（毫秒）
      * 超过此耗时的接口将被记录为 WARN 级别
-     * 默认：1000ms（1秒）
+     * 默认：3000ms（3秒）
      */
-    private long slowThresholdMs = 1000;
+    private long slowThresholdMs = 3000;
 
     /**
      * 排除的路径模式列表（Ant 风格路径匹配）

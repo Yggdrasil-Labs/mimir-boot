@@ -18,7 +18,7 @@ class AccessLogPropertiesTest extends BaseUnitTest {
         AccessLogProperties properties = new AccessLogProperties();
 
         assertTrue(properties.isEnabled(), "默认应启用访问日志");
-        assertEquals(1000, properties.getSlowThresholdMs(), "默认慢接口阈值应为 1000ms");
+        assertEquals(3000, properties.getSlowThresholdMs(), "默认慢接口阈值应为 3000ms");
     }
 
     @Test
