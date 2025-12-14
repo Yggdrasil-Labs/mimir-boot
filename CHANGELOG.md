@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.3.0...v1.4.0) (2025-12-14)
+
+
+### ✨ Features
+
+* access.log支持指定路径不记录访问日志，减少日志杂音 ([7b4d8a9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7b4d8a9cbec4a7b4e1d8ff61da1ed1d528ed888e))
+* 默认mybatis使用slf4j，不使用StdOutImpl ([194095c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/194095c47f7cbf1c0858122a4ad6cf89e97cad20))
+
+
+### 👷 Continuous Integration
+
+* 🐛 Bug: 优化Release与Release Please工作流 ([cb80936](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cb80936b20538a2ea888f4d20f9d0ac816554dc6)), closes [#160](https://github.com/Yggdrasil-Labs/mimir-boot/issues/160)
+
+
+### 🔧 Miscellaneous Chores
+
+* 更新开发版本号 ([42384d3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/42384d35ac79ede082a64eb22b3d2362810c0faa))
+
 ## [1.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/mimir-boot-v1.2.1...mimir-boot-v1.3.0) (2025-12-13)
 
 
