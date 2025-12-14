@@ -1,16 +1,14 @@
 {
-  "bootstrap-sha": "03b5cc592a500f3f42da037262b41b575f56fea6",
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "mimir-boot",
       "changelog-path": "CHANGELOG.md",
       "include-v-in-tag": true,
       "extra-files": [
         {
           "type": "xml",
           "path": "pom.xml",
-          "xpath": "/project/properties/revision"
+          "xpath": "//*[local-name()='project']/*[local-name()='properties']/*[local-name()='revision']"
         }
       ],
       "changelog-sections": [

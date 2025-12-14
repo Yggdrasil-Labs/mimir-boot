@@ -24,281 +24,41 @@ jobs:
       (github.event_name == 'pull_request' && github.event.action != 'closed') ||
       (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false)
     steps:
-      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38
+      - uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
         id: release
         continue-on-error: true
         with:
-          # 使用默认的 GITHUB_TOKEN（已启用 "Allow GitHub Actions to create and approve pull requests"）
+          # 使用默认的 GITHUB_TOKEN
           # 如需使用 PAT，可配置 token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
           # 禁用自动添加标签（如 autorelease: snapshot），由后续步骤手动添加自定义标签
           skip-labeling: true
-
-      - name: Debug release-please outputs
-        if: always()
-        run: |
-          echo "=== Release Please Outputs ==="
-          echo "pull_request_number: '${{ steps.release.outputs.pull_request_number }}'"
-          echo "version: '${{ steps.release.outputs.version }}'"
-          echo "release_created: '${{ steps.release.outputs.release_created }}'"
-          echo "outcome: '${{ steps.release.outcome }}'"
-          echo "=============================="
-
-      - name: Update revision in Release PR
-        if: steps.release.outcome == 'success' || steps.release.outcome == 'failure'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            // 首先尝试从 release-please 输出获取 PR 号和版本
-            let prNumber = '${{ steps.release.outputs.pull_request_number }}';
-            let version = '${{ steps.release.outputs.version }}';
-            
-            console.log(`Initial PR number from release-please: ${prNumber || 'empty'}`);
-            console.log(`Initial version from release-please: ${version || 'empty'}`);
-            
-            // 如果没有从 release-please 获取到，尝试查找现有的 release PR
-            if (!prNumber) {
-              console.log('No PR number from release-please, searching for existing release PR...');
-              // simple release type 使用不同的分支格式，尝试两种格式
-              let prs = [];
-              try {
-                const result = await github.rest.pulls.list({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  state: 'open',
-                  head: `${context.repo.owner}:release-please--branches--main`,
-                  sort: 'created',
-                  direction: 'desc',
-                  per_page: 1
-                });
-                prs = result.data;
-              } catch (e) {
-                // 如果 simple 格式找不到，尝试 java 格式
-                const result = await github.rest.pulls.list({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  state: 'open',
-                  head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
-                  sort: 'created',
-                  direction: 'desc',
-                  per_page: 1
-                });
-                prs = result.data;
-              }
-              
-              if (prs.length > 0) {
-                prNumber = prs[0].number.toString();
-                console.log(`Found existing release PR: #${prNumber}`);
-                
-                // 从 PR 标题中提取版本号（支持多种格式）
-                // 例如: "chore(main): release mimir-boot 1.0.0" 或 "release 1.0.0"
-                const titleMatch = prs[0].title.match(/(?:release|版本)\s+(?:mimir-boot\s+)?(\d+\.\d+\.\d+)/i) ||
-                                  prs[0].title.match(/(\d+\.\d+\.\d+)/);
-                if (titleMatch) {
-                  version = titleMatch[1];
-                  console.log(`Extracted version from PR title: ${version}`);
-                }
-                
-                // 如果从标题提取失败，尝试从 PR 分支的 manifest 文件获取
-                if (!version) {
-                  try {
-                    const { data: manifest } = await github.rest.repos.getContent({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      path: '.github/.release-please-manifest.json',
-                      ref: prs[0].head.ref  // 使用 PR 分支，而不是 main 分支
-                    });
-                    
-                    const manifestContent = JSON.parse(
-                      Buffer.from(manifest.content, 'base64').toString('utf-8')
-                    );
-                    version = manifestContent['.'] || '';
-                    console.log(`Version from PR branch manifest: ${version}`);
-                  } catch (error) {
-                    console.log('Could not read manifest file from PR branch');
-                  }
-                }
-              }
-            }
-            
-            // 如果还是没有版本号，尝试从 main 分支的 manifest 文件获取（最后的后备方案）
-            if (!version) {
-              try {
-                const { data: manifest } = await github.rest.repos.getContent({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  path: '.github/.release-please-manifest.json',
-                  ref: 'main'
-                });
-                
-                const manifestContent = JSON.parse(
-                  Buffer.from(manifest.content, 'base64').toString('utf-8')
-                );
-                version = manifestContent['.'] || '';
-                console.log(`Version from main branch manifest: ${version}`);
-                console.log('⚠️  Warning: Using version from main branch manifest, which may be outdated');
-              } catch (error) {
-                console.log('Could not read manifest file from main branch');
-              }
-            }
-            
-            if (!prNumber) {
-              console.log('No release PR found, skipping revision update');
-              return;
-            }
-            
-            if (!version) {
-              console.log('No version found, skipping revision update');
-              return;
-            }
-            
-            console.log(`Updating revision in PR #${prNumber} to ${version}`);
-            
-            // 获取 PR 信息
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: parseInt(prNumber)
-            });
-            
-            // 获取 PR 分支的 pom.xml 内容
-            const { data: pomContent } = await github.rest.repos.getContent({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              path: 'pom.xml',
-              ref: pr.head.ref
-            });
-            
-            const currentPom = Buffer.from(pomContent.content, 'base64').toString('utf-8');
-            
-            // 更新 revision（移除 -SNAPSHOT 后缀）
-            const releaseVersion = version.replace(/-SNAPSHOT$/, '');
-            const updatedPom = currentPom.replace(
-              /<revision>[^<]*<\/revision>/,
-              `<revision>${releaseVersion}</revision>`
-            );
-            
-            if (updatedPom === currentPom) {
-              console.log('No changes needed (revision already updated)');
-              return;
-            }
-            
-            console.log(`Current revision in PR: ${currentPom.match(/<revision>([^<]*)<\/revision>/)?.[1] || 'not found'}`);
-            console.log(`Updating to: ${releaseVersion}`);
-            
-            // 更新文件
-            await github.rest.repos.createOrUpdateFileContents({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              path: 'pom.xml',
-              message: `chore: update revision to ${releaseVersion} for release`,
-              content: Buffer.from(updatedPom).toString('base64'),
-              sha: pomContent.sha,
-              branch: pr.head.ref
-            });
-            
-            console.log(`✓ Updated revision to ${releaseVersion} in PR #${prNumber}`);
-
-      - name: Check for existing release PR
-        if: steps.release.outcome == 'failure'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            // simple release type 使用不同的分支格式，尝试两种格式
-            let prs = [];
-            try {
-              const result = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                head: `${context.repo.owner}:release-please--branches--main`,
-                sort: 'created',
-                direction: 'desc',
-                per_page: 1
-              });
-              prs = result.data;
-            } catch (e) {
-              // 如果 simple 格式找不到，尝试 java 格式
-              const result = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
-                sort: 'created',
-                direction: 'desc',
-                per_page: 1
-              });
-              prs = result.data;
-            }
-            
-            if (prs.length > 0) {
-              console.log(`ℹ️  Release PR already exists: #${prs[0].number}`);
-              console.log(`   PR URL: ${prs[0].html_url}`);
-              console.log(`   This is normal - release-please will update the existing PR when new changes are pushed.`);
-              console.log(`   The workflow will continue despite this error.`);
-            } else {
-              console.log('⚠️  No existing release PR found, but release-please failed.');
-              console.log('   This might be a temporary issue. Please check the error message above.');
-            }
+          # 禁用自动创建 GitHub Release/Tag，交由 create-tag 工作流处理
+          # 这样可以使用 PAT (RELEASE_TOKEN) 创建 Tag，从而自动触发 Release 构建工作流
+          skip-github-release: true
 
       - name: Add 🚀 release label to PR
-        if: ${{ steps.release.outputs.pull_request_number != '' }}
-        uses: actions-ecosystem/action-add-labels@bd52874380e3909a1ac983768df6976535ece7f8
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          number: ${{ steps.release.outputs.pull_request_number }}
-          labels: |
-            🚀 release
-      
-      - name: Find and label release PR (fallback)
-        if: ${{ steps.release.outputs.pull_request_number == '' && steps.release.outcome == 'success' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            // simple release type 使用不同的分支格式，尝试两种格式
-            let prs = [];
-            try {
-              const result = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                head: `${context.repo.owner}:release-please--branches--main`,
-                sort: 'created',
-                direction: 'desc',
-                per_page: 1
-              });
-              prs = result.data;
-            } catch (e) {
-              // 如果 simple 格式找不到，尝试 java 格式
-              const result = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                head: `${context.repo.owner}:release-please--branches--main--components--mimir-boot`,
-                sort: 'created',
-                direction: 'desc',
-                per_page: 1
-              });
-              prs = result.data;
-            }
-            
-            if (prs.length > 0) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prs[0].number,
-                labels: ['🚀 release']
-              });
-              console.log(`Added 🚀 release label to PR #${prs[0].number}`);
-            }
-
-      - name: Note about tag creation
-        if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "ℹ️  Release PR merged. Tag creation will be handled by the 'Create Tag' workflow."
-          echo "   The 'Create Tag' workflow will be triggered automatically after this workflow completes."
-
+          echo "Waiting for PR to be searchable..."
+          # 简单的重试逻辑：尝试 5 次，每次间隔 5 秒
+          for i in {1..5}; do
+            # 显式指定 repo 以避免需要 checkout
+            PR_NUMBER=$(gh pr list --repo ${{ github.repository }} --search "head:release-please--branches--main is:open" --json number --jq '.[0].number')
+            
+            if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+              echo "Found Release PR: #$PR_NUMBER"
+              gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --add-label "🚀 release"
+              echo "Added '🚀 release' label to PR #$PR_NUMBER"
+              exit 0
+            fi
+            
+            echo "Attempt $i: No open release PR found yet. Retrying in 5s..."
+            sleep 5
+          done
+          
+          echo "Failed to find release PR after retries."
+          # 不报错退出，避免标记 workflow 为失败
+          exit 0

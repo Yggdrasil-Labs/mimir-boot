@@ -8,6 +8,8 @@ on:
       - completed
     branches:
       - main
+  # 允许手动触发以修复失败的 tag
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,8 +17,7 @@ permissions:
 jobs:
   check-release-pr-merged:
     runs-on: ubuntu-latest
-    # 安全：确保只处理来自主仓库的工作流运行，不执行来自 fork 的代码
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.repository.full_name == github.repository
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
       pull-requests: read
@@ -26,71 +27,53 @@ jobs:
     steps:
       - name: Check if release PR was merged
         id: check
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // 安全：验证工作流运行来自主仓库，而不是 fork
-            const workflowRun = context.payload.workflow_run;
-            const expectedRepo = `${context.repo.owner}/${context.repo.repo}`;
-            const actualRepo = workflowRun.repository.full_name;
-            
-            if (actualRepo !== expectedRepo) {
-              console.log(`❌ Security check failed: Workflow run is from a different repository`);
-              console.log(`  Expected: ${expectedRepo}`);
-              console.log(`  Actual: ${actualRepo}`);
-              console.log(`  This workflow will be skipped to prevent executing untrusted code from forks`);
-              core.setOutput('is_release_pr', 'false');
-              core.setOutput('merge_commit_sha', '');
-              return;
-            }
-            
             // 获取触发此工作流的 release-please 工作流运行信息
+            const workflowRun = context.payload.workflow_run;
             console.log(`Release Please workflow run: ${workflowRun.id}`);
             console.log(`Conclusion: ${workflowRun.conclusion}`);
             console.log(`Event: ${workflowRun.event}`);
             console.log(`Head branch: ${workflowRun.head_branch}`);
-            console.log(`Repository: ${actualRepo} (verified)`);
+            console.log(`Head SHA: ${workflowRun.head_sha}`);
             
-            // 获取最近的合并到 main 的 PR（最近 10 个）
-            const { data: prs } = await github.rest.pulls.list({
+            // 直接查找与触发 commit 关联的 PR
+            // 这比列出最近 PR 并检查时间戳更可靠，也避免了竞态条件
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'closed',
-              base: 'main',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 10
+              commit_sha: workflowRun.head_sha,
             });
             
-            // 查找最近合并的 release PR（在最近 5 分钟内合并的）
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            console.log(`Found ${prs.length} associated PRs`);
+            
             const releasePR = prs.find(pr => {
+              // 确保 PR 已合并
               if (!pr.merged_at) return false;
-              
-              const mergedAt = new Date(pr.merged_at);
-              const isRecent = mergedAt > fiveMinutesAgo;
+
               // 支持两种分支格式：
               // 1. simple release type: release-please--branches--main
               // 2. java release type: release-please--branches--main--components--*
-              const isReleasePR = pr.head.ref.startsWith('release-please--branches--main') ||
-                                pr.title.match(/chore\(main\): release/) ||
-                                pr.title.includes('release');
+              const isReleaseBranch = pr.head.ref.startsWith('release-please--branches--main');
+              const isReleaseTitle = pr.title.match(/chore\(main\): release/) || pr.title.includes('release');
               
-              return isRecent && isReleasePR;
+              return isReleaseBranch || isReleaseTitle;
             });
             
             if (releasePR) {
-              console.log(`✓ Found recently merged release PR: #${releasePR.number}`);
+              console.log(`✓ Found associated release PR: #${releasePR.number}`);
               console.log(`  Title: ${releasePR.title}`);
               console.log(`  Head ref: ${releasePR.head.ref}`);
               console.log(`  Merged at: ${releasePR.merged_at}`);
               console.log(`  Merge commit SHA: ${releasePR.merge_commit_sha}`);
               
               core.setOutput('is_release_pr', 'true');
-              core.setOutput('merge_commit_sha', releasePR.merge_commit_sha || '');
+              // 如果有关联 PR，使用其 merge_commit_sha；否则回退到 workflow_run.head_sha
+              core.setOutput('merge_commit_sha', releasePR.merge_commit_sha || workflowRun.head_sha);
             } else {
-              console.log('ℹ️  No recently merged release PR found');
+              console.log('ℹ️  No associated release PR found for this commit');
               console.log('   This workflow will be skipped');
               core.setOutput('is_release_pr', 'false');
               core.setOutput('merge_commit_sha', '');
@@ -99,108 +82,21 @@ jobs:
   create-and-push-tag:
     runs-on: ubuntu-latest
     needs: [check-release-pr-merged]
-    # 安全：确保只处理来自主仓库的工作流，不执行来自 fork 的代码
-    if: needs.check-release-pr-merged.outputs.is_release_pr == 'true' && github.repository == github.event.workflow_run.repository.full_name
+    # 如果是手动触发，或者是自动触发且检测到是 release PR，则执行
+    if: |
+      always() && 
+      (github.event_name == 'workflow_dispatch' || needs.check-release-pr-merged.outputs.is_release_pr == 'true')
     permissions:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
-          fetch-depth: 0
-          # 安全措施（满足 SonarCloud 要求）：
-          # 1. 明确指定只从主仓库 checkout（不从 fork checkout）
-          repository: ${{ github.repository }}
-          # 2. 始终 checkout main 分支（不直接使用来自 PR 的 ref）
-          ref: 'main'
-          # 3. 使用受信任的 token
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          # 安全声明：
-          # - Job 级别已验证仓库来源（行 103）
-          # - 不执行任何来自仓库的脚本或可执行文件
-          # - 仅读取配置文件（manifest.json, CHANGELOG.md, pom.xml）
-          # - 所有逻辑代码都在工作流文件中内联定义
-
-      - name: Verify and checkout merge commit
-        run: |
-          # 安全：严格验证并 checkout 合并后的 commit（如果提供）
-          MERGE_COMMIT_SHA="${{ needs.check-release-pr-merged.outputs.merge_commit_sha }}"
-          
-          # 验证远程仓库是主仓库（不是 fork）
-          REMOTE_URL=$(git remote get-url origin)
-          EXPECTED_REPO="${{ github.repository }}"
-          if [[ ! "$REMOTE_URL" =~ "$EXPECTED_REPO" ]]; then
-            echo "❌ Security check failed: Remote repository does not match expected repository"
-            echo "  Expected: $EXPECTED_REPO"
-            echo "  Remote: $REMOTE_URL"
-            exit 1
-          fi
-          
-          # 如果提供了 merge commit SHA，验证并 checkout
-          if [ -n "$MERGE_COMMIT_SHA" ] && [ "$MERGE_COMMIT_SHA" != "" ]; then
-            echo "Merge commit SHA provided: $MERGE_COMMIT_SHA"
-            
-            # 验证 commit SHA 格式（必须是 40 字符的十六进制字符串）
-            if ! [[ "$MERGE_COMMIT_SHA" =~ ^[a-f0-9]{40}$ ]]; then
-              echo "❌ Security check failed: Invalid commit SHA format: $MERGE_COMMIT_SHA"
-              exit 1
-            fi
-            
-            # 获取完整的仓库历史以验证 commit
-            echo "Fetching repository history to verify commit..."
-            git fetch origin --unshallow 2>/dev/null || git fetch origin --depth=1000 2>/dev/null || true
-            
-            # 验证 commit 存在于主仓库中
-            if ! git cat-file -e "$MERGE_COMMIT_SHA" 2>/dev/null; then
-              echo "❌ Security check failed: Commit $MERGE_COMMIT_SHA does not exist in the repository"
-              exit 1
-            fi
-            
-            # 严格验证：commit 必须在 main 分支的历史中
-            echo "Verifying commit is in main branch history..."
-            if git branch -r --contains "$MERGE_COMMIT_SHA" 2>/dev/null | grep -q "origin/main"; then
-              echo "✓ Commit $MERGE_COMMIT_SHA is verified in main branch history"
-            elif git merge-base --is-ancestor "$MERGE_COMMIT_SHA" origin/main 2>/dev/null; then
-              echo "✓ Commit $MERGE_COMMIT_SHA is an ancestor of main branch"
-            elif [ "$MERGE_COMMIT_SHA" == "$(git rev-parse origin/main 2>/dev/null)" ]; then
-              echo "✓ Commit $MERGE_COMMIT_SHA is the current main branch HEAD"
-            else
-              # 检查 commit 是否至少存在于主仓库的所有引用中
-              if git log --all --format="%H" | grep -q "^$MERGE_COMMIT_SHA$"; then
-                echo "✓ Commit $MERGE_COMMIT_SHA exists in repository"
-                # 验证 commit 的作者信息
-                COMMIT_AUTHOR=$(git log -1 --format="%an <%ae>" "$MERGE_COMMIT_SHA" 2>/dev/null || echo "")
-                if [ -z "$COMMIT_AUTHOR" ]; then
-                  echo "❌ Security check failed: Cannot verify commit author"
-                  exit 1
-                fi
-                echo "  Author: $COMMIT_AUTHOR"
-              else
-                echo "❌ Security check failed: Commit $MERGE_COMMIT_SHA not found in repository"
-                exit 1
-              fi
-            fi
-            
-            # 安全地 checkout 到验证过的 commit
-            echo "Checking out verified commit: $MERGE_COMMIT_SHA"
-            git checkout "$MERGE_COMMIT_SHA"
-            echo "✓ Successfully checked out commit: $MERGE_COMMIT_SHA"
-          else
-            echo "No merge commit SHA provided, staying on main branch"
-            CURRENT_SHA=$(git rev-parse HEAD)
-            echo "Current commit SHA: $CURRENT_SHA"
-          fi
-          
-          # 最终验证：确保当前 HEAD 来自主仓库
-          FINAL_SHA=$(git rev-parse HEAD)
-          echo "Final commit SHA: $FINAL_SHA"
-          
-          if ! git cat-file -e "$FINAL_SHA" 2>/dev/null; then
-            echo "❌ Security check failed: Final commit $FINAL_SHA does not exist"
-            exit 1
-          fi
-          
-          echo "✓ Repository verification passed: $EXPECTED_REPO"
+          fetch-depth: 1
+          # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
+          ref: ${{ (needs.check-release-pr-merged.outputs.merge_commit_sha != '' && needs.check-release-pr-merged.outputs.merge_commit_sha) || 'main' }}
+          # 关键：不持久化 GITHUB_TOKEN，避免它干扰后续使用 RELEASE_TOKEN 的推送
+          persist-credentials: false
 
       - name: Extract version from manifest
         id: get_version
@@ -327,17 +223,14 @@ jobs:
             # 如果 RELEASE_TOKEN 不存在，回退到 GITHUB_TOKEN（但不会触发工作流）
             if [ -n "$RELEASE_TOKEN" ] && [ "$RELEASE_TOKEN" != "" ]; then
               echo "Using RELEASE_TOKEN to push tag (will trigger Release workflow automatically)"
-              # 配置 git 使用 PAT 进行推送
-              # 注意：PAT 需要使用 'x-access-token' 作为用户名，而不是实际的 GitHub 用户名
-              git remote set-url origin https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
               
-              # 验证 remote URL 配置
-              echo "Current remote URL:"
-              git remote get-url origin | sed 's/\/\/.*@/\/\/***@/'  # 隐藏 token
+              # 直接构造带 Token 的 URL 进行推送，这是最稳健的方式
+              # 避免依赖 git config 清理和 credential helper 可能导致的回退问题
+              GIT_API_URL="https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
               
               # 推送 tag
               echo "Pushing tag $TAG_NAME..."
-              if git push origin "$TAG_NAME"; then
+              if git push "$GIT_API_URL" "$TAG_NAME"; then
                 echo "✓ Successfully created and pushed tag: $TAG_NAME using RELEASE_TOKEN"
                 echo "✓ This should trigger the Release workflow automatically"
               else
@@ -352,4 +245,3 @@ jobs:
               echo "   You need to manually trigger it or configure RELEASE_TOKEN secret"
             fi
           fi
-
