@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.1...v1.4.2) (2025-12-14)
+
+
+### ♻️ Code Refactoring
+
+* 调整日志级别为DEBUG ([b51b16d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b51b16d539bc743a63e546e6fa06af10d032eb87))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 1.4.2-SNAPSHOT for next development cycle ([c01abcb](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c01abcbf87d0ef31d0b2a985bf5c0a02757e3a6c))
+
 ## [1.4.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.0...v1.4.1) (2025-12-14)
 
 
