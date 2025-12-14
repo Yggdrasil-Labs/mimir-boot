@@ -5,9 +5,12 @@ import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * SQL 参数脱敏工具。
@@ -17,23 +20,63 @@ import java.util.Map;
  */
 public class SqlLogMaskUtils {
 
+    /**
+     * 最大递归深度，防止堆栈溢出
+     */
+    private static final int MAX_DEPTH = 5;
+
     private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
     }
 
     public static Object maskParams(Object params) {
-        if (params == null) return null;
-        if (params instanceof Map) {
-            return maskMap((Map<?, ?>) params);
-        }
-        if (params.getClass().isPrimitive() || params instanceof String || params instanceof Number) {
-            return params;
-        }
-        return maskObject(params);
+        return maskParams(params, 0, new HashSet<>());
     }
 
-    private static Object maskMap(Map<?, ?> map) {
+    private static Object maskParams(Object params, int depth, Set<Object> visited) {
+        if (params == null) return null;
+        
+        // 深度限制，防止无限递归
+        if (depth >= MAX_DEPTH) {
+            return getSimpleRepresentation(params);
+        }
+        
+        // 检测循环引用
+        if (visited.contains(params)) {
+            return getSimpleRepresentation(params);
+        }
+        
+        if (params instanceof Map) {
+            return maskMap((Map<?, ?>) params, depth, visited);
+        }
+        
+        // 基础类型和简单类型直接返回
+        if (params.getClass().isPrimitive() 
+                || params instanceof String 
+                || params instanceof Number
+                || params instanceof Boolean
+                || params instanceof Character) {
+            return params;
+        }
+        
+        // Collection 类型特殊处理
+        if (params instanceof Collection) {
+            return maskCollection((Collection<?>) params, depth, visited);
+        }
+        
+        // MyBatis-Plus Wrapper 类型特殊处理，避免深度递归
+        if (isMyBatisPlusWrapper(params)) {
+            return getSimpleRepresentation(params);
+        }
+        
+        return maskObject(params, depth, visited);
+    }
+
+    private static Object maskMap(Map<?, ?> map, int depth, Set<Object> visited) {
         Map<Object, Object> result = new HashMap<>();
+        Set<Object> newVisited = new HashSet<>(visited);
+        newVisited.add(map);
+        
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
@@ -47,14 +90,32 @@ public class SqlLogMaskUtils {
                 SensitiveField anno = field.getAnnotation(SensitiveField.class);
                 result.put(key, maskValue(String.valueOf(getFieldValue(field, value)), anno));
             } else {
-                result.put(key, maskParams(value));
+                result.put(key, maskParams(value, depth + 1, newVisited));
             }
         }
         return result;
     }
 
-    private static Object maskObject(Object obj) {
+    private static Object maskCollection(Collection<?> collection, int depth, Set<Object> visited) {
+        List<Object> result = new ArrayList<>();
+        Set<Object> newVisited = new HashSet<>(visited);
+        newVisited.add(collection);
+        
+        for (Object item : collection) {
+            if (item == null) {
+                result.add(null);
+            } else {
+                result.add(maskParams(item, depth + 1, newVisited));
+            }
+        }
+        return result;
+    }
+
+    private static Object maskObject(Object obj, int depth, Set<Object> visited) {
         try {
+            Set<Object> newVisited = new HashSet<>(visited);
+            newVisited.add(obj);
+            
             Map<String, Object> map = new HashMap<>();
             Class<?> clazz = obj.getClass();
             for (Field field : getAllFields(clazz)) {
@@ -68,12 +129,40 @@ public class SqlLogMaskUtils {
                     SensitiveField anno = field.getAnnotation(SensitiveField.class);
                     map.put(field.getName(), maskValue(value.toString(), anno));
                 } else {
-                    map.put(field.getName(), maskParams(value));
+                    map.put(field.getName(), maskParams(value, depth + 1, newVisited));
                 }
             }
             return map;
         } catch (Exception e) {
-            return obj;
+            return getSimpleRepresentation(obj);
+        }
+    }
+    
+    /**
+     * 判断是否为 MyBatis-Plus 的 Wrapper 类型
+     */
+    private static boolean isMyBatisPlusWrapper(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        Class<?> clazz = obj.getClass();
+        String className = clazz.getName();
+        // 检查是否为 MyBatis-Plus 的 Wrapper 类
+        return className.contains("com.baomidou.mybatisplus") 
+                && (className.contains("Wrapper") || className.contains("QueryWrapper") || className.contains("UpdateWrapper"));
+    }
+    
+    /**
+     * 获取对象的简单字符串表示，避免深度递归
+     */
+    private static String getSimpleRepresentation(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        try {
+            return obj.getClass().getSimpleName() + "@" + Integer.toHexString(obj.hashCode());
+        } catch (Exception e) {
+            return obj.toString();
         }
     }
 
