@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.0...v1.4.1) (2025-12-14)
+
+
+### 👷 Continuous Integration
+
+* 补充发布到GitHub Packages ([2ce2b6e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2ce2b6e82e3231619b67cbbd491a922ddb2285bf))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 1.4.1-SNAPSHOT for next development cycle ([c91ea96](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c91ea96ab7fbfcb356a1598c351c6b9849d62ada))
+
 ## [1.4.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.3.0...v1.4.0) (2025-12-14)
 
 
