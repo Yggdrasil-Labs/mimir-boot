@@ -1,12 +1,13 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
 import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import org.apache.ibatis.type.MappedTypes;
 
 /**
  * 字符串字段加解密 TypeHandler。
+ *
+ * <p>注意：此 TypeHandler 不会自动注册为全局 String 类型处理器，
+ * 需要在字段上显式使用 {@code @TableField(typeHandler = StringCryptoTypeHandler.class)} 才会生效。
  */
-@MappedTypes(String.class)
 public class StringCryptoTypeHandler extends AbstractCryptoTypeHandler<String> {
 
     public StringCryptoTypeHandler(CryptoKeyProvider keyProvider) {

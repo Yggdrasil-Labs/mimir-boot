@@ -1,12 +1,13 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
 import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import org.apache.ibatis.type.MappedTypes;
 
 /**
  * Integer 字段加解密 TypeHandler。
+ *
+ * <p>注意：此 TypeHandler 不会自动注册为全局 Integer 类型处理器，
+ * 需要在字段上显式使用 {@code @TableField(typeHandler = IntegerCryptoTypeHandler.class)} 才会生效。
  */
-@MappedTypes(Integer.class)
 public class IntegerCryptoTypeHandler extends AbstractCryptoTypeHandler<Integer> {
 
     public IntegerCryptoTypeHandler(CryptoKeyProvider keyProvider) {

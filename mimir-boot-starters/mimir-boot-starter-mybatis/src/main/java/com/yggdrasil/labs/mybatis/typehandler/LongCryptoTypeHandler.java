@@ -1,12 +1,13 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
 import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import org.apache.ibatis.type.MappedTypes;
 
 /**
  * Long 字段加解密 TypeHandler。
+ *
+ * <p>注意：此 TypeHandler 不会自动注册为全局 Long 类型处理器，
+ * 需要在字段上显式使用 {@code @TableField(typeHandler = LongCryptoTypeHandler.class)} 才会生效。
  */
-@MappedTypes(Long.class)
 public class LongCryptoTypeHandler extends AbstractCryptoTypeHandler<Long> {
 
     public LongCryptoTypeHandler(CryptoKeyProvider keyProvider) {
