@@ -57,7 +57,18 @@ jobs:
               // 1. simple release type: release-please--branches--main
               // 2. java release type: release-please--branches--main--components--*
               const isReleaseBranch = pr.head.ref.startsWith('release-please--branches--main');
-              const isReleaseTitle = pr.title.match(/chore\(main\): release/) || pr.title.includes('release');
+
+              // 兼容 Release Please 默认标题，同时避免误判包含 "action-gh-release" 等依赖升级 PR
+              const title = pr.title || '';
+              const lowerTitle = title.toLowerCase();
+
+              const isReleaseTitle =
+                // 标准 release-please 标题：chore(main): release x.y.z
+                /chore\(main\): release\b/i.test(title) ||
+                // 其他以 release 开头的标题：如 "release 1.2.3" / "Release: 1.2.3"
+                lowerTitle.startsWith('release ') ||
+                lowerTitle.startsWith('release:') ||
+                lowerTitle.startsWith('release-');
               
               return isReleaseBranch || isReleaseTitle;
             });
