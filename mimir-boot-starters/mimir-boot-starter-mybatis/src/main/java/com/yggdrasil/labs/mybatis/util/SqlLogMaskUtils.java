@@ -6,11 +6,10 @@ import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * SQL 参数脱敏工具。
@@ -30,10 +29,12 @@ public class SqlLogMaskUtils {
     }
 
     public static Object maskParams(Object params) {
-        return maskParams(params, 0, new HashSet<>());
+        // 使用 IdentityHashMap 来避免调用对象的 hashCode() 方法
+        // IdentityHashMap 使用对象引用（==）而不是 equals() 和 hashCode() 来比较键
+        return maskParams(params, 0, new IdentityHashMap<>());
     }
 
-    private static Object maskParams(Object params, int depth, Set<Object> visited) {
+    private static Object maskParams(Object params, int depth, IdentityHashMap<Object, Boolean> visited) {
         if (params == null) return null;
         
         // 深度限制，防止无限递归
@@ -42,7 +43,7 @@ public class SqlLogMaskUtils {
         }
         
         // 检测循环引用
-        if (visited.contains(params)) {
+        if (visited.containsKey(params)) {
             return getSimpleRepresentation(params);
         }
         
@@ -72,34 +73,108 @@ public class SqlLogMaskUtils {
         return maskObject(params, depth, visited);
     }
 
-    private static Object maskMap(Map<?, ?> map, int depth, Set<Object> visited) {
-        Map<Object, Object> result = new HashMap<>();
-        Set<Object> newVisited = new HashSet<>(visited);
-        newVisited.add(map);
-        
+    private static Object maskMap(Map<?, ?> map, int depth, IdentityHashMap<Object, Boolean> visited) {
+        // 使用 IdentityHashMap 作为结果，避免当 key/value 是 Map 时调用 hashCode() 导致的堆栈溢出
+        // IdentityHashMap 使用对象引用（==）而不是 equals() 和 hashCode() 来比较键
+        // 对于日志脱敏场景，使用 IdentityHashMap 是可以接受的
+        Map<Object, Object> result = new IdentityHashMap<>();
+        // 创建新的 visited 集合，避免修改原始集合，并先将当前 map 标记进去以便检测自引用
+        IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
+        newVisited.put(map, Boolean.TRUE);
+
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
-            if (value == null) {
-                result.put(key, null);
-                continue;
-            }
-            // Map 仅支持基于 key 匹配对象字段进行脱敏
-            Field field = findField(value, String.valueOf(key));
-            if (field != null && field.isAnnotationPresent(SensitiveField.class)) {
-                SensitiveField anno = field.getAnnotation(SensitiveField.class);
-                result.put(key, maskValue(String.valueOf(getFieldValue(field, value)), anno));
-            } else {
-                result.put(key, maskParams(value, depth + 1, newVisited));
-            }
+
+            Object safeKey = toSafeKey(key);
+            Object safeValue = toSafeValue(key, value, depth, visited, newVisited);
+            result.put(safeKey, safeValue);
         }
         return result;
     }
 
-    private static Object maskCollection(Collection<?> collection, int depth, Set<Object> visited) {
+    /**
+     * 生成用于结果 Map 的安全 key：
+     * - 对于 Map 类型 key，使用简单字符串表示，避免调用 hashCode()/toString 导致栈溢出
+     * - 其它类型直接透传
+     */
+    private static Object toSafeKey(Object key) {
+        if (key instanceof Map) {
+            return getSimpleRepresentation(key);
+        }
+        return key;
+    }
+
+    /**
+     * 生成用于结果 Map 的安全 value。
+     */
+    private static Object toSafeValue(
+            Object key,
+            Object value,
+            int depth,
+            IdentityHashMap<Object, Boolean> visited,
+            IdentityHashMap<Object, Boolean> newVisited) {
+
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Map) {
+            return handleMapValue((Map<?, ?>) value, depth, visited, newVisited);
+        }
+        return handleNonMapValue(key, value, depth, newVisited);
+    }
+
+    /**
+     * 处理 Map 类型的 value，包含循环引用检测与递归脱敏。
+     */
+    private static Object handleMapValue(
+            Map<?, ?> value,
+            int depth,
+            IdentityHashMap<Object, Boolean> visited,
+            IdentityHashMap<Object, Boolean> newVisited) {
+
+        // 循环引用（包括自引用）直接返回简单表示，不再递归
+        if (newVisited.containsKey(value)) {
+            return getSimpleRepresentation(value);
+        }
+
+        Object masked = maskParams(value, depth + 1, newVisited);
+        // 如果递归结果仍然是 Map 且原始 value 在 visited 中（历史循环），也返回简单表示
+        if (masked instanceof Map && visited.containsKey(value)) {
+            return getSimpleRepresentation(masked);
+        }
+        return masked;
+    }
+
+    /**
+     * 处理非 Map 类型的 value，包括基于 key 的字段匹配（仅当 key 不是 Map 时）。
+     */
+    private static Object handleNonMapValue(
+            Object key,
+            Object value,
+            int depth,
+            IdentityHashMap<Object, Boolean> newVisited) {
+
+        // 当 key 是 Map（尤其是包含循环引用的 Map）时，调用 String.valueOf(key)
+        // 会触发 Map.toString() 从而导致堆栈溢出；此时跳过基于 key 的字段匹配逻辑
+        Field field = null;
+        if (!(key instanceof Map)) {
+            field = findField(value, String.valueOf(key));
+        }
+
+        if (field != null && field.isAnnotationPresent(SensitiveField.class)) {
+            SensitiveField anno = field.getAnnotation(SensitiveField.class);
+            return maskValue(String.valueOf(getFieldValue(field, value)), anno);
+        }
+
+        return maskParams(value, depth + 1, newVisited);
+    }
+
+    private static Object maskCollection(Collection<?> collection, int depth, IdentityHashMap<Object, Boolean> visited) {
         List<Object> result = new ArrayList<>();
-        Set<Object> newVisited = new HashSet<>(visited);
-        newVisited.add(collection);
+        // 创建新的 visited 集合，避免修改原始集合
+        IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
+        newVisited.put(collection, Boolean.TRUE);
         
         for (Object item : collection) {
             if (item == null) {
@@ -111,10 +186,11 @@ public class SqlLogMaskUtils {
         return result;
     }
 
-    private static Object maskObject(Object obj, int depth, Set<Object> visited) {
+    private static Object maskObject(Object obj, int depth, IdentityHashMap<Object, Boolean> visited) {
         try {
-            Set<Object> newVisited = new HashSet<>(visited);
-            newVisited.add(obj);
+            // 创建新的 visited 集合，避免修改原始集合
+            IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
+            newVisited.put(obj, Boolean.TRUE);
             
             Map<String, Object> map = new HashMap<>();
             Class<?> clazz = obj.getClass();
@@ -154,16 +230,16 @@ public class SqlLogMaskUtils {
     
     /**
      * 获取对象的简单字符串表示，避免深度递归
+     * 使用 System.identityHashCode() 避免调用对象的 hashCode() 方法
+     * 因为 Map 的 hashCode() 会遍历所有 entry，如果包含循环引用会导致堆栈溢出
      */
     private static String getSimpleRepresentation(Object obj) {
         if (obj == null) {
             return null;
         }
-        try {
-            return obj.getClass().getSimpleName() + "@" + Integer.toHexString(obj.hashCode());
-        } catch (Exception e) {
-            return obj.toString();
-        }
+        // 使用 System.identityHashCode() 而不是 obj.hashCode()
+        // 以避免当 obj 是包含循环引用的 Map 时触发堆栈溢出
+        return obj.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(obj));
     }
 
     private static String maskValue(String value, SensitiveField anno) {
