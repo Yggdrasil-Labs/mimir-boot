@@ -267,9 +267,19 @@
                     <version>${spotless.plugin.version}</version>
                     <configuration>
                         <java>
+                            <!-- 包含的文件 -->
                             <includes>
-                                <include>**/*.java</include>
+                                <include>src/main/java/**/*.java</include>
+                                <include>src/test/java/**/*.java</include>
                             </includes>
+                            
+                            <!-- 排除生成的代码 -->
+                            <excludes>
+                                <exclude>**/target/**/*.java</exclude>
+                                <exclude>**/generated/**/*.java</exclude>
+                                <exclude>**/generated-sources/**/*.java</exclude>
+                            </excludes>
+                            
                             <!-- 使用 Google AOSP 风格（完全符合阿里规范核心要求）
                                  AOSP = Android Open Source Project
                                  - 4 空格缩进（阿里规范）
@@ -277,19 +287,47 @@
                                  - 工具稳定、CI 友好
                             -->
                             <googleJavaFormat>
-                                <version>1.22.0</version>
+                                <version>1.23.0</version>
                                 <style>AOSP</style>
+                                <reflowLongStrings>true</reflowLongStrings>
                             </googleJavaFormat>
+                            
+                            <!-- 导入顺序：标准 Java 顺序 -->
+                            <importOrder>
+                                <order>java,javax,jakarta,org,com,cn,</order>
+                            </importOrder>
+                            
+                            <!-- 删除未使用的导入 -->
                             <removeUnusedImports/>
+                            
+                            <!-- 去除行尾空白 -->
                             <trimTrailingWhitespace/>
+                            
+                            <!-- 文件末尾保留一个空行 -->
                             <endWithNewline/>
-                            <indent>
-                                <tabs>false</tabs>
-                                <spaces>true</spaces>
-                                <spacesPerTab>4</spacesPerTab>
-                            </indent>
                         </java>
                     </configuration>
+                    <executions>
+                        <!-- 在 process-sources 阶段自动格式化代码 -->
+                        <execution>
+                            <id>spotless-apply</id>
+                            <phase>process-sources</phase>
+                            <goals>
+                                <goal>apply</goal>
+                            </goals>
+                            <configuration>
+                                <skip>false</skip>
+                            </configuration>
+                        </execution>
+                        <!-- 在 validate 阶段执行格式检查（CI 环境） -->
+                        <execution>
+                            <id>spotless-check</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
 
                 <!-- SonarQube Maven Plugin (代码质量分析) -->
