@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.4.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.1...v1.4.2) (2025-12-15)
+
+
+### 🐛 Bug Fixes
+
+* 修改access.log慢接口为3000ms ([504d8a0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/504d8a0550d3580ba5727a6a749bcaa0fa826bb1))
+* 修改在mask复杂对象时堆栈溢出的问题 ([6b209ce](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6b209ce1344020536e22646c7db2791f749ea73e))
+* 取消自动注册为全局处理器，只有显式使用才行 ([aa03d2d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/aa03d2d6ecd7126fd00be195e0fb7cf58438bc8e))
+* 复杂对象导致堆栈溢出的问题 ([1582782](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1582782aa9b9ba47176140e0db8bbc5c4de1c296))
+
+
+### ♻️ Code Refactoring
+
+* 调整日志级别为DEBUG ([b51b16d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b51b16d539bc743a63e546e6fa06af10d032eb87))
+
+
+### 👷 Continuous Integration
+
+* **deps:** bump actions/upload-artifact from 5.0.0 to 6.0.0 ([ed9228a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ed9228afd292fd4ff1f68de9210e1528499b6686))
+* **deps:** bump googleapis/release-please-action from 4.2.0 to 4.4.0 ([297d496](https://github.com/Yggdrasil-Labs/mimir-boot/commit/297d496d81386fa0a8df37347e568ededf5b8e26))
+* 修改判断逻辑，避免误升级 ([8cb695e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8cb695e3e76d73f2516cf75a3471a9fb031f14b7))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 1.4.2-SNAPSHOT for next development cycle ([c01abcb](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c01abcbf87d0ef31d0b2a985bf5c0a02757e3a6c))
+
 ## [1.4.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.0...v1.4.1) (2025-12-14)
 
 
