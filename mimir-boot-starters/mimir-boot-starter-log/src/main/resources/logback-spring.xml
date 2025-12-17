@@ -195,12 +195,6 @@
             <appender-ref ref="ASYNC_FILE_INFO"/>
             <appender-ref ref="ASYNC_FILE_ERROR"/>
         </logger>
-        
-        <!-- SQL 日志 - 便于调试 -->
-        <logger name="com.yggdrasil.labs.mapper" level="DEBUG" additivity="false">
-            <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_FILE_INFO"/>
-        </logger>
     </springProfile>
     
     <!-- 测试环境配置 -->
@@ -303,18 +297,5 @@
     <logger name="org.springframework.boot.context.embedded" level="INFO"/>
     <logger name="org.springframework.boot.web.servlet" level="INFO"/>
     <logger name="org.springframework.context" level="INFO"/>
-    
-    <!-- 防止 Vert.x 相关日志过多 -->
-    <logger name="io.vertx" level="WARN"/>
-    <logger name="io.netty.buffer" level="WARN"/>
-    
-    <!-- 防止 RocketMQ 日志过多 -->
-    <logger name="org.apache.rocketmq" level="WARN"/>
-    
-    <!-- 防止 Dubbo 日志过多 -->
-    <logger name="org.apache.dubbo" level="WARN"/>
-    
-    <!-- SQL 执行时间过长警告 -->
-    <logger name="com.yggdrasil.labs.datasource" level="WARN"/>
 </configuration>
 
