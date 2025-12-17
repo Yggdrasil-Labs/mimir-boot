@@ -186,15 +186,19 @@ public class UserAuditorProvider implements AuditorProvider {
 
 ### 3. 字段加解密
 
-#### 配置密钥
+#### 启用加密功能
 
-**生产环境必须配置密钥**，开发测试环境可自动生成（不推荐用于生产）：
+**加密功能默认关闭**，需要显式启用：
 
 ```yaml
 mimir:
-  mybatis:
-    crypto-key: BASE64_ENCODED_KEY_HERE  # Base64 编码的密钥
+  boot:
+    mybatis:
+      crypto-enabled: true  # 启用加密功能（默认 false）
+      crypto-key: BASE64_ENCODED_KEY_HERE  # Base64 编码的密钥（可选，不配置则自动生成）
 ```
+
+> ⚠️ **注意**：如果不启用加密功能，即使字段上配置了 `typeHandler = StringCryptoTypeHandler.class`，也不会生效。
 
 #### 使用加密 TypeHandler
 
@@ -357,7 +361,10 @@ mimir:
     # 是否启用 JSON SQL 日志（开发/测试环境默认 true）
     enable-json-sql-log: true
     
-    # 加解密密钥（Base64 编码），生产环境必须配置
+    # 是否启用字段加解密功能（默认 false）
+    crypto-enabled: true
+    
+    # 加解密密钥（Base64 编码），启用加密时建议配置，不配置则自动生成
     crypto-key: YOUR_BASE64_ENCODED_KEY
 ```
 

@@ -30,6 +30,11 @@ public class MybatisProperties {
     private Boolean enableJsonSqlLog;
 
     /**
+     * 是否启用字段加解密功能，默认 false
+     */
+    private boolean cryptoEnabled = false;
+
+    /**
      * 加解密密钥（Base64编码），未配置时自动生成（仅用于开发测试）
      */
     private String cryptoKey;
@@ -65,6 +70,14 @@ public class MybatisProperties {
 
     public void setEnableJsonSqlLog(Boolean enableJsonSqlLog) {
         this.enableJsonSqlLog = enableJsonSqlLog;
+    }
+
+    public boolean isCryptoEnabled() {
+        return cryptoEnabled;
+    }
+
+    public void setCryptoEnabled(boolean cryptoEnabled) {
+        this.cryptoEnabled = cryptoEnabled;
     }
 
     public String getCryptoKey() {

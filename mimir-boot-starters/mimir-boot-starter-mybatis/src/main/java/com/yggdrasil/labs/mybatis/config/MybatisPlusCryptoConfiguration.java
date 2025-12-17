@@ -4,6 +4,7 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
@@ -13,9 +14,12 @@ import org.springframework.context.annotation.Bean;
  * <p>默认提供一个 {@link com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider}，
  * 当未显式配置密钥时，为开发/测试目的自动生成临时密钥（生产环境请务必显式配置）。
  * 同时暴露若干通用 {@code TypeHandler} 以便按类型自动处理加解密。
+ *
+ * <p>需要显式配置 {@code mimir.boot.mybatis.crypto-enabled=true} 才会启用加密功能。
  */
 @AutoConfiguration
 @EnableConfigurationProperties(MybatisProperties.class)
+@ConditionalOnProperty(prefix = "mimir.boot.mybatis", name = "crypto-enabled", havingValue = "true")
 public class MybatisPlusCryptoConfiguration {
 
     @Bean
