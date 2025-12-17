@@ -6,7 +6,6 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.apache.ibatis.type.MappedJdbcTypes;
 
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
@@ -19,7 +18,6 @@ import java.sql.SQLException;
  * <p>注意：示例实现基于对称密钥加解密，仅用于通用场景演示，实际生产应
  * 依据安全规范选择更安全的算法/模式并做好密钥管理。</p>
  */
-@MappedJdbcTypes(JdbcType.VARCHAR)
 public abstract class AbstractCryptoTypeHandler<T> extends BaseTypeHandler<T> {
 
     private final CryptoKeyProvider keyProvider;
