@@ -41,7 +41,7 @@
         <slf4j.version>2.0.17</slf4j.version>
 
         <!-- 测试相关 -->
-        <testcontainers.version>1.21.3</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <compile.testing.version>0.21.0</compile.testing.version>
         <truth.version>1.4.2</truth.version>
 
