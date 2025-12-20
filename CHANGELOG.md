@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.5.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.2...v1.5.0) (2025-12-20)
+
+
+### ✨ Features
+
+* 加密功能默认关闭，支持参数控制显示开启 ([f07a48d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f07a48de851a2025b734626854cbdd98f68c0bf4))
+
+
+### 🐛 Bug Fixes
+
+* spotless apply应该在maven的process-sources阶段 ([85020be](https://github.com/Yggdrasil-Labs/mimir-boot/commit/85020bef008461f556a2df68159094f34b779264))
+* SQL日志打印的参数是密文 ([4f84584](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4f8458459cf70a20cc8bc4dd4d8c3653d5d2576e))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 1.4.3-SNAPSHOT for next development cycle ([11af2c5](https://github.com/Yggdrasil-Labs/mimir-boot/commit/11af2c5f1a95df2ffc380634d24d42d43f48796e))
+* **deps:** bump the testing group with 4 updates ([4041d6c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4041d6c6d8ab88847ca2320061097dff772dfa96))
+* 调整log配置文件 ([2804a32](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2804a32df72608f5b9737dae09bf8131f04a3f1b))
+
 ## [1.4.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.1...v1.4.2) (2025-12-15)
 
 
