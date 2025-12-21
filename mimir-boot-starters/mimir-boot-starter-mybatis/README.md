@@ -7,7 +7,7 @@
 提供完整的 MyBatis-Plus 集成方案：
 
 - ✅ **自动配置拦截器**（分页、乐观锁、JSON SQL日志）
-- ✅ **审计字段自动填充**（createdBy、createdTime、updatedBy、updatedTime）
+- ✅ **审计字段自动填充**（createBy、createTime、updateBy、updateTime）
 - ✅ **字段加解密支持**（String、Integer、Long 类型）
 - ✅ **SQL 日志结构化输出**（JSON 格式，支持敏感信息脱敏）
 - ✅ **分页工具类**（与通用分页模型无缝转换）
@@ -138,10 +138,10 @@ public class User {
 #### 启用审计功能
 
 审计功能默认启用，自动填充以下字段：
-- `createdBy` - 创建人
-- `createdTime` - 创建时间
-- `updatedBy` - 更新人
-- `updatedTime` - 更新时间
+- `createBy` - 创建人
+- `createTime` - 创建时间
+- `updateBy` - 更新人
+- `updateTime` - 更新时间
 
 #### 实体类示例
 
@@ -155,10 +155,10 @@ public class User {
     private String username;
     
     // 审计字段
-    private String createdBy;
-    private LocalDateTime createdTime;
-    private String updatedBy;
-    private LocalDateTime updatedTime;
+    private String createBy;
+    private LocalDateTime createTime;
+    private String updateBy;
+    private LocalDateTime updateTime;
     
     // getters and setters...
 }
@@ -415,10 +415,10 @@ public class User {
     private String email;
     
     // 审计字段（自动填充）
-    private String createdBy;
-    private LocalDateTime createdTime;
-    private String updatedBy;
-    private LocalDateTime updatedTime;
+    private String createBy;
+    private LocalDateTime createTime;
+    private String updateBy;
+    private LocalDateTime updateTime;
 }
 
 // 2. Mapper 接口
@@ -515,10 +515,10 @@ public class User {
     private String email;
     
     // 审计字段（推荐统一命名）
-    private String createdBy;
-    private LocalDateTime createdTime;
-    private String updatedBy;
-    private LocalDateTime updatedTime;
+    private String createBy;
+    private LocalDateTime createTime;
+    private String updateBy;
+    private LocalDateTime updateTime;
     
     // 逻辑删除字段（可选）
     @TableLogic
@@ -599,7 +599,7 @@ public class MybatisConfig {
 
 ### 问题1：审计字段未自动填充
 
-**症状**：插入/更新记录时，`createdBy`、`updatedTime` 等字段为 null
+**症状**：插入/更新记录时，`createBy`、`updateTime` 等字段为 null
 
 **解决方案**：
 1. 确认实体类字段名与 `AuditMetaObjectHandler` 中定义的字段名一致

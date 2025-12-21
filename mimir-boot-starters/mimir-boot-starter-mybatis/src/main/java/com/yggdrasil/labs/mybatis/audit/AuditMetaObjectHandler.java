@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 通用审计字段自动填充处理器。
  *
- * <p>支持字段：createdBy、createdTime、updatedBy、updatedTime。</p>
+ * <p>支持字段：createBy、createTime、updateBy、updateTime。</p>
  */
 public class AuditMetaObjectHandler implements MetaObjectHandler {
 
@@ -22,18 +22,18 @@ public class AuditMetaObjectHandler implements MetaObjectHandler {
     public void insertFill(MetaObject metaObject) {
         String auditor = safeAuditor();
         LocalDateTime now = LocalDateTime.now();
-        strictInsertFill(metaObject, "createdBy", String.class, auditor);
-        strictInsertFill(metaObject, "createdTime", LocalDateTime.class, now);
-        strictInsertFill(metaObject, "updatedBy", String.class, auditor);
-        strictInsertFill(metaObject, "updatedTime", LocalDateTime.class, now);
+        strictInsertFill(metaObject, "createBy", String.class, auditor);
+        strictInsertFill(metaObject, "createTime", LocalDateTime.class, now);
+        strictInsertFill(metaObject, "updateBy", String.class, auditor);
+        strictInsertFill(metaObject, "updateTime", LocalDateTime.class, now);
     }
 
     @Override
     public void updateFill(MetaObject metaObject) {
         String auditor = safeAuditor();
         LocalDateTime now = LocalDateTime.now();
-        strictUpdateFill(metaObject, "updatedBy", String.class, auditor);
-        strictUpdateFill(metaObject, "updatedTime", LocalDateTime.class, now);
+        strictUpdateFill(metaObject, "updateBy", String.class, auditor);
+        strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, now);
     }
 
     private String safeAuditor() {
