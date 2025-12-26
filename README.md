@@ -42,9 +42,9 @@
 | `mimir-boot-starter-mybatis`           | MyBatis 启动器（分页、审计、加密字段）      | ✅ 已完成 |
 | `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（自动 Mapper 扫描） | ✅ 已完成 |
 | `mimir-boot-starter-nacos`             | Nacos 配置加密启动器（ENC() 格式解密）    | ✅ 已完成 |
-| `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | 🔄 规划中 |
-| `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | 🔄 规划中 |
-| `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | 🔄 规划中 |
+| `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | ✅ 已完成 |
+| `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | ✅ 已完成 |
+| `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | ✅ 已完成 |
 | `mimir-boot-starter-governance`        | 服务治理（限流、熔断、重试）              | 🔄 规划中 |
 | `mimir-boot-starter-metrics`           | 指标监控（Metrics 采集与上报）           | 🔄 规划中 |
 | `mimir-boot-starter-security`          | 安全治理（签名、token 透传、安全增强）    | 🔄 规划中 |
@@ -340,9 +340,9 @@ graph TD
     Starters --> Processor[mimir-boot-starter-mybatis-processor<br/>MyBatis 编译期处理器]
     Starters --> Nacos[mimir-boot-starter-nacos<br/>Nacos 配置加密启动器]
     Starters --> Test[mimir-boot-starter-test<br/>测试启动器]
-    Starters --> RPCCore[mimir-boot-starter-rpc-core<br/>RPC 通用治理核心<br/>🔄 规划中]
-    Starters --> Dubbo[mimir-boot-starter-dubbo<br/>Dubbo 专用治理<br/>🔄 规划中]
-    Starters --> Feign[mimir-boot-starter-feign<br/>Feign 专用治理<br/>🔄 规划中]
+    Starters --> RPCCore[mimir-boot-starter-rpc-core<br/>RPC 通用治理核心]
+    Starters --> Dubbo[mimir-boot-starter-dubbo<br/>Dubbo 专用治理]
+    Starters --> Feign[mimir-boot-starter-feign<br/>Feign 专用治理]
     Starters --> Governance[mimir-boot-starter-governance<br/>服务治理<br/>🔄 规划中]
     Starters --> Metrics[mimir-boot-starter-metrics<br/>指标监控<br/>🔄 规划中]
     Starters --> Security[mimir-boot-starter-security<br/>安全治理<br/>🔄 规划中]
@@ -374,9 +374,9 @@ graph TD
     style Common fill:#e8f5e9
     style Starters fill:#f3e5f5
     style Test fill:#fce4ec
-    style RPCCore fill:#f5f5f5,stroke-dasharray: 5 5
-    style Dubbo fill:#f5f5f5,stroke-dasharray: 5 5
-    style Feign fill:#f5f5f5,stroke-dasharray: 5 5
+    style RPCCore fill:#e8f5e9
+    style Dubbo fill:#e8f5e9
+    style Feign fill:#e8f5e9
     style Governance fill:#f5f5f5,stroke-dasharray: 5 5
     style Metrics fill:#f5f5f5,stroke-dasharray: 5 5
     style Security fill:#f5f5f5,stroke-dasharray: 5 5

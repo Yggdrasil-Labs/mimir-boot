@@ -1,0 +1,64 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yggdrasil.labs</groupId>
+        <artifactId>mimir-boot-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../mimir-boot-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mimir-boot-starter-dubbo</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Mimir Boot Starter Dubbo</name>
+    <description>Dubbo 接入层：基于 RPC Core 的统一过滤与上下文传播，钩子可插拔。</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- RPC Core 抽象 -->
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-starter-rpc-core</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- Dubbo -->
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Spring Boot 自动配置 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- 日志门面（供内部使用，不强绑定具体实现） -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- 配置处理器（IDE 提示，可选） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试依赖 -->
+        <dependency>
+            <groupId>com.yggdrasil.labs</groupId>
+            <artifactId>mimir-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
+

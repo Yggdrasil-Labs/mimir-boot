@@ -89,6 +89,9 @@
 
         <!-- 分布式锁 -->
         <curator.version>5.9.0</curator.version>
+
+        <!-- RPC 相关 -->
+        <dubbo.version>3.3.6</dubbo.version>
     </properties>
 
     <dependencyManagement>
@@ -118,6 +121,18 @@
                 <version>${spring.cloud.alibaba.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- RPC 相关 -->
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>dubbo</artifactId>
+                <version>${dubbo.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>dubbo-spring-boot-starter</artifactId>
+                <version>${dubbo.version}</version>
             </dependency>
 
             <!-- 数据库相关 -->
@@ -390,6 +405,21 @@
             <dependency>
                 <groupId>com.yggdrasil.labs</groupId>
                 <artifactId>mimir-boot-starter-test</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-rpc-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-dubbo</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yggdrasil.labs</groupId>
+                <artifactId>mimir-boot-starter-feign</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

@@ -22,5 +22,8 @@
         <module>mimir-boot-starter-mybatis-processor</module>
         <module>mimir-boot-starter-nacos</module>
         <module>mimir-boot-starter-test</module>
+        <module>mimir-boot-starter-rpc-core</module>
+        <module>mimir-boot-starter-dubbo</module>
+        <module>mimir-boot-starter-feign</module>
     </modules>
 </project>

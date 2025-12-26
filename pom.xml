@@ -165,6 +165,27 @@
                         </googleJavaFormat>
                     </java>
                 </configuration>
+                <executions>
+                    <!-- 在 compile 阶段自动格式化代码（仅 dev profile） -->
+                    <execution>
+                        <id>spotless-apply</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                    </execution>
+                    <!-- 在 validate 阶段执行格式检查（CI 环境） -->
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <!-- Flatten Plugin (版本管理) - 确保所有模块都能正确替换 ${revision} -->
             <plugin>

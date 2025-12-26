@@ -292,13 +292,13 @@
                                 <reflowLongStrings>true</reflowLongStrings>
                             </googleJavaFormat>
                             
+                            <!-- 删除未使用的导入（必须在 importOrder 之前，以便正确排序） -->
+                            <removeUnusedImports/>
+                            
                             <!-- 导入顺序：标准 Java 顺序 -->
                             <importOrder>
                                 <order>java,javax,jakarta,org,com,cn,</order>
                             </importOrder>
-                            
-                            <!-- 删除未使用的导入 -->
-                            <removeUnusedImports/>
                             
                             <!-- 去除行尾空白 -->
                             <trimTrailingWhitespace/>
@@ -308,10 +308,10 @@
                         </java>
                     </configuration>
                     <executions>
-                        <!-- 在 process-sources 阶段自动格式化代码 -->
+                        <!-- 在 compile 阶段自动格式化代码（编译后可以更准确地识别未使用的导入） -->
                         <execution>
                             <id>spotless-apply</id>
-                            <phase>process-sources</phase>
+                            <phase>compile</phase>
                             <goals>
                                 <goal>apply</goal>
                             </goals>
@@ -326,6 +326,9 @@
                             <goals>
                                 <goal>check</goal>
                             </goals>
+                            <configuration>
+                                <skip>${spotless.check.skip}</skip>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
@@ -364,6 +367,12 @@
                 <artifactId>sonar-maven-plugin</artifactId>
             </plugin>
 
+            <!-- Spotless Plugin - 自动格式化代码（所有子模块自动继承） -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -389,20 +398,6 @@
                         <configuration>
                             <skip>true</skip>
                         </configuration>
-                    </plugin>
-                    <!-- Spotless Plugin - 自动格式化代码（仅在 dev profile） -->
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>format</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>apply</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                     </plugin>
                 </plugins>
             </build>
