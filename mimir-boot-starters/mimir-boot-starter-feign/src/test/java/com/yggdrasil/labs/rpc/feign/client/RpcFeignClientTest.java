@@ -121,5 +121,170 @@ class RpcFeignClientTest {
         verify(hook).after(any(), any(RpcCallResult.class));
         verify(hook).cleanup(any());
     }
+
+    @Test
+    void shouldHandleNullTracerInjectResult() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", Map.of(), null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(null);
+
+        Response actual = client.execute(request, new Request.Options());
+
+        assertSame(response, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(tracerBridge).inject(any());
+        verify(delegate).execute(eq(request), any());
+    }
+
+    @Test
+    void shouldHandleEmptyMapTracerInjectResult() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", Map.of(), null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        Response actual = client.execute(request, new Request.Options());
+
+        assertSame(response, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(tracerBridge).inject(any());
+        verify(delegate).execute(eq(request), any());
+    }
+
+    @Test
+    void shouldHandleEmptyHeaders() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", Map.of(), null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1"));
+
+        Response actual = client.execute(request, new Request.Options());
+
+        assertSame(response, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
+    void shouldHandleHeadersWithEmptyCollections() throws Exception {
+        Map<String, Collection<String>> headers = Map.of("h1", List.of());
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", headers, null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1"));
+
+        Response actual = client.execute(request, new Request.Options());
+
+        assertSame(response, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
+    void shouldCallOnErrorAndCleanupOnRuntimeException() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.POST,
+                "http://example.com/api",
+                Map.of(),
+                "body".getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8,
+                null);
+        RuntimeException runtimeException = new RuntimeException("fail");
+        when(delegate.execute(any(), any())).thenThrow(runtimeException);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1"));
+
+        RuntimeException thrown = Assertions.assertThrows(
+                RuntimeException.class, () -> client.execute(request, new Request.Options()));
+
+        assertSame(runtimeException, thrown);
+        verify(hook).before(any());
+        verify(hook).onError(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(tracerBridge).inject(any());
+    }
+
+    @Test
+    void shouldHandleMultipleHeaders() throws Exception {
+        Map<String, Collection<String>> headers = Map.of(
+                "h1", List.of("v1"),
+                "h2", List.of("v2"),
+                "h3", List.of("v3"));
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", headers, null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1", "span-id", "s1"));
+
+        client.execute(request, new Request.Options());
+
+        verify(delegate).execute(argThat(arg -> {
+            Map<String, Collection<String>> newHeaders = arg.headers();
+            return newHeaders.containsKey("trace-id") && newHeaders.containsKey("span-id");
+        }), any());
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
+    void shouldPreserveOriginalHeadersWhenInjecting() throws Exception {
+        Map<String, Collection<String>> headers = Map.of("original", List.of("value"));
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", headers, null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1"));
+
+        client.execute(request, new Request.Options());
+
+        verify(delegate).execute(argThat(arg -> {
+            Map<String, Collection<String>> newHeaders = arg.headers();
+            return newHeaders.containsKey("original") && newHeaders.containsKey("trace-id");
+        }), any());
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
 }
 

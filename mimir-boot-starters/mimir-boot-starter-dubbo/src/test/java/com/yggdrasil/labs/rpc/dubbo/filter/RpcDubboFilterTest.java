@@ -129,6 +129,161 @@ class RpcDubboFilterTest {
         verify(hook).cleanup(any());
     }
 
+    @Test
+    void shouldHandleNullAttachments() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(null);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("x-trace-id", "t1"));
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
+    void shouldHandleMixedAttachmentTypes() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        Map<String, Object> attachments = new HashMap<>();
+        attachments.put("k1", "string");
+        attachments.put("k2", 123);
+        attachments.put("k3", true);
+        when(invocation.getObjectAttachments()).thenReturn(attachments);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("x-trace-id", "t1"));
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
+    void shouldHandleEmptyTracerInjectResult() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+        when(tracerBridge.inject(any())).thenReturn(null);
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(tracerBridge).inject(any());
+        verify(invocation, never()).setAttachment(anyString(), anyString());
+    }
+
+    @Test
+    void shouldHandleEmptyMapTracerInjectResult() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(tracerBridge).inject(any());
+        verify(invocation, never()).setAttachment(anyString(), anyString());
+    }
+
+    @Test
+    void shouldHandlePartialNullInSupportHolder() {
+        RpcDubboSupportHolder.set(hookChain, null, properties);
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verifyNoInteractions(hook, tracerBridge);
+    }
+
+    @Test
+    void shouldHandleNullPropertiesInSupportHolder() {
+        RpcDubboSupportHolder.set(hookChain, tracerBridge, null);
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verifyNoInteractions(hook, tracerBridge);
+    }
+
+    @Test
+    void shouldHandleNullHookChainInSupportHolder() {
+        RpcDubboSupportHolder.set(null, tracerBridge, properties);
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verifyNoInteractions(hook, tracerBridge);
+    }
+
+    @Test
+    void shouldHandleMultipleAttachments() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        Map<String, Object> attachments = new HashMap<>();
+        attachments.put("k1", "v1");
+        attachments.put("k2", 123);
+        attachments.put("k3", true);
+        when(invocation.getObjectAttachments()).thenReturn(attachments);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("x-trace-id", "t1"));
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        ArgumentCaptor<RpcCallContext> ctxCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(ctxCaptor.capture());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        Map<String, String> metadataAttachments = ctxCaptor.getValue().getMetadata().getAttachments();
+        org.junit.jupiter.api.Assertions.assertEquals("v1", metadataAttachments.get("k1"));
+        org.junit.jupiter.api.Assertions.assertEquals("123", metadataAttachments.get("k2"));
+        org.junit.jupiter.api.Assertions.assertEquals("true", metadataAttachments.get("k3"));
+    }
+
     private Invoker<?> mockInvoker() {
         Invoker<?> invoker = mock(Invoker.class);
         URL url = URL.valueOf("dubbo://localhost:20880/com.foo.BarService");
