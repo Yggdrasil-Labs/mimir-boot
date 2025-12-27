@@ -11,9 +11,12 @@ import com.yggdrasil.labs.rpc.feign.config.FeignProperties;
 import feign.Client;
 import feign.Request;
 import feign.Response;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -72,6 +75,51 @@ class RpcFeignClientTest {
 
         assertSame(response, actual);
         verifyNoInteractions(hook);
+    }
+
+    @Test
+    void shouldCallOnErrorAndCleanupOnIOException() throws Exception {
+        properties.setContextPropagationEnabled(false);
+        Request request = Request.create(
+                Request.HttpMethod.POST,
+                "http://example.com/api",
+                Map.of(),
+                "body".getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8,
+                null);
+        IOException ioException = new IOException("fail");
+        when(delegate.execute(any(), any())).thenThrow(ioException);
+
+        IOException thrown = Assertions.assertThrows(
+                IOException.class, () -> client.execute(request, new Request.Options()));
+
+        assertSame(ioException, thrown);
+        verify(hook).before(any());
+        verify(hook).onError(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verifyNoInteractions(tracerBridge);
+    }
+
+    @Test
+    void shouldInjectHeadersWhenContextPropagationEnabled() throws Exception {
+        Map<String, Collection<String>> headers = Map.of("h1", List.of("v1"));
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", headers, null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1"));
+
+        client.execute(request, new Request.Options());
+
+        verify(delegate).execute(argThat(arg -> "t1".equals(arg.headers().get("trace-id").iterator().next())), any());
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
     }
 }
 

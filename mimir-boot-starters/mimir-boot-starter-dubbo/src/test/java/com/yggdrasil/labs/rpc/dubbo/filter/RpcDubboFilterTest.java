@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
@@ -12,7 +13,9 @@ import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +71,62 @@ class RpcDubboFilterTest {
 
         assertSame(result, actual);
         verifyNoInteractions(hook);
+    }
+
+    @Test
+    void shouldBypassWhenSpringNotInitialized() {
+        RpcDubboSupportHolder.set(null, null, null);
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verifyNoInteractions(hook, tracerBridge);
+    }
+
+    @Test
+    void shouldConvertAttachmentsAndCallOnError() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        when(invocation.getMethodName()).thenReturn("m1");
+        Map<String, Object> attachments = new HashMap<>();
+        attachments.put("k1", 123);
+        when(invocation.getObjectAttachments()).thenReturn(attachments);
+        RuntimeException ex = new RuntimeException("boom");
+        when(invoker.invoke(invocation)).thenThrow(ex);
+
+        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+
+        assertSame(ex, thrown);
+        ArgumentCaptor<RpcCallContext> ctxCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(ctxCaptor.capture());
+        verify(hook).onError(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(tracerBridge).inject(any());
+        org.junit.jupiter.api.Assertions.assertEquals("123", ctxCaptor.getValue().getMetadata().getAttachments().get("k1"));
+    }
+
+    @Test
+    void shouldNotInjectWhenContextPropagationDisabled() {
+        properties.setContextPropagationEnabled(false);
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+
+        filter.invoke(invoker, invocation);
+
+        verifyNoInteractions(tracerBridge);
+        verify(hook).before(any());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
     }
 
     private Invoker<?> mockInvoker() {
