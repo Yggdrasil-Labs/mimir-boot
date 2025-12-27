@@ -62,7 +62,7 @@ public class RpcHookChain {
                     context.getMetadata().getService(),
                     context.getMetadata().getMethod(),
                     result.getDuration().toMillis(),
-                    result.getError() != null ? result.getError().getClass().getSimpleName() : "null",
+                    result.getError().map(e -> e.getClass().getSimpleName()).orElse("null"),
                     hooks.size());
         }
         for (RpcHook hook : hooks) {

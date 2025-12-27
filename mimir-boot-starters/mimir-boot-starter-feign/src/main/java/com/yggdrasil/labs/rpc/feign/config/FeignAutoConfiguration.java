@@ -29,11 +29,14 @@ public class FeignAutoConfiguration {
             RpcHookChain hookChain,
             RpcTracerBridge tracerBridge,
             FeignProperties properties) {
-        Client delegate = delegateProvider.getIfAvailable(() -> new Client.Default(null, null));
+        Client delegate = delegateProvider.getIfAvailable();
+        if (delegate == null) {
+            delegate = new Client.Default(null, null);
+        }
         log.debug("Creating RpcFeignClient with enabled={}, contextPropagationEnabled={}, delegate={}",
                 properties.isEnabled(),
                 properties.isContextPropagationEnabled(),
-                delegate != null ? delegate.getClass().getSimpleName() : "null");
+                delegate.getClass().getSimpleName());
         return new RpcFeignClient(delegate, hookChain, tracerBridge, properties);
     }
 }
