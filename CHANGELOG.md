@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.6.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.5.0...v1.6.0) (2025-12-27)
+
+
+### ✨ Features
+
+* 新增 RPC治理模块 ([251dd38](https://github.com/Yggdrasil-Labs/mimir-boot/commit/251dd38bac6cca305a215346e9c99e42cb3c284b))
+
+
+### 🐛 Bug Fixes
+
+* 使用动词原形而不是过去式 ([b82dc0b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b82dc0b72533c5d8fe119bb039f868984a41126c))
+* 修复sonar cloud issue ([cf7fc2d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cf7fc2daf827075be9853d4dfea66f9d98ba11a3))
+
+
+### ✅ Tests
+
+* 补充dubbo、feign模块单元测试 ([445605a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/445605a126080358b9469c1487a7e79843fe47e6))
+* 补充dubbo、feign模块单元测试 ([ad7c831](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ad7c831434ef0bc2849b5ec412babb8a592390b6))
+* 补充rpc-core模块单元测试 ([0597625](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0597625d2535ed6314eeb6237222def26864d128))
+* 降低单元测试覆盖率指标到60% ([aec4b68](https://github.com/Yggdrasil-Labs/mimir-boot/commit/aec4b68b01503097346790c939aaab94c7ee5f94))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 1.5.1-SNAPSHOT for next development cycle ([6cf8623](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6cf8623c3f76ca43449b9ddeeed688101cd531c1))
+
 ## [1.5.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.4.2...v1.5.0) (2025-12-20)
 
 
