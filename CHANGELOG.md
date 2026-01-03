@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.6.0...v1.6.1) (2026-01-03)
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 1.6.1-SNAPSHOT for next development cycle ([14225af](https://github.com/Yggdrasil-Labs/mimir-boot/commit/14225af1ab43c26579d758f71bda15a90a03777f))
+
 ## [1.6.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.5.0...v1.6.0) (2025-12-27)
 
 
