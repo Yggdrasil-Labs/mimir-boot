@@ -47,8 +47,8 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
 
 ### Java 版本
 
-- **Java 版本**：17
-- **编译目标**：Java 17
+- **Java 版本**：21
+- **编译目标**：Java 21
 - **编码**：UTF-8
 
 ### 已配置的 Maven 插件
@@ -74,7 +74,7 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
   - 文件末尾自动换行
 
 - **maven-enforcer-plugin** (3.6.2)：依赖约束检查
-  - 要求 Java 版本 ≥ 17
+  - 要求 Java 版本 ≥ 21
   - 要求 Maven 版本 ≥ 3.8.0
   - 禁止使用 `commons-logging` 和 `log4j`
 
@@ -308,7 +308,7 @@ Maven Enforcer 插件用于检查依赖和构建环境约束。
 
 ### 检查规则
 
-- **Java 版本**：必须 ≥ 17
+- **Java 版本**：必须 ≥ 21
 - **Maven 版本**：必须 ≥ 3.8.0
 - **禁止依赖**：
   - `commons-logging:commons-logging`（应使用 SLF4J）

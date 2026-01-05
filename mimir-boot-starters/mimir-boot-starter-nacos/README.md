@@ -522,7 +522,7 @@ password: SECRET(encrypted_value)  # 使用新前缀
 - **Spring Cloud Alibaba Nacos**: 配置中心
 - **Spring Boot**: 3.3.13+
 - **Spring Cloud**: 2023.0.6+
-- **Java**: 17+
+- **Java**: 21+
 
 ## 📚 相关文档
 

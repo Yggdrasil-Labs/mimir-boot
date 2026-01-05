@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Java](https://img.shields.io/badge/Java-17-orange.svg)
+![Java](https://img.shields.io/badge/Java-21-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.13-brightgreen.svg)
 ![Maven](https://img.shields.io/badge/Maven-3.9.9-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
@@ -141,7 +141,7 @@ mvn spotless:apply
 
 | 类别       | 主要技术                                            |
 |----------|-------------------------------------------------|
-| **运行环境** | Java 17 (LTS)                                   |
+| **运行环境** | Java 21 (LTS)                                   |
 | **应用框架** | Spring Boot 3.3.13                              |
 | **微服务**  | Spring Cloud 2023.0.6 (Leyton)                  |
 | **配置中心** | Spring Cloud Alibaba Nacos 2023.0.3.4           |

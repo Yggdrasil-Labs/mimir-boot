@@ -504,7 +504,7 @@ public class User {
 
 - **JavaPoet**: 1.13.0 - 代码生成库
 - **MyBatis-Plus**: 3.5.14+ - ORM 框架
-- **Java Annotation Processing**: Java 17+
+- **Java Annotation Processing**: Java 21+
 - **Maven**: 3.6+
 
 ## 📚 相关文档

@@ -771,7 +771,7 @@ log.debug("Complex: {}", () -> expensiveOperation());
 - **Logback**: 1.5.20
 - **SLF4J**: 2.0.16
 - **Spring Boot**: 3.3.13+
-- **Java**: 17+
+- **Java**: 21+
 
 ## 📚 相关文档
 

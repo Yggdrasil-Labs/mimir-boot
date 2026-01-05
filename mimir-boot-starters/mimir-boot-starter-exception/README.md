@@ -508,7 +508,7 @@ public class CustomExceptionHandler {
 
 - **Spring Boot**: 3.3.13+
 - **Spring Web**: 自动配置
-- **Java**: 17+
+- **Java**: 21+
 - **Mimir Boot Common**: 异常体系和响应格式
 
 ## 📚 相关文档

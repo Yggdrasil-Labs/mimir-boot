@@ -669,7 +669,7 @@ logging:
 - **MyBatis-Plus**: 3.5.14+
 - **MyBatis**: 3.5.19+
 - **Spring Boot**: 3.3.13+
-- **Java**: 17+
+- **Java**: 21+
 
 ## 📚 相关文档
 

@@ -549,7 +549,7 @@ return response;
 - **Spring Boot**: 3.3.13+
 - **Spring Web MVC**: 拦截器、配置类
 - **Jackson**: JSON 序列化
-- **Java**: 17+
+- **Java**: 21+
 - **Mimir Boot Starter Exception**: 异常处理
 - **Mimir Boot Common**: 统一响应格式
 
