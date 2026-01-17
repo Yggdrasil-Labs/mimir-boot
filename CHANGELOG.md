@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.6.0...v2.0.0) (2026-01-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **build:** 所有 Maven 模块的 groupId 从 com.yggdrasil.labs 变更为 io.github.yggdrasil-labs。使用旧 groupId 的项目需要更新依赖引用。已发布的版本保留旧 groupId，新版本使用新 groupId。
+
+### 🔧 Miscellaneous Chores
+
+* **build:** 变更 Maven groupId 为 io.github.yggdrasil-labs ([db8ee4f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/db8ee4fde6f6c09379cb496190f127ad6acb5bd8))
+* bump version to 1.6.1-SNAPSHOT for next development cycle ([14225af](https://github.com/Yggdrasil-Labs/mimir-boot/commit/14225af1ab43c26579d758f71bda15a90a03777f))
+* **deps:** 部分依赖升级 ([aa3bbc6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/aa3bbc6b41fee4726908ad9b57798a5ae0816ba5))
+
 ## [1.6.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.5.0...v1.6.0) (2025-12-27)
 
 
