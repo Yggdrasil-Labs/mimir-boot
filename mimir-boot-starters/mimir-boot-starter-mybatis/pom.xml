@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.yggdrasil.labs</groupId>
+        <groupId>io.github.yggdrasil-labs</groupId>
         <artifactId>mimir-boot-parent</artifactId>
         <version>${revision}</version>
         <relativePath>../../mimir-boot-parent/pom.xml</relativePath>
@@ -16,7 +16,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.yggdrasil.labs</groupId>
+            <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-common</artifactId>
         </dependency>
         
@@ -53,7 +53,7 @@
 
         <!-- 测试依赖 -->
         <dependency>
-            <groupId>com.yggdrasil.labs</groupId>
+            <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>

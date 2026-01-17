@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yggdrasil.labs</groupId>
+        <groupId>io.github.yggdrasil-labs</groupId>
         <artifactId>mimir-boot</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
@@ -368,57 +368,57 @@
 
             <!-- Mimir Boot 模块 -->
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-common</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-log</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-exception</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-web</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-nacos</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-mybatis</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-mybatis-processor</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-test</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-rpc-core</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-dubbo</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
-                <groupId>com.yggdrasil.labs</groupId>
+                <groupId>io.github.yggdrasil-labs</groupId>
                 <artifactId>mimir-boot-starter-feign</artifactId>
                 <version>${revision}</version>
             </dependency>
