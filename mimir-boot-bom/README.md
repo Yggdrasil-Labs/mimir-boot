@@ -84,13 +84,13 @@ BOM 管理以下类别的依赖版本：
 
 ### 数据持久化
 
-- **MyBatis-Plus**: 3.5.14
+- **MyBatis-Plus**: 3.5.16
 
 ### 工具类库
 
 - **MapStruct**: 1.6.3 - 对象映射
 - **Lombok**: 1.18.42 - 减少样板代码
-- **Hutool**: 5.8.41 - Java 工具类库
+- **Hutool**: 5.8.43 - Java 工具类库
 - **FastJSON2**: 2.0.60 - JSON 处理
 - **JavaPoet**: 1.13.0 - 代码生成
 
@@ -100,7 +100,7 @@ BOM 管理以下类别的依赖版本：
 
 ### 测试
 
-- **Testcontainers**: 1.21.3 - 集成测试容器
+- **Testcontainers**: 1.21.4 - 集成测试容器
 - **Compile Testing**: 0.21.0 - 编译期测试
 - **Truth**: 1.4.2 - 断言库
 
@@ -124,7 +124,7 @@ BOM 管理以下类别的依赖版本：
 
 ### 定时任务
 
-- **XXL-Job**: 3.2.0 - 分布式任务调度
+- **XXL-Job**: 3.3.2 - 分布式任务调度
 
 ### 分布式缓存
 
@@ -141,10 +141,10 @@ BOM 管理以下类别的依赖版本：
 - **Apache Commons Collections4**: 4.5.0
 - **Guava**: 33.5.0-jre
 - **Kryo**: 5.6.2 - 序列化
-- **Protobuf**: 4.33.1 - 序列化
+- **Protobuf**: 4.33.4 - 序列化
 - **OkHttp**: 5.3.2 - HTTP 客户端
 - **Retrofit**: 3.0.0 - HTTP 客户端
-- **Apache POI**: 5.5.0 - Office 文档处理
+- **Apache POI**: 5.5.1 - Office 文档处理
 - **iText**: 8.0.2 - PDF 处理
 - **Apache Curator**: 5.9.0 - 分布式锁
 

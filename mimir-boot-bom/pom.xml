@@ -28,12 +28,12 @@
         <spring.cloud.alibaba.version>2023.0.3.4</spring.cloud.alibaba.version>
 
         <!-- 数据库相关 -->
-        <mybatis.plus.version>3.5.15</mybatis.plus.version>
+        <mybatis.plus.version>3.5.16</mybatis.plus.version>
 
         <!-- 工具类 -->
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.42</lombok.version>
-        <hutool.version>5.8.42</hutool.version>
+        <hutool.version>5.8.43</hutool.version>
         <fastjson2.version>2.0.60</fastjson2.version>
         <javapoet.version>1.13.0</javapoet.version>
 
@@ -61,7 +61,7 @@
         <rocketmq.version>5.2.0</rocketmq.version>
 
         <!-- 定时任务 -->
-        <xxl.job.version>3.3.1</xxl.job.version>
+        <xxl.job.version>3.3.2</xxl.job.version>
 
         <!-- 分布式缓存 -->
         <jetcache.version>2.7.8</jetcache.version>
@@ -77,7 +77,7 @@
 
         <!-- 序列化相关 -->
         <kryo.version>5.6.2</kryo.version>
-        <protobuf.version>4.33.2</protobuf.version>
+        <protobuf.version>4.33.4</protobuf.version>
 
         <!-- 网络相关 -->
         <okhttp.version>5.3.2</okhttp.version>
