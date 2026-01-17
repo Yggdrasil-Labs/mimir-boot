@@ -28,7 +28,7 @@
         <spring.cloud.alibaba.version>2023.0.3.4</spring.cloud.alibaba.version>
 
         <!-- 数据库相关 -->
-        <mybatis.plus.version>3.5.15</mybatis.plus.version>
+        <mybatis.plus.version>3.5.16</mybatis.plus.version>
 
         <!-- 工具类 -->
         <mapstruct.version>1.6.3</mapstruct.version>
