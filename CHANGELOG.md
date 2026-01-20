@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.0...v2.0.1) (2026-01-20)
+
+
+### 🐛 Bug Fixes
+
+* Avoid expanding secrets in a run block. ([94d7cda](https://github.com/Yggdrasil-Labs/mimir-boot/commit/94d7cda551cf72b83c9291e6d9b9be050bf125ae))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.0.1-SNAPSHOT for next development cycle ([1b47530](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1b47530a1a4f4f4417f473e16faf01ea32c3cf11))
+* 支持发布到Maven central ([9374793](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9374793303728c623e79e2d0b7bb477414c5871f))
+* 配置 Maven GPG 插件以默认跳过签名 ([7f4423c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7f4423cea1705dd65baca2677fd23a5314f0a7f0))
+
 ## [2.0.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v1.6.0...v2.0.0) (2026-01-17)
 
 
