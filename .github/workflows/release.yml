@@ -252,17 +252,21 @@ jobs:
 
       - name: Configure GPG key
         run: |
-          # 导入 GPG 私钥
-          if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
-            echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-            echo "GPG key imported successfully"
-            
-            # 列出导入的密钥
-            gpg --list-secret-keys --keyid-format LONG
-          else
-            echo "Warning: GPG_PRIVATE_KEY secret not found"
+          set -euo pipefail
+
+          if [ -z "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "Error: GPG_PRIVATE_KEY secret not found"
             exit 1
           fi
+
+          # 使用 heredoc + stdin，避免 echo 问题
+          # 注意：使用 EOF（不带引号）以允许变量替换，GitHub Actions 会自动屏蔽 secrets
+          gpg --batch --yes --import <<EOF
+          ${GPG_PRIVATE_KEY}
+          EOF
+
+          # 只输出 key id，不列 UID
+          gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print "Imported key:", $5}'
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
