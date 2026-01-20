@@ -53,31 +53,78 @@
 
 ### 1. 继承 Parent POM 并引入 BOM
 
-```xml
+**从 Maven Central 安装**（推荐）：
 
+```xml
 <parent>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.1</version>
 </parent>
 
 <dependencyManagement>
-<dependencies>
-    <dependency>
-        <groupId>com.yggdrasil.labs</groupId>
-        <artifactId>mimir-boot-bom</artifactId>
-        <version>1.0.0</version>
-        <type>pom</type>
-        <scope>import</scope>
-    </dependency>
-</dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>io.github.yggdrasil-labs</groupId>
+            <artifactId>mimir-boot-bom</artifactId>
+            <version>2.0.1</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
 </dependencyManagement>
+```
+
+**从 GitHub Packages 安装**（如果 Maven Central 不可用）：
+
+```xml
+<parent>
+    <groupId>io.github.yggdrasil-labs</groupId>
+    <artifactId>mimir-boot-parent</artifactId>
+    <version>2.0.1</version>
+</parent>
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.github.yggdrasil-labs</groupId>
+            <artifactId>mimir-boot-bom</artifactId>
+            <version>2.0.1</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+**注意**：如果使用 GitHub Packages，需要在 `~/.m2/settings.xml` 中配置认证：
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>YOUR_GITHUB_USERNAME</username>
+      <password>YOUR_GITHUB_TOKEN</password>
+    </server>
+  </servers>
+</settings>
+```
+
+并在 `pom.xml` 中添加仓库配置：
+
+```xml
+<repositories>
+    <repository>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
+    </repository>
+</repositories>
 ```
 
 ### 2. 添加依赖
 
 ```xml
-
 <dependencies>
     <!-- Spring Boot Web -->
     <dependency>
@@ -87,13 +134,13 @@
 
     <!-- Mimir Boot Log Starter - 日志模块 -->
     <dependency>
-        <groupId>com.yggdrasil.labs</groupId>
+        <groupId>io.github.yggdrasil-labs</groupId>
         <artifactId>mimir-boot-starter-log</artifactId>
     </dependency>
 
     <!-- Mimir Boot Common - 公共组件 -->
     <dependency>
-        <groupId>com.yggdrasil.labs</groupId>
+        <groupId>io.github.yggdrasil-labs</groupId>
         <artifactId>mimir-boot-common</artifactId>
     </dependency>
 </dependencies>

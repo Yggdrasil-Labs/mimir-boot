@@ -38,6 +38,10 @@
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <spotless.plugin.version>3.1.0</spotless.plugin.version>
         <sonar-maven-plugin.version>5.5.0.6356</sonar-maven-plugin.version>
+        <!-- Central Publishing Maven Plugin 版本 -->
+        <central-publishing-maven-plugin.version>1.1.1</central-publishing-maven-plugin.version>
+        <!-- GPG Maven Plugin 版本 -->
+        <gpg-maven-plugin.version>3.2.7</gpg-maven-plugin.version>
 
         <!-- Jacoco Setting -->
         <jacoco.instruction.minimum>0.60</jacoco.instruction.minimum>
@@ -338,6 +342,20 @@
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
                     <version>${sonar-maven-plugin.version}</version>
+                </plugin>
+
+                <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
+                <plugin>
+                    <groupId>io.github.mavenplugins</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${central-publishing-maven-plugin.version}</version>
+                </plugin>
+
+                <!-- GPG Maven Plugin (GPG 签名) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${gpg-maven-plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>

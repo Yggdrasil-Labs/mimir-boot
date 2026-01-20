@@ -46,6 +46,10 @@
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <!-- SonarQube Maven 插件版本 -->
         <sonar-maven-plugin.version>5.5.0.6356</sonar-maven-plugin.version>
+        <!-- Central Publishing Maven Plugin 版本 -->
+        <central-publishing-maven-plugin.version>1.1.1</central-publishing-maven-plugin.version>
+        <!-- GPG Maven Plugin 版本 -->
+        <gpg-maven-plugin.version>3.2.7</gpg-maven-plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
@@ -91,9 +95,9 @@
     <!-- 发布仓库配置 -->
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://central.sonatype.com/api/v1/publishing</url>
         </repository>
     </distributionManagement>
 
@@ -139,6 +143,18 @@
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
                     <version>${sonar-maven-plugin.version}</version>
+                </plugin>
+                <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
+                <plugin>
+                    <groupId>io.github.mavenplugins</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${central-publishing-maven-plugin.version}</version>
+                </plugin>
+                <!-- GPG Maven Plugin (GPG 签名) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${gpg-maven-plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -196,6 +212,30 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
+            </plugin>
+            <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
+            <plugin>
+                <groupId>io.github.mavenplugins</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
+                </configuration>
+            </plugin>
+            <!-- GPG Maven Plugin (GPG 签名) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
