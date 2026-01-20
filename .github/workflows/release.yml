@@ -319,7 +319,9 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Publishing to Maven Central with version: $VERSION"
+          # 启用 GPG 签名（-Dgpg.skip=false）
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
+            -Dgpg.skip=false \
             deploy
 
   create-github-release:
