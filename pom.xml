@@ -33,8 +33,7 @@
         <project.url>https://github.com/Yggdrasil-Labs/mimir-boot</project.url>
         <project.scm.url>https://github.com/Yggdrasil-Labs/mimir-boot.git</project.scm.url>
         <project.scm.connection>scm:git:git://github.com/Yggdrasil-Labs/mimir-boot.git</project.scm.connection>
-        <project.scm.developerConnection>scm:git:ssh://github.com:Yggdrasil-Labs/mimir-boot.git
-        </project.scm.developerConnection>
+        <project.scm.developerConnection>scm:git:ssh://github.com:Yggdrasil-Labs/mimir-boot.git</project.scm.developerConnection>
 
         <!-- 许可证 -->
         <project.license.name>Apache License, Version 2.0</project.license.name>
@@ -46,8 +45,8 @@
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <!-- SonarQube Maven 插件版本 -->
         <sonar-maven-plugin.version>5.5.0.6356</sonar-maven-plugin.version>
-        <!-- Central Publishing Maven Plugin 版本 -->
-        <central-publishing-maven-plugin.version>1.1.1</central-publishing-maven-plugin.version>
+        <!-- Central Publishing Maven Plugin 版本（使用官方 org.sonatype.central 版本） -->
+        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
         <gpg-maven-plugin.version>3.2.7</gpg-maven-plugin.version>
     </properties>
@@ -94,11 +93,18 @@
 
     <!-- 发布仓库配置 -->
     <distributionManagement>
+        <!-- 正式版本仓库 -->
         <repository>
             <id>central</id>
             <name>Maven Central</name>
-            <url>https://central.sonatype.com/api/v1/publishing</url>
+            <url>https://central.sonatype.com/api/v1/publisher</url>
         </repository>
+        <!-- SNAPSHOT 版本仓库（需要在 Central Portal 中启用 SNAPSHOT 发布功能） -->
+        <snapshotRepository>
+            <id>central</id>
+            <name>Maven Central Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <build>
@@ -146,7 +152,7 @@
                 </plugin>
                 <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
                 <plugin>
-                    <groupId>io.github.mavenplugins</groupId>
+                    <groupId>org.sonatype.central</groupId>
                     <artifactId>central-publishing-maven-plugin</artifactId>
                     <version>${central-publishing-maven-plugin.version}</version>
                 </plugin>
@@ -214,9 +220,12 @@
                 <artifactId>sonar-maven-plugin</artifactId>
             </plugin>
             <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
+            <!-- 关键：extensions=true 让插件接管 deploy 阶段 -->
             <plugin>
-                <groupId>io.github.mavenplugins</groupId>
+                <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${central-publishing-maven-plugin.version}</version>
+                <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
@@ -240,6 +249,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Maven Deploy Plugin - 跳过根聚合项目的部署 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
             </plugin>
         </plugins>
     </build>
