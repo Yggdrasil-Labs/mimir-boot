@@ -119,6 +119,7 @@ jobs:
         run: |
           # 按照 SonarCloud 官方推荐的方式：在 verify 阶段同时运行 Sonar 分析
           # 使用 ci profile 执行完整的构建、测试和 Sonar 分析
+          # ci profile 会自动跳过 GPG 签名（签名应在发布时进行）
           # 若需在 CI 中完全忽略覆盖率，可通过 sonar.coverage.exclusions=** 配置
           ./mvnw -B clean verify sonar:sonar -Pci \
             -Dsonar.host.url=https://sonarcloud.io \

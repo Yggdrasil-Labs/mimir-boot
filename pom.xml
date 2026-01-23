@@ -251,4 +251,23 @@
         </plugins>
     </build>
 
+    <profiles>
+        <!-- CI Profile: 用于 CI/CD 环境，跳过 GPG 签名等操作 -->
+        <profile>
+            <id>ci</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <configuration>
+                            <!-- CI 环境中跳过 GPG 签名（签名应在发布时进行） -->
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

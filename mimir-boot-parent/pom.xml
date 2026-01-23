@@ -546,6 +546,14 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- GPG Maven Plugin - CI 环境中跳过 GPG 签名（签名应在发布时进行） -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
