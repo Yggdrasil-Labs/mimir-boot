@@ -15,6 +15,7 @@
 
     <name>Mimir Boot Starter Exception</name>
     <description>Mimir Boot 异常处理启动器，提供全局异常处理、统一响应格式、业务异常和系统异常自动捕获与处理</description>
+    <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
     <dependencies>
         <!-- Mimir Boot Common -->

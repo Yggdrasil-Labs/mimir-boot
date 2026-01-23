@@ -15,6 +15,7 @@
 
     <name>Mimir Boot Starter RPC Core</name>
     <description>RPC 内核抽象：调用模型、上下文与可插拔扩展点（日志/观测/安全由外部 Starter 提供）</description>
+    <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

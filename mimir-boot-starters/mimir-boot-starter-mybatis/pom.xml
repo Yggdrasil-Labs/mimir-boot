@@ -13,6 +13,7 @@
 
     <name>Mimir Boot Starter Mybatis</name>
     <description>Mimir Boot MyBatis 启动器，基于 MyBatis-Plus 提供分页拦截器、审计字段自动填充、字段加解密和 SQL 日志结构化输出</description>
+    <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
     <dependencies>
         <dependency>

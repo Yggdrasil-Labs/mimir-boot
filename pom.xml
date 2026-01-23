@@ -8,6 +8,7 @@
 
     <name>Mimir Boot</name>
     <description>Yggdrasil-Labs 的 Java 企业级基础框架，统一依赖版本、公共组件、自定义 Starter 与编译期代码生成工具</description>
+    <url>${project.url}</url>
 
     <modules>
         <module>mimir-boot-parent</module>
@@ -90,22 +91,6 @@
         <system>GitHub Actions</system>
         <url>https://github.com/Yggdrasil-Labs/mimir-boot/actions</url>
     </ciManagement>
-
-    <!-- 发布仓库配置 -->
-    <distributionManagement>
-        <!-- 正式版本仓库 -->
-        <repository>
-            <id>central</id>
-            <name>Maven Central</name>
-            <url>https://central.sonatype.com/api/v1/publisher</url>
-        </repository>
-        <!-- SNAPSHOT 版本仓库（需要在 Central Portal 中启用 SNAPSHOT 发布功能） -->
-        <snapshotRepository>
-            <id>central</id>
-            <name>Maven Central Snapshots</name>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <build>
         <pluginManagement>
@@ -237,7 +222,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <configuration>
-                    <!-- 默认跳过签名，只在发布时启用（通过 -Dgpg.skip=false） -->
+                    <!-- 默认跳过签名，避免开发时每次构建都签名 -->
                     <skip>true</skip>
                 </configuration>
                 <executions>
@@ -247,6 +232,11 @@
                         <goals>
                             <goal>sign</goal>
                         </goals>
+                        <configuration>
+                            <!-- 在 verify 阶段自动启用签名（deploy 会执行 verify 阶段，所以 deploy 时也会自动签名） -->
+                            <!-- 如果不想在 verify 时签名，可以通过 -Dgpg.skip=true 来跳过 -->
+                            <skip>false</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
