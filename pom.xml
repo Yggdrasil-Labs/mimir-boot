@@ -264,6 +264,19 @@
                             <!-- CI 环境中跳过 GPG 签名（签名应在发布时进行） -->
                             <skip>true</skip>
                         </configuration>
+                        <executions>
+                            <!-- 覆盖默认的 sign-artifacts execution，确保在 CI 环境中跳过签名 -->
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
