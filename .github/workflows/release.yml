@@ -189,9 +189,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
+          # 显式调用 maven-deploy-plugin，绕过 central-publishing-maven-plugin
+          # 因为 central-publishing-maven-plugin 的 extensions=true 会接管 deploy 阶段
+          # 但它不支持 -DaltDeploymentRepository 参数
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
-            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }} \
-            deploy
+            org.apache.maven.plugins:maven-deploy-plugin:deploy \
+            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }}
 
   publish-maven-central:
     runs-on: ubuntu-latest
@@ -323,9 +326,10 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Publishing to Maven Central with version: $VERSION"
-          # 启用 GPG 签名（-Dgpg.skip=false）
+          # 启用 GPG 签名并传递 passphrase（CI 环境非交互模式必需）
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
             -Dgpg.skip=false \
+            -Dgpg.passphrase="$GPG_PASSPHRASE" \
             deploy
 
   create-github-release:
