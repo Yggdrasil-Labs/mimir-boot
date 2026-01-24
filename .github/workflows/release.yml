@@ -89,7 +89,9 @@ jobs:
           fi
 
       - name: Final verification
-        run: ./mvnw -B -U clean verify
+        run: |
+          # 跳过 GPG 签名，签名只在实际发布时执行
+          ./mvnw -B -U clean verify -Dgpg.skip=true
 
   publish-gpr:
     runs-on: ubuntu-latest
@@ -306,17 +308,16 @@ jobs:
             exit 1
           fi
 
-          # 导入 GPG 密钥（原始 ASCII-armored 格式）
-          # 使用 printf 避免 echo 对特殊字符的处理问题
-          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
-
-          # 验证密钥已导入（只输出 key id，不暴露 UID 等敏感信息）
+          # 导入 GPG 密钥
+          echo "Importing GPG key..."
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import 2>&1
+          
+          # 验证密钥已导入
           KEY_COUNT=$(gpg --list-secret-keys --with-colons 2>/dev/null | grep -c "^sec" || echo "0")
           if [ "$KEY_COUNT" -gt 0 ]; then
-            echo "✓ GPG key imported successfully ($KEY_COUNT key(s) found)"
-            gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print "  Key ID:", $5}'
+            echo "✓ GPG key imported successfully"
           else
-            echo "✗ No GPG keys found after import"
+            echo "✗ GPG key import failed"
             exit 1
           fi
         env:
