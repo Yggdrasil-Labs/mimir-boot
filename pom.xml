@@ -49,7 +49,7 @@
         <!-- Central Publishing Maven Plugin 版本（使用官方 org.sonatype.central 版本） -->
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
-        <gpg-maven-plugin.version>3.2.7</gpg-maven-plugin.version>
+        <gpg-maven-plugin.version>3.2.8</gpg-maven-plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
