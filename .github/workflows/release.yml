@@ -4,6 +4,23 @@ on:
   push:
     tags:
       - 'v*'
+  # 支持手动触发
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号（例如：2.0.2，不需要 v 前缀）'
+        required: true
+        type: string
+      skip_gpr:
+        description: '跳过 GitHub Packages 发布'
+        required: false
+        type: boolean
+        default: false
+      skip_maven_central:
+        description: '跳过 Maven Central 发布'
+        required: false
+        type: boolean
+        default: false
 
 env:
   MAVEN_OPTS: -Xmx1024m -XX:+UseG1GC
@@ -77,6 +94,8 @@ jobs:
   publish-gpr:
     runs-on: ubuntu-latest
     needs: [ release ]
+    # 手动触发时支持跳过
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.skip_gpr != 'true' }}
     permissions:
       contents: read
       packages: write
@@ -105,15 +124,26 @@ jobs:
             exit 1
           fi
 
-      - name: Get version from tag
+      - name: Get version from tag or input
         id: get_version
         run: |
-          # 从 tag 获取版本号
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          # 支持 tag push 和手动触发两种方式
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # 手动触发：从 input 获取版本
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v${VERSION}"
+            echo "Manual trigger detected"
+          else
+            # Tag push：从 ref 获取版本
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+            echo "Tag push detected"
+          fi
+          
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 
       - name: Update version in pom.xml for release
         run: |
@@ -198,7 +228,10 @@ jobs:
 
   publish-maven-central:
     runs-on: ubuntu-latest
-    needs: [ publish-gpr ]
+    # 如果 publish-gpr 被跳过，则依赖 release；否则依赖 publish-gpr
+    needs: [ release ]
+    # 手动触发时支持跳过
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.skip_maven_central != 'true' }}
     permissions:
       contents: read
     steps:
@@ -226,15 +259,26 @@ jobs:
             exit 1
           fi
 
-      - name: Get version from tag
+      - name: Get version from tag or input
         id: get_version
         run: |
-          # 从 tag 获取版本号
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          # 支持 tag push 和手动触发两种方式
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # 手动触发：从 input 获取版本
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v${VERSION}"
+            echo "Manual trigger detected"
+          else
+            # Tag push：从 ref 获取版本
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+            echo "Tag push detected"
+          fi
+          
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 
       - name: Update version in pom.xml for release
         run: |
@@ -262,17 +306,21 @@ jobs:
             exit 1
           fi
 
-          # 使用 heredoc + stdin，避免 echo 问题
-          # 注意：使用 EOF（不带引号）以允许变量替换，GitHub Actions 会自动屏蔽 secrets
-          gpg --batch --yes --import <<EOF
-          ${GPG_PRIVATE_KEY}
-          EOF
+          # 导入 GPG 密钥（原始 ASCII-armored 格式）
+          # 使用 printf 避免 echo 对特殊字符的处理问题
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
 
-          # 只输出 key id，不列 UID
-          gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print "Imported key:", $5}'
+          # 验证密钥已导入（只输出 key id，不暴露 UID 等敏感信息）
+          KEY_COUNT=$(gpg --list-secret-keys --with-colons 2>/dev/null | grep -c "^sec" || echo "0")
+          if [ "$KEY_COUNT" -gt 0 ]; then
+            echo "✓ GPG key imported successfully ($KEY_COUNT key(s) found)"
+            gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print "  Key ID:", $5}'
+          else
+            echo "✗ No GPG keys found after import"
+            exit 1
+          fi
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Configure Maven for Central Portal
         run: |
@@ -326,15 +374,17 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Publishing to Maven Central with version: $VERSION"
-          # 启用 GPG 签名并传递 passphrase（CI 环境非交互模式必需）
+          # 启用 GPG 签名
+          # 注意：passphrase 通过 -Dgpg.passphrase 传递，GitHub Actions 会自动遮蔽 secrets
+          # 在 workflow 日志中显示为 ***
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
             -Dgpg.skip=false \
-            -Dgpg.passphrase="$GPG_PASSPHRASE" \
+            -Dgpg.passphrase="${GPG_PASSPHRASE}" \
             deploy
 
   create-github-release:
     runs-on: ubuntu-latest
-    needs: [ publish-gpr ]
+    needs: [ release ]
     permissions:
       contents: write
     steps:
@@ -344,12 +394,20 @@ jobs:
           ref: ${{ github.ref }}
           fetch-depth: 0
 
-      - name: Get version from tag
+      - name: Get version from tag or input
         id: get_version
         run: |
-          # 从 tag 获取版本
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          # 支持 tag push 和手动触发两种方式
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v${VERSION}"
+            echo "Manual trigger detected"
+          else
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+            echo "Tag push detected"
+          fi
+          
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
@@ -449,7 +507,9 @@ jobs:
 
   update-dev-version:
     runs-on: ubuntu-latest
-    needs: [ publish-gpr ]
+    needs: [ release ]
+    # 只在 tag push 时自动更新版本号，手动触发时跳过
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     permissions:
       contents: write
     steps:
