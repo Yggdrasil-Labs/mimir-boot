@@ -34,8 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
-          # push 事件时，使用 github.ref（已经是 tag ref）
-          ref: ${{ github.ref }}
+          # tag push: 使用 github.ref（已经是 tag ref）
+          # 手动触发: 使用输入的版本号对应的标签
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -67,8 +68,8 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
-          # push 事件时，使用 github.ref（已经是 tag ref）
-          ref: ${{ github.ref }}
+          # tag push: 使用 github.ref; 手动触发: 使用对应标签
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -104,8 +105,8 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
-          # push 事件时，使用 github.ref（已经是 tag ref）
-          ref: ${{ github.ref }}
+          # tag push: 使用 github.ref; 手动触发: 使用对应标签
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -239,8 +240,8 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
-          # push 事件时，使用 github.ref（已经是 tag ref）
-          ref: ${{ github.ref }}
+          # tag push: 使用 github.ref; 手动触发: 使用对应标签
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
@@ -392,7 +393,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
-          ref: ${{ github.ref }}
+          # tag push: 使用 github.ref; 手动触发: 使用对应标签
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
           fetch-depth: 0
 
       - name: Get version from tag or input
