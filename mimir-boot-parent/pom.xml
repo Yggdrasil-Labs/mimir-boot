@@ -35,7 +35,7 @@
         <maven.javadoc.plugin.version>3.11.2</maven.javadoc.plugin.version>
         <maven.versions.plugin.version>2.20.1</maven.versions.plugin.version>
         <maven.dependency.plugin.version>3.9.0</maven.dependency.plugin.version>
-        <maven.spring.boot.plugin.version>3.5.7</maven.spring.boot.plugin.version>
+        <maven.spring.boot.plugin.version>4.0.2</maven.spring.boot.plugin.version>
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
