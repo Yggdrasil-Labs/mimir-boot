@@ -91,8 +91,9 @@ jobs:
 
       - name: Final verification
         run: |
-          # 跳过 GPG 签名，签名只在实际发布时执行
-          ./mvnw -B -U clean verify -Dgpg.skip=true
+          # 使用 package 而不是 verify，避免触发 GPG 签名
+          # （v2.0.2 等旧版本的 pom.xml 中 GPG 签名硬编码在 verify 阶段，无法通过参数跳过）
+          ./mvnw -B -U clean package
 
   publish-gpr:
     runs-on: ubuntu-latest
