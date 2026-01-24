@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.3](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.2...v2.0.3) (2026-01-24)
+
+
+### 👷 Continuous Integration
+
+* **release:** skip GPG signing during verification and improve key import logging ([18e9711](https://github.com/Yggdrasil-Labs/mimir-boot/commit/18e9711ef4c3f92c34d571ff2de7db5d0f066881))
+* **release:** 工作流支持手动执行发布 ([0dd2543](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0dd25439f6521047582aae6a5598a8ff86f235b6))
+* **release:** 手动发布时使用对应tag版本代码发布 ([91b8553](https://github.com/Yggdrasil-Labs/mimir-boot/commit/91b8553dd28cd12cd4d969fc3af72cf7c21ad2cc))
+* **release:** 更改验证步骤以使用包以避免 GPG 签名 ([8d2a70f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8d2a70f8efbdbe7d36a28e2fc7855fe291a84c5c))
+
 ## [2.0.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.1...v2.0.2) (2026-01-24)
 
 
