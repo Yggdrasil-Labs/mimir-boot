@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.1...v2.0.2) (2026-01-24)
+
+
+### 🔧 Miscellaneous Chores
+
+* add CI profile to skip GPG signing in CI/CD environment ([e27d3d7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e27d3d7a95265178e62b55e5f74dc6e88dee365c))
+* add project URLs to POM files and configure distribution management for Maven Central ([53f154a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/53f154a5541ce31805ab720533793ebe95f5a3e9))
+* bump version to 2.0.2-SNAPSHOT for next development cycle ([a6dd244](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a6dd2442cb60cc10d9e17aec54212b29136f24aa))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin ([d5a6dae](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d5a6dae8ddc0c2e440deb3d6b109e2c334ad58eb))
+* **deps:** bump the maven-plugins group with 4 updates ([d813c29](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d813c29af8a0d50cb93b2c5f1eb5e8725b500308))
+* enhance CI configuration to ensure GPG signing is skipped during artifact verification ([80069bc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/80069bc0bea09abc24edc285aaaba2c64780eb09))
+* update Maven configuration for Central publishing and add source/javadoc plugins ([3be7290](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3be72904d8f63c8b371011545988ef7c182d3e18))
+* 优化通过CI发布到Maven的工作流 ([c127237](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c12723753d847447da937a54529615f7cf981303))
+* 移除不必要的仓库设置，如果有需要，应该通过setting.xml设置 ([b5a9ec4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b5a9ec4fd483543bd8351bdcc89fc5dd6b94bb82))
+
 ## [2.0.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.0...v2.0.1) (2026-01-20)
 
 
