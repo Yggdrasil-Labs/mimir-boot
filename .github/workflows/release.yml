@@ -227,8 +227,11 @@ jobs:
           # 因为 central-publishing-maven-plugin 的 extensions=true 会接管 deploy 阶段
           # 但它不支持 -DaltDeploymentRepository 参数
           # -Dmaven.deploy.skip=false 强制所有模块发布（覆盖 mimir-boot-parent 的默认值）
+          # 注意：maven-deploy-plugin:deploy 单独执行时不会自动构建 jar，
+          # 需要在同一次 Maven 调用里先执行 package，再执行 deploy goal，避免 "did not assign a file"
           ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
             -Dmaven.deploy.skip=false \
+            package \
             org.apache.maven.plugins:maven-deploy-plugin:deploy \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }}
 
