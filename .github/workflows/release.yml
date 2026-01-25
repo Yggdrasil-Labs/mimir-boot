@@ -213,7 +213,7 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Building packages with version: $VERSION"
-          ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
+          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
             package
           echo "Verifying jar files were built..."
           find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
@@ -229,7 +229,8 @@ jobs:
           # -Dmaven.deploy.skip=false 强制所有模块发布（覆盖 mimir-boot-parent 的默认值）
           # 注意：maven-deploy-plugin:deploy 单独执行时不会自动构建 jar，
           # 需要在同一次 Maven 调用里先执行 package，再执行 deploy goal，避免 "did not assign a file"
-          ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
+          # 使用 -Dmaven.test.skip=true 完全跳过测试
+          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
             -Dmaven.deploy.skip=false \
             package \
             org.apache.maven.plugins:maven-deploy-plugin:deploy \
@@ -368,7 +369,7 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Building packages with version: $VERSION"
-          ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
+          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
             package
           echo "Verifying jar files were built..."
           find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
@@ -383,7 +384,7 @@ jobs:
           echo "Publishing to Maven Central with version: $VERSION"
           # 启用 GPG 签名并强制所有模块发布
           # -Dmaven.deploy.skip=false 覆盖 mimir-boot-parent 的默认值
-          ./mvnw -B -U -DskipTests=true -Drevision=$VERSION \
+          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
             -Dmaven.deploy.skip=false \
             -Dgpg.skip=false \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \
