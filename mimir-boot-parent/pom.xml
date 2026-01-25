@@ -49,6 +49,10 @@
         <!-- Jacoco Setting -->
         <jacoco.instruction.minimum>0.60</jacoco.instruction.minimum>
         <jacoco.branch.minimum>0.50</jacoco.branch.minimum>
+
+        <!-- 发布配置：默认跳过发布，外部项目继承后需要显式设置为 false 才会发布 -->
+        <!-- 使用方式：在子模块中设置 <maven.deploy.skip>false</maven.deploy.skip> 即可启用发布 -->
+        <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
     <!-- 发布仓库配置 -->
@@ -454,6 +458,17 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- Maven Deploy Plugin - 默认跳过发布 -->
+            <!-- 继承此 parent 的项目默认不会发布到 Maven Central -->
+            <!-- 如需发布，在子模块的 pom.xml 中设置 <maven.deploy.skip>false</maven.deploy.skip> -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>${maven.deploy.skip}</skip>
+                </configuration>
             </plugin>
 
         </plugins>

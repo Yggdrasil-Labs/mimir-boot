@@ -15,6 +15,11 @@
     <description>Mimir Boot Web 层启动器，提供 CORS 跨域配置、Trace 追踪、响应体增强、Jackson 序列化配置、Web 拦截器和参数校验</description>
     <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
+    <properties>
+        <!-- 启用发布到 Maven Central -->
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- Spring Boot Web -->
         <dependency>

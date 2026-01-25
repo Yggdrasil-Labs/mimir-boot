@@ -15,6 +15,11 @@
     <description>Mimir Boot Nacos 配置加密启动器，基于 Spring Cloud Alibaba Nacos Config 提供配置加密脱敏功能，支持 ENC() 格式自动解密</description>
     <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
+    <properties>
+        <!-- 启用发布到 Maven Central -->
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- Mimir Boot Common -->
         <dependency>

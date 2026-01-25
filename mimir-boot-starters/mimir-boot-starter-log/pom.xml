@@ -17,6 +17,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- 启用发布到 Maven Central -->
+        <maven.deploy.skip>false</maven.deploy.skip>
     </properties>
 
     <dependencies>

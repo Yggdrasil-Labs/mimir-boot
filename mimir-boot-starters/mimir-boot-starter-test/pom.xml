@@ -15,6 +15,11 @@
     <description>Mimir Boot 测试启动器，提供统一的测试依赖管理、测试工具类、测试基类（单元测试、集成测试、Web 测试）和测试配置</description>
     <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
+    <properties>
+        <!-- 启用发布到 Maven Central -->
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- spring-boot-test contains @SpringBootTest annotation -->
         <dependency>

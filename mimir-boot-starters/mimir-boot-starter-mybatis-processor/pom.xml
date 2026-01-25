@@ -14,6 +14,11 @@
     <description>Mimir Boot MyBatis 编译期处理器，通过注解处理器自动生成 MyBatis-Plus Mapper、Service 和 ServiceImpl，减少样板代码</description>
     <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
+    <properties>
+        <!-- 启用发布到 Maven Central -->
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- JavaPoet for code generation -->
         <dependency>
