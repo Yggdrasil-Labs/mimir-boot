@@ -101,7 +101,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 1
           # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
