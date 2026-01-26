@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.4](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.3...v2.0.4) (2026-01-26)
+
+
+### 👷 Continuous Integration
+
+* **release:** 允许手动触发release时也会执行update-dev-version ([9cac6f8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9cac6f8fa6ea49eba6edddb9d00ee69ddbd88bba))
+* **release:** 将包目标添加到 Maven 部署命令以确保在部署之前构建 JAR ([3776fce](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3776fce04429c9fbe15e581e6dd37c7648944343))
+* **release:** 更新 Maven 命令以使用 -Dmaven.test.skip=true 跳过测试 ([9925031](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9925031f03cb872642ef98db38ce2736c8dfcae6))
+
 ## [2.0.3](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.2...v2.0.3) (2026-01-25)
 
 
