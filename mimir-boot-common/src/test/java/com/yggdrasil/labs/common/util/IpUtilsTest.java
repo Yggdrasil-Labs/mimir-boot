@@ -12,6 +12,12 @@ class IpUtilsTest {
     private static final String UNKNOWN = "unknown";
 
     private static Map<String, String> headers(String... kv) {
+        if (kv == null) {
+            throw new IllegalArgumentException("headers 参数 kv 不能为 null");
+        }
+        if ((kv.length & 1) == 1) {
+            throw new IllegalArgumentException("headers 参数 kv 必须为偶数个元素（key/value 成对），当前长度=" + kv.length);
+        }
         Map<String, String> map = new HashMap<>();
         for (int i = 0; i < kv.length; i += 2) {
             map.put(kv[i], kv[i + 1]);
