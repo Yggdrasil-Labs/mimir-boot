@@ -223,13 +223,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
-          # 显式调用 maven-deploy-plugin，绕过 central-publishing-maven-plugin
-          # 因为 central-publishing-maven-plugin 的 extensions=true 会接管 deploy 阶段
-          # 但它不支持 -DaltDeploymentRepository 参数
-          # -Dmaven.deploy.skip=false 强制所有模块发布（覆盖 mimir-boot-parent 的默认值）
-          # 注意：maven-deploy-plugin:deploy 单独执行时不会自动构建 jar，
-          # 需要在同一次 Maven 调用里先执行 package，再执行 deploy goal，避免 "did not assign a file"
-          # 使用 -Dmaven.test.skip=true 完全跳过测试
+          # maven-central 未设 activeByDefault，此处不激活即只发 GPR
           ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
             -Dmaven.deploy.skip=false \
             package \
@@ -382,9 +376,10 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           echo "Publishing to Maven Central with version: $VERSION"
-          # 启用 GPG 签名并强制所有模块发布
+          # 激活 maven-central profile，使 central-publishing-maven-plugin（extensions=true）接管 deploy
           # -Dmaven.deploy.skip=false 覆盖 mimir-boot-parent 的默认值
           ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
+            -P maven-central \
             -Dmaven.deploy.skip=false \
             -Dgpg.skip=false \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \

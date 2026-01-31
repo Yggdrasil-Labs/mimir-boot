@@ -20,7 +20,7 @@
     <properties>
         <!-- 📌 版本号统一管理：只修改这里即可，所有子模块自动继承 -->
         <!-- 开发阶段使用 SNAPSHOT 版本，release-please 会在 Release PR 中自动处理 -->
-        <revision>2.0.3</revision>
+        <revision>2.0.3-SNAPSHOT</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -204,19 +204,6 @@
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
             </plugin>
-            <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
-            <!-- 关键：extensions=true 让插件接管 deploy 阶段 -->
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>${central-publishing-maven-plugin.version}</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <autoPublish>true</autoPublish>
-                    <waitUntil>published</waitUntil>
-                </configuration>
-            </plugin>
             <!-- GPG Maven Plugin (GPG 签名) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -258,6 +245,26 @@
     </build>
 
     <profiles>
+        <!-- Maven Central 发布：不设 activeByDefault，外部项目继承 parent 时默认不会发 Central，需显式 -P maven-central。
+             本仓库发布命令见 mimir-boot-parent/README.md「发布到 Maven Central」。 -->
+        <profile>
+            <id>maven-central</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- CI Profile: 用于 CI/CD 环境，跳过 GPG 签名等操作 -->
         <profile>
             <id>ci</id>

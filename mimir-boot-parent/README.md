@@ -193,6 +193,21 @@ mvn clean verify -Pci
 mvn clean verify -Pprecheck
 ```
 
+### 发布到 Maven Central
+
+继承 `mimir-boot-parent` 的项目**默认不会**发布到 Maven Central（`maven-central` profile 未设 `activeByDefault`）。若需发布到 Maven Central，请在 `~/.m2/settings.xml` 中配置 Central 凭证（`<server id="central">`），并显式激活 profile。
+
+**mimir-boot 本仓库**发布命令（在仓库根目录执行）：
+
+- **正式版**（需 GPG 签名）：
+  ```bash
+  ./mvnw -P maven-central -Dmaven.deploy.skip=false -Dgpg.skip=false -Dgpg.passphrase=你的GPG密码 deploy
+  ```
+- **开发版 / SNAPSHOT**（可跳过 GPG，仅发到 Central Snapshots）：
+  ```bash
+  ./mvnw -P maven-central -Dmaven.deploy.skip=false -Dgpg.skip=true deploy
+  ```
+
 ### 子项目继承
 
 所有基于 `mimir-boot-parent` 的项目都会自动继承这些 profiles，无需额外配置：
