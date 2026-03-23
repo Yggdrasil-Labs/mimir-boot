@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.0.4](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.3...v2.0.4) (2026-03-23)
+
+
+### ✅ Tests
+
+* **IpUtils:** 为标头方法添加空值和奇数长度检查 ([4a92fec](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4a92fec5d0f19f2c3fe4eeb9058c3135ab293963))
+
+
+### 👷 Continuous Integration
+
+* **deps:** bump actions/checkout from 6.0.1 to 6.0.2 ([2e9483b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2e9483b6f20b93b36b98f3db71208f5113d2b721))
+* **deps:** bump actions/setup-java from 5.1.0 to 5.2.0 ([98a9c30](https://github.com/Yggdrasil-Labs/mimir-boot/commit/98a9c302be6e53da284f59d4617aa4bad954f769))
+* **release:** 允许手动触发release时也会执行update-dev-version ([9cac6f8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9cac6f8fa6ea49eba6edddb9d00ee69ddbd88bba))
+* **release:** 将包目标添加到 Maven 部署命令以确保在部署之前构建 JAR ([3776fce](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3776fce04429c9fbe15e581e6dd37c7648944343))
+* **release:** 更新 Maven 命令以使用 -Dmaven.test.skip=true 跳过测试 ([9925031](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9925031f03cb872642ef98db38ce2736c8dfcae6))
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** bump com.alibaba.fastjson2:fastjson2 in the utilities group ([90e7ebb](https://github.com/Yggdrasil-Labs/mimir-boot/commit/90e7ebb54cb0b9eda38c836a62567a432394071e))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin ([4339fb9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4339fb93eac9543864e26b4c97b81f4f8078d9f1))
+* **deps:** bump com.google.protobuf:protobuf-java ([00e7062](https://github.com/Yggdrasil-Labs/mimir-boot/commit/00e70629096f60eef899ec4aa81b1f501d9042b9))
+* **deps:** bump com.google.protobuf:protobuf-java ([cc9754f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cc9754ff5ed122df4095b3bbc335ac9baf04d604))
+* **deps:** bump org.apache.maven.plugins:maven-compiler-plugin ([abb0957](https://github.com/Yggdrasil-Labs/mimir-boot/commit/abb0957c86babc168e6bff9e17d31371dbc38d17))
+* **deps:** bump the maven-plugins group across 1 directory with 3 updates ([9437da9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9437da962a0e8cb4e6d0663cd8898abf0d1b2bb0))
+* **deps:** bump the utilities group with 2 updates ([27fe840](https://github.com/Yggdrasil-Labs/mimir-boot/commit/27fe8406b7a3fc50c736add16222e46fc3081b58))
+* **pom:** 优化Maven配置，继承parent的子项目默认不发布到Maven Central ([612d1c2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/612d1c200fd5056882bc153cba9ff0528ea59cb8))
+
 ## [2.0.3](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.2...v2.0.3) (2026-01-25)
 
 
