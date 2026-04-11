@@ -62,11 +62,10 @@
             <artifactId>mockito-junit-jupiter</artifactId>
         </dependency>
 
-        <!-- Spring Boot Test -->
+        <!-- Spring Boot Test：作为消费者可见依赖导出，提供完整测试栈 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <!-- JUnit 5 Suite 支持 -->

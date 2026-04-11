@@ -2,6 +2,10 @@
 
 Mimir Boot 测试 Starter，提供统一的测试依赖管理、测试工具类和测试基类。
 
+引入该 Starter 后，下游测试模块除了可以使用 `BaseUnitTest`、`BaseIntegrationTest`、`BaseWebTest`
+和 `@MimirBootTest` 等抽象外，也可以直接使用 `spring-boot-starter-test` 提供的常用测试能力，
+例如 JUnit 5、Mockito、AssertJ、Spring Test 与 MockMvc 等，无需再额外补充基础测试依赖。
+
 ## 📦 功能特性
 
 - ✅ **统一测试依赖管理**：集中管理所有测试相关依赖，版本由 BOM 统一控制
@@ -18,7 +22,7 @@ Mimir Boot 测试 Starter，提供统一的测试依赖管理、测试工具类�
 ```xml
 <dependencies>
     <dependency>
-        <groupId>com.yggdrasil.labs</groupId>
+        <groupId>io.github.yggdrasil-labs</groupId>
         <artifactId>mimir-boot-starter-test</artifactId>
         <scope>test</scope>
     </dependency>
@@ -246,6 +250,9 @@ Web 测试基类，提供：
 
 所有测试依赖的版本由 `mimir-boot-bom` 统一管理，无需手动指定版本。
 
+当前 `mimir-boot-starter-test` 会向下游暴露完整的 Spring Boot 测试基础栈，因此在大多数场景下，
+只需要引入该 Starter 即可开始编写基于 JUnit 5、Mockito、AssertJ 和 Spring Test 的测试代码。
+
 ## 📝 最佳实践
 
 1. **使用测试基类**：继承相应的测试基类，减少样板代码
@@ -259,4 +266,3 @@ Web 测试基类，提供：
 - [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明
 - [Mimir Boot Parent](../../mimir-boot-parent/README.md) - 父 POM 说明
 - [Spring Boot Testing](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.testing) - Spring Boot 测试文档
-
