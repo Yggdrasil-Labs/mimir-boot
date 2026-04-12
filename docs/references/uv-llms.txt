@@ -1,0 +1,16 @@
+Mimir Boot 不是 Python 项目，默认工具链不使用 uv。
+
+对智能体的提示：
+
+1. 不要把 Python/uv 生态的默认工作流套用到本仓库。
+2. 只有在编写辅助脚本且用户明确接受时，才考虑引入 Python 相关工具。
+3. 仓库的一等工具链是：
+   - Java 17
+   - Maven Wrapper
+   - GitHub Actions
+
+如果需要查看工程真实约束，请优先阅读：
+
+- ARCHITECTURE.md
+- docs/PLANS.md
+- README.md
