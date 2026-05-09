@@ -86,7 +86,7 @@
 
         <!-- 文件处理 -->
         <poi.version>5.5.1</poi.version>
-        <itext.version>8.0.2</itext.version>
+        <itext.version>9.6.0</itext.version>
 
         <!-- 分布式锁 -->
         <curator.version>5.9.0</curator.version>
