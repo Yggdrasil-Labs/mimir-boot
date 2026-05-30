@@ -25,8 +25,8 @@
 
         <!-- Maven 插件版本 -->
         <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
-        <maven.surefire.plugin.version>3.5.5</maven.surefire.plugin.version>
-        <maven.failsafe.plugin.version>3.5.5</maven.failsafe.plugin.version>
+        <maven.surefire.plugin.version>3.5.6</maven.surefire.plugin.version>
+        <maven.failsafe.plugin.version>3.5.6</maven.failsafe.plugin.version>
         <maven.clean.plugin.version>3.4.0</maven.clean.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
         <maven.install.plugin.version>3.1.1</maven.install.plugin.version>
@@ -34,13 +34,13 @@
         <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
         <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
         <maven.versions.plugin.version>2.21.0</maven.versions.plugin.version>
-        <maven.dependency.plugin.version>3.10.0</maven.dependency.plugin.version>
+        <maven.dependency.plugin.version>3.11.0</maven.dependency.plugin.version>
         <maven.spring.boot.plugin.version>3.5.7</maven.spring.boot.plugin.version>
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
-        <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
+        <maven.enforcer.plugin.version>3.6.3</maven.enforcer.plugin.version>
         <spotless.plugin.version>3.4.0</spotless.plugin.version>
-        <sonar-maven-plugin.version>5.6.0.6792</sonar-maven-plugin.version>
+        <sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
         <!-- Central Publishing Maven Plugin 版本（使用官方 org.sonatype.central 版本） -->
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
