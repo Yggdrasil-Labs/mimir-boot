@@ -1,23 +1,30 @@
-# 设计文档索引
+# 设计决策目录
 
-本目录保存长期有效的设计知识，不存放一次性讨论纪要。
+项目级通用设计决策。每个文档定义一个跨功能的设计主题（如缓存策略、幂等设计），智能体在相关领域编码前应先查阅。
 
-## 当前文档
+| id | 主题 | status | owner | 适用范围 | 路径 |
+|----|------|--------|-------|----------|------|
+| design-core-beliefs | 核心信条 | verified | — | 全仓库 | [`core-beliefs.md`](./core-beliefs.md) |
+| design-module-boundaries | 模块边界 | verified | — | 全仓库 | [`module-boundaries.md`](./module-boundaries.md) |
+| design-doc-governance | 文档治理 | verified | — | docs/ | [`documentation-governance.md`](./documentation-governance.md) |
 
-- [`core-beliefs.md`](./core-beliefs.md)：本仓库的核心信念与设计原则
-- [`module-boundaries.md`](./module-boundaries.md)：模块边界、依赖方向、扩展方式
-- [`documentation-governance.md`](./documentation-governance.md)：文档新鲜度、索引更新和维护要求
+## status 含义
 
-## 使用方式
+- **draft**：设计尚未落地。智能体可参考但需注意细节可能变化。
+- **verified**：设计与实现一致。智能体应严格遵守。
+- **stale**：实现已偏离设计。智能体不应信赖细节，需先更新。
 
-### 常用路径
+## 何时创建 design-doc
 
-- 理解“为什么”：`core-beliefs.md`
-- 判断边界与落位：`module-boundaries.md`
-- 判断文档是否过期：`documentation-governance.md`
+- 需要修改 `ARCHITECTURE.md` 或 `core-beliefs.md` 中的长期约束时，先创建 `arch-` 前缀的 design-doc 作为架构 RFC
+- 发现跨多个需求的通用设计问题时（如缓存策略、幂等设计、错误码规范）
+- 实施过程中需要违反现有依赖方向或架构约束时，暂停实施，先创建架构 RFC
 
-## 维护规则
+**不要用 design-doc 替代需求目录中的 design.md**——需求级的设计放在 `docs/active/{需求}/design.md`，项目级的通用决策放在这里。
 
-- 新增关键模块、约束或设计决策时，必须更新本索引。
-- 如果某篇文档只对单次任务有效，应放进 `docs/exec-plans/`，而不是本目录。
-- 如果某项内容已经能从代码自动导出，优先放进 `docs/generated/`。
+## 如何添加
+
+1. 复制 `_template.md` 为 `{主题名}.md`（如 `cache-strategy.md`；架构 RFC 用 `arch-` 前缀）
+2. 填写 frontmatter 和所有章节
+3. 在上方目录表中添加条目
+4. status 设为 draft；落地验证后更新为 verified
