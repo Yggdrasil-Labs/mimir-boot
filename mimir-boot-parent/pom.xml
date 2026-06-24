@@ -39,7 +39,7 @@
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
         <flatten.plugin.version>1.7.3</flatten.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
-        <spotless.plugin.version>3.4.0</spotless.plugin.version>
+        <spotless.plugin.version>3.5.1</spotless.plugin.version>
         <sonar-maven-plugin.version>5.6.0.6792</sonar-maven-plugin.version>
         <!-- Central Publishing Maven Plugin 版本（使用官方 org.sonatype.central 版本） -->
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
