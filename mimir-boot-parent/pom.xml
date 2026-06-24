@@ -42,7 +42,7 @@
         <spotless.plugin.version>3.5.1</spotless.plugin.version>
         <sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
         <!-- Central Publishing Maven Plugin 版本（使用官方 org.sonatype.central 版本） -->
-        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
         <gpg-maven-plugin.version>3.2.8</gpg-maven-plugin.version>
 
