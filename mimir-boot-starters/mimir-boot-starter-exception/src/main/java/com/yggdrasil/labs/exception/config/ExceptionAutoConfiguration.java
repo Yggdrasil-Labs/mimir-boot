@@ -1,7 +1,10 @@
 package com.yggdrasil.labs.exception.config;
 
-import com.yggdrasil.labs.exception.handler.GlobalExceptionHandler;
+import com.yggdrasil.labs.exception.handler.DefaultExceptionResponseFactory;
+import com.yggdrasil.labs.exception.handler.ExceptionResponseFactory;
+import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,13 +35,26 @@ import org.springframework.context.annotation.Bean;
 public class ExceptionAutoConfiguration {
 
     /**
+     * 注册默认异常响应工厂（接入方可自定义覆盖）
+     *
+     * @return 默认异常响应工厂
+     */
+    @Bean
+    @ConditionalOnMissingBean(ExceptionResponseFactory.class)
+    public ExceptionResponseFactory exceptionResponseFactory() {
+        return new DefaultExceptionResponseFactory();
+    }
+
+    /**
      * 注册全局异常处理器
      *
+     * @param responseFactory 异常响应工厂
      * @return 全局异常处理器
      */
     @Bean
-    public GlobalExceptionHandler globalExceptionHandler() {
-        return new GlobalExceptionHandler();
+    @ConditionalOnMissingBean(MimirExceptionHandler.class)
+    public MimirExceptionHandler mimirExceptionHandler(ExceptionResponseFactory responseFactory) {
+        return new MimirExceptionHandler(responseFactory);
     }
 }
 

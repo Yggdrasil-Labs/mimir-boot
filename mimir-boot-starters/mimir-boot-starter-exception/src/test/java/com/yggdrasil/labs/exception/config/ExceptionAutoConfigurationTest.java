@@ -1,6 +1,8 @@
 package com.yggdrasil.labs.exception.config;
 
-import com.yggdrasil.labs.exception.handler.GlobalExceptionHandler;
+import com.yggdrasil.labs.exception.handler.DefaultExceptionResponseFactory;
+import com.yggdrasil.labs.exception.handler.ExceptionResponseFactory;
+import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,14 +38,26 @@ class ExceptionAutoConfigurationTest extends BaseUnitTest {
     }
 
     /**
-     * 测试创建 GlobalExceptionHandler Bean
+     * 测试创建 ExceptionResponseFactory Bean
      */
     @Test
-    void testGlobalExceptionHandlerCreation() {
-        GlobalExceptionHandler handler = configuration.globalExceptionHandler();
+    void testExceptionResponseFactoryCreation() {
+        ExceptionResponseFactory factory = configuration.exceptionResponseFactory();
+
+        assertNotNull(factory);
+        assertInstanceOf(DefaultExceptionResponseFactory.class, factory);
+    }
+
+    /**
+     * 测试创建 MimirExceptionHandler Bean
+     */
+    @Test
+    void testMimirExceptionHandlerCreation() {
+        ExceptionResponseFactory factory = configuration.exceptionResponseFactory();
+        MimirExceptionHandler handler = configuration.mimirExceptionHandler(factory);
 
         assertNotNull(handler);
-        assertInstanceOf(GlobalExceptionHandler.class, handler);
+        assertInstanceOf(MimirExceptionHandler.class, handler);
     }
 
     /**
@@ -51,12 +65,12 @@ class ExceptionAutoConfigurationTest extends BaseUnitTest {
      */
     @Test
     void testMultipleHandlerCreation() {
-        GlobalExceptionHandler handler1 = configuration.globalExceptionHandler();
-        GlobalExceptionHandler handler2 = configuration.globalExceptionHandler();
+        ExceptionResponseFactory factory = configuration.exceptionResponseFactory();
+        MimirExceptionHandler handler1 = configuration.mimirExceptionHandler(factory);
+        MimirExceptionHandler handler2 = configuration.mimirExceptionHandler(factory);
 
         assertNotNull(handler1);
         assertNotNull(handler2);
-        // 每次调用都会创建新实例（在 Spring 容器中会通过单例管理）
         assertNotSame(handler1, handler2);
     }
 }

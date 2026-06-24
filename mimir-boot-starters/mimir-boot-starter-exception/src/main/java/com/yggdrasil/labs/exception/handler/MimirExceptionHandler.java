@@ -5,6 +5,8 @@ import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.common.util.LogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
@@ -17,99 +19,89 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 全局异常处理器
- * <p>
- * 统一处理应用程序中的所有异常，返回统一的响应格式。
- * </p>
+ * Mimir 全局异常处理器
+ *
+ * <p>统一处理应用程序中的所有异常，通过 {@link ExceptionResponseFactory} 构建响应体。</p>
  *
  * @author Yggdrasil Labs
- * @since 1.0.0
+ * @since 2.1.0
  */
 @Slf4j
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+@Order(Ordered.LOWEST_PRECEDENCE)
+public class MimirExceptionHandler {
 
-    /**
-     * 清理日志内容，防止日志注入攻击（委托公共工具类，统一策略）。
-     */
+    private final ExceptionResponseFactory responseFactory;
+
+    public MimirExceptionHandler(ExceptionResponseFactory responseFactory) {
+        this.responseFactory = responseFactory;
+    }
+
     private String sanitizeForLog(String input) {
         return LogSanitizer.sanitize(input);
     }
 
-    /**
-     * 处理业务异常
-     *
-     * @param e       业务异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(BizException.class)
     @ResponseStatus(HttpStatus.OK)
-    public R<Serializable> handleBizException(BizException e, HttpServletRequest request) {
+    public Object handleBizException(BizException e, HttpServletRequest request) {
         log.warn("业务异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()));
-        return R.fail(e.getCode(), e.getMessage());
+        String code = e.getCode();
+        String message = e.getMessage();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理系统异常
-     *
-     * @param e       系统异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Serializable> handleSystemException(SystemException e, HttpServletRequest request) {
+    public Object handleSystemException(SystemException e, HttpServletRequest request) {
         log.error("系统异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()),
                 e);
-        return R.fail(e.getCode(), e.getMessage());
+        String code = e.getCode();
+        String message = e.getMessage();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理基础异常（兜底处理实现 IException 的异常）
-     * <p>
-     * 处理所有 BaseException 及其子类但未被其他处理器捕获的异常。
-     * 注意：此处理器优先级低于具体的异常类型处理器。
-     * </p>
-     *
-     * @param e       基础异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(BaseException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Serializable> handleBaseException(BaseException e, HttpServletRequest request) {
+    public Object handleBaseException(BaseException e, HttpServletRequest request) {
         log.error("框架异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()),
                 e);
-        return R.fail(e.getCode(), e.getMessage());
+        String code = e.getCode();
+        String message = e.getMessage();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-
-    /**
-     * 处理方法参数校验异常（@Valid）
-     *
-     * @param e       方法参数校验异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<ArrayList<String>> handleMethodArgumentNotValidException(
+    public Object handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
         ArrayList<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> sanitizeForLog(error.getField()) + ": " + sanitizeForLog(error.getDefaultMessage()))
@@ -117,122 +109,112 @@ public class GlobalExceptionHandler {
         log.warn("参数校验异常: errors={}, uri={}",
                 errors,
                 sanitizeForLog(request.getRequestURI()));
-        return new R<>(
-                ErrorCode.PARAM_INVALID.getCode(),
-                ErrorCode.PARAM_INVALID.getMessage(),
-                errors
-        );
+        String code = ErrorCode.PARAM_INVALID.getCode();
+        String message = ErrorCode.PARAM_INVALID.getMessage();
+        try {
+            return responseFactory.createResponse(code, message, errors);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理绑定异常（@ModelAttribute）
-     *
-     * @param e       绑定异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<ArrayList<String>> handleBindException(BindException e, HttpServletRequest request) {
+    public Object handleBindException(BindException e, HttpServletRequest request) {
         ArrayList<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> sanitizeForLog(error.getDefaultMessage()))
                 .collect(Collectors.toCollection(ArrayList::new));
         log.warn("参数绑定异常: errors={}, uri={}",
                 errors,
                 sanitizeForLog(request.getRequestURI()));
-        return new R<>(
-                ErrorCode.PARAM_INVALID.getCode(),
-                ErrorCode.PARAM_INVALID.getMessage(),
-                errors
-        );
+        String code = ErrorCode.PARAM_INVALID.getCode();
+        String message = ErrorCode.PARAM_INVALID.getMessage();
+        try {
+            return responseFactory.createResponse(code, message, errors);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理缺少请求参数异常
-     *
-     * @param e       缺少请求参数异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Serializable> handleMissingServletRequestParameterException(
+    public Object handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e, HttpServletRequest request) {
         String sanitizedParamName = sanitizeForLog(e.getParameterName());
         String message = String.format("缺少必需参数: %s", sanitizedParamName);
         log.warn("缺少请求参数异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
-        return R.fail(ErrorCode.PARAM_MISSING.getCode(), message);
+        String code = ErrorCode.PARAM_MISSING.getCode();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理方法参数类型不匹配异常
-     *
-     * @param e       方法参数类型不匹配异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Serializable> handleMethodArgumentTypeMismatchException(
+    public Object handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         String sanitizedParamName = sanitizeForLog(e.getName());
-        String expectedType = Objects.requireNonNull(e.getRequiredType()).getSimpleName();
+        String expectedType = e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "unknown";
         String message = String.format("参数类型不匹配: %s，期望类型: %s", sanitizedParamName, expectedType);
         log.warn("参数类型不匹配异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
-        return R.fail(ErrorCode.PARAM_INVALID.getCode(), message);
+        String code = ErrorCode.PARAM_INVALID.getCode();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理 HTTP 消息不可读异常（JSON 解析失败等）
-     *
-     * @param e       HTTP 消息不可读异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Serializable> handleHttpMessageNotReadableException(
+    public Object handleHttpMessageNotReadableException(
             HttpMessageNotReadableException e, HttpServletRequest request) {
         log.warn("HTTP 消息不可读异常: {}, uri={}",
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()));
-        return R.fail(ErrorCode.PARAM_INVALID.getCode(), "请求体格式错误");
+        String code = ErrorCode.PARAM_INVALID.getCode();
+        String message = "请求体格式错误";
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理 HTTP 请求方法不支持异常
-     *
-     * @param e       HTTP 请求方法不支持异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
-    public R<Serializable> handleHttpRequestMethodNotSupportedException(
+    public Object handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getMethod());
-        String supportedMethods = sanitizeForLog(String.join(", ", Objects.requireNonNull(e.getSupportedMethods())));
+        String[] supported = e.getSupportedMethods();
+        String supportedMethods = supported != null ? sanitizeForLog(String.join(", ", supported)) : "";
         String message = String.format("请求方法 %s 不支持，支持的方法: %s", sanitizedMethod, supportedMethods);
         log.warn("HTTP 请求方法不支持异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
-        return R.fail(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), message);
+        String code = ErrorCode.OPERATION_NOT_ALLOWED.getCode();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理处理器未找到异常（404）
-     *
-     * @param e       处理器未找到异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(NoHandlerFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public R<Serializable> handleNoHandlerFoundException(
+    public Object handleNoHandlerFoundException(
             NoHandlerFoundException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getHttpMethod());
         String sanitizedUrl = sanitizeForLog(e.getRequestURL());
@@ -240,36 +222,44 @@ public class GlobalExceptionHandler {
         log.warn("处理器未找到异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
-        return R.fail(ErrorCode.DATA_NOT_FOUND.getCode(), message);
+        String code = ErrorCode.DATA_NOT_FOUND.getCode();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 
-    /**
-     * 处理所有未捕获的异常
-     * <p>
-     * 如果异常实现了 IException 接口，则使用其错误码和消息；否则使用默认系统错误。
-     * </p>
-     *
-     * @param e       异常
-     * @param request HTTP 请求
-     * @return 错误响应
-     */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Serializable> handleException(Exception e, HttpServletRequest request) {
-        // 如果异常实现了 IException 接口，使用其错误码和消息
+    public Object handleException(Exception e, HttpServletRequest request) {
         if (e instanceof IException ie) {
             log.error("框架异常（未捕获）: code={}, message={}, uri={}",
                     sanitizeForLog(ie.getCode()),
                     sanitizeForLog(ie.getMessage()),
                     sanitizeForLog(request.getRequestURI()),
                     e);
-            return R.fail(ie.getCode(), ie.getMessage());
+            String code = ie.getCode();
+            String message = ie.getMessage();
+            try {
+                return responseFactory.createResponse(code, message, null);
+            } catch (Exception ex) {
+                log.error("responseFactory 异常，降级返回 R", ex);
+                return R.fail(code, message);
+            }
         }
 
         log.error("未捕获的异常: uri={}",
                 sanitizeForLog(request.getRequestURI()),
                 e);
-        return R.fail(ErrorCode.SYSTEM_ERROR.getCode(), ErrorCode.SYSTEM_ERROR.getMessage());
+        String code = ErrorCode.SYSTEM_ERROR.getCode();
+        String message = ErrorCode.SYSTEM_ERROR.getMessage();
+        try {
+            return responseFactory.createResponse(code, message, null);
+        } catch (Exception ex) {
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return R.fail(code, message);
+        }
     }
 }
-
