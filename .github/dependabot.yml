@@ -19,34 +19,45 @@ updates:
       include: "scope"
     labels:
       - "📦 deps"
-    # 忽略主要版本更新（破坏性变更）
+    # 忽略破坏性版本更新
     ignore:
-      # Spring Boot 主要版本更新需要手动处理
+      # Spring Boot：锁定 3.3.x，minor 和 major 升级需架构 RFC
       - dependency-name: "org.springframework.boot:spring-boot-dependencies"
-        update-types: ["version-update:semver-major"]
-      # Spring Cloud 主要版本更新
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "org.springframework.boot:spring-boot-maven-plugin"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Spring Cloud：锁定 2023.0.x
       - dependency-name: "org.springframework.cloud:spring-cloud-dependencies"
         update-types: ["version-update:semver-major"]
-      # Spring Cloud Alibaba 主要版本更新
+      # Spring Cloud Alibaba
       - dependency-name: "com.alibaba.cloud:spring-cloud-alibaba-dependencies"
         update-types: ["version-update:semver-major"]
-      # MyBatis Plus 主要版本更新
+      # MyBatis Plus
       - dependency-name: "com.baomidou:mybatis-plus-boot-starter"
         update-types: ["version-update:semver-major"]
-      # 数据库驱动主要版本更新
+      # 数据库驱动
       - dependency-name: "com.mysql:mysql-connector-j"
         update-types: ["version-update:semver-major"]
       - dependency-name: "org.postgresql:postgresql"
         update-types: ["version-update:semver-major"]
-      # 消息队列主要版本更新
+      # Redisson
+      - dependency-name: "org.redisson:redisson-spring-boot-starter"
+        update-types: ["version-update:semver-major"]
+      # iText PDF
+      - dependency-name: "com.itextpdf:itext-core"
+        update-types: ["version-update:semver-major"]
+      # springdoc-openapi（3.x 需 Boot 4.x）
+      - dependency-name: "org.springdoc:springdoc-openapi-starter-webmvc-ui"
+        update-types: ["version-update:semver-major"]
+      # 消息队列
       - dependency-name: "org.apache.rocketmq:rocketmq-spring-boot-starter"
         update-types: ["version-update:semver-major"]
-      # 搜索引擎主要版本更新
+      # 搜索引擎与 NoSQL
       - dependency-name: "org.elasticsearch.client:elasticsearch-java"
         update-types: ["version-update:semver-major"]
       - dependency-name: "org.mongodb:mongodb-driver-sync"
         update-types: ["version-update:semver-major"]
-      # Java 版本相关更新
+      # Maven 插件
       - dependency-name: "org.apache.maven.plugins:maven-compiler-plugin"
         update-types: ["version-update:semver-major"]
     # 允许的更新类型
@@ -55,7 +66,7 @@ updates:
       - dependency-type: "indirect"
     # 分组相关依赖
     groups:
-      # Spring 生态
+      # Spring 生态（仅允许 patch）
       spring-ecosystem:
         patterns:
           - "org.springframework.boot:*"
