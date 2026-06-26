@@ -45,9 +45,15 @@
 | `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | ✅ 已完成 |
 | `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | ✅ 已完成 |
 | `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | ✅ 已完成 |
-| `mimir-boot-starter-governance`        | 服务治理（限流、熔断、重试）              | 🔄 规划中 |
-| `mimir-boot-starter-metrics`           | 指标监控（Metrics 采集与上报）           | 🔄 规划中 |
-| `mimir-boot-starter-security`          | 安全治理（签名、token 透传、安全增强）    | 🔄 规划中 |
+### 🔮 未来方向
+
+以下能力在探索中，尚未启动正式开发：
+
+- **服务治理**：限流、熔断、重试
+- **指标监控**：Metrics 采集与上报
+- **安全治理**：签名、token 透传、安全增强
+
+正式落地前需完成产品规格评审。
 
 ## 🚀 快速开始
 
@@ -342,9 +348,6 @@ private String phoneNumber;  // 自动加密存储、解密读取
 - [mimir-boot-starter-rpc-core](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md) - RPC 通用治理核心文档
 - [mimir-boot-starter-dubbo](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) - Dubbo 专用治理文档
 - [mimir-boot-starter-feign](mimir-boot-starters/mimir-boot-starter-feign/README.md) - Feign 专用治理文档
-- [mimir-boot-starter-governance](mimir-boot-starters/mimir-boot-starter-governance/README.md) - 服务治理文档
-- [mimir-boot-starter-metrics](mimir-boot-starters/mimir-boot-starter-metrics/README.md) - 指标监控文档
-- [mimir-boot-starter-security](mimir-boot-starters/mimir-boot-starter-security/README.md) - 安全治理文档
 
 ## 🏗️ 项目结构
 
@@ -363,9 +366,7 @@ mimir-boot/
 │   ├── mimir-boot-starter-rpc-core/       # RPC 通用治理核心
 │   ├── mimir-boot-starter-dubbo/          # Dubbo 专用治理
 │   ├── mimir-boot-starter-feign/          # Feign 专用治理
-│   ├── mimir-boot-starter-governance/     # 服务治理（限流、熔断、重试）
-│   ├── mimir-boot-starter-metrics/        # 指标监控
-│   └── mimir-boot-starter-security/      # 安全治理
+│   └── mimir-boot-starter-test/           # 测试启动器
 └── README.md                              # 本文件
 ```
 
@@ -390,9 +391,6 @@ graph TD
     Starters --> RPCCore[mimir-boot-starter-rpc-core<br/>RPC 通用治理核心]
     Starters --> Dubbo[mimir-boot-starter-dubbo<br/>Dubbo 专用治理]
     Starters --> Feign[mimir-boot-starter-feign<br/>Feign 专用治理]
-    Starters --> Governance[mimir-boot-starter-governance<br/>服务治理<br/>🔄 规划中]
-    Starters --> Metrics[mimir-boot-starter-metrics<br/>指标监控<br/>🔄 规划中]
-    Starters --> Security[mimir-boot-starter-security<br/>安全治理<br/>🔄 规划中]
     
     Log --> Common
     Log --> Test
@@ -411,9 +409,6 @@ graph TD
     RPCCore -.规划依赖.-> Common
     Dubbo -.规划依赖.-> RPCCore
     Feign -.规划依赖.-> RPCCore
-    Governance -.规划依赖.-> Common
-    Metrics -.规划依赖.-> Common
-    Security -.规划依赖.-> Common
     
     style Root fill:#e1f5ff
     style Parent fill:#fff4e1
@@ -424,9 +419,6 @@ graph TD
     style RPCCore fill:#e8f5e9
     style Dubbo fill:#e8f5e9
     style Feign fill:#e8f5e9
-    style Governance fill:#f5f5f5,stroke-dasharray: 5 5
-    style Metrics fill:#f5f5f5,stroke-dasharray: 5 5
-    style Security fill:#f5f5f5,stroke-dasharray: 5 5
 ```
 
 ### 依赖关系说明
@@ -439,7 +431,6 @@ graph TD
   - 🟢 绿色：核心公共模块（Common）
   - 🟣 紫色：Starter 聚合模块
   - 🔴 粉色：测试模块
-  - ⚪ 灰色虚线：规划中的模块
 
 ## 📄 许可证
 
