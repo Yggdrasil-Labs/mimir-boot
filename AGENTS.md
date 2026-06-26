@@ -36,7 +36,6 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 
 ### C. 参考与产物
 
-- 自动生成的文档（禁止手改）：[`docs/generated/`](./docs/generated/)
 - 产品思维：[`docs/PRODUCT_SENSE.md`](./docs/PRODUCT_SENSE.md)
 - 产品能力说明：[`docs/product-specs/index.md`](./docs/product-specs/index.md)
 - 质量评分：[`docs/QUALITY_SCORE.md`](./docs/QUALITY_SCORE.md)

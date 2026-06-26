@@ -14,10 +14,8 @@ updated: 2026-06-24
 
 | 编号 | 领域 | 问题描述 | 优先级 | 记录日期 | Owner | 关联计划 |
 |------|------|----------|--------|----------|-------|----------|
-| TD-001 | docs | 根文档与模块 README 之间仍存在重复说明 | 中 | 2026-04-11 | ORPHAN | — |
-| TD-002 | docs | `docs/generated/db-schema.md` 仍为占位说明 | 中 | 2026-04-11 | ORPHAN | — |
-| TD-003 | docs | 缺少文档 lint / 链接校验自动化 | 中 | 2026-04-11 | ORPHAN | — |
-| TD-004 | product | 规划中的治理、指标、安全 starter 尚无正式产品规格 | 高 | 2026-04-11 | ORPHAN | — |
+| TD-004 | product | 规划中的治理、指标、安全 starter 尚无正式产品规格（已从 README 移除，待正式立项时再补） | 低 | 2026-04-11 | ORPHAN | — |
+| TD-005 | ci | release.yml publish-gpr 与 publish-maven-central 大量重复步骤，待用 reusable workflow 重构 | 中 | 2026-06-26 | ORPHAN | — |
 
 ## 优先级含义（智能体行为指南）
 

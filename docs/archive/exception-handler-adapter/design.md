@@ -1,3 +1,8 @@
+---
+status: archived
+archived-date: 2026-06-26
+---
+
 # Exception Handler Adapter
 
 ## Context
