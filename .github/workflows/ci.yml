@@ -31,25 +31,15 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
-      - name: Format check
-        # Dependabot PR 跳过格式检查
+      - name: Markdown lint
         if: github.actor != 'dependabot[bot]'
-        # ci profile 在 validate 阶段自动执行 spotless:check
-        # 格式检查应在编译之前执行
-        run: ./mvnw -B validate -Pci
+        uses: DavidAnson/markdownlint-cli2-action@db4c24b0a350e5e15d4117f67d1e5c86c9b656c0 # v19
+        with:
+          globs: '**/*.md'
 
-      - name: Compile
-        # Dependabot PR 跳过所有检查
+      - name: Build and test
         if: github.actor != 'dependabot[bot]'
-        # 使用 ci profile
-        # ci profile 包含：格式检查、覆盖率检查、依赖规则检查
-        run: ./mvnw -B -U compile -Pci
-
-      - name: Unit tests
-        # Dependabot PR 跳过单元测试
-        if: github.actor != 'dependabot[bot]'
-        # ci profile 执行测试并生成覆盖率报告
-        run: ./mvnw -B test -Pci
+        run: ./mvnw -B -U verify -Pci
 
       - name: Build only (Dependabot)
         # Dependabot PR 只进行编译检查，不运行测试和格式检查
@@ -120,9 +110,8 @@ jobs:
           # 按照 SonarCloud 官方推荐的方式：在 verify 阶段同时运行 Sonar 分析
           # 使用 ci profile 执行完整的构建、测试和 Sonar 分析
           # ci profile 会自动跳过 GPG 签名（签名应在发布时进行）
-          # 若需在 CI 中完全忽略覆盖率，可通过 sonar.coverage.exclusions=** 配置
           ./mvnw -B clean verify sonar:sonar -Pci \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=${SONAR_ORGANIZATION} \
             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-            -Dsonar.coverage.exclusions=**
+            -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
