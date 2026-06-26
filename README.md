@@ -218,75 +218,20 @@ mvn spotless:apply
 
 引入 `mimir-boot-starter-log` 后自动提供：
 
-#### ✨ 自动敏感信息脱敏
-
-```java
-log.info("用户登录，用户名: {}, 密码: {}","admin","123456");
-// 输出: 用户登录，用户名: admin, 密码: ******
-```
-
-#### 🔍 TraceId & SpanId 支持
-
-```log
-2025-01-28 10:23:45.123 [http-nio-8080-exec-1] INFO  [abc-123] [span-456] com.yggdrasil.labs.app.Application - Hello World
-```
-
-#### 📊 访问日志
-
-- 自动记录每个 HTTP 请求
-- 自动识别慢接口（超过阈值自动 WARN）
-- 文件：`logs/{app-name}/access.log`
-
-#### 🌈 多环境配置
-
-- **开发环境**: 彩色控制台输出 + 文件输出
-- **测试环境**: 控制台 + 文件
-- **生产环境**: 仅文件输出，配置优化
+- 自动敏感信息脱敏（密码、token 等自动替换为 `******`）
+- TraceId & SpanId 自动注入日志上下文
+- HTTP 访问日志（含慢接口自动告警）
+- 多环境配置（dev 彩色控制台 / prod 纯文件）
 
 详细文档请参考 [mimir-boot-starter-log/README.md](mimir-boot-starters/mimir-boot-starter-log/README.md)
 
 ### 🔐 配置加密脱敏
 
-引入 `mimir-boot-starter-nacos` 后提供配置加密功能：
+引入 `mimir-boot-starter-nacos` 后提供：
 
-#### ✨ 自动解密配置
-
-在 Nacos 配置中心使用 `ENC(encrypted_value)` 格式：
-
-```yaml
-# Nacos 配置
-database:
-  password: ENC(encrypted_base64_string)
-
-# 应用运行时自动解密
-# database.password = "decrypted_plaintext"
-```
-
-#### 🔄 动态刷新支持
-
-配置刷新时自动重新解密：
-
-```java
-
-@RefreshScope
-@Component
-public class ConfigBean {
-    @Value("${database.password}")
-    private String password;  // 始终是解密后的值
-}
-```
-
-#### 🛠️ 工具类支持
-
-```java
-// 生成密钥
-String key = NacosEncryptUtil.generateKey();
-
-// 加密配置值
-String encrypted = NacosEncryptUtil.encrypt("secret", key);
-String encValue = NacosEncryptUtil.wrapWithEnc(encrypted);
-// 输出: ENC(encrypted_value)
-```
+- Nacos 配置中 `ENC(encrypted_value)` 格式自动解密
+- 配置动态刷新时自动重新解密
+- 提供加解密工具类 `NacosEncryptUtil`
 
 详细文档请参考 [mimir-boot-starter-nacos/README.md](mimir-boot-starters/mimir-boot-starter-nacos/README.md)
 
@@ -294,22 +239,9 @@ String encValue = NacosEncryptUtil.wrapWithEnc(encrypted);
 
 引入 `mimir-boot-starter-web` 后自动提供：
 
-#### 🎯 统一响应格式
-
-```java
-
-@GetMapping("/api/user/{id}")
-public R<UserVO> getUser(@PathVariable Long id) {
-    return R.success(userService.getById(id));
-    // 自动填充 traceId
-}
-```
-
-#### 🔍 Trace 追踪
-
-- 自动生成或获取 traceId
-- 设置到 MDC 和响应头
-- 支持分布式追踪
+- 统一响应格式 `R<T>` 自动填充 traceId
+- 自动生成/传递 traceId（MDC + 响应头）
+- CORS 跨域配置开箱即用
 
 详细文档请参考 [mimir-boot-starter-web/README.md](mimir-boot-starters/mimir-boot-starter-web/README.md)
 
@@ -317,19 +249,8 @@ public R<UserVO> getUser(@PathVariable Long id) {
 
 引入 `mimir-boot-starter-mybatis` 后自动提供：
 
-#### ✨ 自动配置拦截器
-
-- 分页拦截器（自动识别 Page 对象）
-- 乐观锁拦截器（自动版本控制）
-- 审计字段自动填充（createdBy、updatedTime 等）
-
-#### 🔐 字段加解密
-
-```java
-
-@TableField(typeHandler = StringCryptoTypeHandler.class)
-private String phoneNumber;  // 自动加密存储、解密读取
-```
+- 分页拦截器、乐观锁拦截器、审计字段自动填充
+- 字段加解密（`@TableField(typeHandler = StringCryptoTypeHandler.class)`）
 
 详细文档请参考 [mimir-boot-starter-mybatis/README.md](mimir-boot-starters/mimir-boot-starter-mybatis/README.md)
 
