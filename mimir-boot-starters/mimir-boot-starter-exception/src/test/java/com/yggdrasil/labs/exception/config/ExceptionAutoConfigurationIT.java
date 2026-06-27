@@ -40,4 +40,10 @@ class ExceptionAutoConfigurationIT {
                     assertThat(ctx).hasSingleBean(ExceptionResponseFactory.class);
                 });
     }
+
+    @Test
+    void beansNotRegisteredWhenDisabled() {
+        runner.withPropertyValues("mimir.boot.exception.enabled=false")
+                .run(ctx -> assertThat(ctx).doesNotHaveBean(MimirExceptionHandler.class));
+    }
 }

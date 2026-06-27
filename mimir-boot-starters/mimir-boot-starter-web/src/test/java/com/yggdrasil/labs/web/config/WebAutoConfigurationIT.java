@@ -2,6 +2,7 @@ package com.yggdrasil.labs.web.config;
 
 import com.yggdrasil.labs.web.advice.ResponseBodyEnhancer;
 import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
+import com.yggdrasil.labs.web.interceptor.WebInterceptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -39,5 +40,20 @@ class WebAutoConfigurationIT {
     @Test
     void webPropertiesRegistered() {
         runner.run(ctx -> assertThat(ctx).hasSingleBean(WebProperties.class));
+    }
+
+    @Test
+    void webInterceptorRegistered() {
+        runner.run(ctx -> assertThat(ctx).hasSingleBean(WebInterceptor.class));
+    }
+
+    @Test
+    void webMvcConfigRegistered() {
+        runner.run(ctx -> assertThat(ctx).hasSingleBean(WebMvcConfig.class));
+    }
+
+    @Test
+    void jacksonConfigRegistered() {
+        runner.run(ctx -> assertThat(ctx).hasSingleBean(JacksonConfig.class));
     }
 }
