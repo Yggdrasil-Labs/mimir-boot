@@ -33,7 +33,7 @@ jobs:
 
       - name: Markdown lint
         if: github.actor != 'dependabot[bot]'
-        uses: DavidAnson/markdownlint-cli2-action@db4c24b0a350e5e15d4117f67d1e5c86c9b656c0 # v19
+        uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265 # v19.1.0
         with:
           globs: '**/*.md'
 
