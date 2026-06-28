@@ -1,5 +1,98 @@
 # Changelog
 
+## [2.1.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.4...v2.1.0) (2026-06-28)
+
+
+### ✨ Features
+
+* **ci:** 添加 markdownlint 配置文件 ([2b16f67](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2b16f67a6329194bf87f03d40e83a0ba64387ecd))
+* **exception:** 异常处理器支持响应格式适配 ([6fe0b10](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6fe0b1079e95ca73ba8463514a2ed88ff18543b7))
+
+
+### 🐛 Bug Fixes
+
+* **ci:** 修复 markdownlint-cli2-action SHA 引用无效 ([3f62332](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3f6233261a52b485abe43562d5a3f1c9af9acf7b))
+* **ci:** 修复 SonarCloud 覆盖率上报，合并 build 为单步 verify，添加 markdownlint ([641b9b9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/641b9b9b1e712f0a2a45f7dc1b8a81f9471f2310))
+* **nacos:** 修复 ConfigCryptoUtilsTest.testDecryptWithWrongKey 测试不稳定 ([c36ae93](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c36ae930902044154a29283f53ac534762f07779))
+* **pom:** 引入test starter后，可以直接使用常用测试能力。close: [#226](https://github.com/Yggdrasil-Labs/mimir-boot/issues/226) ([20f033a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/20f033ad0267a5fc046bb1784a0aef28d99ff3d3))
+
+
+### 📝 Documentation
+
+* **common:** 补齐 ErrorCode 枚举 Javadoc ([5720240](https://github.com/Yggdrasil-Labs/mimir-boot/commit/57202405d362d2656b430f42f3a2482dbbd9c446))
+* **init:** 按 docs-init skill 最佳实践重建文档体系 ([ec0861a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ec0861a01d289c7bdbb9e9f499aa389957fede32))
+* **plan:** 新增 quality-refinement 迭代方案 ([dfb2d38](https://github.com/Yggdrasil-Labs/mimir-boot/commit/dfb2d382de0c707bc4374797d791e3bebf147d1e))
+* 归档 exception-handler-adapter，清理技术债 ([fde926d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fde926d0f4223487b4b4c7760b936fb3c4e63560))
+* 新增文档体系，包含 AGENTS、ARCHITECTURE、DESIGN、PLANS 等文件，重构文档结构以提升可导航性和可维护性 ([25e3563](https://github.com/Yggdrasil-Labs/mimir-boot/commit/25e3563905b50ab39e774a99a46a68856594e724))
+* 清理 README 中不存在的规划模块，改为未来方向段落 ([f9fa42e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f9fa42ec0adbfde69480ab05eb69f17dd6931138))
+* 精简根 README 特性展示段，去重代码示例 ([a6988c0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a6988c0923eb93b3a221eec84498db701a627011))
+
+
+### ✅ Tests
+
+* **exception:** 补齐 MimirExceptionHandler fallback 和 null-safe 分支覆盖 ([7728000](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7728000721f6c519fb8e3107148ae27e56f8c433))
+* **web,exception:** 补充 AutoConfiguration 集成测试 ([497954c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/497954c850b9710a36ae0127e31ca7fd1aac7e1e))
+* **web,exception:** 补齐 AutoConfiguration 集成测试覆盖 ([9635615](https://github.com/Yggdrasil-Labs/mimir-boot/commit/963561586ae07eda42f779d9055cb1136bfdac01))
+
+
+### 👷 Continuous Integration
+
+* **deps:** bump actions/checkout from 6.0.2 to 7.0.0 ([b00af14](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b00af14dc710939d96b11e48c890e5f74a1ff848))
+* **deps:** bump actions/checkout from 6.0.2 to 7.0.0 ([60d7dcf](https://github.com/Yggdrasil-Labs/mimir-boot/commit/60d7dcf065e27679baf40d9a70f04a7cf206f319))
+* **deps:** bump actions/github-script from 8.0.0 to 9.0.0 ([5b1de62](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5b1de62ea7329ca03dc696bd627c5631e39c577a))
+* **deps:** bump actions/setup-java from 5.2.0 to 5.3.0 ([5aabb21](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5aabb2108541cf01210ee8c9af3ed49633b8b69d))
+* **deps:** bump actions/setup-java from 5.2.0 to 5.3.0 ([351c67c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/351c67ce955d23bea76c99a5138cb2502340a3d4))
+* **deps:** bump actions/upload-artifact from 6.0.0 to 7.0.0 ([5fdf19c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5fdf19c54501e4e80b1e62f8446a4d4a6890a7e5))
+* **deps:** bump actions/upload-artifact from 7.0.0 to 7.0.1 ([b3cd6bf](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b3cd6bfdb09a632a552e1edcd52abd03a62782f0))
+* **deps:** bump googleapis/release-please-action from 4.4.0 to 4.4.1 ([67c277f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/67c277f05f419a3b9c96669c10c6691f59042a13))
+* **deps:** bump googleapis/release-please-action from 4.4.1 to 5.0.0 ([c6dc9a3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c6dc9a3db6b03a668f37ebeccb95530f994e7862))
+* **deps:** bump softprops/action-gh-release from 1 to 3 ([954248b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/954248bb3979f66a78ff2b0ba323f05d4cf20252))
+* **deps:** bump softprops/action-gh-release from 3.0.0 to 3.0.1 ([3219168](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3219168192ebd33fdd26b9b6d83e1a4b42338d2e))
+* **deps:** bump softprops/action-gh-release from 3.0.0 to 3.0.1 ([d465ffe](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d465ffe32aba19a23adcb016d16b16b9769a1566))
+* **deps:** 优化 dependabot 规则，阻止不兼容的 major/minor 升级 ([ba07745](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ba07745cf7430740ea7c824f9481fa853497b01b))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.0.5-SNAPSHOT for next development cycle ([dbe8f50](https://github.com/Yggdrasil-Labs/mimir-boot/commit/dbe8f50febc144f55af2029d3197e25b6047eaae))
+* **ci:** 统一 workflow action 版本注释 ([8b6b569](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8b6b569f33c8a88cc1d7903dd463f431e4ae2144))
+* **deps-dev:** bump org.springframework.boot:spring-boot-maven-plugin ([4590954](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4590954004cd67775123a952367757b39af21743))
+* **deps-dev:** bump org.springframework.boot:spring-boot-maven-plugin from 3.5.7 to 3.5.15 in the maven-plugins group ([de370b4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/de370b4f38b694814aaccddce25130aa8057e99b))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin ([fd7e736](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fd7e736ff996e83889c606865b7201a606e9c8cc))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin ([c247705](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c24770597b148e06388db0cb46aa3c18f317f773))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin ([33b543e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/33b543e5e52fdb5db40323a1bec08cd14aad8672))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin from 3.5.1 to 3.7.0 ([33363be](https://github.com/Yggdrasil-Labs/mimir-boot/commit/33363be874826cbfc1441a9baee4804e447cf6f4))
+* **deps:** bump com.google.guava:guava from 33.5.0-jre to 33.6.0-jre ([4928729](https://github.com/Yggdrasil-Labs/mimir-boot/commit/492872903f3e97ab07bd58de3a75982dec251756))
+* **deps:** bump com.google.protobuf:protobuf-java ([39e070a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/39e070ab6d73e675e23c71a8cea2da652cca5531))
+* **deps:** bump com.google.protobuf:protobuf-java ([e1007fe](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e1007fe80891b7b8ec28b9b706996d55a6dae660))
+* **deps:** bump com.google.protobuf:protobuf-java from 4.34.1 to 4.35.1 ([8596394](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8596394b8fa0c5dd847a7894531beab57fb3914a))
+* **deps:** bump com.itextpdf:itext-core from 8.0.2 to 8.0.5 ([775eb62](https://github.com/Yggdrasil-Labs/mimir-boot/commit/775eb6210a88ac546cbf720f8574fd5ec6a36be9))
+* **deps:** bump com.itextpdf:itext-core from 8.0.2 to 8.0.5 ([d227692](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d22769263036dc17dd418f99ed56df1ca4a70a50))
+* **deps:** bump com.squareup.okhttp3:okhttp from 5.3.2 to 5.4.0 ([37d6f9c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/37d6f9cb1767a90e5e78e4f1d0aee36b0e33c9de))
+* **deps:** bump com.squareup.okhttp3:okhttp from 5.3.2 to 5.4.0 ([1d5ac3b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1d5ac3be3294695e860be0b89ce49c40e9159004))
+* **deps:** bump com.xuxueli:xxl-job-core from 3.4.0 to 3.4.2 in the scheduling group ([9ddbcfe](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9ddbcfe7765dfa4e46cf3560dbac24c5e3043be9))
+* **deps:** bump com.xuxueli:xxl-job-core in the scheduling group ([837a6a4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/837a6a423772eec0bb8b1d718f76e2a6c6c3ac94))
+* **deps:** bump com.xuxueli:xxl-job-core in the scheduling group ([fc4a385](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fc4a3855d21f0abd0272387e7dc6fb130e83acbf))
+* **deps:** bump org.projectlombok:lombok in the utilities group ([648ccdd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/648ccdd9dcaa1a651e0cc003597a89bd4cddfe27))
+* **deps:** bump org.sonarsource.scanner.maven:sonar-maven-plugin ([e27a109](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e27a1093580357f4ed4f0d7e53133cc3821c5aa4))
+* **deps:** bump org.sonatype.central:central-publishing-maven-plugin ([04a1b90](https://github.com/Yggdrasil-Labs/mimir-boot/commit/04a1b90b3ce168b06d8bb9da20dd026ebc0a3c76))
+* **deps:** bump org.sonatype.central:central-publishing-maven-plugin from 0.10.0 to 0.11.0 ([7bc0e00](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7bc0e002b47b22acf1c722dbe716b2c3d313ccad))
+* **deps:** bump org.springdoc:springdoc-openapi-starter-webmvc-ui ([8c34357](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8c34357889c413dede81a49b5d900945494aeeee))
+* **deps:** bump org.springdoc:springdoc-openapi-starter-webmvc-ui from 2.8.13 to 2.8.17 ([31c9aae](https://github.com/Yggdrasil-Labs/mimir-boot/commit/31c9aae47e441163d42140d38d6f9adae5f7be84))
+* **deps:** bump slf4j.version from 2.0.17 to 2.0.18 ([ad5b0c9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ad5b0c91fa466ba78ca710a37fff657aebe51913))
+* **deps:** bump slf4j.version from 2.0.17 to 2.0.18 ([cd764ea](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cd764ea0d6761cf168891ddbdae67dac40e64845))
+* **deps:** bump the caching group with 2 updates ([e443ab5](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e443ab5bdcc47fe6d16be3ff9beb01bf37b410b4))
+* **deps:** bump the caching group with 2 updates ([5817a96](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5817a9644a563a89edd07111004c88f3db76211c))
+* **deps:** bump the maven-plugins group across 1 directory with 6 updates ([06abdcb](https://github.com/Yggdrasil-Labs/mimir-boot/commit/06abdcb89643f3e01719088eac0fc9f44a32be61))
+* **deps:** bump the maven-plugins group across 1 directory with 6 updates ([7989cc1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7989cc16ab695bb5e25836506c67d21f5a81b1ca))
+* **deps:** bump the utilities group across 1 directory with 2 updates ([34e013e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/34e013e128bbc27b13398f5159128fbd7fbc0a8e))
+* **deps:** bump the utilities group across 1 directory with 2 updates ([fbd59b9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fbd59b98548a49adae89977eeb1aa84ceacabc21))
+
+
+### 💄 Code Style
+
+* **docs:** 修复全项目 markdown lint 错误并配置 markdownlint-cli2 ([3273c8b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3273c8b4e59e0c5f311b136bc40781bc1f221973))
+
 ## [2.0.4](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.3...v2.0.4) (2026-03-23)
 
 
