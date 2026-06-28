@@ -302,6 +302,202 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         verify(mockFactory).createResponse("20001", "测试", null);
     }
 
+    // ========== fallback 测试：factory 抛异常时降级返回 R.fail ==========
+
+    private MimirExceptionHandler createHandlerWithFailingFactory() {
+        ExceptionResponseFactory failingFactory = (code, message, data) -> {
+            throw new RuntimeException("factory error");
+        };
+        return new MimirExceptionHandler(failingFactory);
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnSystemException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        SystemException exception = new SystemException("SYS_001", "系统错误");
+
+        Object result = failHandler.handleSystemException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals("SYS_001", r.getCode());
+        assertEquals("系统错误", r.getMessage());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnBaseException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        BaseException exception = new BaseException("BASE_001", "基础异常") {};
+
+        Object result = failHandler.handleBaseException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals("BASE_001", r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnMethodArgumentNotValidException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        MethodArgumentNotValidException exception = mockMethodArgumentNotValidException();
+
+        Object result = failHandler.handleMethodArgumentNotValidException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnBindException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        BindException exception = mockBindException();
+
+        Object result = failHandler.handleBindException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnMissingServletRequestParameterException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        MissingServletRequestParameterException exception =
+                new MissingServletRequestParameterException("userId", "String");
+
+        Object result = failHandler.handleMissingServletRequestParameterException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.PARAM_MISSING.getCode(), r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnHandleException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        Exception exception = new RuntimeException("普通异常");
+
+        Object result = failHandler.handleException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnHandleExceptionWithIException() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        IException exception = new BaseException("IE_001", "IException异常") {};
+
+        Object result = failHandler.handleException((Exception) exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals("IE_001", r.getCode());
+    }
+
+    // ========== null-safe 分支测试 ==========
+
+    @Test
+    void testHandleHttpRequestMethodNotSupportedExceptionWithNullSupportedMethods() {
+        HttpRequestMethodNotSupportedException exception = mock(HttpRequestMethodNotSupportedException.class);
+        when(exception.getMethod()).thenReturn("DELETE");
+        when(exception.getSupportedMethods()).thenReturn(null);
+
+        Object response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
+
+        assertInstanceOf(R.class, response);
+        R<?> r = (R<?>) response;
+        assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), r.getCode());
+        assertTrue(r.getMessage().contains("DELETE"));
+    }
+
+    @Test
+    void testHandleMethodArgumentTypeMismatchExceptionWithNullRequiredType() {
+        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        when(exception.getName()).thenReturn("userId");
+        when(exception.getRequiredType()).thenReturn(null);
+
+        Object response = handler.handleMethodArgumentTypeMismatchException(exception, request);
+
+        assertInstanceOf(R.class, response);
+        R<?> r = (R<?>) response;
+        assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
+        assertTrue(r.getMessage().contains("unknown"));
+    }
+
+    @Test
+    void testHandleNoHandlerFoundExceptionWithNormalURL() {
+        NoHandlerFoundException exception = mock(NoHandlerFoundException.class);
+        when(exception.getHttpMethod()).thenReturn("GET");
+        when(exception.getRequestURL()).thenReturn("http://localhost/api/users");
+
+        Object response = handler.handleNoHandlerFoundException(exception, request);
+
+        assertInstanceOf(R.class, response);
+        R<?> r = (R<?>) response;
+        assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), r.getCode());
+        assertTrue(r.getMessage().contains("GET"));
+        assertTrue(r.getMessage().contains("http://localhost/api/users"));
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnMethodArgumentTypeMismatch() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        when(exception.getName()).thenReturn("userId");
+        when(exception.getRequiredType()).thenAnswer(invocation -> Integer.class);
+
+        Object result = failHandler.handleMethodArgumentTypeMismatchException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void shouldFallbackToRFailWhenFactoryThrowsOnHttpMessageNotReadable() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        HttpMessageNotReadableException exception =
+                new HttpMessageNotReadableException("JSON parse error", new Exception());
+
+        Object result = failHandler.handleHttpMessageNotReadableException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnHttpRequestMethodNotSupported() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        HttpRequestMethodNotSupportedException exception = mock(HttpRequestMethodNotSupportedException.class);
+        when(exception.getMethod()).thenReturn("DELETE");
+        when(exception.getSupportedMethods()).thenReturn(new String[]{"GET", "POST"});
+
+        Object result = failHandler.handleHttpRequestMethodNotSupportedException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), r.getCode());
+    }
+
+    @Test
+    void shouldFallbackToRFailWhenFactoryThrowsOnNoHandlerFound() {
+        MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
+        NoHandlerFoundException exception = mock(NoHandlerFoundException.class);
+        when(exception.getHttpMethod()).thenReturn("GET");
+        when(exception.getRequestURL()).thenReturn("http://localhost/api/users");
+
+        Object result = failHandler.handleNoHandlerFoundException(exception, request);
+
+        assertInstanceOf(R.class, result);
+        R<?> r = (R<?>) result;
+        assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), r.getCode());
+    }
+
     // ========== 辅助方法 ==========
 
     private MethodArgumentNotValidException mockMethodArgumentNotValidException() {
