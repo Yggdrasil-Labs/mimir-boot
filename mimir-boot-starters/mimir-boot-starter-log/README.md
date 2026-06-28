@@ -5,6 +5,7 @@
 ## 用途
 
 提供开箱即用的日志解决方案：
+
 - ✅ 控制台彩色输出（开发环境）
 - ✅ 文件输出，自动滚动和压缩
 - ✅ 错误日志单独文件存储
@@ -66,6 +67,7 @@ public class HelloController {
 ```
 
 **提示**：项目需要引入 Lombok 依赖：
+
 ```xml
 <dependency>
     <groupId>org.projectlombok</groupId>
@@ -118,6 +120,7 @@ public class TraceController {
 ```
 
 **日志输出示例**：
+
 ```
 2024-01-01 10:00:00.123 [http-nio-8080-exec-1] INFO  [a1b2c3d4e5f6] [c7d8e9f0] com.example.TraceController - 查询用户: id=123
                                                                ^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^
@@ -164,6 +167,7 @@ public class YourClass {
 **默认值**：`logs`（项目运行目录下的 logs 文件夹）
 
 **示例**：
+
 ```yaml
 # application.yml
 mimir:
@@ -173,6 +177,7 @@ mimir:
 ```
 
 或者使用环境变量：
+
 ```bash
 export LOG_PATH=/var/log/myapp
 ```
@@ -184,6 +189,7 @@ export LOG_PATH=/var/log/myapp
 **默认值**：`true`
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -200,6 +206,7 @@ mimir:
 **可选项**：`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -216,6 +223,7 @@ mimir:
 **说明**：影响日志文件名，如 `myapp.log`、`myapp-error.log`
 
 **示例**：
+
 ```yaml
 spring:
   application:
@@ -229,10 +237,12 @@ spring:
 **配置项**：`mimir.boot.log.access`
 
 **默认值**：
+
 - `enabled=true` - 启用访问日志
 - `slowThresholdMs=3000` - 慢接口阈值（毫秒）
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -245,26 +255,31 @@ mimir:
 **访问日志输出示例**：
 
 **成功请求（INFO 级别）**：
+
 ```
 2024-01-01 10:00:00.123 [http-nio-8080-exec-1] INFO  [a1b2c3d4e5f6] [c7d8e9f0] - IP=[192.168.1.100], Method=[GET], URI=[/api/user/123], Status=[200], Duration=[45ms], UserAgent=[Mozilla/5.0...]
 ```
 
 **慢接口（WARN 级别）**：
+
 ```
 2024-01-01 10:05:00.456 [http-nio-8080-exec-2] WARN  [b2c3d4e5f6a7] [d8e9f0a1] - IP=[192.168.1.101], Method=[POST], URI=[/api/export/report], Status=[200], Duration=[2150ms], UserAgent=[Apache-HttpClient/4.5] [慢接口]
 ```
 
 **客户端错误（4xx - WARN 级别）**：
+
 ```
 2024-01-01 10:10:00.789 [http-nio-8080-exec-3] WARN  [c3d4e5f6a7b8] [e9f0a1b2] - IP=[192.168.1.102], Method=[GET], URI=[/api/user/999], Status=[404], Duration=[12ms], UserAgent=[Mozilla/5.0...]
 ```
 
 **服务器错误（5xx - ERROR 级别）**：
+
 ```
 2024-01-01 10:15:00.012 [http-nio-8080-exec-4] ERROR [d4e5f6a7b8c9] [f0a1b2c3] - IP=[192.168.1.103], Method=[POST], URI=[/api/process], Status=[500], Duration=[230ms], UserAgent=[Mozilla/5.0...]
 ```
 
 **特点**：
+
 - 自动记录请求的 IP、HTTP 方法、URI、状态码、耗时、User-Agent
 - 支持获取真实 IP（自动处理反向代理场景）
 - **智能日志级别**（最佳实践）：
@@ -320,12 +335,12 @@ mimir:
 | `id_card` | 证件字段 | idcard=xxx |
 | `phone` | 手机号字段 | phone=13812345678 |
 | `bank_card` | 银行卡字段 | bankcard=xxx |
-| `email` | 邮箱字段 | email=xxx@example.com |
+| `email` | 邮箱字段 | email=<xxx@example.com> |
 | `name` | 姓名字段 | name=张三 |
 | `phone_number` | 纯手机号 | 13812345678 |
 | `id_card_number` | 纯身份证号 | 110101199001011234 |
 | `bank_card_number` | 纯银行卡号 | 6222021234567890 |
-| `email_address` | 纯邮箱地址 | user@example.com |
+| `email_address` | 纯邮箱地址 | <user@example.com> |
 
 **编程式扩展**：
 
@@ -355,6 +370,7 @@ SensitiveDataConverter.clearCustomPatterns();
 ```
 
 **TraceId 和 SpanId**：
+
 - 由 Micrometer Tracing 自动注入到 MDC
 - 日志格式中通过 `%X{traceId}` 和 `%X{spanId}` 输出
 - 所有日志自动包含，无需手动配置
@@ -364,6 +380,7 @@ SensitiveDataConverter.clearCustomPatterns();
 **说明**：如需在日志中显示额外信息，可以通过 MDC 手动设置
 
 **可用的工具类**：
+
 - `MdcUtil.setUserId(String)` - 设置用户ID
 - `MdcUtil.setRequestId(String)` - 设置请求ID
 - `MdcUtil.setOperation(String)` - 设置操作名称
@@ -399,6 +416,7 @@ public class UserController {
 ```
 
 **扩展方向**：
+
 - 可以通过拦截器自动提取 HTTP 请求信息（IP、路径、方法等）
 - 可以通过过滤器统一处理 MDC 的清除
 - 可以根据业务需求自定义额外的 MDC 字段
@@ -446,6 +464,7 @@ public class UserController {
 ```
 
 **说明**：
+
 - TraceId 和 SpanId 由 Micrometer Tracing 自动注入
 - 在日志中通过 `[traceId]` 和 `[spanId]` 显示
 - 如果未集成 Micrometer，这两个字段显示为空
@@ -455,9 +474,11 @@ public class UserController {
 ### 问题1：日志文件未生成
 
 **症状**：
+
 - 控制台有日志，但 `logs` 目录下没有文件
 
 **可能原因**：
+
 1. 目录权限不足
 2. 配置被覆盖
 3. 日志被禁用
@@ -465,6 +486,7 @@ public class UserController {
 **解决方案**：
 
 1. **检查目录权限**：
+
 ```bash
 # Linux/Mac
 ls -la ./logs/
@@ -474,7 +496,8 @@ mkdir -p logs && chmod 755 logs
 # 确保有写入权限
 ```
 
-2. **检查配置**：
+1. **检查配置**：
+
 ```yaml
 # 确保没有禁用日志
 mimir:
@@ -483,7 +506,8 @@ mimir:
       enabled: true  # 必须是 true
 ```
 
-3. **查看启动日志**：
+1. **查看启动日志**：
+
 ```java
 // 在启动时添加日志检查
 @PostConstruct
@@ -500,15 +524,18 @@ public void checkLog() {
 ### 问题2：日志级别不生效
 
 **症状**：
+
 - 配置了 `DEBUG` 级别，但看不到 DEBUG 日志
 
 **可能原因**：
+
 1. 环境配置覆盖
 2. 日志框架选择错误
 
 **解决方案**：
 
 1. **检查环境配置**：
+
 ```yaml
 # application-dev.yml
 logging:
@@ -516,7 +543,8 @@ logging:
     root: DEBUG  # 确保级别设置正确
 ```
 
-2. **检查使用正确的日志框架**：
+1. **检查使用正确的日志框架**：
+
 ```java
 import org.slf4j.Logger;  // ✅ 正确
 import org.slf4j.LoggerFactory;  // ✅ 正确
@@ -529,25 +557,29 @@ import org.apache.log4j.Logger;  // ❌ 错误
 ### 问题3：日志文件过大
 
 **症状**：
+
 - 日志文件快速增长，磁盘空间不足
 
 **解决方案**：
 
 1. **调整日志级别**：
+
 ```yaml
 logging:
   level:
     root: WARN  # 减少日志输出
 ```
 
-2. **减少日志文件大小**：
+1. **减少日志文件大小**：
 在 `logback-spring.xml` 中修改：
+
 ```xml
 <!-- 从 100MB 改为 50MB -->
 <maxFileSize>50MB</maxFileSize>
 ```
 
-3. **减少保留天数**：
+1. **减少保留天数**：
+
 ```xml
 <!-- 从 30 天改为 7 天 -->
 <maxHistory>7</maxHistory>
@@ -556,11 +588,13 @@ logging:
 ### 问题4：控制台日志过多
 
 **症状**：
+
 - 控制台日志刷屏，影响开发
 
 **解决方案**：
 
 1. **调整日志级别**：
+
 ```yaml
 # application-dev.yml
 logging:
@@ -568,7 +602,8 @@ logging:
     root: INFO  # 从 DEBUG 改为 INFO
 ```
 
-2. **关闭控制台输出**（仅测试用）：
+1. **关闭控制台输出**（仅测试用）：
+
 ```xml
 <!-- 在 logback-spring.xml 中注释掉 CONSOLE appender -->
 <!-- <appender-ref ref="CONSOLE"/> -->
@@ -579,11 +614,13 @@ logging:
 ### 场景1：项目中已使用 Log4j2
 
 **症状**：
+
 - 引入后出现 `SLF4J: Class path contains multiple SLF4J bindings`
 
 **解决方案**：
 
 1. **移除 Log4j2 依赖**（推荐）：
+
 ```xml
 <!-- 移除这些依赖 -->
 <dependency>
@@ -598,7 +635,8 @@ logging:
 </dependency>
 ```
 
-2. **或者**，将 Log4j2 迁移到 Logback：
+1. **或者**，将 Log4j2 迁移到 Logback：
+
 ```xml
 <!-- 添加桥接器 -->
 <dependency>
@@ -610,6 +648,7 @@ logging:
 ### 场景2：Apache Commons Logging 冲突
 
 **症状**：
+
 - 日志输出混乱，出现 `commons-logging` 相关异常
 
 **解决方案**：
@@ -633,17 +672,20 @@ logging:
 ### 场景3：用户有自定义 logback.xml
 
 **症状**：
+
 - 用户的配置覆盖了 Starter 的配置
 
 **解决方案**：
 
 1. **删除用户的自定义配置**（推荐）：
+
 ```bash
 rm src/main/resources/logback.xml
 rm src/main/resources/logback-spring.xml
 ```
 
-2. **或者**，修改 Spring 配置的优先级：
+1. **或者**，修改 Spring 配置的优先级：
+
 ```yaml
 # application.yml
 logging:
@@ -653,16 +695,19 @@ logging:
 ### 场景4：第三方库使用了其他日志框架
 
 **症状**：
+
 - 某些第三方库的日志无法输出
 
 **解决方案**：
 
 Starter 已经包含了桥接器，自动将其他日志框架桥接到 SLF4J：
+
 - `jcl-over-slf4j` - Apache Commons Logging
 - `jul-to-slf4j` - Java Util Logging
 - `log4j-over-slf4j` - Log4j
 
 如果仍有问题，检查依赖树：
+
 ```bash
 mvn dependency:tree | grep log
 ```
@@ -719,6 +764,7 @@ log.error("用户登录失败：username={}", username, e);
 #### 推荐：启用脱敏功能
 
 **配置启用脱敏**：
+
 ```yaml
 mimir:
   boot:
@@ -731,6 +777,7 @@ mimir:
 ```
 
 **使用效果**：
+
 ```java
 log.info("用户登录：password=123456");
 // 自动输出：用户登录：password=******

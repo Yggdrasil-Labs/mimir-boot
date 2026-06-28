@@ -212,6 +212,7 @@ MockDataBuilder.of(MyClass.class)
 #### BaseUnitTest
 
 单元测试基类，提供：
+
 - 自动初始化 Mockito
 - 自动清理测试环境
 - 可重写的 `setUp()` 和 `tearDown()` 方法
@@ -219,6 +220,7 @@ MockDataBuilder.of(MyClass.class)
 #### BaseIntegrationTest
 
 集成测试基类，提供：
+
 - 自动配置 Spring Boot 测试环境
 - 使用 `test` profile
 - 自动清理测试环境
@@ -226,6 +228,7 @@ MockDataBuilder.of(MyClass.class)
 #### BaseWebTest
 
 Web 测试基类，提供：
+
 - 自动配置 Spring Boot 测试环境
 - 自动配置 MockMvc
 - 使用 `test` profile
@@ -236,6 +239,7 @@ Web 测试基类，提供：
 #### @MimirBootTest
 
 简化 Spring Boot 测试配置：
+
 - 自动使用 `test` profile
 - 自动配置 Spring Boot 测试环境
 - 支持自定义配置

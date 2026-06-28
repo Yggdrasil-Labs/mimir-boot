@@ -16,7 +16,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，核心定�
 
 ## 项目结构
 
-```
+```text
 mimir-boot/
 ├── mimir-boot-parent/                         # 父 POM：插件版本、构建 profile、质量门禁
 ├── mimir-boot-bom/                            # BOM：第三方与本仓库模块版本统一管理
@@ -70,6 +70,7 @@ graph TD
 ```
 
 **依赖规则：**
+
 - 依赖只能沿声明方向流动：Starter → Common，不可反向
 - Parent 只管构建，BOM 只管版本，两者不承载运行时逻辑
 - Common 聚焦稳定公共模型，禁止依赖任何具体 Starter

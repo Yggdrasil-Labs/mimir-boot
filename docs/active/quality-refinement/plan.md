@@ -45,12 +45,14 @@ graph LR
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 **Behavior:**
 移除 `sonar.coverage.exclusions=**`，改为指定 JaCoCo XML 报告路径，让 SonarCloud 接收真实覆盖率数据。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -61,6 +63,7 @@ graph LR
 ```bash
 grep "sonar.coverage.exclusions" .github/workflows/ci.yml
 ```
+
 > 应命中 `sonar.coverage.exclusions=**`
 
 - [ ] **Step 2: Implement**
@@ -91,12 +94,14 @@ grep "jacoco.xmlReportPaths" .github/workflows/ci.yml
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 **Behavior:**
 将 `Format check` + `Compile` + `Unit tests` 三个独立 step 合并为一个 `./mvnw -B -U verify -Pci`，减少 JVM 冷启动次数。同时更新 `sonar` job 中的注释说明 build job 已一步到位。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -107,6 +112,7 @@ grep "jacoco.xmlReportPaths" .github/workflows/ci.yml
 ```bash
 grep -c "run: ./mvnw" .github/workflows/ci.yml
 ```
+
 > 应 ≥ 4（Format check + Compile + Unit tests + Build only Dependabot + sonar）
 
 - [ ] **Step 2: Implement**
@@ -141,6 +147,7 @@ grep "Unit tests" .github/workflows/ci.yml || echo "REMOVED"
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `.github/workflows/release.yml`
 - Modify: `.github/workflows/create-tag.yml`
 
@@ -148,6 +155,7 @@ grep "Unit tests" .github/workflows/ci.yml || echo "REMOVED"
 为所有 `uses:` 行缺少版本注释的补齐 `# vN` 格式注释。（ci.yml 和 release-please.yml 已有完整注释，无需修改。）
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -158,11 +166,13 @@ grep "Unit tests" .github/workflows/ci.yml || echo "REMOVED"
 ```bash
 grep -h "uses:" .github/workflows/release.yml .github/workflows/create-tag.yml | grep -v "#" | head -10
 ```
+
 > 列出缺少注释的行
 
 - [ ] **Step 2: Implement**
 
 版本映射：
+
 - `actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0` → `# v6`
 - `actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287` → `# v4`
 - `actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3` → `# v7`
@@ -177,6 +187,7 @@ grep -h "uses:" .github/workflows/release.yml .github/workflows/create-tag.yml |
 ```bash
 grep -h "uses:" .github/workflows/release.yml .github/workflows/create-tag.yml | grep -v "#"
 ```
+
 > 预期输出为空（所有行都有注释）
 
 - [ ] **Step 4: Commit**
@@ -190,6 +201,7 @@ grep -h "uses:" .github/workflows/release.yml .github/workflows/create-tag.yml |
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 - Create: `.markdownlint.json`
 
@@ -197,6 +209,7 @@ grep -h "uses:" .github/workflows/release.yml .github/workflows/create-tag.yml |
 在 CI build job 中新增 markdownlint step（Java 构建之前），并新建配置文件禁用不适合本项目的规则（行长度、HTML、首行标题）。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -212,6 +225,7 @@ grep "markdownlint" .github/workflows/ci.yml || echo "NOT_EXISTS"
 - [ ] **Step 2: Implement**
 
 1. 创建 `.markdownlint.json`：
+
 ```json
 {
   "MD013": false,
@@ -221,7 +235,8 @@ grep "markdownlint" .github/workflows/ci.yml || echo "NOT_EXISTS"
 }
 ```
 
-2. 在 ci.yml 的 `Make Maven Wrapper executable` step 之后、`Build and test` step 之前插入：
+1. 在 ci.yml 的 `Make Maven Wrapper executable` step 之后、`Build and test` step 之前插入：
+
 ```yaml
       - name: Markdown lint
         if: github.actor != 'dependabot[bot]'
@@ -250,12 +265,14 @@ grep "Markdown lint" .github/workflows/ci.yml
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `README.md`
 
 **Behavior:**
 从 README 模块表中移除 governance/metrics/security 三行，改为"未来方向"文字段落。同步清理 README 中的模块文档链接、项目结构树和 Mermaid 图。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -268,11 +285,13 @@ grep "governance" README.md
 grep "metrics" README.md
 grep "security" README.md
 ```
+
 > 三行都应命中模块表中的规划条目
 
 - [ ] **Step 2: Implement**
 
 README.md：
+
 - 删除模块表中的 3 行（governance / metrics / security）
 - 在模块表后添加"未来方向"段落
 - 删除项目结构树中的 3 行
@@ -301,6 +320,7 @@ grep "style Governance" README.md || echo "REMOVED"
 **Depends on:** T5
 
 **Files:**
+
 - Move: `docs/active/exception-handler-adapter/` → `docs/archive/exception-handler-adapter/`
 - Modify: `docs/archive/index.md`
 - Modify: `docs/active/index.md`
@@ -308,11 +328,13 @@ grep "style Governance" README.md || echo "REMOVED"
 - Modify: `AGENTS.md`（移除 `docs/generated/` 引用如有）
 
 **Behavior:**
+
 1. 归档 exception-handler-adapter（移动目录 + 更新 design.md 头部状态）
 2. 更新 tech-debt-tracker：TD-001~TD-004 全部标记为已解决或已降级
 3. 移除 AGENTS.md 中对 `docs/generated/` 的无效引用
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -361,12 +383,14 @@ grep "archived" docs/archive/exception-handler-adapter/design.md
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `README.md`
 
 **Behavior:**
 精简"特性展示"段落，每个 starter 的展示内容压缩为 2-3 行摘要 + 链接到模块 README。移除大段代码示例（与模块 README 重复）。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -377,11 +401,13 @@ grep "archived" docs/archive/exception-handler-adapter/design.md
 ```bash
 wc -l README.md
 ```
+
 > 记录当前行数
 
 - [ ] **Step 2: Implement**
 
 精简策略：
+
 - "智能日志方案"段：保留功能要点列表，删除代码示例和详细日志格式示例
 - "配置加密脱敏"段：保留功能要点列表，删除代码示例
 - "Web 层增强"段：保留功能要点列表，删除代码示例
@@ -393,17 +419,20 @@ wc -l README.md
 ```bash
 wc -l README.md
 ```
+
 > 行数应比 baseline 减少 ≥ 20%
 
 ```bash
 # 验证特性展示段精简幅度
 sed -n '/## 💡 特性展示/,/## 📚 模块文档/p' README.md | wc -l
 ```
+
 > 特性展示段行数应比 baseline 减少 ≥ 50%
 
 ```bash
 grep "详细文档请参考" README.md | wc -l
 ```
+
 > 应 ≥ 4（每个 starter 展示段都有链接）
 
 - [ ] **Step 4: Commit**
@@ -417,6 +446,7 @@ grep "详细文档请参考" README.md | wc -l
 **Depends on:** 无
 
 **Files:**
+
 - Create: `mimir-boot-starters/mimir-boot-starter-web/src/test/java/com/yggdrasil/labs/web/config/WebAutoConfigurationIT.java`
 - Create: `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/config/ExceptionAutoConfigurationIT.java`
 
@@ -424,6 +454,7 @@ grep "详细文档请参考" README.md | wc -l
 为两个 starter 的 AutoConfiguration 补充 `@SpringBootTest` 级集成测试，验证 Bean 注册正确性和 `@ConditionalOnMissingBean` 覆盖行为。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -439,6 +470,7 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 - [ ] **Step 2: Implement**
 
 `WebAutoConfigurationIT.java`：
+
 ```java
 // 使用 WebApplicationContextRunner（提供 mock servlet 环境，满足 @ConditionalOnWebApplication）
 // 配合 AutoConfigurations.of(WebAutoConfiguration.class)
@@ -449,6 +481,7 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 ```
 
 `ExceptionAutoConfigurationIT.java`：
+
 ```java
 // 使用 WebApplicationContextRunner（ExceptionAutoConfiguration 有 @ConditionalOnWebApplication 条件）
 // 配合 AutoConfigurations.of(ExceptionAutoConfiguration.class)
@@ -463,6 +496,7 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 ./mvnw test -pl mimir-boot-starters/mimir-boot-starter-web -Dtest=WebAutoConfigurationIT -Pci
 ./mvnw test -pl mimir-boot-starters/mimir-boot-starter-exception -Dtest=ExceptionAutoConfigurationIT -Pci
 ```
+
 > 全部 PASS
 
 - [ ] **Step 4: Commit**
@@ -476,12 +510,14 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 **Depends on:** 无
 
 **Files:**
+
 - Modify: `mimir-boot-common/src/main/java/com/yggdrasil/labs/common/exception/ErrorCode.java`
 
 **Behavior:**
 为 `ErrorCode` 枚举值补充逐项 Javadoc。实施前先跑 `javadoc:javadoc` 确认实际 warning，如其他类也有 warning 则按需扩大范围。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -492,14 +528,17 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 ```bash
 ./mvnw javadoc:javadoc -pl mimir-boot-common -Dquiet=true 2>&1 | grep -i "warning" | head -20
 ```
+
 > 记录实际 warning 数量和来源文件，确认需要补齐的范围
 
 - [ ] **Step 2: Implement**
 
 为 `ErrorCode` 枚举的每个值补充 Javadoc：
+
 ```java
 /** 说明该错误码的含义和典型使用场景 */
 ```
+
 若 Step 1 发现其他文件有 warning，一并修复。
 
 - [ ] **Step 3: Verify**
@@ -507,6 +546,7 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 ```bash
 ./mvnw javadoc:javadoc -pl mimir-boot-common -Dquiet=true 2>&1 | grep -i "warning" | wc -l
 ```
+
 > 预期 0 warning
 
 - [ ] **Step 4: Commit**
@@ -525,6 +565,7 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 执行全量构建验证，确保所有改动不破坏现有功能。验证通过后更新 `docs/active/index.md`。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -535,6 +576,7 @@ test ! -f mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/ygg
 ```bash
 git status --short
 ```
+
 > 工作区干净
 
 - [ ] **Step 2: Implement**
@@ -548,6 +590,7 @@ git status --short
 ```bash
 echo $?
 ```
+
 > 退出码 0
 
 ```bash

@@ -48,6 +48,7 @@ public class UserController {
 ```
 
 **响应示例**：
+
 ```json
 {
   "code": "00000",
@@ -69,6 +70,7 @@ public class UserController {
 **默认值**：`true`
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -81,6 +83,7 @@ mimir:
 **配置项**：`mimir.boot.web.cors`
 
 **默认值**：
+
 - `enabled: true` - 启用 CORS
 - `allowedOrigins: ["*"]` - 允许所有源
 - `allowedMethods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]` - 允许所有常用方法
@@ -89,6 +92,7 @@ mimir:
 - `maxAge: 3600s` - 预检请求有效期 1 小时
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -113,6 +117,7 @@ mimir:
 ```
 
 **禁用 CORS**：
+
 ```yaml
 mimir:
   boot:
@@ -126,6 +131,7 @@ mimir:
 **配置项**：`mimir.boot.web.serialization`
 
 **默认值**：
+
 - `dateTimeFormat: "yyyy-MM-dd HH:mm:ss"` - 日期时间格式
 - `dateFormat: "yyyy-MM-dd"` - 日期格式
 - `timeFormat: "HH:mm:ss"` - 时间格式
@@ -135,6 +141,7 @@ mimir:
 - `ignoreUnknownProperties: true` - 忽略未知属性
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -150,6 +157,7 @@ mimir:
 ```
 
 **日期时间序列化示例**：
+
 ```java
 public class UserVO {
     private LocalDateTime createTime;
@@ -159,6 +167,7 @@ public class UserVO {
 ```
 
 **序列化结果**：
+
 ```json
 {
   "createTime": "2024-01-01 12:00:00",
@@ -172,12 +181,14 @@ public class UserVO {
 **配置项**：`mimir.boot.web.security`
 
 **默认值**：
+
 - `enabled: true` - 启用安全增强
 - `maxRequestSize: 10` - 最大请求大小 10MB
 - `maxFileSize: 10` - 单个文件最大大小 10MB
 - `xssProtectionEnabled: true` - 启用 XSS 防护
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -190,6 +201,7 @@ mimir:
 ```
 
 **注意**：请求大小限制需要配合 Spring Boot 配置使用：
+
 ```yaml
 spring:
   servlet:
@@ -203,10 +215,12 @@ spring:
 **配置项**：`mimir.boot.web.response`
 
 **默认值**：
+
 - `enabled: true` - 启用响应增强
 - `autoFillTraceId: true` - 自动填充 traceId
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -217,6 +231,7 @@ mimir:
 ```
 
 **禁用响应增强**：
+
 ```yaml
 mimir:
   boot:
@@ -230,11 +245,13 @@ mimir:
 ### 1. Trace 拦截器
 
 **功能**：
+
 - 自动生成或从请求头获取 traceId
 - 将 traceId 设置到 MDC 和响应头 `X-Trace-Id`
 - 支持与 Micrometer Tracing 集成（自动禁用）
 
 **使用方式**：
+
 ```java
 // 自动处理，无需手动编码
 // 1. 从请求头 X-Trace-Id 获取（如果存在）
@@ -243,29 +260,34 @@ mimir:
 ```
 
 **请求头示例**：
+
 ```http
 GET /api/user/123 HTTP/1.1
 X-Trace-Id: a1b2c3d4e5f6
 ```
 
 **响应头示例**：
+
 ```http
 HTTP/1.1 200 OK
 X-Trace-Id: a1b2c3d4e5f6
 ```
 
 **与 Micrometer Tracing 集成**：
+
 - 如果检测到 classpath 中存在 `io.micrometer.tracing.Tracer`，Trace 拦截器会自动禁用
 - 由 Micrometer Tracing 或 `starter-trace` 模块接管 Trace 逻辑
 
 ### 2. Web 拦截器
 
 **功能**：
+
 - 自动提取客户端真实 IP（支持反向代理场景）
 - 将 IP 设置到 MDC
 - 请求处理完成后清理 MDC（防止内存泄漏）
 
 **IP 提取优先级**：
+
 1. `X-Forwarded-For` 请求头
 2. `X-Real-IP` 请求头
 3. `Proxy-Client-IP` 请求头
@@ -273,6 +295,7 @@ X-Trace-Id: a1b2c3d4e5f6
 5. `getRemoteAddr()`
 
 **使用方式**：
+
 ```java
 // 在日志中使用 IP（自动设置到 MDC）
 log.info("用户登录：IP={}", org.slf4j.MDC.get("ip"));
@@ -281,11 +304,13 @@ log.info("用户登录：IP={}", org.slf4j.MDC.get("ip"));
 ### 3. 响应体增强器
 
 **功能**：
+
 - 自动为 `R` 响应对象填充 traceId
 - 仅处理返回类型为 `R` 的接口
 - 仅处理 `@RestController` 注解的类
 
 **使用示例**：
+
 ```java
 @RestController
 public class UserController {
@@ -299,6 +324,7 @@ public class UserController {
 ```
 
 **响应示例**：
+
 ```json
 {
   "code": "00000",
@@ -309,6 +335,7 @@ public class UserController {
 ```
 
 **跳过填充**：
+
 ```java
 // 如果响应已包含 traceId，会跳过填充
 R<UserVO> response = R.success(UserVO.from(user));
@@ -319,11 +346,13 @@ return response;  // 不会覆盖已有的 traceId
 ### 4. CORS 跨域配置
 
 **功能**：
+
 - 统一配置跨域资源共享策略
 - 支持通过配置文件自定义跨域规则
 - 提供合理的默认配置（允许所有源、所有方法）
 
 **默认配置**：
+
 ```yaml
 mimir:
   boot:
@@ -338,6 +367,7 @@ mimir:
 ```
 
 **生产环境配置示例**：
+
 ```yaml
 mimir:
   boot:
@@ -365,11 +395,13 @@ mimir:
 ### 5. Jackson 序列化配置
 
 **功能**：
+
 - 统一日期时间格式
 - 配置空值处理策略
 - 配置序列化特性
 
 **日期时间格式**：
+
 ```java
 // 默认格式：yyyy-MM-dd HH:mm:ss
 LocalDateTime dateTime = LocalDateTime.now();
@@ -377,6 +409,7 @@ LocalDateTime dateTime = LocalDateTime.now();
 ```
 
 **空值处理**：
+
 ```yaml
 mimir:
   boot:
@@ -386,6 +419,7 @@ mimir:
 ```
 
 **示例**：
+
 ```java
 public class UserVO {
     private String name = "test";
@@ -394,6 +428,7 @@ public class UserVO {
 ```
 
 **序列化结果**（`writeNulls: false`）：
+
 ```json
 {
   "name": "test"
@@ -402,6 +437,7 @@ public class UserVO {
 ```
 
 **序列化结果**（`writeNulls: true`）：
+
 ```json
 {
   "name": "test",
@@ -453,6 +489,7 @@ Starter Web 会自动检测并禁用内置的 Trace 拦截器，由 Micrometer T
 如果需要手动控制 Trace 逻辑，可以：
 
 1. **禁用响应增强的自动填充 traceId**：
+
 ```yaml
 mimir:
   boot:
@@ -461,7 +498,8 @@ mimir:
         autoFillTraceId: false
 ```
 
-2. **自定义 TraceInterceptor**：
+1. **自定义 TraceInterceptor**：
+
 ```java
 @Bean
 public TraceInterceptor customTraceInterceptor() {
@@ -566,4 +604,3 @@ Apache License 2.0
 ## 作者
 
 Yggdrasil Labs
-

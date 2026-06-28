@@ -34,12 +34,14 @@ graph LR
 **Depends on:** 无
 
 **Files:**
+
 - Create: `mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/handler/ExceptionResponseFactory.java`
 
 **Behavior:**
 定义响应格式转换的函数式接口，接受 code/message/data 返回任意响应对象。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -77,6 +79,7 @@ grep "ExceptionResponseFactory" mimir-boot-starters/mimir-boot-starter-exception
 **Depends on:** T1
 
 **Files:**
+
 - Create: `mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/handler/DefaultExceptionResponseFactory.java`
 - Test: `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/handler/DefaultExceptionResponseFactoryTest.java`
 
@@ -84,6 +87,7 @@ grep "ExceptionResponseFactory" mimir-boot-starters/mimir-boot-starter-exception
 默认实现，data 为 Serializable 时返回 `R<>(code, message, data)`，否则返回 `R.fail(code, message)`。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -109,6 +113,7 @@ void shouldReturnRFailWhenDataNotSerializable() {
     assertNull(((R<?>) result).getData());
 }
 ```
+
 Run: `./mvnw test -pl mimir-boot-starters/mimir-boot-starter-exception -Dtest=DefaultExceptionResponseFactoryTest -Pci`
 Expected: **FAIL** — 类不存在
 
@@ -135,6 +140,7 @@ Expected: **PASS**
 **Depends on:** T1
 
 **Files:**
+
 - Create: `mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/handler/MimirExceptionHandler.java`
 - Delete: `mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/handler/GlobalExceptionHandler.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/handler/GlobalExceptionHandlerTest.java` → 重命名为 `MimirExceptionHandlerTest.java`
@@ -143,6 +149,7 @@ Expected: **PASS**
 重命名 GlobalExceptionHandler → MimirExceptionHandler，加 `@Order(LOWEST_PRECEDENCE)`，构造函数注入 ExceptionResponseFactory，所有返回值通过 factory 构建。日志和 @ResponseStatus 不变。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -162,12 +169,14 @@ void shouldDelegateToFactory() {
     verify(mockFactory).createResponse("B001", "biz error", null);
 }
 ```
+
 Run: `./mvnw test -pl mimir-boot-starters/mimir-boot-starter-exception -Dtest=MimirExceptionHandlerTest -Pci`
 Expected: **FAIL** — 类不存在
 
 - [ ] **Step 2: Implement**
 
 基于 GlobalExceptionHandler 改造：
+
 1. 重命名类，加 `@Order(Ordered.LOWEST_PRECEDENCE)`
 2. 加 `private final ExceptionResponseFactory responseFactory` + 构造函数
 3. 所有方法返回类型 `R<...>` → `Object`
@@ -189,6 +198,7 @@ Expected: **PASS**
 **Depends on:** T2, T3
 
 **Files:**
+
 - Modify: `mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/config/ExceptionAutoConfiguration.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/config/ExceptionAutoConfigurationTest.java`
 
@@ -196,6 +206,7 @@ Expected: **PASS**
 用 `@ConditionalOnMissingBean` 注册 ExceptionResponseFactory 和 MimirExceptionHandler，允许接入方覆盖。
 
 **Execution:**
+
 - **Status:** pending
 - **Commit SHA:** null
 - **Attempts:** 0
@@ -215,12 +226,14 @@ void shouldRegisterDefaultFactoryWhenNoneProvided() {
     // 无自定义 factory 时，默认 factory 被注册
 }
 ```
+
 Run: `./mvnw test -pl mimir-boot-starters/mimir-boot-starter-exception -Dtest=ExceptionAutoConfigurationTest -Pci`
 Expected: **FAIL** — 旧配置不兼容新 Bean 签名
 
 - [ ] **Step 2: Implement**
 
 修改 ExceptionAutoConfiguration：
+
 1. 删除旧 `globalExceptionHandler()` 方法
 2. 新增 `exceptionResponseFactory()` + `@ConditionalOnMissingBean`
 3. 新增 `mimirExceptionHandler(ExceptionResponseFactory)` + `@ConditionalOnMissingBean`

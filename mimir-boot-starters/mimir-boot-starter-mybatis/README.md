@@ -25,6 +25,7 @@
 ```
 
 **注意**：
+
 - 需要同时配置数据源（如 HikariCP、Druid 等）
 - 从 MyBatis-Plus 3.5.9 开始，分页插件需要单独引入 `mybatis-plus-jsqlparser` 依赖，本 Starter 已自动包含
 
@@ -80,6 +81,7 @@ Skipping MapperFactoryBean with name 'xxxMapper' and 'xxx.xxx.mapper.XxxMapper' 
 **解决方案**：
 
 1. **推荐方式**：在 Mapper 接口上使用 `@Mapper` 注解，Starter 会自动扫描并注册（推荐）
+
    ```java
    @Mapper
    public interface UserMapper extends BaseMapper<User> {
@@ -88,6 +90,7 @@ Skipping MapperFactoryBean with name 'xxxMapper' and 'xxx.xxx.mapper.XxxMapper' 
    ```
 
 2. **如果使用 `@MapperScan`**：移除 Mapper 接口上的 `@Mapper` 注解，统一使用 `@MapperScan` 扫描
+
    ```java
    @SpringBootApplication
    @MapperScan("com.example.mapper")
@@ -138,6 +141,7 @@ public class User {
 #### 启用审计功能
 
 审计功能默认启用，自动填充以下字段：
+
 - `createBy` - 创建人
 - `createTime` - 创建时间
 - `updateBy` - 更新人
@@ -244,6 +248,7 @@ public class CustomCryptoKeyProvider implements CryptoKeyProvider {
 ```
 
 **安全提示**：
+
 - 生产环境请使用密钥管理服务（如 Vault、KMS）动态获取密钥
 - 当前实现使用 AES/ECB 模式，仅用于演示；生产环境建议使用 AES-GCM 等更安全的模式
 
@@ -602,6 +607,7 @@ public class MybatisConfig {
 **症状**：插入/更新记录时，`createBy`、`updateTime` 等字段为 null
 
 **解决方案**：
+
 1. 确认实体类字段名与 `AuditMetaObjectHandler` 中定义的字段名一致
 2. 检查是否注册了自定义 `MetaObjectHandler`（会覆盖默认配置）
 
@@ -622,6 +628,7 @@ public class CustomMetaObjectHandler implements MetaObjectHandler {
 **症状**：使用 `Page` 对象查询，但没有进行分页
 
 **解决方案**：
+
 1. 确认已引入 `mimir-boot-starter-mybatis` 依赖
 2. 确认使用了正确的 `Page` 类：
 
@@ -639,6 +646,7 @@ import com.github.pagehelper.Page;  // 这是 PageHelper 的类
 **症状**：查询加密字段时抛出解密异常
 
 **解决方案**：
+
 1. 确认使用了对应的 TypeHandler
 2. 检查密钥配置是否正确
 3. 确认数据库中的值是加密后的 Base64 字符串
@@ -654,6 +662,7 @@ private String encryptedField;
 **症状**：配置了 `enable-json-sql-log: true`，但没有 JSON 日志
 
 **解决方案**：
+
 1. 检查日志级别配置（JSON 日志使用 INFO 级别）
 2. 确认日志记录器名称：`SQL.JSON`
 3. 检查环境配置（开发/测试环境默认启用）
@@ -684,4 +693,3 @@ Apache License 2.0
 ## 作者
 
 Yggdrasil Labs
-

@@ -5,6 +5,7 @@
 Mimir Boot 自 v2.0.4 发布以来（2026-03-23），已完成 exception-handler-adapter 功能并积累了依赖更新。release-please 已准备好 v2.1.0 Release PR。
 
 当前存在几类工程债务：
+
 1. SonarCloud CI 用 `sonar.coverage.exclusions=**` 完全排除覆盖率，Quality Gate 形同虚设
 2. CI workflow 结构冗余（build job 分三步启动 JVM、release.yml 两个 publish job 大量重复）
 3. README 列了 governance/metrics/security 三个不存在的模块，给接入方错误预期
@@ -56,6 +57,7 @@ graph TD
 **文件**: `.github/workflows/ci.yml`
 
 OLD:
+
 ```yaml
           ./mvnw -B clean verify sonar:sonar -Pci \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -65,6 +67,7 @@ OLD:
 ```
 
 NEW:
+
 ```yaml
           ./mvnw -B clean verify sonar:sonar -Pci \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -80,6 +83,7 @@ NEW:
 将 `Format check` + `Compile` + `Unit tests` 三个 step 合并为一个 step：
 
 OLD (3 个 step):
+
 ```yaml
       - name: Format check
         if: github.actor != 'dependabot[bot]'
@@ -95,6 +99,7 @@ OLD (3 个 step):
 ```
 
 NEW (1 个 step):
+
 ```yaml
       - name: Build and test
         if: github.actor != 'dependabot[bot]'
@@ -108,11 +113,13 @@ NEW (1 个 step):
 为缺少版本注释的 `uses:` 行补齐 `# vN` 注释（ci.yml 和 release-please.yml 已有完整注释，无需修改）。示例：
 
 OLD:
+
 ```yaml
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 ```
 
 NEW:
+
 ```yaml
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 ```
@@ -149,6 +156,7 @@ NEW:
 模块表中移除 governance/metrics/security 三行，改为在表后新增"未来方向"小节：
 
 OLD (表中 3 行):
+
 ```markdown
 | `mimir-boot-starter-governance`        | 服务治理（限流、熔断、重试）              | 🔄 规划中 |
 | `mimir-boot-starter-metrics`           | 指标监控（Metrics 采集与上报）           | 🔄 规划中 |
@@ -156,6 +164,7 @@ OLD (表中 3 行):
 ```
 
 NEW (表后):
+
 ```markdown
 ### 🔮 未来方向
 
@@ -169,6 +178,7 @@ NEW (表后):
 ```
 
 同步清理 README.md 中：
+
 - 模块文档列表中 governance / metrics / security 链接（第 345-347 行）
 - 项目结构树中 3 行目录描述（第 366-368 行）
 - Mermaid 图中 Governance / Metrics / Security 节点、规划依赖箭头和 style 行（第 393-429 行）
@@ -180,6 +190,7 @@ NEW (表后):
 **目录移动**: `docs/active/exception-handler-adapter/` → `docs/archive/exception-handler-adapter/`
 
 在 `design.md` 头部追加：
+
 ```
 status: archived
 archived-date: 2026-06-26
@@ -201,6 +212,7 @@ archived-date: 2026-06-26
 ### DOC-5: 更新 tech-debt-tracker
 
 解决/降级所有 TD 条目：
+
 - TD-001: 通过 DOC-3 解决
 - TD-002: 通过 DOC-4 解决（标记为"不适用"）
 - TD-003: 通过 CI-4 解决
@@ -261,6 +273,7 @@ class ExceptionAutoConfigurationIT {
 ### MOD-3: common 模块 Javadoc 补齐
 
 **文件**: `mimir-boot-common/src/main/java/com/yggdrasil/labs/common/` 下以下类：
+
 - `exception/ErrorCode.java` — 补充枚举值逐项 Javadoc
 
 > 注：`R.java`、`BizException.java`、`PageResult.java`、`PageRequest.java`、`PageQuery.java` 经检查已有完善 Javadoc，无需修改。实施时先跑 `./mvnw javadoc:javadoc -pl mimir-boot-common` 确认实际 warning，按需扩大范围。

@@ -57,6 +57,7 @@ public class UserController {
 ```
 
 **响应示例**：
+
 ```json
 {
   "code": "20001",
@@ -88,6 +89,7 @@ public class PaymentService {
 ```
 
 **响应示例**（HTTP 500）：
+
 ```json
 {
   "code": "10000",
@@ -126,6 +128,7 @@ public class CreateUserRequest {
 ```
 
 **请求示例**（参数校验失败）：
+
 ```json
 POST /api/user
 {
@@ -135,6 +138,7 @@ POST /api/user
 ```
 
 **响应示例**（HTTP 400）：
+
 ```json
 {
   "code": "30001",
@@ -156,6 +160,7 @@ POST /api/user
 **默认值**：`true`
 
 **示例**：
+
 ```yaml
 mimir:
   boot:
@@ -164,6 +169,7 @@ mimir:
 ```
 
 **禁用全局异常处理**：
+
 ```yaml
 mimir:
   boot:
@@ -180,6 +186,7 @@ mimir:
 - **场景**：数据不存在、数据已存在、操作不允许等
 
 **示例**：
+
 ```java
 throw new BizException(ErrorCode.DATA_NOT_FOUND);
 throw new BizException("20001", "用户不存在");
@@ -192,6 +199,7 @@ throw new BizException("20001", "用户不存在");
 - **场景**：系统错误、系统繁忙、系统超时、系统不可用等
 
 **示例**：
+
 ```java
 throw new SystemException(ErrorCode.SYSTEM_ERROR);
 throw new SystemException("10000", "系统错误", cause);
@@ -205,6 +213,7 @@ throw new SystemException("10000", "系统错误", cause);
 - **触发条件**：使用 `@Valid` 注解校验方法参数失败
 
 **示例**：
+
 ```java
 @PostMapping("/api/user")
 public R<UserVO> createUser(@Valid @RequestBody CreateUserRequest request) {
@@ -218,6 +227,7 @@ public R<UserVO> createUser(@Valid @RequestBody CreateUserRequest request) {
 - **触发条件**：使用 `@ModelAttribute` 绑定时失败
 
 **示例**：
+
 ```java
 @GetMapping("/api/user")
 public R<UserVO> getUser(@Valid @ModelAttribute GetUserRequest request) {
@@ -233,6 +243,7 @@ public R<UserVO> getUser(@Valid @ModelAttribute GetUserRequest request) {
 - **触发条件**：缺少必需的请求参数（如 `@RequestParam(required = true)`）
 
 **示例**：
+
 ```java
 @GetMapping("/api/user")
 public R<UserVO> getUser(@RequestParam(required = true) Long id) {
@@ -248,6 +259,7 @@ public R<UserVO> getUser(@RequestParam(required = true) Long id) {
 - **触发条件**：请求参数类型不匹配
 
 **示例**：
+
 ```java
 @GetMapping("/api/user/{id}")
 public R<UserVO> getUser(@PathVariable Long id) {
@@ -256,6 +268,7 @@ public R<UserVO> getUser(@PathVariable Long id) {
 ```
 
 **响应示例**：
+
 ```json
 {
   "code": "30001",
@@ -273,6 +286,7 @@ public R<UserVO> getUser(@PathVariable Long id) {
 - **触发条件**：JSON 解析失败、请求体格式错误等
 
 **示例**：
+
 ```json
 POST /api/user
 {
@@ -282,6 +296,7 @@ POST /api/user
 ```
 
 **响应示例**：
+
 ```json
 {
   "code": "30001",
@@ -299,6 +314,7 @@ POST /api/user
 - **触发条件**：请求方法不支持（如用 POST 请求 GET 接口）
 
 **响应示例**：
+
 ```json
 {
   "code": "30003",
@@ -316,6 +332,7 @@ POST /api/user
 - **触发条件**：请求路径不存在
 
 **注意**：需要在配置文件中启用：
+
 ```yaml
 spring:
   mvc:
@@ -326,6 +343,7 @@ spring:
 ```
 
 **响应示例**：
+
 ```json
 {
   "code": "20001",
@@ -343,10 +361,12 @@ spring:
 - **触发条件**：所有未被上述处理器捕获的异常
 
 **处理逻辑**：
+
 1. 如果异常实现了 `IException` 接口，使用其错误码和消息
 2. 否则使用默认系统错误：`ErrorCode.SYSTEM_ERROR`
 
 **响应示例**：
+
 ```json
 {
   "code": "10000",
@@ -386,11 +406,13 @@ spring:
 - **未捕获异常**：`ERROR` 级别
 
 **日志示例**：
+
 ```
 2024-01-01 10:00:00.123 [http-nio-8080-exec-1] WARN  [a1b2c3d4e5f6] com.yggdrasil.labs.exception.handler.GlobalExceptionHandler - 业务异常: code=20001, message=用户不存在, uri=/api/user/123
 ```
 
 **安全特性**：
+
 - 自动使用 `LogSanitizer.sanitize()` 清理日志内容，防止日志注入攻击
 
 ## 最佳实践
@@ -524,4 +546,3 @@ Apache License 2.0
 ## 作者
 
 Yggdrasil Labs
-

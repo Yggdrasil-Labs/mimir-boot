@@ -284,4 +284,3 @@ BOM 的版本与 Mimir Boot 主版本保持一致。当需要更新依赖版本�
 ## 📄 许可证
 
 本项目采用 [Apache License 2.0](../LICENSE) 许可证。
-

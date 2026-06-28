@@ -62,6 +62,7 @@ mvn clean compile
 编译后会自动生成以下文件：
 
 **生成的 Mapper 接口**：
+
 ```java
 // 位置：com/example/mapper/UserMapper.java
 package com.example.mapper;
@@ -76,6 +77,7 @@ public interface UserMapper extends BaseMapper<User> {
 ```
 
 **生成的 Service 接口**：
+
 ```java
 // 位置：com/example/service/UserService.java
 package com.example.service;
@@ -88,6 +90,7 @@ public interface UserService extends IService<User> {
 ```
 
 **生成的 ServiceImpl 实现类**：
+
 ```java
 // 位置：com/example/service/impl/UserServiceImpl.java
 package com.example.service.impl;
@@ -214,6 +217,7 @@ public class User {
 ### 示例说明
 
 假设实体类为：
+
 ```java
 package com.example.entity;
 
@@ -224,6 +228,7 @@ public class User {
 ```
 
 生成的代码位置：
+
 - `com.example.entity.mapper.UserMapper`
 - `com.example.entity.service.UserService`
 - `com.example.entity.service.impl.UserServiceImpl`
@@ -242,11 +247,13 @@ public class UserDO {
 ```
 
 生成的代码位置（注意类名去掉了 DO）：
+
 - `com.example.entity.mapper.UserMapper`（不是 `UserDOMapper`）
 - `com.example.entity.service.UserService`（不是 `UserDOService`）
 - `com.example.entity.service.impl.UserServiceImpl`（不是 `UserDOServiceImpl`）
 
 生成的代码中，实体类引用仍然使用原始类名 `UserDO`：
+
 ```java
 public interface UserMapper extends BaseMapper<UserDO> {
     // 实体类引用保持原样
@@ -350,6 +357,7 @@ public interface UserMapperCustom {
 ```
 
 对应的 XML：
+
 ```xml
 <!-- src/main/resources/mapper/UserMapper.xml -->
 <mapper namespace="com.example.mapper.UserMapperCustom">
@@ -372,6 +380,7 @@ public interface UserMapperCustom {
 **症状**：标注了 `@AutoMybatis`，但编译后没有生成对应的 Mapper、Service
 
 **可能原因**：
+
 1. 依赖未正确配置（缺少 `provided` 作用域）
 2. IDE 未启用注解处理器
 3. Maven 编译插件配置禁用了注解处理
@@ -379,6 +388,7 @@ public interface UserMapperCustom {
 **解决方案**：
 
 1. **检查依赖配置**：
+
 ```xml
 <dependency>
     <groupId>com.yggdrasil.labs</groupId>
@@ -387,7 +397,8 @@ public interface UserMapperCustom {
 </dependency>
 ```
 
-2. **检查 Maven 编译插件配置**：
+1. **检查 Maven 编译插件配置**：
+
 ```xml
 <plugin>
     <groupId>org.apache.maven.plugins</groupId>
@@ -400,11 +411,12 @@ public interface UserMapperCustom {
 </plugin>
 ```
 
-3. **IDE 配置（IntelliJ IDEA）**：
+1. **IDE 配置（IntelliJ IDEA）**：
    - Settings → Build, Execution, Deployment → Compiler → Annotation Processors
    - 勾选 "Enable annotation processing"
 
-4. **手动触发编译**：
+2. **手动触发编译**：
+
 ```bash
 mvn clean compile
 ```
@@ -414,6 +426,7 @@ mvn clean compile
 **症状**：生成的代码不在预期的包路径下
 
 **解决方案**：
+
 1. 检查 `@AutoMybatis` 注解的配置
 2. 确认实体类的包路径
 3. 生成的代码位置为：`实体类包名 + 配置的 package`
@@ -425,8 +438,10 @@ mvn clean compile
 **原因**：生成的代码会在每次编译时重新生成，覆盖之前的修改
 
 **解决方案**：
+
 1. **不要直接修改生成的类**
 2. **创建扩展类**（推荐）：
+
 ```java
 // 不要修改生成的 UserServiceImpl
 // 而是创建扩展类
@@ -447,6 +462,7 @@ public class UserServiceExt extends UserServiceImpl {
 **症状**：多个实体类使用相同的配置，生成的类名冲突
 
 **解决方案**：
+
 1. 为不同的实体类使用不同的包路径配置
 2. 使用不同的命名后缀
 
@@ -495,6 +511,7 @@ public class User {
 ```
 
 **优势**：
+
 - ✅ 减少样板代码
 - ✅ 统一代码风格
 - ✅ 降低出错概率
@@ -520,4 +537,3 @@ Apache License 2.0
 ## 作者
 
 Yggdrasil Labs
-

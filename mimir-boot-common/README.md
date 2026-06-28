@@ -69,6 +69,7 @@ throw new SystemException("10000", "系统错误", cause);
 ### 2. 响应格式
 
 - **R** - 统一响应结果
+
 ```java
 return R.success(data);
 return R.fail("20001", "用户不存在");
@@ -77,6 +78,7 @@ return R.fail("20001", "用户不存在");
 ### 3. 分页
 
 - **PageRequest** - 分页请求参数（自动校验）
+
 ```java
 // 构造时自动校验参数
 PageRequest request = new PageRequest(1L, 10L);
@@ -88,22 +90,26 @@ PageRequest request = PageRequest.of(1L, 10L, "createTime", "DESC");
 #### PageRequest 使用说明
 
 **字段说明：**
+
 - `pageIndex`：页码，从 1 开始（默认 1）
 - `pageSize`：页大小，最大 1000（默认 10）
 - `orderBy`：排序字段（可选）
 - `orderDirection`：排序方向，ASC/DESC（默认 ASC）
 
 **自动校验规则：**
+
 - 构造时调用 `validateAndCorrect()` 自动校验并修正参数：
   - `pageIndex` 必须 >= 1，否则修正为默认值 1
   - `pageSize` 必须在 1 到 MAX_PAGE_SIZE(1000) 之间，否则修正为默认值 10 或最大值
   - `orderDirection` 必须是 ASC 或 DESC，否则修正为 ASC
 
 **注意事项：**
+
 - 使用无参构造方法时，需要手动调用 `validateAndCorrect()` 进行校验
 - 或使用 `PageRequest.of()` 静态方法，会自动校验
 
 - **PageResult** - 分页结果
+
 ```java
 PageResult<User> result = PageResult.of(users, totalCount, pageIndex, pageSize);
 ```
@@ -111,6 +117,7 @@ PageResult<User> result = PageResult.of(users, totalCount, pageIndex, pageSize);
 #### PageResult 使用说明
 
 **字段说明：**
+
 - `data`：数据列表
 - `totalCount`：总记录数
 - `pageIndex`：页码
@@ -120,6 +127,7 @@ PageResult<User> result = PageResult.of(users, totalCount, pageIndex, pageSize);
 - `hasPrevious`：是否有上一页（自动计算）
 
 **使用方式：**
+
 - `PageResult.of(data, totalCount, pageIndex, pageSize)` - 创建分页结果
 - `PageResult.empty(pageIndex, pageSize)` - 创建空分页结果
 - `PageResult.empty(PageRequest)` - 从分页请求创建空分页结果
@@ -243,20 +251,24 @@ if (user == null) {
 ## 开发规范
 
 ### 响应格式
+
 - ✅ 所有接口返回 `R` 格式
 - ✅ 分页接口使用 `PageResult` 包装数据
 - ✅ 错误码使用 `ErrorCode` 枚举
 
 ### 异常处理
+
 - ✅ 业务异常使用 `BizException`
 - ✅ 使用 `ErrorCode` 枚举定义错误码
 - ❌ 不直接抛出 `RuntimeException`
 
 ### 工具类
+
 - ✅ 使用 Hutool、Commons Lang、Guava 等成熟库
 - ❌ Common 模块不提供工具类
 
 ### 校验
+
 - ✅ 使用标准 JSR-303 注解（`@NotNull`、`@NotBlank`、`@Email`）
 - ✅ 使用 Spring Validation
 - ❌ Common 模块不提供自定义校验注解

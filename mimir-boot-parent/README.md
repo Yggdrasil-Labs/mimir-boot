@@ -110,12 +110,14 @@ mvn clean install -Pdev
 ```
 
 **特性**：
+
 - ✅ 执行单元测试
 - ❌ 不检查代码覆盖率（快速构建）
 - ❌ 不检查代码格式
 - 🚀 适合日常开发迭代
 
 **配置说明**：
+
 - 默认激活（`activeByDefault: true`）
 - 禁用 JaCoCo 覆盖率检查以加快构建速度
 - 跳过 Spotless 格式检查
@@ -129,12 +131,14 @@ mvn clean verify -Pprecheck
 ```
 
 **特性**：
+
 - ✅ 执行单元测试
 - ✅ 检查代码覆盖率（指令覆盖率 ≥ 80%，分支覆盖率 ≥ 50%）
 - ❌ 不检查代码格式
 - 🔍 适合提交前验证代码质量
 
 **配置说明**：
+
 - 启用 JaCoCo 覆盖率检查
 - 如果覆盖率不达标，构建会失败
 
@@ -147,6 +151,7 @@ mvn clean verify -Pci
 ```
 
 **特性**：
+
 - ✅ 执行单元测试
 - ✅ 检查代码覆盖率（指令覆盖率 ≥ 80%，分支覆盖率 ≥ 50%）
 - ✅ 检查代码格式（Spotless）
@@ -154,6 +159,7 @@ mvn clean verify -Pci
 - 🛡️ 最严格的检查，确保代码质量
 
 **配置说明**：
+
 - 启用 JaCoCo 覆盖率检查
 - 启用 Spotless 代码格式检查（在 `validate` 阶段）
 - 启用 Maven Enforcer 依赖和规则检查
@@ -168,12 +174,14 @@ mvn clean deploy -Pprod
 ```
 
 **特性**：
+
 - ❌ 跳过测试（加快构建速度）
 - ❌ 不检查代码覆盖率
 - 📦 仅打包和部署
 - 🚀 适合生产发布场景
 
 **配置说明**：
+
 - 跳过所有测试（`maven.test.skip=true`）
 - 禁用 JaCoCo 覆盖率检查
 - 专注于快速打包和部署
@@ -200,10 +208,13 @@ mvn clean verify -Pprecheck
 **mimir-boot 本仓库**发布命令（在仓库根目录执行）：
 
 - **正式版**（需 GPG 签名）：
+
   ```bash
   ./mvnw -P maven-central -Dmaven.deploy.skip=false -Dgpg.skip=false -Dgpg.passphrase=你的GPG密码 deploy
   ```
+
 - **开发版 / SNAPSHOT**（可跳过 GPG，仅发到 Central Snapshots）：
+
   ```bash
   ./mvnw -P maven-central -Dmaven.deploy.skip=false -Dgpg.skip=true deploy
   ```
@@ -236,6 +247,7 @@ JaCoCo 插件用于代码覆盖率检查，通过不同的 profiles 控制是否
 ### 启用覆盖率检查
 
 覆盖率检查在以下 profiles 中启用：
+
 - **precheck**：提交前检查
 - **ci**：CI 流水线检查
 
@@ -244,6 +256,7 @@ JaCoCo 插件用于代码覆盖率检查，通过不同的 profiles 控制是否
 ### 覆盖率报告
 
 启用覆盖率检查时，JaCoCo 会在 `test` 阶段生成覆盖率报告：
+
 - **报告位置**：`target/site/jacoco/index.html`
 - **XML 报告**：`target/site/jacoco/jacoco.xml`（用于 CI 集成）
 
@@ -281,6 +294,7 @@ open target/site/jacoco/index.html
 ### 格式化检查
 
 格式化检查在以下 profiles 中启用：
+
 - **ci**：CI 流水线中自动检查代码格式（在 `validate` 阶段）
 
 在 **dev**、**precheck** 和 **prod** profiles 中，格式化检查被跳过。
@@ -317,6 +331,7 @@ Maven Enforcer 插件用于检查依赖和构建环境约束。
 ### 启用依赖约束检查
 
 依赖约束检查在以下 profiles 中启用：
+
 - **ci**：CI 流水线中自动检查依赖约束
 
 在 **dev**、**precheck** 和 **prod** profiles 中，依赖约束检查被跳过。
@@ -411,4 +426,3 @@ mvn verify
 ## 📄 许可证
 
 本项目采用 Apache License 2.0 许可证。
-

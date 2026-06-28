@@ -147,6 +147,7 @@ mimir:
 ```
 
 配置示例：
+
 ```yaml
 # Nacos 中的配置
 password: SECRET(encrypted_value)  # 使用自定义前缀
@@ -397,6 +398,7 @@ mimir:
 **症状**：配置值仍然是 `ENC(...)` 格式，未自动解密
 
 **可能原因**：
+
 1. 未配置加密密钥或密钥配置错误
 2. 功能被禁用（`mimir.nacos.encrypt.enabled: false`）
 3. 配置值格式不正确
@@ -422,6 +424,7 @@ password: ENC encrypted_value   # ❌ 错误格式，缺少括号
 **症状**：应用启动时报解密异常或配置值仍为加密格式
 
 **可能原因**：
+
 1. 使用了错误的密钥解密
 2. 加密后的值格式不正确（不是 Base64）
 3. 加密算法不匹配
@@ -444,6 +447,7 @@ System.out.println("解密: " + decrypted);
 **症状**：配置刷新后，加密配置值未更新
 
 **解决方案**：
+
 1. 确认配置类使用了 `@RefreshScope` 注解
 2. 检查日志中是否有配置变更事件的输出
 3. 确认 `EnvironmentChangeEvent` 正常触发
@@ -486,6 +490,7 @@ public class ConfigDebugger {
 **症状**：配置了自定义前缀，但未识别
 
 **解决方案**：
+
 1. 确认前缀配置正确
 2. 确认 Nacos 中的配置值使用新前缀
 
@@ -537,4 +542,3 @@ Apache License 2.0
 ## 作者
 
 Yggdrasil Labs
-

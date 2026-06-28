@@ -45,6 +45,7 @@
 | `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | ✅ 已完成 |
 | `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | ✅ 已完成 |
 | `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | ✅ 已完成 |
+
 ### 🔮 未来方向
 
 以下能力在探索中，尚未启动正式开发：
@@ -360,17 +361,17 @@ graph TD
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-    - 在 push 到 `main`/`develop` 和 PR 时运行：`./mvnw -B -U spotless:check verify`
-    - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
-    - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
+  - 在 push 到 `main`/`develop` 和 PR 时运行：`./mvnw -B -U spotless:check verify`
+  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
+  - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
 
 - **Release PR 与自动打 Tag（.github/workflows/release-please.yml）**
-    - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
-    - 合并该 PR 后，自动创建 `vX.Y.Z` Tag 与 GitHub Release
+  - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
+  - 合并该 PR 后，自动创建 `vX.Y.Z` Tag 与 GitHub Release
 
 - **发布（.github/workflows/release.yml）**
-    - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
-    - 随后发布制品到 GitHub Packages（GPR）
+  - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
+  - 随后发布制品到 GitHub Packages（GPR）
 
 ### 使用 GitHub Packages（消费者）
 
@@ -416,5 +417,5 @@ graph TD
 
 ## 📞 联系我们
 
-- **GitHub**: https://github.com/Yggdrasil-Labs/mimir-boot
+- **GitHub**: <https://github.com/Yggdrasil-Labs/mimir-boot>
 - **组织**: Yggdrasil Labs
