@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.0...v2.1.1) (2026-06-29)
+
+
+### ♻️ Code Refactoring
+
+* **ci:** release workflow 重构 — 提取 composite action，消除安全反模式，更新文档 ([29a3780](https://github.com/Yggdrasil-Labs/mimir-boot/commit/29a3780b7f75487573239bb26b33ca25a65d2f0e))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.1.1-SNAPSHOT for next development cycle ([d72e46a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d72e46a4a6f01ccd274648f767cf2de2626bdb63))
+
 ## [2.1.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.4...v2.1.0) (2026-06-28)
 
 
