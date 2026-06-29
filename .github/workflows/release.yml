@@ -24,7 +24,6 @@ on:
 
 env:
   MAVEN_OPTS: -Xmx1024m -XX:+UseG1GC
-  JAVA_VERSION: '17'
 
 jobs:
   build-verify:
@@ -32,30 +31,17 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/checkout-setup
         with:
-          # tag push: 使用 github.ref（已经是 tag ref）
-          # 手动触发: 使用输入的版本号对应的标签
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
-          fetch-depth: 0
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
 
       - name: Make Maven Wrapper executable
         run: |
-          if [ -f "mvnw" ]; then
-            chmod +x mvnw
-            ls -la mvnw
-            echo "Maven Wrapper made executable"
-          else
+          if [ ! -f "mvnw" ]; then
             echo "Error: mvnw not found"
             exit 1
           fi
+          chmod +x mvnw
 
       - name: Verify build (format check + compile)
         run: ./mvnw -B -U spotless:check clean package -DskipTests
@@ -66,28 +52,17 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/checkout-setup
         with:
-          # tag push: 使用 github.ref; 手动触发: 使用对应标签
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
-          fetch-depth: 0
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
 
       - name: Make Maven Wrapper executable
         run: |
-          if [ -f "mvnw" ]; then
-            chmod +x mvnw
-            echo "Maven Wrapper made executable"
-          else
+          if [ ! -f "mvnw" ]; then
             echo "Error: mvnw not found"
             exit 1
           fi
+          chmod +x mvnw
 
       - name: Final verification
         run: |
@@ -104,76 +79,15 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/checkout-setup
         with:
-          # tag push: 使用 github.ref; 手动触发: 使用对应标签
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
-          fetch-depth: 0
 
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v4
+      - name: Prepare Maven release
+        id: prepare
+        uses: ./.github/actions/maven-release-prepare
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Make Maven Wrapper executable
-        run: |
-          if [ -f "mvnw" ]; then
-            chmod +x mvnw
-            ls -la mvnw
-            echo "Maven Wrapper made executable"
-          else
-            echo "Error: mvnw not found"
-            exit 1
-          fi
-
-      - name: Get version from tag or input
-        id: get_version
-        run: |
-          # 支持 tag push 和手动触发两种方式
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # 手动触发：从 input 获取版本
-            VERSION="${{ github.event.inputs.version }}"
-            TAG_NAME="v${VERSION}"
-            echo "Manual trigger detected"
-          else
-            # Tag push：从 ref 获取版本
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
-            echo "Tag push detected"
-          fi
-          
-          echo "Tag: $TAG_NAME"
-          echo "Version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-
-      - name: Update version in pom.xml for release
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          
-          if [ -z "$VERSION" ]; then
-            echo "Error: Version is empty"
-            exit 1
-          fi
-          
-          echo "Updating pom.xml revision to: $VERSION"
-          
-          # 使用 sed 更新 pom.xml 中的版本号（GitHub Actions runner 是 Linux）
-          sed -i "s|<revision>[^<]*</revision>|<revision>$VERSION</revision>|g" pom.xml
-          
-          echo "Updated pom.xml:"
-          grep -A 2 -B 2 "<revision>" pom.xml
-          
-          # 验证所有子模块的 pom.xml 也会使用正确的版本号
-          echo ""
-          echo "Verifying version in submodules..."
-          find . -name "pom.xml" -type f | head -5 | while read pom; do
-            if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
-              echo "  ✓ $pom uses \${revision}"
-            fi
-          done
+          version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || '' }}
 
       - name: Configure Maven for GitHub Packages
         run: |
@@ -194,41 +108,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Flatten POM files before deploy
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          echo "Executing flatten:flatten to replace \${revision} variables with version: $VERSION"
-          ./mvnw -B -U -Drevision=$VERSION flatten:flatten
-          echo "Flatten completed. Verifying flattened POMs..."
-          find . -name ".flattened-pom.xml" -type f | head -3 | while read pom; do
-            echo "Checking: $pom"
-            if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
-              echo "  ⚠️  WARNING: $pom still contains \${revision}"
-            else
-              echo "  ✓ $pom has been flattened correctly"
-            fi
-          done
-
-      - name: Build packages (jar files)
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          echo "Building packages with version: $VERSION"
-          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
-            package
-          echo "Verifying jar files were built..."
-          find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
-
       - name: Publish to GitHub Packages (Maven)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.prepare.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
           # maven-central 未设 activeByDefault，此处不激活即只发 GPR
-          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
+          ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
             -Dmaven.deploy.skip=false \
-            package \
             org.apache.maven.plugins:maven-deploy-plugin:deploy \
-            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }}
+            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/$REPOSITORY
 
   publish-maven-central:
     runs-on: ubuntu-latest
@@ -238,67 +128,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/checkout-setup
         with:
-          # tag push: 使用 github.ref; 手动触发: 使用对应标签
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
-          fetch-depth: 0
 
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v4
+      - name: Prepare Maven release
+        id: prepare
+        uses: ./.github/actions/maven-release-prepare
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Make Maven Wrapper executable
-        run: |
-          if [ -f "mvnw" ]; then
-            chmod +x mvnw
-            ls -la mvnw
-            echo "Maven Wrapper made executable"
-          else
-            echo "Error: mvnw not found"
-            exit 1
-          fi
-
-      - name: Get version from tag or input
-        id: get_version
-        run: |
-          # 支持 tag push 和手动触发两种方式
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # 手动触发：从 input 获取版本
-            VERSION="${{ github.event.inputs.version }}"
-            TAG_NAME="v${VERSION}"
-            echo "Manual trigger detected"
-          else
-            # Tag push：从 ref 获取版本
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
-            echo "Tag push detected"
-          fi
-          
-          echo "Tag: $TAG_NAME"
-          echo "Version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-
-      - name: Update version in pom.xml for release
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          
-          if [ -z "$VERSION" ]; then
-            echo "Error: Version is empty"
-            exit 1
-          fi
-          
-          echo "Updating pom.xml revision to: $VERSION"
-          
-          # 使用 sed 更新 pom.xml 中的版本号（GitHub Actions runner 是 Linux）
-          sed -i "s|<revision>[^<]*</revision>|<revision>$VERSION</revision>|g" pom.xml
-          
-          echo "Updated pom.xml:"
-          grep -A 2 -B 2 "<revision>" pom.xml
+          version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || '' }}
 
       - name: Configure GPG key
         run: |
@@ -344,41 +182,17 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
-      - name: Flatten POM files before deploy
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          echo "Executing flatten:flatten to replace \${revision} variables with version: $VERSION"
-          ./mvnw -B -U -Drevision=$VERSION flatten:flatten
-          echo "Flatten completed. Verifying flattened POMs..."
-          find . -name ".flattened-pom.xml" -type f | head -3 | while read pom; do
-            echo "Checking: $pom"
-            if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
-              echo "  ⚠️  WARNING: $pom still contains \${revision}"
-            else
-              echo "  ✓ $pom has been flattened correctly"
-            fi
-          done
-
-      - name: Build packages (jar files)
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          echo "Building packages with version: $VERSION"
-          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
-            package
-          echo "Verifying jar files were built..."
-          find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
-
       - name: Publish to Maven Central
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          VERSION: ${{ steps.prepare.outputs.version }}
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
           echo "Publishing to Maven Central with version: $VERSION"
           # 激活 maven-central profile，使 central-publishing-maven-plugin（extensions=true）接管 deploy
           # -Dmaven.deploy.skip=false 覆盖 mimir-boot-parent 的默认值
-          ./mvnw -B -U -Dmaven.test.skip=true -Drevision=$VERSION \
+          ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
             -P maven-central \
             -Dmaven.deploy.skip=false \
             -Dgpg.skip=false \
@@ -406,10 +220,14 @@ jobs:
 
       - name: Get version from tag or input
         id: get_version
+        env:
+          INPUT_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || '' }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
           # 支持 tag push 和手动触发两种方式
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
             TAG_NAME="v${VERSION}"
             echo "Manual trigger detected"
           else
@@ -417,24 +235,25 @@ jobs:
             VERSION=${TAG_NAME#v}
             echo "Tag push detected"
           fi
-          
+
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Extract release notes from CHANGELOG
         id: changelog
+        env:
+          TAG_NAME: ${{ steps.get_version.outputs.tag }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          TAG_NAME="${{ steps.get_version.outputs.tag }}"
-          VERSION="${{ steps.get_version.outputs.version }}"
-          
           # 默认 release notes（带图标）
           DEFAULT_NOTES="## 🚀 Release $VERSION
-          
+
           Release $VERSION is now available! 🎉
-          
-          📝 See the [changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
+
+          📝 See the [changelog](https://github.com/$REPOSITORY/blob/main/CHANGELOG.md) for details."
           
           # 检查 CHANGELOG.md 是否存在
           if [ ! -f "CHANGELOG.md" ]; then
@@ -483,7 +302,7 @@ jobs:
               RELEASE_NOTES="${RELEASE_NOTES}"$'\n'$'\n'
               RELEASE_NOTES="${RELEASE_NOTES}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               RELEASE_NOTES="${RELEASE_NOTES}"$'\n'$'\n'
-              RELEASE_NOTES="${RELEASE_NOTES}📖 [View Full Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) | 📋 [Documentation](https://github.com/${{ github.repository }}/blob/main/README.md)"
+              RELEASE_NOTES="${RELEASE_NOTES}📖 [View Full Changelog](https://github.com/$REPOSITORY/blob/main/CHANGELOG.md) | 📋 [Documentation](https://github.com/$REPOSITORY/blob/main/README.md)"
               
               echo "Successfully extracted and enhanced release notes from CHANGELOG.md"
             else
@@ -497,7 +316,7 @@ jobs:
             echo "release_notes<<EOF"
             echo "$RELEASE_NOTES"
             echo "EOF"
-          } >> $GITHUB_OUTPUT
+          } >> "$GITHUB_OUTPUT"
           
           echo "Release notes prepared (first 300 chars):"
           echo "$RELEASE_NOTES" | head -c 300
@@ -532,10 +351,14 @@ jobs:
 
       - name: Get released version from tag
         id: get_version
+        env:
+          INPUT_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || '' }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
           # 支持 tag push 和手动触发两种方式
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
             if [ -z "$VERSION" ]; then
               echo "Error: version input is empty"
               exit 1
@@ -548,21 +371,22 @@ jobs:
             VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
             echo "Tag push detected"
           fi
-          
+
           # 获取 tag 指向的 commit SHA
-          TAG_SHA=$(git rev-parse $TAG_NAME^{commit})
-          
+          TAG_SHA=$(git rev-parse "${TAG_NAME}^{commit}")
+
           echo "Released version: $VERSION"
           echo "Tag: $TAG_NAME"
           echo "Tag commit SHA: $TAG_SHA"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "tag_sha=$TAG_SHA" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag_sha=$TAG_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Calculate next development version
         id: next_version
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
           # 移除可能的 -SNAPSHOT 后缀（如果有）
           VERSION=${VERSION%-SNAPSHOT}
           
@@ -575,7 +399,7 @@ jobs:
           
           echo "Current released version: $VERSION"
           echo "Next development version: $NEXT_VERSION"
-          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "next_version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Checkout main branch
         run: |
@@ -583,42 +407,42 @@ jobs:
           git pull origin main
 
       - name: Update version
+        env:
+          NEXT_VERSION: ${{ steps.next_version.outputs.next_version }}
         run: |
-          NEXT_VERSION="${{ steps.next_version.outputs.next_version }}"
-          
           # 更新 pom.xml 中的版本号
           echo "Updating pom.xml to version: $NEXT_VERSION"
-          sed -i.bak "s|<revision>[^<]*</revision>|<revision>$NEXT_VERSION</revision>|g" pom.xml
+          sed -i.bak "s|<revision>[^<]*</revision>|<revision>$NEXT_VERSION</revision>|" pom.xml
           rm -f pom.xml.bak
           
           echo "Updated pom.xml content:"
           grep -A 2 -B 2 "<revision>" pom.xml
 
       - name: Commit and push changes
+        env:
+          NEXT_VERSION: ${{ steps.next_version.outputs.next_version }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           # 在提交前拉取最新更改
           echo "Pulling latest changes from main before committing..."
           git pull --rebase origin main || git pull origin main
-          
+
           # 添加所有更改的文件
           git add pom.xml
-          
+
           # 检查是否有更改
           if git diff --staged --quiet; then
             echo "No changes to commit (version may already be updated)"
           else
-            NEXT_VERSION="${{ steps.next_version.outputs.next_version }}"
-            
             # 构建提交消息
             COMMIT_MSG="chore: bump version to $NEXT_VERSION for next development cycle"
-            
+
             git commit -m "$COMMIT_MSG"
-            
+
             # 推送更改
             git push origin main
-            
+
             echo "Successfully updated version to $NEXT_VERSION"
           fi

@@ -66,7 +66,7 @@
 <parent>
     <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>2.0.1</version>
+    <version>2.1.0</version>
 </parent>
 
 <dependencyManagement>
@@ -74,7 +74,7 @@
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>2.0.1</version>
+            <version>2.1.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -88,7 +88,7 @@
 <parent>
     <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>2.0.1</version>
+    <version>2.1.0</version>
 </parent>
 
 <dependencyManagement>
@@ -96,7 +96,7 @@
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>2.0.1</version>
+            <version>2.1.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -328,9 +328,9 @@ graph TD
     Nacos --> Test
     Test --> Common
     
-    RPCCore -.规划依赖.-> Common
-    Dubbo -.规划依赖.-> RPCCore
-    Feign -.规划依赖.-> RPCCore
+    RPCCore --> Common
+    Dubbo --> RPCCore
+    Feign --> RPCCore
     
     style Root fill:#e1f5ff
     style Parent fill:#fff4e1
@@ -338,15 +338,12 @@ graph TD
     style Common fill:#e8f5e9
     style Starters fill:#f3e5f5
     style Test fill:#fce4ec
-    style RPCCore fill:#e8f5e9
-    style Dubbo fill:#e8f5e9
-    style Feign fill:#e8f5e9
 ```
 
 ### 依赖关系说明
 
 - **实线箭头**：已实现的模块依赖关系
-- **虚线箭头**：规划中的模块依赖关系
+- **虚线箭头**：管理/版本依赖关系（Parent → BOM）
 - **颜色说明**：
   - 🔵 蓝色：根模块
   - 🟡 黄色：基础设施模块（Parent、BOM）

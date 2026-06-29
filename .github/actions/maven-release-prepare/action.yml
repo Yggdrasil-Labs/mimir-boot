@@ -1,0 +1,116 @@
+name: Maven Release Prepare
+description: |
+  Composite action that encapsulates the common release preparation steps:
+  get version from tag/workflow_dispatch, update pom.xml revision,
+  flatten POM files, and build packages.
+
+  Used by publish-gpr and publish-maven-central jobs to eliminate
+  step duplication across the release workflow.
+
+inputs:
+  version:
+    description: 'Release version from workflow_dispatch (without v prefix). Required when triggered manually.'
+    required: false
+    default: ''
+
+outputs:
+  version:
+    description: 'Resolved release version (without v prefix)'
+    value: ${{ steps.get_version.outputs.version }}
+  tag:
+    description: 'Git tag name (with v prefix)'
+    value: ${{ steps.get_version.outputs.tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: Make Maven Wrapper executable
+      shell: bash
+      run: |
+        if [ ! -f "mvnw" ]; then
+          echo "Error: mvnw not found"
+          exit 1
+        fi
+        chmod +x mvnw
+
+    - name: Get version from tag or input
+      id: get_version
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        EVENT_NAME: ${{ github.event_name }}
+        GITHUB_REF: ${{ github.ref }}
+      run: |
+        # 支持 tag push 和手动触发两种方式
+        if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          # 手动触发：从 input 获取版本
+          VERSION="$INPUT_VERSION"
+          TAG_NAME="v${VERSION}"
+          echo "Manual trigger detected"
+        else
+          # Tag push：从 ref 获取版本
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+          echo "Tag push detected"
+        fi
+
+        # 早期校验：版本号不能为空
+        if [ -z "$VERSION" ]; then
+          echo "Error: Version is empty"
+          exit 1
+        fi
+
+        echo "Tag: $TAG_NAME"
+        echo "Version: $VERSION"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+    - name: Update version in pom.xml for release
+      shell: bash
+      env:
+        VERSION: ${{ steps.get_version.outputs.version }}
+      run: |
+        echo "Updating pom.xml revision to: $VERSION"
+
+        # 使用 sed 更新 pom.xml 中的版本号（pom.xml 中只有一个 <revision> 元素）
+        sed -i "s|<revision>[^<]*</revision>|<revision>$VERSION</revision>|" pom.xml
+
+        echo "Updated pom.xml:"
+        grep -A 2 -B 2 "<revision>" pom.xml
+
+        # 验证所有子模块的 pom.xml 也会使用正确的版本号
+        echo ""
+        echo "Verifying version in submodules..."
+        find . -name "pom.xml" -type f | head -5 | while read pom; do
+          if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
+            echo "  ✓ $pom uses \${revision}"
+          fi
+        done
+
+    - name: Flatten POM files before deploy
+      shell: bash
+      env:
+        VERSION: ${{ steps.get_version.outputs.version }}
+      run: |
+        echo "Executing flatten:flatten to replace \${revision} variables with version: $VERSION"
+        ./mvnw -B -U -Drevision="$VERSION" flatten:flatten
+        echo "Flatten completed. Verifying flattened POMs..."
+        find . -name ".flattened-pom.xml" -type f | head -3 | while read pom; do
+          echo "Checking: $pom"
+          if grep -q "<version>\${revision}</version>" "$pom" 2>/dev/null; then
+            echo "  ⚠️  WARNING: $pom still contains \${revision}"
+          else
+            echo "  ✓ $pom has been flattened correctly"
+          fi
+        done
+
+    - name: Build packages (jar files)
+      shell: bash
+      env:
+        VERSION: ${{ steps.get_version.outputs.version }}
+      run: |
+        echo "Building packages with version: $VERSION"
+        ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
+          package
+        echo "Verifying jar files were built..."
+        find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
