@@ -58,7 +58,9 @@ public class RpcExecutionTemplate {
             if (log.isDebugEnabled() && injected != null && !injected.isEmpty()) {
                 log.debug("Injected context propagation headers: {}", injected.keySet());
             }
-            injected.forEach(context::putAttachment);
+            if (injected != null && !injected.isEmpty()) {
+                injected.forEach(context::putAttachment);
+            }
         }
         try {
             T result = callable.call();
@@ -95,4 +97,3 @@ public class RpcExecutionTemplate {
         return new RuntimeException(ex);
     }
 }
-

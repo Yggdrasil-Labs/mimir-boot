@@ -8,7 +8,6 @@ import ch.qos.logback.core.read.ListAppender;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 import com.yggdrasil.labs.test.util.FilterChainMockBuilder;
-import com.yggdrasil.labs.test.util.HttpServletRequestMockBuilder;
 import com.yggdrasil.labs.test.util.LogTestUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +16,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,13 +58,15 @@ class AccessLogFilterTest extends BaseUnitTest {
      */
     @Test
     void testSuccessRequest() throws Exception {
-        HttpServletRequest request = HttpServletRequestMockBuilder.create()
-                .uri("/api/user/123")
-                .method("GET")
-                .userAgent("Mozilla/5.0")
-                .remoteAddr("192.168.1.100")
-                .defaultIpHeaders()
-                .build();
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/user/123");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("X-Real-IP")).thenReturn(null);
+        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
+        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = FilterChainMockBuilder.create()
                 .statusCode(200)
@@ -90,7 +92,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/user/999");
-        when(request.getQueryString()).thenReturn(null);
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -126,7 +127,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/process");
-        when(request.getQueryString()).thenReturn(null);
         when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -159,7 +159,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/export");
-        when(request.getQueryString()).thenReturn(null);
         when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("User-Agent")).thenReturn("Apache-HttpClient/4.5");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -186,20 +185,13 @@ class AccessLogFilterTest extends BaseUnitTest {
      * 测试带查询参数的请求
      */
     @Test
-    void testRequestWithQueryString() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
+    void testRequestWithQueryStringDoesNotLogQueryParameters() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/search");
+        request.setQueryString("token=secret-token&page=1");
+        request.addHeader("User-Agent", "Mozilla/5.0");
+        request.setRemoteAddr("192.168.1.100");
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
-
-        when(request.getRequestURI()).thenReturn("/api/search");
-        when(request.getQueryString()).thenReturn("keyword=test&page=1");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -211,7 +203,8 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
-        assertTrue(event.getFormattedMessage().contains("keyword=test&page=1"));
+        assertTrue(event.getFormattedMessage().contains("/api/search"));
+        assertTrue(!event.getFormattedMessage().contains("token=secret-token"));
     }
 
     /**
@@ -224,7 +217,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test");
-        when(request.getQueryString()).thenReturn(null);
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
@@ -252,7 +244,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test");
-        when(request.getQueryString()).thenReturn(null);
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
@@ -281,7 +272,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/redirect");
-        when(request.getQueryString()).thenReturn(null);
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -326,7 +316,6 @@ class AccessLogFilterTest extends BaseUnitTest {
             FilterChain chain = mock(FilterChain.class);
 
             when(request.getRequestURI()).thenReturn("/api/test");
-            when(request.getQueryString()).thenReturn(null);
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
             when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -365,7 +354,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test\n[伪造日志]");
-        when(request.getQueryString()).thenReturn("param=value\r\n伪造的日志");
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0\r\n伪造的日志");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -400,7 +388,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(request.getRequestURI()).thenReturn("/api/test\twith\ttab");
-        when(request.getQueryString()).thenReturn("param=value\tvalue2");
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -424,4 +411,3 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(message.contains("\\t"), "制表符应该被转义为 \\t");
     }
 }
-

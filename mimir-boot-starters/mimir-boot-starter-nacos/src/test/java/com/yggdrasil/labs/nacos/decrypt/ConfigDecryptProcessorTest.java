@@ -1,5 +1,9 @@
 package com.yggdrasil.labs.nacos.decrypt;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.yggdrasil.labs.nacos.config.NacosEncryptProperties;
 import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +13,8 @@ import org.springframework.core.env.StandardEnvironment;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -189,6 +195,62 @@ class ConfigDecryptProcessorTest {
         // 解密失败时不应该抛出异常，应该返回原值
         assertDoesNotThrow(() -> processor.process(environment));
         assertEquals("ENC(invalid-encrypted-value)", environment.getProperty("test.key"));
+    }
+
+    @Test
+    void testProcessWithInvalidEncryptedValueDoesNotLogCiphertext() {
+        String secret = "super-secret";
+        Map<String, Object> props = new HashMap<>();
+        props.put("test.key", "ENC(" + secret + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("test", props));
+
+        Logger logger = (Logger) LoggerFactory.getLogger(ConfigDecryptProcessor.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            new ConfigDecryptProcessor(properties).process(environment);
+
+            assertTrue(appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .anyMatch(message -> message.contains("test.key")));
+            assertTrue(appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .noneMatch(message -> message.contains(secret) || message.contains("ENC(")));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void testProcessWithEncryptedValueDoesNotLogPlaintextOrCiphertextAtDebugLevel() {
+        String plaintext = "super-secret";
+        String ciphertext = ConfigCryptoUtils.encrypt(plaintext, testKey);
+        Map<String, Object> props = new HashMap<>();
+        props.put("test.key", "ENC(" + ciphertext + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("test", props));
+
+        Logger logger = (Logger) LoggerFactory.getLogger(ConfigDecryptProcessor.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            new ConfigDecryptProcessor(properties).process(environment);
+
+            assertTrue(appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .anyMatch(message -> message.equals("配置项解密成功: test.key")));
+            assertTrue(appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .noneMatch(message -> message.contains(plaintext) || message.contains(ciphertext)));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
     }
 
     @Test

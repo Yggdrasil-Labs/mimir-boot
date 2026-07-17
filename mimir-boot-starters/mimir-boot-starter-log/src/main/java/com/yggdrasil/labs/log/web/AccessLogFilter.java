@@ -109,15 +109,11 @@ public class AccessLogFilter implements Filter {
             String ip = sanitize(getClientIp(request));
             String method = sanitize(request.getMethod());
             String uri = sanitize(request.getRequestURI());
-            String queryString = sanitize(request.getQueryString());
             int statusCode = response.getStatus();
             String userAgent = sanitize(request.getHeader("User-Agent"));
 
-            // 构建完整的 URI（包含查询参数）
-            String fullUri = queryString != null ? uri + "?" + queryString : uri;
-
-            // 根据状态码和耗时判断日志级别（最佳实践）
-            logAccessByStatus(ip, method, fullUri, statusCode, durationMs, userAgent != null ? userAgent : "Unknown");
+            // 查询参数可能包含令牌、口令等敏感信息，只记录请求路径。
+            logAccessByStatus(ip, method, uri, statusCode, durationMs, userAgent != null ? userAgent : "Unknown");
         } catch (Exception e) {
             ACCESS_LOG.error("Failed to log access", e);
         }
@@ -134,17 +130,17 @@ public class AccessLogFilter implements Filter {
      *
      * @param ip         客户端 IP
      * @param method     HTTP 方法
-     * @param fullUri    完整的 URI
+     * @param uri        请求路径
      * @param statusCode HTTP 状态码
      * @param durationMs 耗时（毫秒）
      * @param userAgent  User-Agent
      */
-    private void logAccessByStatus(String ip, String method, String fullUri, int statusCode, long durationMs, String userAgent) {
+    private void logAccessByStatus(String ip, String method, String uri, int statusCode, long durationMs, String userAgent) {
         boolean isSlow = durationMs > slowThresholdMs;
 
         // 使用参数化日志，防止日志注入攻击
         String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Duration=[{}ms], UserAgent=[{}]";
-        Object[] args = new Object[]{ip, method, fullUri, statusCode, durationMs, userAgent};
+        Object[] args = new Object[]{ip, method, uri, statusCode, durationMs, userAgent};
 
         // 判断状态码范围
         if (statusCode >= 500) {

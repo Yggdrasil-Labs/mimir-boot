@@ -134,11 +134,11 @@ public class ConfigDecryptProcessor {
         for (String propertyName : propertyNames) {
             Object propertyValue = propertySource.getProperty(propertyName);
             if (propertyValue instanceof String encryptedValue) {
-                String decryptedValue = decryptValue(encryptedValue, key, algorithm);
+                String decryptedValue = decryptValue(propertyName, encryptedValue, key, algorithm);
                 if (!encryptedValue.equals(decryptedValue)) {
                     // 只有解密成功时才添加到集合中
                     decryptedProperties.put(propertyName, decryptedValue);
-                    log.debug("解密配置: {} = {} -> {}", propertyName, encryptedValue, decryptedValue);
+                    log.debug("配置项解密成功: {}", propertyName);
                 }
             }
         }
@@ -147,12 +147,13 @@ public class ConfigDecryptProcessor {
     /**
      * 解密配置值
      *
+     * @param propertyName 配置属性名
      * @param value     配置值
      * @param key       加密密钥
      * @param algorithm 加密算法
      * @return 解密后的值，如果不是加密格式则返回原值
      */
-    private String decryptValue(String value, String key, String algorithm) {
+    private String decryptValue(String propertyName, String value, String key, String algorithm) {
         if (value == null || value.isEmpty()) {
             return value;
         }
@@ -171,7 +172,7 @@ public class ConfigDecryptProcessor {
             // 替换整个 ENC(...) 为解密后的值
             return matcher.replaceAll(Matcher.quoteReplacement(decrypted));
         } catch (Exception e) {
-            log.error("解密配置值失败: {}", value, e);
+            log.error("解密配置值失败，属性名: {}", propertyName, e);
             // 解密失败时返回原值，避免应用启动失败
             return value;
         }

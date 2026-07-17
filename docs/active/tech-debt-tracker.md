@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-24
+updated: 2026-07-17
 ---
 
 # 技术债务追踪
@@ -17,6 +17,11 @@ updated: 2026-06-24
 | TD-004 | product | 规划中的治理、指标、安全 starter 尚无正式产品规格（已从 README 移除，待正式立项时再补） | 低 | 2026-04-11 | ORPHAN | — |
 | TD-005 | ci | release.yml publish-gpr 与 publish-maven-central 大量重复步骤，待用 reusable workflow 重构 | 中 | 2026-06-26 | — | 已通过 `.github/actions/maven-release-prepare/` composite action 解决 |
 | TD-006 | bom | BOM 中约 60% 的依赖版本声明未被任何 starter 引用（如 elasticsearch、mongodb、redis、kafka、xxl-job 等），增加 Dependabot 噪音和维护负担，且模糊了"版本基线"的边界 | 中 | 2026-06-29 | ORPHAN | 需评估是否精简为仅本仓库实际使用的依赖，或将生态系统版本管理拆分到独立 BOM |
+| TD-007 | nacos | 自动配置 Bean 监听 `ApplicationEnvironmentPreparedEvent`，启动期解密不会执行；属性前缀、动态刷新和密码学默认值亦存在缺口 | 紧急 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-0恢复-nacos-启动期能力) |
+| TD-008 | security | CORS 默认允许任意来源携带凭证，Nacos、SQL 与访问日志可能输出敏感数据 | 高 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-1修复安全默认值与敏感数据泄露) |
+| TD-009 | mybatis | 字段加密缺省时生成进程内临时密钥，重启后无法解密历史数据 | 高 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-1修复安全默认值与敏感数据泄露) |
+| TD-010 | rpc | Dubbo Provider 未提取入站追踪上下文，Feign 包装可能绕过用户配置的 Client | 高 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-2修复-rpc-传播语义) |
+| TD-011 | quality | 自动配置覆盖率被整体排除；测试注解、格式化构建副作用与 Maven 插件版本仍需治理 | 中 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-3补齐工程质量) |
 
 ## 优先级含义（智能体行为指南）
 

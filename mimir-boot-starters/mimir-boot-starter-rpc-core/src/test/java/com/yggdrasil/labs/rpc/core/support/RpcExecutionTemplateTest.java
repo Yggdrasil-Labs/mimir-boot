@@ -51,6 +51,30 @@ class RpcExecutionTemplateTest {
     }
 
     @Test
+    void shouldExecuteWhenTracerReturnsNullHeaders() {
+        RecordingHook hook = new RecordingHook();
+        RpcTracerBridge tracer = new RpcTracerBridge() {
+            @Override
+            public Map<String, String> inject(RpcCallContext context) {
+                return null;
+            }
+
+            @Override
+            public void extract(RpcCallContext context, Map<String, String> carrier) {}
+        };
+        RpcExecutionTemplate template =
+                new RpcExecutionTemplate(new RpcHookChain(List.of(hook)), tracer, true);
+        RpcCallContext context = RpcCallContext.create(
+                RpcCallMetadata.builder().service("svc").method("nullHeaders").build());
+
+        String result = template.execute(context, () -> "ok");
+
+        Assertions.assertEquals("ok", result);
+        Assertions.assertTrue(context.getAttachments().isEmpty());
+        Assertions.assertEquals(List.of("before", "after", "cleanup"), hook.events);
+    }
+
+    @Test
     void shouldCallOnErrorCleanupAndWrapCheckedException() {
         RecordingHook hook = new RecordingHook();
         AtomicInteger tracerInvoked = new AtomicInteger();
