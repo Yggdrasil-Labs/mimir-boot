@@ -8,6 +8,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.List;
+
 /**
  * CORS 跨域配置
  *
@@ -18,6 +20,8 @@ import org.springframework.web.filter.CorsFilter;
  * <li>提供合理的默认配置</li>
  * </ul>
  *
+ * <p>Source: https://docs.spring.io/spring-framework/reference/web/webmvc-cors.html</p>
+ *
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
@@ -27,7 +31,7 @@ import org.springframework.web.filter.CorsFilter;
         prefix = "mimir.boot.web.cors",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = true
+        matchIfMissing = false
 )
 public class CorsConfig {
 
@@ -43,14 +47,11 @@ public class CorsConfig {
         WebProperties.Cors corsConfig = webProperties.getCors();
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 设置允许的源
-        if (corsConfig.getAllowedOrigins() != null && !corsConfig.getAllowedOrigins().isEmpty()) {
-            if (corsConfig.getAllowedOrigins().contains("*")) {
-                configuration.addAllowedOriginPattern("*");
-            } else {
-                corsConfig.getAllowedOrigins().forEach(configuration::addAllowedOrigin);
-            }
+        List<String> allowedOrigins = corsConfig.getAllowedOrigins();
+        if (allowedOrigins == null || allowedOrigins.isEmpty()) {
+            throw new IllegalStateException("启用 CORS 时必须配置至少一个允许的 Origin");
         }
+        configuration.setAllowedOrigins(allowedOrigins);
 
         // 设置允许的 HTTP 方法
         if (corsConfig.getAllowedMethods() != null && !corsConfig.getAllowedMethods().isEmpty()) {
@@ -69,6 +70,7 @@ public class CorsConfig {
 
         // 设置是否允许携带凭证
         configuration.setAllowCredentials(corsConfig.isAllowCredentials());
+        configuration.validateAllowCredentials();
 
         // 设置预检请求的有效期
         if (corsConfig.getMaxAge() != null) {
@@ -87,4 +89,3 @@ public class CorsConfig {
         return new CorsFilter(source);
     }
 }
-

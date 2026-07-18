@@ -84,12 +84,16 @@ mimir:
 
 **默认值**：
 
-- `enabled: true` - 启用 CORS
-- `allowedOrigins: ["*"]` - 允许所有源
+- `enabled: false` - 默认关闭 CORS，需显式启用
+- `allowedOrigins: []` - 默认空 Origin 白名单
 - `allowedMethods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]` - 允许所有常用方法
 - `allowedHeaders: ["*"]` - 允许所有请求头
-- `allowCredentials: true` - 允许携带凭证
+- `allowCredentials: false` - 默认不允许携带凭证
 - `maxAge: 3600s` - 预检请求有效期 1 小时
+
+启用 CORS 时必须配置具体 Origin 白名单。若 `allowCredentials: true`，不能使用 `"*"` Origin；应用会在启动时拒绝该不安全组合。
+
+**升级迁移**：旧版本依赖默认 CORS 的应用，需要显式设置 `enabled: true` 和具体 `allowedOrigins`。若浏览器请求依赖 Cookie、会话或客户端证书，再显式设置 `allowCredentials: true`；`"*"` 与凭证组合不再受支持。
 
 **示例**：
 
@@ -349,7 +353,7 @@ return response;  // 不会覆盖已有的 traceId
 
 - 统一配置跨域资源共享策略
 - 支持通过配置文件自定义跨域规则
-- 提供合理的默认配置（允许所有源、所有方法）
+- 默认关闭，需显式配置 Origin 白名单后启用
 
 **默认配置**：
 
@@ -358,13 +362,10 @@ mimir:
   boot:
     web:
       cors:
-        enabled: true
-        allowedOrigins: ["*"]  # 允许所有源
-        allowedMethods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
-        allowedHeaders: ["*"]  # 允许所有请求头
-        allowCredentials: true
-        maxAge: PT1H  # 1 小时
+        enabled: false
 ```
+
+启用后必须提供至少一个具体 Origin；`allowCredentials: true` 时禁止使用 `"*"` Origin。
 
 **生产环境配置示例**：
 
@@ -533,6 +534,7 @@ mimir:
   boot:
     web:
       cors:
+        enabled: true
         allowedOrigins:
           - "https://www.example.com"
           - "https://admin.example.com"

@@ -57,15 +57,15 @@ public class WebProperties {
     public static class Cors {
         /**
          * 是否启用 CORS
-         * 默认：true
+         * 默认：false
          */
-        private boolean enabled = true;
+        private boolean enabled = false;
 
         /**
-         * 允许的源（支持通配符）
-         * 默认：["*"]
+         * 允许的源
+         * 默认：空白名单
          */
-        private List<String> allowedOrigins = new ArrayList<>(List.of("*"));
+        private List<String> allowedOrigins = new ArrayList<>();
 
         /**
          * 允许的 HTTP 方法
@@ -83,9 +83,9 @@ public class WebProperties {
 
         /**
          * 是否允许携带凭证
-         * 默认：true
+         * 默认：false
          */
-        private boolean allowCredentials = true;
+        private boolean allowCredentials = false;
 
         /**
          * 预检请求的有效期（秒）
@@ -195,4 +195,3 @@ public class WebProperties {
         private boolean autoFillTraceId = true;
     }
 }
-

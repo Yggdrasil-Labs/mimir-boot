@@ -29,7 +29,11 @@ class WebAutoConfigurationIT {
 
     @Test
     void corsConfigRegistered() {
-        runner.run(ctx -> assertThat(ctx).hasSingleBean(CorsConfig.class));
+        runner.withPropertyValues(
+                        "mimir.boot.web.cors.enabled=true",
+                        "mimir.boot.web.cors.allowed-origins[0]=https://app.example.com"
+                )
+                .run(ctx -> assertThat(ctx).hasSingleBean(CorsConfig.class));
     }
 
     @Test

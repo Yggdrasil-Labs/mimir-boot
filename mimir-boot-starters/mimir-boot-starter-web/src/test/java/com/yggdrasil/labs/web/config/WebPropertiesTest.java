@@ -51,10 +51,10 @@ class WebPropertiesTest extends BaseUnitTest {
     void testCorsDefaultValues() {
         WebProperties.Cors cors = webProperties.getCors();
 
-        assertTrue(cors.isEnabled());
-        assertTrue(cors.isAllowCredentials());
+        assertFalse(cors.isEnabled());
+        assertFalse(cors.isAllowCredentials());
         assertNotNull(cors.getAllowedOrigins());
-        assertTrue(cors.getAllowedOrigins().contains("*"));
+        assertTrue(cors.getAllowedOrigins().isEmpty());
         assertNotNull(cors.getAllowedMethods());
         assertTrue(cors.getAllowedMethods().contains("GET"));
         assertTrue(cors.getAllowedMethods().contains("POST"));
@@ -138,4 +138,3 @@ class WebPropertiesTest extends BaseUnitTest {
         assertTrue(serialization.isWriteNulls());
     }
 }
-
