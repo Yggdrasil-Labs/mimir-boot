@@ -63,21 +63,10 @@ public class ConfigDecryptProcessor {
         String algorithm = properties.getAlgorithm();
         log.debug("开始处理配置解密，算法: {}, 前缀: {}", algorithm, properties.getPrefix());
 
-        // 检查是否已经处理过，避免重复处理
-        boolean alreadyProcessed = false;
-        for (PropertySource<?> propertySource : environment.getPropertySources()) {
-            if (DECRYPTED_PROPERTIES.equals(propertySource.getName())) {
-                alreadyProcessed = true;
-                break;
-            }
-        }
+        // 刷新时先移除旧的派生属性源，再基于最新原始属性重建。
+        environment.getPropertySources().remove(DECRYPTED_PROPERTIES);
 
-        if (alreadyProcessed) {
-            log.debug("配置已经解密过，跳过重复处理");
-            return;
-        }
-
-        // 获取所有属性源并处理
+        // 获取所有原始属性源并处理
         List<PropertySource<?>> propertySources = new ArrayList<>();
         for (PropertySource<?> propertySource : environment.getPropertySources()) {
             // 跳过已经解密的属性源

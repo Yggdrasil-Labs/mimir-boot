@@ -6,13 +6,23 @@ import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.SpringApplication;
+import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Nacos 配置加密自动配置测试
@@ -63,6 +73,22 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
 
         // 验证解密结果
         AssertUtils.assertEquals(plaintext, environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldDecryptPropertyBeforeBeanCreation() {
+        String plaintext = "startup-secret";
+        String encrypted = ConfigCryptoUtils.encrypt(plaintext, testKey);
+        SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
+        application.setDefaultProperties(Map.of(
+                "mimir.nacos.encrypt.key", testKey,
+                "app.secret", "ENC(" + encrypted + ")",
+                "spring.cloud.nacos.config.import-check.enabled", "false"
+        ));
+
+        try (ConfigurableApplicationContext context = application.run()) {
+            assertEquals(plaintext, context.getBean("startupSecret", String.class));
+        }
     }
 
     @Test
@@ -165,5 +191,31 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         // 第二次处理应该被跳过
         configuration.processDecrypt(environment);
         AssertUtils.assertEquals(plaintext, environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldRefreshDecryptedPropertyAfterEnvironmentChange() {
+        Map<String, Object> props = new HashMap<>();
+        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("first-secret", testKey) + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
+        configuration.processDecrypt(environment);
+
+        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("refreshed-secret", testKey) + ")");
+        ApplicationContext context = mock(ApplicationContext.class);
+        when(context.getEnvironment()).thenReturn(environment);
+        configuration.setApplicationContext(context);
+
+        configuration.onEnvironmentChange(new EnvironmentChangeEvent(Set.of("app.secret")));
+
+        assertEquals("refreshed-secret", environment.getProperty("app.secret"));
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    static class StartupTestConfiguration {
+
+        @Bean
+        String startupSecret(@Value("${app.secret}") String secret) {
+            return secret;
+        }
     }
 }

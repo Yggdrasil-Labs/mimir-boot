@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.ApplicationContext;
@@ -38,7 +37,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
         matchIfMissing = true
 )
 @EnableConfigurationProperties(NacosEncryptProperties.class)
-public class NacosEncryptAutoConfiguration implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, ApplicationContextAware {
+public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
 
     private static final Logger log = LoggerFactory.getLogger(NacosEncryptAutoConfiguration.class);
 
@@ -52,12 +51,6 @@ public class NacosEncryptAutoConfiguration implements ApplicationListener<Applic
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
-    }
-
-    @Override
-    public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
-        ConfigurableEnvironment environment = event.getEnvironment();
-        processDecrypt(environment);
     }
 
     /**

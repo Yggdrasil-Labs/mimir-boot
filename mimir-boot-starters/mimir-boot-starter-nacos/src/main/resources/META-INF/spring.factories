@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.yggdrasil.labs.nacos.config.NacosEncryptEnvironmentPostProcessor

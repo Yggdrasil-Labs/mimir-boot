@@ -82,7 +82,7 @@ redis:
 
 ### 1. 自动配置解密
 
-Starter 会在应用启动早期阶段（`ApplicationEnvironmentPreparedEvent`）自动处理配置解密：
+Starter 通过 Spring Boot 的 `EnvironmentPostProcessor` 在 ApplicationContext 刷新前自动处理配置解密：
 
 ```yaml
 # Nacos 中的配置（加密后）
@@ -509,7 +509,7 @@ password: SECRET(encrypted_value)  # 使用新前缀
 
 ### 工作原理
 
-1. **配置加载阶段**：在 `ApplicationEnvironmentPreparedEvent` 阶段，所有配置已加载完成
+1. **配置加载阶段**：`EnvironmentPostProcessor` 在 ApplicationContext 刷新前处理已加载的配置属性源
 2. **配置扫描**：遍历所有配置属性源，查找包含 `ENC(...)` 格式的值
 3. **自动解密**：提取加密内容，使用配置的密钥进行解密
 4. **配置替换**：将解密后的值添加到环境配置的最高优先级位置
