@@ -48,11 +48,12 @@ created: 2026-07-17
 
 - [x] 启用 MyBatis 字段加密但未配置稳定密钥时，在所有 profile 启动失败。
 - [x] 禁止自动生成临时密钥；自定义 `CryptoKeyProvider` 必须返回稳定密钥。
-- [ ] SQL 日志默认隐藏参数，或对 password、token、secret、authorization 等键统一脱敏。
+- [x] SQL 日志对 password、token、secret、authorization 等内置敏感参数名统一脱敏。
 - [ ] 访问日志默认不写 query string；配置开启时按键名脱敏。
 - [ ] 移除 `ContentCachingResponseWrapper` 的无必要使用，验证 SSE、下载和大响应场景。
 - [x] 增加跨上下文重启解密测试，验证同一稳定密钥可解密先前写入的密文。
-- [ ] 增加 SQL 参数脱敏、访问日志脱敏和流式响应测试。
+- [x] 增加 SQL 参数脱敏日志捕获测试。
+- [ ] 增加访问日志脱敏和流式响应测试。
 
 **R-005 完成记录（2026-07-19）**：提交 `a63fdf2` 在启动期校验 Base64 AES 密钥格式与长度，并覆盖无密钥、非法密钥、自定义 Provider 与两个独立应用上下文间的加密/解密场景。验证命令：`mise exec java@17 -- ./mvnw -B -pl mimir-boot-starters/mimir-boot-starter-mybatis -am -Pci test`（302 项通过）。
 

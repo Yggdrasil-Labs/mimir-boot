@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * 结构化 SQL 日志拦截器，输出 JSON 格式 SQL 与参数。
  *
- * <p>参数输出将结合 {@code SensitiveField} 做脱敏处理。</p>
+ * <p>参数输出会结合 {@code SensitiveField} 和内置敏感参数名做脱敏处理。</p>
  */
 public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
 
@@ -46,5 +46,4 @@ public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
         }
     }
 }
-
 

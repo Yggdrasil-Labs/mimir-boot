@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.LogTestUtils;
+import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
 import org.junit.jupiter.api.AfterEach;
@@ -96,6 +97,57 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldMaskSensitiveScalarMapParametersInLogs() {
+        StatementHandler statementHandler = mock(StatementHandler.class);
+        BoundSql boundSql = mock(BoundSql.class);
+        Connection connection = mock(Connection.class);
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("password", "plain-password");
+        params.put("token", "plain-token");
+        params.put("secret", "plain-secret");
+        params.put("authorization", "Bearer plain-authorization");
+        params.put("access_token", "plain-access-token");
+        params.put("name", "safe-name");
+
+        when(statementHandler.getBoundSql()).thenReturn(boundSql);
+        when(boundSql.getSql()).thenReturn("SELECT * FROM user WHERE password = ? AND token = ?");
+        when(boundSql.getParameterObject()).thenReturn(params);
+
+        interceptor.beforePrepare(statementHandler, connection, null);
+
+        String message = listAppender.list.get(0).getMessage();
+        assertFalse(message.contains("plain-password"));
+        assertFalse(message.contains("plain-token"));
+        assertFalse(message.contains("plain-secret"));
+        assertFalse(message.contains("plain-authorization"));
+        assertFalse(message.contains("plain-access-token"));
+        assertTrue(message.contains("safe-name"));
+    }
+
+    @Test
+    void shouldMaskMybatisParameterAliasesForSensitiveValues() {
+        StatementHandler statementHandler = mock(StatementHandler.class);
+        BoundSql boundSql = mock(BoundSql.class);
+        Connection connection = mock(Connection.class);
+        MapperMethod.ParamMap<Object> params = new MapperMethod.ParamMap<>();
+        String password = "plain-password";
+        params.put("password", password);
+        params.put("param1", password);
+        params.put("name", "safe-name");
+        params.put("param2", "safe-name");
+
+        when(statementHandler.getBoundSql()).thenReturn(boundSql);
+        when(boundSql.getSql()).thenReturn("SELECT * FROM user WHERE password = ? AND name = ?");
+        when(boundSql.getParameterObject()).thenReturn(params);
+
+        interceptor.beforePrepare(statementHandler, connection, null);
+
+        String message = listAppender.list.get(0).getMessage();
+        assertFalse(message.contains("plain-password"));
+        assertTrue(message.contains("safe-name"));
+    }
+
+    @Test
     void testBeforePrepareWithException() {
         StatementHandler statementHandler = mock(StatementHandler.class);
         Connection connection = mock(Connection.class);
@@ -120,4 +172,3 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
         });
     }
 }
-

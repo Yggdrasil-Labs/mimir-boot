@@ -292,6 +292,8 @@ public class UserQuery {
 }
 ```
 
+对于参数 `Map`（包括多个 `@Param` 参数），`password`、`passwd`、`pwd`、`token`、`access_token`、`refresh_token`、`id_token`、`secret`、`client_secret`、`authorization` 和 `api_key` 会自动替换为 `***`。参数名不区分大小写，并兼容 `_`、`-` 分隔；其他敏感字段仍应使用 `@SensitiveField` 显式标注。
+
 **支持的脱敏策略**：
 
 | 策略 | 说明 | 示例 |

@@ -9,12 +9,14 @@ import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * SQL 参数脱敏工具。
  *
- * <p>根据字段上的 {@link SensitiveField} 注解进行定向脱敏；
+ * <p>根据字段上的 {@link SensitiveField} 注解和内置敏感参数名进行定向脱敏；
  * 对于基础类型与常见简单类型，直接透传。</p>
  */
 public class SqlLogMaskUtils {
@@ -23,6 +25,10 @@ public class SqlLogMaskUtils {
      * 最大递归深度，防止堆栈溢出
      */
     private static final int MAX_DEPTH = 5;
+
+    private static final Set<String> SENSITIVE_PARAMETER_NAMES = Set.of(
+            "password", "passwd", "pwd", "token", "accesstoken", "refreshtoken", "idtoken",
+            "secret", "clientsecret", "authorization", "apikey");
 
     private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
@@ -78,6 +84,7 @@ public class SqlLogMaskUtils {
         // IdentityHashMap 使用对象引用（==）而不是 equals() 和 hashCode() 来比较键
         // 对于日志脱敏场景，使用 IdentityHashMap 是可以接受的
         Map<Object, Object> result = new IdentityHashMap<>();
+        IdentityHashMap<Object, Boolean> sensitiveParameterValues = findSensitiveParameterValues(map);
         // 创建新的 visited 集合，避免修改原始集合，并先将当前 map 标记进去以便检测自引用
         IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
         newVisited.put(map, Boolean.TRUE);
@@ -87,10 +94,21 @@ public class SqlLogMaskUtils {
             Object value = entry.getValue();
 
             Object safeKey = toSafeKey(key);
-            Object safeValue = toSafeValue(key, value, depth, visited, newVisited);
+            Object safeValue = toSafeValue(key, value, depth, visited, newVisited, sensitiveParameterValues);
             result.put(safeKey, safeValue);
         }
         return result;
+    }
+
+    private static IdentityHashMap<Object, Boolean> findSensitiveParameterValues(Map<?, ?> map) {
+        IdentityHashMap<Object, Boolean> sensitiveValues = new IdentityHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object value = entry.getValue();
+            if (value != null && isSensitiveParameterName(entry.getKey())) {
+                sensitiveValues.put(value, Boolean.TRUE);
+            }
+        }
+        return sensitiveValues;
     }
 
     /**
@@ -113,10 +131,14 @@ public class SqlLogMaskUtils {
             Object value,
             int depth,
             IdentityHashMap<Object, Boolean> visited,
-            IdentityHashMap<Object, Boolean> newVisited) {
+            IdentityHashMap<Object, Boolean> newVisited,
+            IdentityHashMap<Object, Boolean> sensitiveParameterValues) {
 
         if (value == null) {
             return null;
+        }
+        if (isSensitiveParameterName(key) || sensitiveParameterValues.containsKey(value)) {
+            return CommonConstants.MASKED;
         }
         if (value instanceof Map) {
             return handleMapValue((Map<?, ?>) value, depth, visited, newVisited);
@@ -168,6 +190,16 @@ public class SqlLogMaskUtils {
         }
 
         return maskParams(value, depth + 1, newVisited);
+    }
+
+    private static boolean isSensitiveParameterName(Object key) {
+        if (!(key instanceof String keyName)) {
+            return false;
+        }
+        String normalized = keyName.toLowerCase(Locale.ROOT)
+                .replace("_", "")
+                .replace("-", "");
+        return SENSITIVE_PARAMETER_NAMES.contains(normalized);
     }
 
     private static Object maskCollection(Collection<?> collection, int depth, IdentityHashMap<Object, Boolean> visited) {
@@ -321,4 +353,3 @@ public class SqlLogMaskUtils {
         return fields.toArray(new Field[0]);
     }
 }
-

@@ -79,7 +79,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`SqlLogMaskUtils.java:50-60,152-170`、`JsonSqlLogInnerInterceptor.java:34-40`
 - **影响**：`@Param("password") String password` 和 `Map<String, Object>` 的敏感键值可原样进入 SQL 日志。
-- **修复方向**：默认不记录参数值，或使用内置敏感键拒绝表；覆盖标量、Map、嵌套对象和集合测试。
+- **修复状态（2026-07-19）**：已在当前分支修复。对 `Map` 形式的 SQL 参数，内置拒绝表会在 JSON 序列化前脱敏 password、token、secret、authorization 及常见变体；同时保留 `@SensitiveField` 对对象字段的脱敏，并增加日志捕获回归测试。
 
 ### R-007：访问日志缓存完整响应并记录查询参数
 
