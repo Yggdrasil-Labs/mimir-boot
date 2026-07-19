@@ -73,7 +73,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`MybatisPlusCryptoConfiguration.java:25-33`
 - **影响**：启用加密但未显式配置密钥时，重启后无法解密已有数据。
-- **修复方向**：除明确的 local/test profile 外，未提供稳定密钥或 `CryptoKeyProvider` 时 Fail Fast；增加跨重启读写验证。
+- **修复状态（2026-07-19）**：已通过提交 `a63fdf2` 修复。启用字段加密时，所有 profile 均必须配置稳定密钥或显式提供 `CryptoKeyProvider`，不再生成临时密钥；同时增加两个独立 Spring 应用上下文之间的加密/解密回归测试。
 
 ### R-006：SQL 日志未可靠脱敏标量及 Map 参数
 
