@@ -20,6 +20,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -205,6 +207,67 @@ class AccessLogFilterTest extends BaseUnitTest {
         ILoggingEvent event = listAppender.list.get(0);
         assertTrue(event.getFormattedMessage().contains("/api/search"));
         assertTrue(!event.getFormattedMessage().contains("token=secret-token"));
+    }
+
+    @Test
+    void shouldStreamResponseWithoutBuffering() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/events");
+        request.addHeader("User-Agent", "EventSource");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = (servletRequest, servletResponse) -> {
+            HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
+            assertSame(response, chainResponse);
+            chainResponse.getWriter().write("data: ready\n\n");
+            chainResponse.flushBuffer();
+
+            assertEquals("data: ready\n\n", response.getContentAsString());
+        };
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals("data: ready\n\n", response.getContentAsString());
+    }
+
+    @Test
+    void shouldWriteDownloadResponseWithoutBuffering() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/export");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        byte[] content = "export-content".getBytes();
+        FilterChain chain = (servletRequest, servletResponse) -> {
+            HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
+            assertSame(response, chainResponse);
+            chainResponse.setHeader("Content-Disposition", "attachment; filename=report.csv");
+            chainResponse.getOutputStream().write(content);
+            chainResponse.flushBuffer();
+
+            assertArrayEquals(content, response.getContentAsByteArray());
+        };
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals("attachment; filename=report.csv", response.getHeader("Content-Disposition"));
+        assertArrayEquals(content, response.getContentAsByteArray());
+    }
+
+    @Test
+    void shouldWriteLargeResponseWithoutBuffering() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/batch-export");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        byte[] content = new byte[1024 * 1024];
+        content[0] = 1;
+        content[content.length - 1] = 2;
+        FilterChain chain = (servletRequest, servletResponse) -> {
+            HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
+            assertSame(response, chainResponse);
+            chainResponse.getOutputStream().write(content);
+            chainResponse.flushBuffer();
+
+            assertArrayEquals(content, response.getContentAsByteArray());
+        };
+
+        filter.doFilter(request, response, chain);
+
+        assertArrayEquals(content, response.getContentAsByteArray());
     }
 
     /**

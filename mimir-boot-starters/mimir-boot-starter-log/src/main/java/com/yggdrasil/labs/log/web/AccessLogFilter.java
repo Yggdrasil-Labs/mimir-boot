@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
-import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 import java.util.List;
@@ -51,23 +50,17 @@ public class AccessLogFilter implements Filter {
         // 记录开始时间
         long startTime = System.currentTimeMillis();
 
-        // 包装响应以便获取状态码
-        ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(httpResponse);
-
         try {
             // 继续过滤器链
-            chain.doFilter(request, wrappedResponse);
+            chain.doFilter(request, httpResponse);
         } finally {
             // 计算耗时
             long duration = System.currentTimeMillis() - startTime;
 
             // 检查是否需要记录访问日志（排除配置的路径）
             if (shouldLogAccess(httpRequest)) {
-                logAccess(httpRequest, wrappedResponse, duration);
+                logAccess(httpRequest, httpResponse, duration);
             }
-
-            // 将缓存的响应内容复制回原始响应（重要：否则响应会为空）
-            wrappedResponse.copyBodyToResponse();
         }
     }
 

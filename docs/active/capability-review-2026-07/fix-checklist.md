@@ -31,31 +31,37 @@ created: 2026-07-17
 
 ### R-002：收紧 CORS
 
-- [ ] 默认改为关闭或空 Origin 白名单。
-- [ ] `allowCredentials=true` 时拒绝 `*` 与等价的全匹配 pattern。
-- [ ] 提供显式生产白名单示例。
-- [ ] 增加 MockMvc/WebTestClient 预检测试和带 Cookie 请求测试。
+- [x] 默认改为关闭或空 Origin 白名单。
+- [x] `allowCredentials=true` 时拒绝 `*` 与等价的全匹配 pattern。
+- [x] 提供显式生产白名单示例。
+- [x] 增加 MockMvc/WebTestClient 预检测试和带 Cookie 请求测试。
+
+**R-002 完成记录（2026-07-19）**：提交 `2e8e798` 默认关闭 CORS，启用时要求配置显式 Origin 白名单，并由 Spring 校验拒绝携带凭证的通配 Origin。README 补充生产白名单示例；MockMvc 回归测试覆盖预检、拒绝非白名单来源和携带 Cookie 的请求。
 
 ### R-003、R-004：重建 Nacos 加密策略与日志策略
 
-- [ ] 统一为单一 `mimir.boot.nacos.encrypt` 配置前缀，保留兼容迁移期时给出弃用警告。
-- [ ] 改为 AES-GCM，密文包含格式版本与随机 IV。
-- [ ] 密钥长度、算法和值格式在启动时校验。
-- [ ] 日志只记录属性名和统计数，不记录密文或明文。
-- [ ] 增加篡改密文、错误密钥、旧格式迁移和日志捕获测试。
+- [x] 统一为单一 `mimir.boot.nacos.encrypt` 配置前缀，保留兼容迁移期时给出弃用警告。
+- [x] 改为 AES-GCM，密文包含格式版本与随机 IV。
+- [x] 密钥长度、算法和值格式在启动时校验。
+- [x] 日志只记录属性名和统计数，不记录密文或明文。
+- [x] 增加篡改密文、错误密钥、旧格式迁移和日志捕获测试。
+
+**R-003、R-004 完成记录（2026-07-19）**：提交 `44ca087` 统一当前配置前缀并在迁移期兼容旧前缀、输出弃用警告；默认加密格式升级为版本化 AES-GCM（随机 IV），启动期校验密钥与算法。解密日志仅记录属性名或统计数量，测试覆盖错误密钥、篡改密文、旧格式迁移和日志不泄露密文/明文。
 
 ### R-005、R-006、R-007：保护持久化与日志数据
 
 - [x] 启用 MyBatis 字段加密但未配置稳定密钥时，在所有 profile 启动失败。
 - [x] 禁止自动生成临时密钥；自定义 `CryptoKeyProvider` 必须返回稳定密钥。
 - [x] SQL 日志对 password、token、secret、authorization 等内置敏感参数名统一脱敏。
-- [ ] 访问日志默认不写 query string；配置开启时按键名脱敏。
-- [ ] 移除 `ContentCachingResponseWrapper` 的无必要使用，验证 SSE、下载和大响应场景。
+- [x] 访问日志仅记录 request URI，不提供写入 query string 的配置开关。
+- [x] 移除 `ContentCachingResponseWrapper` 的无必要使用，验证 SSE、下载和大响应场景。
 - [x] 增加跨上下文重启解密测试，验证同一稳定密钥可解密先前写入的密文。
 - [x] 增加 SQL 参数脱敏日志捕获测试。
-- [ ] 增加访问日志脱敏和流式响应测试。
+- [x] 增加访问日志 query string 脱敏、SSE、下载和大响应测试。
 
 **R-005 完成记录（2026-07-19）**：提交 `a63fdf2` 在启动期校验 Base64 AES 密钥格式与长度，并覆盖无密钥、非法密钥、自定义 Provider 与两个独立应用上下文间的加密/解密场景。验证命令：`mise exec java@17 -- ./mvnw -B -pl mimir-boot-starters/mimir-boot-starter-mybatis -am -Pci test`（302 项通过）。
+
+**R-007 完成记录（2026-07-19）**：访问日志仅记录 request URI，且不提供记录 query string 的配置开关；过滤器不再缓存响应体，直接将原始响应交给下游。新增 SSE、下载和 1 MiB 响应回归测试，验证响应会在过滤链执行期间直接写出。验证命令：`mise exec java@17 -- ./mvnw -B -pl mimir-boot-starters/mimir-boot-starter-log -am -Pci -Dtest=AccessLogFilterTest -Dsurefire.failIfNoSpecifiedTests=false test`（14 项通过）。
 
 **验收标准**：日志断言中不存在密钥、明文口令、token 或原始敏感查询参数；加密字段跨进程重启可读。
 

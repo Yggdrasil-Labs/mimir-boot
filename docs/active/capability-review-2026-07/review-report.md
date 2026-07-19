@@ -55,19 +55,19 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`mimir-boot-starter-web/.../WebProperties.java:62-88`、`CorsConfig.java:46-71`
 - **影响**：默认 `*` Origin、任意请求头与 `allowCredentials=true` 组合会向任意 Origin 反射放行凭证，Cookie/会话认证接入方存在跨站数据访问风险。
-- **修复方向**：默认关闭或空白名单；凭证开启时拒绝 `*`；增加真实预检与带凭证请求测试。
+- **修复状态（2026-07-19）**：已通过提交 `2e8e798` 修复。默认不注册 CORS Filter；启用时要求显式 Origin 白名单，并由 Spring 校验拒绝携带凭证的通配 Origin。MockMvc 覆盖预检、非白名单来源和携带 Cookie 的请求。
 
 ### R-003：Nacos 属性前缀、动态刷新与密码学策略不可靠
 
 - **位置**：`NacosEncryptAutoConfiguration.java:34-39`、`NacosEncryptProperties.java:18`、`ConfigCryptoUtils.java:81-91`、`ConfigDecryptProcessor.java:66-77`
 - **影响**：条件前缀与属性绑定前缀不一致；已添加解密属性源后，刷新事件被直接跳过；默认 `AES` 未指定认证模式与随机 IV。
-- **修复方向**：统一属性前缀；刷新时按来源重建解密属性源；改用版本化 AES-GCM 密文格式，并为旧密文提供迁移路径。
+- **修复状态（2026-07-19）**：已通过提交 `44ca087` 修复。当前前缀统一为 `mimir.boot.nacos.encrypt`，旧前缀在迁移期会告警；默认格式为含版本与随机 IV 的 AES-GCM，启动期校验密钥和算法，并覆盖刷新、错误密钥、篡改密文及旧格式迁移测试。
 
 ### R-004：Nacos 解密流程会写出敏感配置
 
 - **位置**：`ConfigDecryptProcessor.java:141,174`
 - **影响**：DEBUG 日志输出明文，ERROR 日志输出完整密文；日志系统成为密钥、数据库口令和令牌的泄露渠道。
-- **修复方向**：仅记录配置键名和数量，必要时对键名脱敏；禁止记录明文、密文及原始异常值。
+- **修复状态（2026-07-19）**：已通过提交 `44ca087` 修复。正常日志只记录解密数量，失败日志只记录属性名；日志捕获测试确认明文和密文均不会写入日志。
 
 ### R-005：MyBatis 字段加密会生成进程内临时密钥
 
@@ -85,7 +85,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`AccessLogFilter.java:54-70,109-120`
 - **影响**：下载、SSE 和大响应会产生额外内存压力或破坏流式语义；URL 内 token、验证码等会落盘。
-- **修复方向**：不包装响应体，仅使用原始状态码；默认忽略 query string，必要时按键名脱敏。
+- **修复状态（2026-07-19）**：已在当前分支修复。访问日志只使用 `requestURI`，不提供记录 query string 的配置开关；移除响应缓存包装并直接读取 Servlet 响应状态。回归测试覆盖携带 token 的 query、SSE、下载和 1 MiB 响应，验证下游写入会立即进入原始响应。
 
 ### R-008：Dubbo Provider 没有提取入站追踪上下文
 
