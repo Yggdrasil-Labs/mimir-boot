@@ -35,7 +35,7 @@ public class MybatisProperties {
     private boolean cryptoEnabled = false;
 
     /**
-     * 加解密密钥（Base64编码），未配置时自动生成（仅用于开发测试）
+     * 加解密密钥（Base64 编码）。启用字段加密时必须配置。
      */
     private String cryptoKey;
 
@@ -88,5 +88,4 @@ public class MybatisProperties {
         this.cryptoKey = cryptoKey;
     }
 }
-
 

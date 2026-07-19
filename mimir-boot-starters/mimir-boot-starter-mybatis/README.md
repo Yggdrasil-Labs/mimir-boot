@@ -199,7 +199,7 @@ mimir:
   boot:
     mybatis:
       crypto-enabled: true  # 启用加密功能（默认 false）
-      crypto-key: BASE64_ENCODED_KEY_HERE  # Base64 编码的密钥（可选，不配置则自动生成）
+      crypto-key: ${MYBATIS_CRYPTO_KEY}  # Base64 编码的 128/192/256 位稳定 AES 密钥（启用时必填）
 ```
 
 > ⚠️ **注意**：如果不启用加密功能，即使字段上配置了 `typeHandler = StringCryptoTypeHandler.class`，也不会生效。
@@ -249,8 +249,9 @@ public class CustomCryptoKeyProvider implements CryptoKeyProvider {
 
 **安全提示**：
 
+- 启用字段加密时，必须配置 `crypto-key` 或提供返回稳定密钥的 `CryptoKeyProvider`；Starter 不会生成临时密钥。
 - 生产环境请使用密钥管理服务（如 Vault、KMS）动态获取密钥
-- 当前实现使用 AES/ECB 模式，仅用于演示；生产环境建议使用 AES-GCM 等更安全的模式
+- 当前实现使用带随机 IV 的 AES-GCM，密文包含认证标签；请妥善轮换和保管稳定密钥
 
 ### 4. JSON SQL 日志
 
@@ -369,8 +370,8 @@ mimir:
     # 是否启用字段加解密功能（默认 false）
     crypto-enabled: true
     
-    # 加解密密钥（Base64 编码），启用加密时建议配置，不配置则自动生成
-    crypto-key: YOUR_BASE64_ENCODED_KEY
+    # 加解密密钥（Base64 编码的 128/192/256 位 AES 密钥），启用加密时必填
+    crypto-key: ${MYBATIS_CRYPTO_KEY}
 ```
 
 ### MyBatis-Plus 标准配置
