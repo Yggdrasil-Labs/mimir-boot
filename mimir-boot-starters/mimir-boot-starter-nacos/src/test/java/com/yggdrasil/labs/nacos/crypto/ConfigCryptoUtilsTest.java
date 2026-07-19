@@ -58,6 +58,19 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldUseVersionedCiphertextWithRandomIv() {
+        String key = ConfigCryptoUtils.generateKey();
+        String plaintext = "same-plaintext";
+
+        String first = ConfigCryptoUtils.encrypt(plaintext, key);
+        String second = ConfigCryptoUtils.encrypt(plaintext, key);
+
+        assertTrue(first.startsWith("v1:"));
+        assertTrue(second.startsWith("v1:"));
+        assertNotEquals(first, second);
+    }
+
+    @Test
     void testEncryptAndDecryptWithAlgorithm() {
         String key = ConfigCryptoUtils.generateKey("AES");
         String plaintext = TestUtils.randomUuid();
@@ -141,13 +154,35 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
 
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, key1);
 
-        // 使用错误的密钥解密：要么抛出异常，要么解密结果不等于原文
-        try {
-            String decrypted = ConfigCryptoUtils.decrypt(encrypted, key2);
-            assertNotEquals(plaintext, decrypted, "用错误密钥解密不应得到原文");
-        } catch (RuntimeException e) {
-            // 抛出异常也是预期行为
-        }
+        assertThrows(RuntimeException.class, () -> ConfigCryptoUtils.decrypt(encrypted, key2));
+    }
+
+    @Test
+    void shouldRejectTamperedGcmCiphertext() {
+        String key = ConfigCryptoUtils.generateKey();
+        String encrypted = ConfigCryptoUtils.encrypt("secret", key);
+        String[] parts = encrypted.split(":", -1);
+        String ciphertext = (parts[2].charAt(0) == 'A' ? "B" : "A") + parts[2].substring(1);
+
+        assertThrows(RuntimeException.class,
+                () -> ConfigCryptoUtils.decrypt(parts[0] + ":" + parts[1] + ":" + ciphertext, key));
+    }
+
+    @Test
+    void shouldRequireExplicitApiToDecryptLegacyAesCiphertextForMigration() {
+        String key = ConfigCryptoUtils.generateKey();
+        String legacyCiphertext = ConfigCryptoUtils.encrypt("legacy-secret", key, "AES");
+
+        assertFalse(legacyCiphertext.startsWith("v1:"));
+        assertThrows(RuntimeException.class, () -> ConfigCryptoUtils.decrypt(legacyCiphertext, key));
+        AssertUtils.assertEquals("legacy-secret", ConfigCryptoUtils.decrypt(legacyCiphertext, key, "AES"));
+    }
+
+    @Test
+    void shouldRejectNonAesAlgorithmForLegacyEncryption() {
+        String key = ConfigCryptoUtils.generateKey();
+
+        assertThrows(RuntimeException.class, () -> ConfigCryptoUtils.encrypt("secret", key, "DES"));
     }
 
     @Test

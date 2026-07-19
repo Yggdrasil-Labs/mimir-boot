@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.ApplicationContext;
@@ -30,12 +29,6 @@ import org.springframework.core.env.ConfigurableEnvironment;
  */
 @AutoConfiguration
 @ConditionalOnClass(name = "com.alibaba.cloud.nacos.NacosConfigProperties")
-@ConditionalOnProperty(
-        prefix = "mimir.boot.nacos.encrypt",
-        name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true
-)
 @EnableConfigurationProperties(NacosEncryptProperties.class)
 public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
 
@@ -72,13 +65,9 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
      * @param environment Spring 环境配置
      */
     void processDecrypt(ConfigurableEnvironment environment) {
-        if (!Boolean.TRUE.equals(properties.getEnabled())) {
-            log.debug("Nacos 配置加密脱敏功能已禁用");
-            return;
-        }
-
+        NacosEncryptProperties activeProperties = NacosEncryptPropertiesResolver.resolve(environment, properties);
         log.debug("开始处理 Nacos 配置解密");
-        ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
+        ConfigDecryptProcessor processor = new ConfigDecryptProcessor(activeProperties);
         processor.process(environment);
     }
 }

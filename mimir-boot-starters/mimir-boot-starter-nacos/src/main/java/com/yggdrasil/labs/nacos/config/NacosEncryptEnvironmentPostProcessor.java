@@ -2,7 +2,6 @@ package com.yggdrasil.labs.nacos.config;
 
 import com.yggdrasil.labs.nacos.decrypt.ConfigDecryptProcessor;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -19,9 +18,8 @@ public class NacosEncryptEnvironmentPostProcessor implements EnvironmentPostProc
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        NacosEncryptProperties properties = Binder.get(environment)
-                .bind("mimir.nacos.encrypt", NacosEncryptProperties.class)
-                .orElseGet(NacosEncryptProperties::new);
+        NacosEncryptProperties properties = NacosEncryptPropertiesResolver.resolve(
+                environment, new NacosEncryptProperties());
         new ConfigDecryptProcessor(properties).process(environment);
     }
 

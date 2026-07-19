@@ -81,6 +81,22 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, testKey);
         SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
         application.setDefaultProperties(Map.of(
+                "mimir.boot.nacos.encrypt.key", testKey,
+                "app.secret", "ENC(" + encrypted + ")",
+                "spring.cloud.nacos.config.import-check.enabled", "false"
+        ));
+
+        try (ConfigurableApplicationContext context = application.run()) {
+            assertEquals(plaintext, context.getBean("startupSecret", String.class));
+        }
+    }
+
+    @Test
+    void shouldDecryptPropertyWithLegacyPrefixDuringMigration() {
+        String plaintext = "legacy-startup-secret";
+        String encrypted = ConfigCryptoUtils.encrypt(plaintext, testKey);
+        SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
+        application.setDefaultProperties(Map.of(
                 "mimir.nacos.encrypt.key", testKey,
                 "app.secret", "ENC(" + encrypted + ")",
                 "spring.cloud.nacos.config.import-check.enabled", "false"
@@ -89,6 +105,31 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         try (ConfigurableApplicationContext context = application.run()) {
             assertEquals(plaintext, context.getBean("startupSecret", String.class));
         }
+    }
+
+    @Test
+    void shouldPreferCurrentPrefixWhenBothPrefixesAreConfigured() {
+        String legacyKey = ConfigCryptoUtils.generateKey();
+        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
+                "mimir.boot.nacos.encrypt.key", testKey,
+                "mimir.nacos.encrypt.key", legacyKey,
+                "app.secret", "ENC(" + ConfigCryptoUtils.encrypt("current-secret", testKey) + ")"
+        )));
+
+        configuration.processDecrypt(environment);
+
+        assertEquals("current-secret", environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldNotFallbackToLegacyPrefixWhenCurrentPrefixIsIncomplete() {
+        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
+                "mimir.boot.nacos.encrypt.enabled", "true",
+                "mimir.nacos.encrypt.key", testKey,
+                "app.secret", "ENC(invalid-ciphertext)"
+        )));
+
+        assertThrows(IllegalStateException.class, () -> configuration.processDecrypt(environment));
     }
 
     @Test
@@ -110,7 +151,7 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
-    void testProcessDecryptWithNoKey() {
+    void shouldFailWhenEncryptedValueHasNoKey() {
         properties.setKey(null);
 
         Map<String, Object> props = new HashMap<>();
@@ -119,12 +160,11 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         MapPropertySource propertySource = new MapPropertySource("test", props);
         environment.getPropertySources().addFirst(propertySource);
 
-        // 无密钥时不应该抛出异常
-        assertDoesNotThrow(() -> configuration.processDecrypt(environment));
+        assertThrows(IllegalStateException.class, () -> configuration.processDecrypt(environment));
     }
 
     @Test
-    void testProcessDecryptWithEmptyKey() {
+    void shouldFailWhenEncryptedValueHasEmptyKey() {
         properties.setKey("");
 
         Map<String, Object> props = new HashMap<>();
@@ -133,8 +173,7 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         MapPropertySource propertySource = new MapPropertySource("test", props);
         environment.getPropertySources().addFirst(propertySource);
 
-        // 空密钥时不应该抛出异常
-        assertDoesNotThrow(() -> configuration.processDecrypt(environment));
+        assertThrows(IllegalStateException.class, () -> configuration.processDecrypt(environment));
     }
 
     @Test
@@ -208,6 +247,45 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         configuration.onEnvironmentChange(new EnvironmentChangeEvent(Set.of("app.secret")));
 
         assertEquals("refreshed-secret", environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldRemoveDecryptedValueWhenRefreshedPropertyBecomesPlaintext() {
+        Map<String, Object> props = new HashMap<>();
+        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("first-secret", testKey) + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
+        configuration.processDecrypt(environment);
+
+        props.put("app.secret", "refreshed-plaintext");
+        configuration.processDecrypt(environment);
+
+        assertEquals("refreshed-plaintext", environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldRemoveDecryptedValueWhenDecryptionIsDisabledAtRefresh() {
+        Map<String, Object> props = new HashMap<>();
+        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("first-secret", testKey) + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
+        configuration.processDecrypt(environment);
+
+        properties.setEnabled(false);
+        configuration.processDecrypt(environment);
+
+        assertTrue(environment.getProperty("app.secret").startsWith("ENC("));
+    }
+
+    @Test
+    void shouldKeepLastValidDecryptedValueWhenStrictRefreshFails() {
+        Map<String, Object> props = new HashMap<>();
+        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("first-secret", testKey) + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
+        configuration.processDecrypt(environment);
+
+        props.put("app.secret", "ENC(invalid-ciphertext)");
+
+        assertThrows(IllegalStateException.class, () -> configuration.processDecrypt(environment));
+        assertEquals("first-secret", environment.getProperty("app.secret"));
     }
 
     @Configuration(proxyBeanMethods = false)

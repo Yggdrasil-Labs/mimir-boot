@@ -61,7 +61,7 @@ public class NacosEncryptUtil {
      *
      * @param plaintext 明文
      * @param key       Base64 编码的密钥
-     * @return Base64 编码的密文
+     * @return 带版本和随机 IV 的密文
      */
     public static String encrypt(String plaintext, String key) {
         return ConfigCryptoUtils.encrypt(plaintext, key);
@@ -73,8 +73,11 @@ public class NacosEncryptUtil {
      * @param plaintext 明文
      * @param key       Base64 编码的密钥
      * @param algorithm 加密算法
-     * @return Base64 编码的密文
+     * @return 旧格式 Base64 密文
+     * @deprecated 新配置请使用 {@link #encrypt(String, String)}。该重载仅保留旧 AES 密文迁移兼容。
      */
+    @Deprecated(since = "2.1.1", forRemoval = false)
+    @SuppressWarnings("deprecation")
     public static String encrypt(String plaintext, String key, String algorithm) {
         return ConfigCryptoUtils.encrypt(plaintext, key, algorithm);
     }
@@ -106,7 +109,7 @@ public class NacosEncryptUtil {
     /**
      * 解密配置值
      *
-     * @param ciphertext Base64 编码的密文
+     * @param ciphertext 带版本的 AES-GCM 密文
      * @param key        Base64 编码的密钥
      * @return 明文
      */
@@ -117,11 +120,14 @@ public class NacosEncryptUtil {
     /**
      * 使用指定算法解密配置值
      *
-     * @param ciphertext Base64 编码的密文
+     * @param ciphertext 旧 Base64 AES 密文
      * @param key        Base64 编码的密钥
      * @param algorithm  加密算法
      * @return 明文
+     * @deprecated 新配置请使用 {@link #decrypt(String, String)}。该重载仅保留旧 AES 密文迁移兼容。
      */
+    @Deprecated(since = "2.1.1", forRemoval = false)
+    @SuppressWarnings("deprecation")
     public static String decrypt(String ciphertext, String key, String algorithm) {
         return ConfigCryptoUtils.decrypt(ciphertext, key, algorithm);
     }

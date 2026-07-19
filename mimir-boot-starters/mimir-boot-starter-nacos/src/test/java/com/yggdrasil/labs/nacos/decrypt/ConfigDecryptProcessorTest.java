@@ -36,7 +36,6 @@ class ConfigDecryptProcessorTest {
         testKey = ConfigCryptoUtils.generateKey();
         properties.setKey(testKey);
         properties.setEnabled(true);
-        properties.setAlgorithm("AES");
         properties.setPrefix("ENC");
 
         environment = new StandardEnvironment();
@@ -89,6 +88,21 @@ class ConfigDecryptProcessorTest {
     }
 
     @Test
+    void shouldNotOverrideHigherPriorityPlaintextProperty() {
+        String encrypted = ConfigCryptoUtils.encrypt("nacos-secret", testKey);
+        environment.getPropertySources().addLast(new MapPropertySource("nacos", Map.of(
+                "app.secret", "ENC(" + encrypted + ")"
+        )));
+        environment.getPropertySources().addFirst(new MapPropertySource("override", Map.of(
+                "app.secret", "runtime-override"
+        )));
+
+        new ConfigDecryptProcessor(properties).process(environment);
+
+        assertEquals("runtime-override", environment.getProperty("app.secret"));
+    }
+
+    @Test
     void testProcessWithDisabled() {
         properties.setEnabled(false);
 
@@ -108,7 +122,7 @@ class ConfigDecryptProcessorTest {
     }
 
     @Test
-    void testProcessWithNoKey() {
+    void shouldFailWhenEncryptedPropertyHasNoKey() {
         properties.setKey(null);
 
         Map<String, Object> props = new HashMap<>();
@@ -118,14 +132,12 @@ class ConfigDecryptProcessorTest {
         environment.getPropertySources().addFirst(propertySource);
 
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
-        processor.process(environment);
 
-        // 无密钥时不应该解密
-        assertEquals("ENC(value)", environment.getProperty("test.key"));
+        assertThrows(IllegalStateException.class, () -> processor.process(environment));
     }
 
     @Test
-    void testProcessWithEmptyKey() {
+    void shouldFailWhenEncryptedPropertyHasEmptyKey() {
         properties.setKey("");
 
         Map<String, Object> props = new HashMap<>();
@@ -135,10 +147,8 @@ class ConfigDecryptProcessorTest {
         environment.getPropertySources().addFirst(propertySource);
 
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
-        processor.process(environment);
 
-        // 空密钥时不应该解密
-        assertEquals("ENC(value)", environment.getProperty("test.key"));
+        assertThrows(IllegalStateException.class, () -> processor.process(environment));
     }
 
     @Test
@@ -183,7 +193,7 @@ class ConfigDecryptProcessorTest {
     }
 
     @Test
-    void testProcessWithInvalidEncryptedValue() {
+    void shouldFailWhenEncryptedValueIsInvalid() {
         Map<String, Object> props = new HashMap<>();
         props.put("test.key", "ENC(invalid-encrypted-value)");
 
@@ -192,9 +202,30 @@ class ConfigDecryptProcessorTest {
 
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
 
-        // 解密失败时不应该抛出异常，应该返回原值
-        assertDoesNotThrow(() -> processor.process(environment));
-        assertEquals("ENC(invalid-encrypted-value)", environment.getProperty("test.key"));
+        assertThrows(IllegalStateException.class, () -> processor.process(environment));
+    }
+
+    @Test
+    void shouldFailWhenEncryptedWrapperIsMalformed() {
+        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
+                "test.key", "ENC()"
+        )));
+
+        assertThrows(IllegalStateException.class,
+                () -> new ConfigDecryptProcessor(properties).process(environment));
+    }
+
+    @Test
+    void shouldDecryptEveryEncryptedSegmentInPropertyValue() {
+        String first = ConfigCryptoUtils.encrypt("first", testKey);
+        String second = ConfigCryptoUtils.encrypt("second", testKey);
+        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
+                "test.key", "jdbc://ENC(" + first + ")/ENC(" + second + ")"
+        )));
+
+        new ConfigDecryptProcessor(properties).process(environment);
+
+        assertEquals("jdbc://first/second", environment.getProperty("test.key"));
     }
 
     @Test
@@ -209,7 +240,8 @@ class ConfigDecryptProcessorTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            new ConfigDecryptProcessor(properties).process(environment);
+            assertThrows(IllegalStateException.class,
+                    () -> new ConfigDecryptProcessor(properties).process(environment));
 
             assertTrue(appender.list.stream()
                     .map(ILoggingEvent::getFormattedMessage)
@@ -273,7 +305,7 @@ class ConfigDecryptProcessorTest {
     }
 
     @Test
-    void testProcessWithCustomAlgorithm() {
+    void shouldRejectLegacyCiphertextDuringConfigurationProcessing() {
         properties.setAlgorithm("AES");
 
         String plaintext = "test-value";
@@ -286,9 +318,32 @@ class ConfigDecryptProcessorTest {
         environment.getPropertySources().addFirst(propertySource);
 
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(properties);
-        processor.process(environment);
 
-        assertEquals(plaintext, environment.getProperty("test.key"));
+        assertThrows(IllegalStateException.class, () -> processor.process(environment));
+    }
+
+    @Test
+    void shouldRejectUnsupportedConfiguredAlgorithm() {
+        properties.setAlgorithm("DES");
+        String encrypted = ConfigCryptoUtils.encrypt("secret", testKey);
+        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
+                "test.key", "ENC(" + encrypted + ")"
+        )));
+
+        assertThrows(IllegalStateException.class,
+                () -> new ConfigDecryptProcessor(properties).process(environment));
+    }
+
+    @Test
+    void shouldRejectMalformedKeyBeforeDecrypting() {
+        String encrypted = ConfigCryptoUtils.encrypt("secret", testKey);
+        properties.setKey("not-base64");
+        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
+                "test.key", "ENC(" + encrypted + ")"
+        )));
+
+        assertThrows(IllegalStateException.class,
+                () -> new ConfigDecryptProcessor(properties).process(environment));
     }
 
     @Test

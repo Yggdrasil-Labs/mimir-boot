@@ -8,7 +8,7 @@
 
 - ✅ **配置加密脱敏**：支持 `ENC(encrypted_value)` 格式的配置值自动解密
 - ✅ **自动解密处理**：应用启动时和配置刷新时自动处理加密配置
-- ✅ **多种加密算法**：支持 AES 等对称加密算法
+- ✅ **认证加密**：新密文使用带随机 IV 的 AES-GCM
 - ✅ **工具类支持**：提供密钥生成、加密解密等便捷工具
 - ✅ **动态刷新支持**：配置动态刷新时自动重新解密
 
@@ -51,12 +51,12 @@ spring:
 
 ```yaml
 mimir:
-  nacos:
-    encrypt:
-      enabled: true              # 是否启用配置加密脱敏功能，默认 true
-      key: YOUR_BASE64_KEY       # Base64 编码的加密密钥（必填）
-      algorithm: AES             # 加密算法，默认 AES
-      prefix: ENC               # 加密前缀，默认 ENC
+  boot:
+    nacos:
+      encrypt:
+        enabled: true              # 是否启用配置加密脱敏功能，默认 true
+        key: ${NACOS_ENCRYPT_KEY}  # Base64 编码的 AES 密钥（必填）
+        prefix: ENC                # 加密前缀，默认 ENC
 ```
 
 #### 3. 在 Nacos 配置中心使用加密值
@@ -141,9 +141,10 @@ System.out.println("配置值: " + encValue);  // 输出: ENC(encrypted_value)
 
 ```yaml
 mimir:
-  nacos:
-    encrypt:
-      prefix: SECRET  # 自定义前缀
+  boot:
+    nacos:
+      encrypt:
+        prefix: SECRET  # 自定义前缀
 ```
 
 配置示例：
@@ -155,7 +156,7 @@ password: SECRET(encrypted_value)  # 使用自定义前缀
 
 ## 配置参数
 
-所有配置项前缀为 `mimir.nacos.encrypt`：
+所有配置项前缀为 `mimir.boot.nacos.encrypt`：
 
 ```yaml
 mimir:
@@ -168,9 +169,6 @@ mimir:
       # 可以通过工具类生成：NacosEncryptUtil.generateKey()
       key: YOUR_BASE64_ENCODED_KEY
       
-      # 加密算法，默认 AES
-      algorithm: AES
-      
       # 加密前缀，默认 ENC
       # 配置值格式：prefix(encrypted_value)
       prefix: ENC
@@ -182,7 +180,7 @@ mimir:
 |--------|------|--------|------|------|
 | `enabled` | Boolean | `true` | 否 | 是否启用配置加密脱敏功能 |
 | `key` | String | - | 是 | Base64 编码的加密密钥，用于解密配置值 |
-| `algorithm` | String | `AES` | 否 | 加密算法，当前支持 AES |
+| `algorithm` | String | `AES/GCM/NoPadding` | 否 | 已弃用；应用配置仅支持 AES-GCM |
 | `prefix` | String | `ENC` | 否 | 加密配置值的前缀，格式为 `prefix(encrypted_value)` |
 
 ## 使用示例
@@ -199,7 +197,7 @@ public class KeyGenerator {
         // 生成密钥
         String key = NacosEncryptUtil.generateKey();
         System.out.println("请将此密钥配置到 application.yml:");
-        System.out.println("mimir.nacos.encrypt.key: " + key);
+        System.out.println("mimir.boot.nacos.encrypt.key: " + key);
     }
 }
 ```
@@ -400,7 +398,7 @@ mimir:
 **可能原因**：
 
 1. 未配置加密密钥或密钥配置错误
-2. 功能被禁用（`mimir.nacos.encrypt.enabled: false`）
+2. 功能被禁用（`mimir.boot.nacos.encrypt.enabled: false`）
 3. 配置值格式不正确
 
 **解决方案**：
@@ -426,8 +424,8 @@ password: ENC encrypted_value   # ❌ 错误格式，缺少括号
 **可能原因**：
 
 1. 使用了错误的密钥解密
-2. 加密后的值格式不正确（不是 Base64）
-3. 加密算法不匹配
+2. 密文被篡改或格式不正确
+3. 密钥不是有效的 Base64 AES 密钥（128、192 或 256 位）
 
 **解决方案**：
 
@@ -517,10 +515,16 @@ password: SECRET(encrypted_value)  # 使用新前缀
 
 ### 安全说明
 
-- **当前实现**：使用 AES/ECB 模式（默认），密钥长度 128 位
-- **安全建议**：生产环境建议使用更安全的加密模式（如 AES-GCM）
+- **默认实现**：使用 `AES/GCM/NoPadding`，密文格式为 `v1:<iv-base64>:<ciphertext-base64>`；每次加密都会生成随机 IV。
+- **严格失败**：只要存在 `ENC(...)`，密钥缺失、密钥格式非法、密文被篡改或错误密钥都会使启动或刷新失败；日志仅记录属性名和解密数量。
 - **密钥管理**：生产环境请使用密钥管理服务（Vault、KMS）动态获取密钥
 - **密钥轮换**：定期轮换加密密钥，重新加密所有配置值
+
+### 迁移说明
+
+- 将 `mimir.nacos.encrypt` 迁移为 `mimir.boot.nacos.encrypt`。旧前缀仅在未配置新前缀时兼容，并会输出弃用警告；新旧同时存在时以新前缀为准。
+- 使用工具类重新生成的密文为 `v1` AES-GCM 格式。旧版不带版本的 AES 密文不会再由应用自动读取；请在隔离的离线迁移流程中通过已弃用的三参数 `decrypt` API 读取后重新加密并替换。
+- 移除旧的 `algorithm: AES` 配置；应用配置仅支持 AES-GCM。
 
 ## 技术栈
 

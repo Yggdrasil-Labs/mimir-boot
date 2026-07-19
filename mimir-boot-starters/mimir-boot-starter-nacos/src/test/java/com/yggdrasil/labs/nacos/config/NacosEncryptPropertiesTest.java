@@ -20,7 +20,7 @@ class NacosEncryptPropertiesTest extends BaseUnitTest {
 
         assertTrue(properties.getEnabled());
         assertNull(properties.getKey());
-        AssertUtils.assertEquals("AES", properties.getAlgorithm());
+        AssertUtils.assertEquals("AES/GCM/NoPadding", properties.getAlgorithm());
         AssertUtils.assertEquals("ENC", properties.getPrefix());
     }
 

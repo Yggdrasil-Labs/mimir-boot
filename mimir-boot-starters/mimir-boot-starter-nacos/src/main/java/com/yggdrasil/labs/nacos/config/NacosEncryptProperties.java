@@ -8,15 +8,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <p>功能说明：</p>
  * <ul>
  * <li>支持配置加密密钥</li>
- * <li>支持自定义加密算法</li>
+ * <li>新密文固定使用 AES-GCM，并兼容读取旧 AES 密文</li>
  * <li>支持启用/禁用配置解密功能</li>
  * </ul>
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
-@ConfigurationProperties(prefix = "mimir.nacos.encrypt")
+@ConfigurationProperties(prefix = NacosEncryptProperties.PREFIX)
 public class NacosEncryptProperties {
+
+    public static final String PREFIX = "mimir.boot.nacos.encrypt";
+    public static final String LEGACY_PREFIX = "mimir.nacos.encrypt";
 
     /** 是否启用配置加密脱敏功能 */
     private Boolean enabled = true;
@@ -24,8 +27,13 @@ public class NacosEncryptProperties {
     /** 加密密钥（Base64编码），用于解密配置值 */
     private String key;
 
-    /** 加密算法，默认 AES */
-    private String algorithm = "AES";
+    /**
+     * 加密算法。
+     *
+     * @deprecated 应用配置固定使用 AES-GCM；旧 AES 密文只能在离线迁移工具中显式读取。
+     */
+    @Deprecated(since = "2.1.1", forRemoval = false)
+    private String algorithm = "AES/GCM/NoPadding";
 
     /** ENC() 标记前缀，默认 ENC */
     private String prefix = "ENC";

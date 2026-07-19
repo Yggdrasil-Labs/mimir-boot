@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
 
 import java.util.*;
@@ -28,15 +29,20 @@ import java.util.regex.Pattern;
 public class ConfigDecryptProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(ConfigDecryptProcessor.class);
-    private static final String DECRYPTED_PROPERTIES = "decryptedProperties";
+    private static final String DECRYPTED_PROPERTIES_PREFIX = "decryptedProperties:";
 
     private final NacosEncryptProperties properties;
+    private final Pattern encryptMarkerPattern;
     private final Pattern encryptPattern;
 
     public ConfigDecryptProcessor(NacosEncryptProperties properties) {
         this.properties = properties;
         // 匹配 ENC(encrypted_value) 格式，支持大小写
         String prefix = properties.getPrefix();
+        if (prefix == null || prefix.isBlank()) {
+            throw new IllegalArgumentException("Nacos 加密前缀不能为空");
+        }
+        this.encryptMarkerPattern = Pattern.compile("(?i)" + Pattern.quote(prefix) + "\\(");
         this.encryptPattern = Pattern.compile(
                 "(?i)" + Pattern.quote(prefix) + "\\(" + "([^)]+)" + "\\)",
                 Pattern.CASE_INSENSITIVE
@@ -50,58 +56,104 @@ public class ConfigDecryptProcessor {
      */
     public void process(ConfigurableEnvironment environment) {
         if (!Boolean.TRUE.equals(properties.getEnabled())) {
+            removeDecryptedPropertySources(environment);
             log.debug("Nacos 配置加密脱敏功能已禁用");
+            return;
+        }
+
+        boolean containsEncryptedProperty = containsEncryptedProperty(environment);
+        if (!containsEncryptedProperty) {
+            removeDecryptedPropertySources(environment);
             return;
         }
 
         String key = properties.getKey();
         if (key == null || key.isEmpty()) {
-            log.warn("未配置加密密钥 (mimir.nacos.encrypt.key)，跳过配置解密");
-            return;
+            throw new IllegalStateException("检测到加密配置，但未配置加密密钥");
         }
-
-        String algorithm = properties.getAlgorithm();
-        log.debug("开始处理配置解密，算法: {}, 前缀: {}", algorithm, properties.getPrefix());
-
-        // 刷新时先移除旧的派生属性源，再基于最新原始属性重建。
-        environment.getPropertySources().remove(DECRYPTED_PROPERTIES);
+        try {
+            ConfigCryptoUtils.validateKey(key);
+            ConfigCryptoUtils.validateConfiguredAlgorithm(properties.getAlgorithm());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Nacos 加密配置校验失败", e);
+        }
 
         // 获取所有原始属性源并处理
         List<PropertySource<?>> propertySources = new ArrayList<>();
         for (PropertySource<?> propertySource : environment.getPropertySources()) {
             // 跳过已经解密的属性源
-            if (!DECRYPTED_PROPERTIES.equals(propertySource.getName())) {
+            if (!isDecryptedPropertySource(propertySource)) {
                 propertySources.add(propertySource);
             }
         }
 
-        // 从后往前处理，确保优先级正确
-        Collections.reverse(propertySources);
-
-        Map<String, Object> decryptedProperties = new HashMap<>();
+        List<DecryptedPropertySource> decryptedPropertySources = new ArrayList<>();
+        int decryptedCount = 0;
         for (PropertySource<?> propertySource : propertySources) {
-            if (propertySource instanceof EnumerablePropertySource) {
+            if (propertySource instanceof EnumerablePropertySource<?> enumerablePropertySource) {
+                Map<String, Object> decryptedProperties = new HashMap<>();
                 processPropertySource(
-                        (EnumerablePropertySource<?>) propertySource,
+                        enumerablePropertySource,
                         decryptedProperties,
-                        key,
-                        algorithm
+                        key
                 );
+                if (!decryptedProperties.isEmpty()) {
+                    decryptedPropertySources.add(new DecryptedPropertySource(
+                            propertySource.getName(),
+                            decryptedProperties
+                    ));
+                    decryptedCount += decryptedProperties.size();
+                }
             }
         }
 
-        // 将解密后的属性添加到环境配置中（最高优先级）
-        if (!decryptedProperties.isEmpty()) {
-            PropertySource<Map<String, Object>> decryptedPropertySource =
-                    new PropertySource<>(DECRYPTED_PROPERTIES, decryptedProperties) {
-                        @Override
-                        public Object getProperty(String name) {
-                            return source.get(name);
-                        }
-                    };
-            environment.getPropertySources().addFirst(decryptedPropertySource);
-            log.info("成功解密 {} 个配置项", decryptedProperties.size());
+        replaceDecryptedPropertySources(environment, decryptedPropertySources);
+        if (decryptedCount > 0) {
+            log.info("成功解密 {} 个配置项", decryptedCount);
         }
+    }
+
+    private void replaceDecryptedPropertySources(
+            ConfigurableEnvironment environment,
+            List<DecryptedPropertySource> decryptedPropertySources) {
+        removeDecryptedPropertySources(environment);
+        for (DecryptedPropertySource decryptedPropertySource : decryptedPropertySources) {
+            environment.getPropertySources().addBefore(
+                    decryptedPropertySource.sourceName(),
+                    new MapPropertySource(
+                            DECRYPTED_PROPERTIES_PREFIX + decryptedPropertySource.sourceName(),
+                            decryptedPropertySource.properties()
+                    )
+            );
+        }
+    }
+
+    private void removeDecryptedPropertySources(ConfigurableEnvironment environment) {
+        List<String> propertySourceNames = new ArrayList<>();
+        for (PropertySource<?> propertySource : environment.getPropertySources()) {
+            if (isDecryptedPropertySource(propertySource)) {
+                propertySourceNames.add(propertySource.getName());
+            }
+        }
+        propertySourceNames.forEach(environment.getPropertySources()::remove);
+    }
+
+    private boolean isDecryptedPropertySource(PropertySource<?> propertySource) {
+        return propertySource.getName().startsWith(DECRYPTED_PROPERTIES_PREFIX);
+    }
+
+    private boolean containsEncryptedProperty(ConfigurableEnvironment environment) {
+        for (PropertySource<?> propertySource : environment.getPropertySources()) {
+            if (propertySource instanceof EnumerablePropertySource<?> enumerablePropertySource) {
+                for (String propertyName : enumerablePropertySource.getPropertyNames()) {
+                    Object propertyValue = enumerablePropertySource.getProperty(propertyName);
+                    if (propertyValue instanceof String value && encryptMarkerPattern.matcher(value).find()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -110,20 +162,18 @@ public class ConfigDecryptProcessor {
      * @param propertySource      属性源
      * @param decryptedProperties 解密后的属性集合
      * @param key                 加密密钥
-     * @param algorithm           加密算法
      */
     private void processPropertySource(
             EnumerablePropertySource<?> propertySource,
             Map<String, Object> decryptedProperties,
-            String key,
-            String algorithm) {
+            String key) {
 
         String[] propertyNames = propertySource.getPropertyNames();
 
         for (String propertyName : propertyNames) {
             Object propertyValue = propertySource.getProperty(propertyName);
             if (propertyValue instanceof String encryptedValue) {
-                String decryptedValue = decryptValue(propertyName, encryptedValue, key, algorithm);
+                String decryptedValue = decryptValue(propertyName, encryptedValue, key);
                 if (!encryptedValue.equals(decryptedValue)) {
                     // 只有解密成功时才添加到集合中
                     decryptedProperties.put(propertyName, decryptedValue);
@@ -139,31 +189,38 @@ public class ConfigDecryptProcessor {
      * @param propertyName 配置属性名
      * @param value     配置值
      * @param key       加密密钥
-     * @param algorithm 加密算法
      * @return 解密后的值，如果不是加密格式则返回原值
      */
-    private String decryptValue(String propertyName, String value, String key, String algorithm) {
+    private String decryptValue(String propertyName, String value, String key) {
         if (value == null || value.isEmpty()) {
             return value;
         }
 
-        Matcher matcher = encryptPattern.matcher(value);
-        if (!matcher.find()) {
+        if (!encryptMarkerPattern.matcher(value).find()) {
             // 不包含 ENC() 格式，直接返回
             return value;
         }
 
         try {
-            // 提取加密内容
-            String encryptedContent = matcher.group(1);
-            // 解密
-            String decrypted = ConfigCryptoUtils.decrypt(encryptedContent, key, algorithm);
-            // 替换整个 ENC(...) 为解密后的值
-            return matcher.replaceAll(Matcher.quoteReplacement(decrypted));
+            Matcher matcher = encryptPattern.matcher(value);
+            StringBuffer decryptedValue = new StringBuffer();
+            boolean found = false;
+            while (matcher.find()) {
+                found = true;
+                String decrypted = ConfigCryptoUtils.decrypt(matcher.group(1), key);
+                matcher.appendReplacement(decryptedValue, Matcher.quoteReplacement(decrypted));
+            }
+            if (!found) {
+                throw new IllegalArgumentException("加密配置格式不合法");
+            }
+            matcher.appendTail(decryptedValue);
+            return decryptedValue.toString();
         } catch (Exception e) {
-            log.error("解密配置值失败，属性名: {}", propertyName, e);
-            // 解密失败时返回原值，避免应用启动失败
-            return value;
+            log.error("解密 Nacos 配置项失败: {}", propertyName);
+            throw new IllegalStateException("无法解密 Nacos 配置项: " + propertyName, e);
         }
+    }
+
+    private record DecryptedPropertySource(String sourceName, Map<String, Object> properties) {
     }
 }
