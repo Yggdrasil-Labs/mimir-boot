@@ -46,3 +46,6 @@ build/
 ### AI ###
 .cursor/
 openspec/
+
+### Git worktrees ###
+/.worktrees/
