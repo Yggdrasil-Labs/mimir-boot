@@ -7,6 +7,7 @@ import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
+import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -14,6 +15,7 @@ import org.apache.dubbo.rpc.Result;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +57,28 @@ class RpcDubboFilterTest {
         verify(hook).cleanup(any());
         verify(tracerBridge).inject(any());
         verify(invocation).setAttachment("x-trace-id", "t1");
+    }
+
+    @Test
+    void shouldExtractProviderContextBeforeHooksWithoutInjectingAttachments() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        Result result = mock(Result.class);
+        Map<String, Object> attachments = Map.of("x-trace-id", "upstream-trace");
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(attachments);
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        InOrder inOrder = inOrder(tracerBridge, hook, invoker);
+        inOrder.verify(tracerBridge).extract(contextCaptor.capture(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(hook).before(contextCaptor.getValue());
+        inOrder.verify(invoker).invoke(invocation);
+        verify(tracerBridge, never()).inject(any());
+        verify(invocation, never()).setAttachment(anyString(), anyString());
     }
 
     @Test
@@ -109,6 +133,29 @@ class RpcDubboFilterTest {
         verify(hook).cleanup(any());
         verify(tracerBridge).inject(any());
         org.junit.jupiter.api.Assertions.assertEquals("123", ctxCaptor.getValue().getMetadata().getAttachments().get("k1"));
+    }
+
+    @Test
+    void shouldExtractProviderContextAndCleanUpWhenInvocationFails() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RuntimeException ex = new RuntimeException("boom");
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
+        when(invoker.invoke(invocation)).thenThrow(ex);
+
+        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+
+        assertSame(ex, thrown);
+        InOrder inOrder = inOrder(tracerBridge, hook, invoker);
+        inOrder.verify(tracerBridge).extract(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(hook).before(any());
+        inOrder.verify(invoker).invoke(invocation);
+        inOrder.verify(hook).onError(any(), any(RpcCallResult.class));
+        inOrder.verify(hook).cleanup(any());
+        verify(tracerBridge, never()).inject(any());
+        verify(invocation, never()).setAttachment(anyString(), anyString());
     }
 
     @Test
@@ -285,11 +332,14 @@ class RpcDubboFilterTest {
     }
 
     private Invoker<?> mockInvoker() {
+        return mockInvoker(CommonConstants.CONSUMER_SIDE);
+    }
+
+    private Invoker<?> mockInvoker(String side) {
         Invoker<?> invoker = mock(Invoker.class);
-        URL url = URL.valueOf("dubbo://localhost:20880/com.foo.BarService");
+        URL url = URL.valueOf("dubbo://localhost:20880/com.foo.BarService?side=" + side);
         when(invoker.getUrl()).thenReturn(url);
         when(invoker.getInterface()).thenReturn((Class) Object.class);
         return invoker;
     }
 }
-

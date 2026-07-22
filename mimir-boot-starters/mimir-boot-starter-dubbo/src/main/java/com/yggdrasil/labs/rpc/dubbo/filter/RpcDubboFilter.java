@@ -75,9 +75,15 @@ public class RpcDubboFilter implements Filter {
         }
 
         Instant start = Instant.now();
+        boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
+                invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
+
+        if (properties.isContextPropagationEnabled() && providerSide) {
+            tracerBridge.extract(context, attachments == null ? Map.of() : attachments);
+        }
         hookChain.before(context);
 
-        if (properties.isContextPropagationEnabled()) {
+        if (properties.isContextPropagationEnabled() && !providerSide) {
             Map<String, String> injected = tracerBridge.inject(context);
             if (injected != null && !injected.isEmpty()) {
                 if (log.isDebugEnabled()) {
@@ -115,4 +121,3 @@ public class RpcDubboFilter implements Filter {
         }
     }
 }
-

@@ -91,7 +91,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`RpcDubboFilter.java:23,53-87`
 - **影响**：Filter 同时用于 Consumer 与 Provider，却只调用 `inject`；Provider 无法续接上游 Trace。
-- **修复方向**：按调用角色分支：Consumer 注入、Provider 提取；以真实双端调用验证上下文连续性。
+- **修复状态（2026-07-22）**：已在当前分支修复。Filter 按 Dubbo URL 的 `side` 参数分支：Consumer 注入并写入 attachments，Provider 在 Hook 前提取入站上下文且不再注入。单元测试覆盖 Provider 成功、异常与清理路径；进程内 Consumer → Provider 端到端测试验证 trace attachment 连续传递。
 
 ### R-009：Feign 包装可能绕过用户 Client
 

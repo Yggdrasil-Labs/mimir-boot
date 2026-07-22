@@ -69,10 +69,12 @@ created: 2026-07-17
 
 ### R-008：完成 Dubbo 双向传播
 
-- [ ] 根据 Dubbo Consumer/Provider 角色分别执行注入与提取。
-- [ ] Provider 处理前建立入站 Trace 上下文，结束后清理。
-- [ ] Hook 的前置、后置、异常和清理语义在两端保持一致。
-- [ ] 增加 Consumer → Provider 的真实 Dubbo 集成测试。
+- [x] 根据 Dubbo Consumer/Provider 角色分别执行注入与提取。
+- [x] Provider 处理前建立入站 Trace 上下文，结束后清理。
+- [x] Hook 的前置、后置、异常和清理语义在两端保持一致。
+- [x] 增加 Consumer → Provider 的真实 Dubbo 集成测试。
+
+**R-008 完成记录（2026-07-22）**：`RpcDubboFilter` 按 Dubbo URL 的 `side` 参数区分角色：Consumer 仅注入并写入 attachments，Provider 在 Hook 前提取入站上下文且不再写入 attachments。单元测试覆盖 Provider 成功与异常路径的 Hook 顺序、错误处理和清理；进程内 `ServiceConfig` → `ReferenceConfig` 端到端测试验证 Consumer 注入的 trace attachment 被 Provider 提取。验证命令：`mise exec java@17 -- ./mvnw -o -B -pl mimir-boot-starters/mimir-boot-starter-dubbo -am -Pci test`（215 项通过）。
 
 ### R-009：保留 Feign delegate
 
