@@ -15,7 +15,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 public class RpcFeignClient implements Client {
 
     private static final Logger log = LoggerFactory.getLogger(RpcFeignClient.class);
+    private static final Set<String> SENSITIVE_ATTACHMENT_HEADERS = Set.of("authorization", "cookie");
 
     private final Client delegate;
     private final RpcHookChain hookChain;
@@ -128,11 +131,14 @@ public class RpcFeignClient implements Client {
         }
         Map<String, String> map = new HashMap<>();
         headers.forEach((k, v) -> {
-            if (v != null && !v.isEmpty()) {
+            if (!isSensitiveAttachmentHeader(k) && v != null && !v.isEmpty()) {
                 map.put(k, v.iterator().next());
             }
         });
         return map;
     }
-}
 
+    private static boolean isSensitiveAttachmentHeader(String name) {
+        return name != null && SENSITIVE_ATTACHMENT_HEADERS.contains(name.toLowerCase(Locale.ROOT));
+    }
+}

@@ -78,10 +78,12 @@ created: 2026-07-17
 
 ### R-009：保留 Feign delegate
 
-- [ ] 采用 Feign 支持的扩展机制装饰 Client，而非以缺失 Bean 条件替代它。
-- [ ] 验证负载均衡与自定义 Client 配置仍被调用。
-- [ ] 限制进入 RPC attachments 的敏感请求头，默认排除 `Authorization` 与 `Cookie`。
-- [ ] 增加 OpenFeign 应用上下文集成测试。
+- [x] 采用 Feign 支持的扩展机制装饰 Client，而非以缺失 Bean 条件替代它。
+- [x] 验证负载均衡与自定义 Client 配置仍被调用。
+- [x] 限制进入 RPC attachments 的敏感请求头，默认排除 `Authorization` 与 `Cookie`。
+- [x] 增加 OpenFeign 应用上下文集成测试。
+
+**R-009 完成记录（2026-07-23）**：以 `RpcFeignCapability` 装饰 Spring Cloud OpenFeign 已选择的最终 `Client`，不再注册 `@Primary` 替代 Bean 或回退 `Client.Default`；自动配置使用显式 Bean 名，避免与 Spring Cloud 的 `FeignAutoConfiguration` 冲突。OpenFeign 应用上下文集成测试确认自定义 `Client` 与 RPC Hook 均被调用；Spring Cloud OpenFeign 4.1.5 的 `FeignClientFactoryBean` 源码确认其在确定 `Client`（包括负载均衡 Client）后再应用 `Capability`。RPC metadata 默认不再复制大小写任意形式的 `Authorization`、`Cookie`，但原始 HTTP 请求头保持不变。验证命令：`mise exec java@17 -- ./mvnw -o -B -pl mimir-boot-starters/mimir-boot-starter-feign -am -Pci test`（受影响 Feign 模块 19 项通过；Reactor 共 209 项通过）。
 
 **验收标准**：Dubbo 两端共享同一追踪上下文；Feign 包装不改变用户选择的 HTTP Client 与负载均衡行为。
 

@@ -3,6 +3,7 @@ package com.yggdrasil.labs.rpc.feign.client;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
@@ -19,6 +20,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class RpcFeignClientTest {
 
@@ -263,6 +265,34 @@ class RpcFeignClientTest {
     }
 
     @Test
+    void shouldExcludeSensitiveHeadersFromMetadataWithoutChangingRequest() throws Exception {
+        Map<String, Collection<String>> headers = Map.of(
+                "Authorization", List.of("Bearer secret-token"),
+                "cOoKiE", List.of("session=secret"),
+                "x-request-id", List.of("request-1"));
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", headers, null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        client.execute(request, new Request.Options());
+
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        Map<String, String> attachments = contextCaptor.getValue().getMetadata().getAttachments();
+        Assertions.assertFalse(attachments.containsKey("Authorization"));
+        Assertions.assertFalse(attachments.containsKey("cOoKiE"));
+        Assertions.assertEquals("request-1", attachments.get("x-request-id"));
+        verify(delegate).execute(same(request), any());
+    }
+
+    @Test
     void shouldPreserveOriginalHeadersWhenInjecting() throws Exception {
         Map<String, Collection<String>> headers = Map.of("original", List.of("value"));
         Request request = Request.create(
@@ -287,4 +317,3 @@ class RpcFeignClientTest {
         verify(hook).cleanup(any());
     }
 }
-

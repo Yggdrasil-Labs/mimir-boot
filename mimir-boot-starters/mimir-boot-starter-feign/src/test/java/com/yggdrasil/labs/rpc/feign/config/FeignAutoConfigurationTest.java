@@ -3,15 +3,14 @@ package com.yggdrasil.labs.rpc.feign.config;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.feign.client.RpcFeignCapability;
 import com.yggdrasil.labs.rpc.feign.client.RpcFeignClient;
 import feign.Client;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 class FeignAutoConfigurationTest {
 
@@ -19,8 +18,6 @@ class FeignAutoConfigurationTest {
     private FeignProperties properties;
     private RpcHookChain hookChain;
     private RpcTracerBridge tracerBridge;
-    @SuppressWarnings("unchecked")
-    private ObjectProvider<Client> delegateProvider;
 
     @BeforeEach
     void setUp() {
@@ -28,41 +25,34 @@ class FeignAutoConfigurationTest {
         properties = new FeignProperties();
         hookChain = mock(RpcHookChain.class);
         tracerBridge = mock(RpcTracerBridge.class);
-        delegateProvider = mock(ObjectProvider.class);
     }
 
     @Test
-    void shouldCreateRpcFeignClientWithDelegate() {
+    void shouldCreateRpcFeignCapability() {
+        RpcFeignCapability capability = configuration.rpcFeignCapability(hookChain, tracerBridge, properties);
+
+        assertNotNull(capability);
+    }
+
+    @Test
+    void shouldWrapDelegateClient() {
         Client delegate = mock(Client.class);
-        when(delegateProvider.getIfAvailable()).thenReturn(delegate);
 
-        Client client = configuration.rpcFeignClient(delegateProvider, hookChain, tracerBridge, properties);
-
-        assertNotNull(client);
-        assertSame(RpcFeignClient.class, client.getClass());
-    }
-
-    @Test
-    void shouldCreateRpcFeignClientWithDefaultDelegate() {
-        when(delegateProvider.getIfAvailable()).thenReturn(null);
-
-        Client client = configuration.rpcFeignClient(delegateProvider, hookChain, tracerBridge, properties);
+        Client client = configuration.rpcFeignCapability(hookChain, tracerBridge, properties).enrich(delegate);
 
         assertNotNull(client);
         assertSame(RpcFeignClient.class, client.getClass());
     }
 
     @Test
-    void shouldCreateRpcFeignClientWithProperties() {
+    void shouldReuseExistingRpcFeignClient() {
         properties.setEnabled(false);
         properties.setContextPropagationEnabled(false);
         Client delegate = mock(Client.class);
-        when(delegateProvider.getIfAvailable()).thenReturn(delegate);
+        RpcFeignClient existing = new RpcFeignClient(delegate, hookChain, tracerBridge, properties);
 
-        Client client = configuration.rpcFeignClient(delegateProvider, hookChain, tracerBridge, properties);
+        Client client = configuration.rpcFeignCapability(hookChain, tracerBridge, properties).enrich(existing);
 
-        assertNotNull(client);
-        assertSame(RpcFeignClient.class, client.getClass());
+        assertSame(existing, client);
     }
 }
-

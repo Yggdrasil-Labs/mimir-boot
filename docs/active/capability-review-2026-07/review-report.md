@@ -97,7 +97,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`FeignAutoConfiguration.java:24-40`
 - **影响**：已有 `Client` 时 `@ConditionalOnMissingBean` 使包装器不创建；没有 delegate 时回退 `Client.Default`，可能丢失负载均衡或自定义 HTTP Client 行为。
-- **修复方向**：采用 Feign 的装饰扩展点保留 delegate；增加 OpenFeign 集成测试。
+- **修复状态（2026-07-23）**：已通过当前分支修复。自动配置改为注册 `RpcFeignCapability`，由 OpenFeign 在选择最终 `Client` 后统一装饰，因此不替换用户的自定义 Client 或 Spring Cloud 负载均衡 Client；同时以显式自动配置 Bean 名消除与 Spring Cloud `FeignAutoConfiguration` 的命名冲突。OpenFeign 应用上下文集成测试覆盖自定义 Client 与 RPC Hook 的共同执行；敏感请求头 `Authorization`、`Cookie` 不再进入 RPC attachments，原始 HTTP 请求仍保留认证信息。
 
 ## P2：后续工程债务
 

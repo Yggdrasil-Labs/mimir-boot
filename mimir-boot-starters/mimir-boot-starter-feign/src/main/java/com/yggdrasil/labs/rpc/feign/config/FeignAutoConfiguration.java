@@ -2,19 +2,16 @@ package com.yggdrasil.labs.rpc.feign.config;
 
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
-import com.yggdrasil.labs.rpc.feign.client.RpcFeignClient;
-import feign.Client;
+import com.yggdrasil.labs.rpc.feign.client.RpcFeignCapability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 
-@AutoConfiguration
+@AutoConfiguration("mimirFeignAutoConfiguration")
 @EnableConfigurationProperties(FeignProperties.class)
 @ConditionalOnProperty(prefix = "mimir.boot.feign", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class FeignAutoConfiguration {
@@ -22,22 +19,12 @@ public class FeignAutoConfiguration {
     private static final Logger log = LoggerFactory.getLogger(FeignAutoConfiguration.class);
 
     @Bean
-    @Primary
-    @ConditionalOnMissingBean
-    public Client rpcFeignClient(
-            ObjectProvider<Client> delegateProvider,
-            RpcHookChain hookChain,
-            RpcTracerBridge tracerBridge,
-            FeignProperties properties) {
-        Client delegate = delegateProvider.getIfAvailable();
-        if (delegate == null) {
-            delegate = new Client.Default(null, null);
-        }
-        log.debug("Creating RpcFeignClient with enabled={}, contextPropagationEnabled={}, delegate={}",
+    @ConditionalOnMissingBean(RpcFeignCapability.class)
+    public RpcFeignCapability rpcFeignCapability(
+            RpcHookChain hookChain, RpcTracerBridge tracerBridge, FeignProperties properties) {
+        log.debug("Creating RpcFeignCapability with enabled={}, contextPropagationEnabled={}",
                 properties.isEnabled(),
-                properties.isContextPropagationEnabled(),
-                delegate.getClass().getSimpleName());
-        return new RpcFeignClient(delegate, hookChain, tracerBridge, properties);
+                properties.isContextPropagationEnabled());
+        return new RpcFeignCapability(hookChain, tracerBridge, properties);
     }
 }
-
