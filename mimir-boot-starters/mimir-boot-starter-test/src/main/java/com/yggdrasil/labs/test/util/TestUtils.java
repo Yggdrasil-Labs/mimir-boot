@@ -128,7 +128,7 @@ public final class TestUtils {
     /**
      * 生成随机查询字符串
      *
-     * @return 随机查询字符串（格式：key1=value1&key2=value2）
+     * @return 随机查询字符串（格式：key1=value1&amp;key2=value2）
      */
     public static String randomQueryString() {
         int paramCount = ThreadLocalRandom.current().nextInt(1, 4);
@@ -219,4 +219,3 @@ public final class TestUtils {
         // 可以在这里添加其他清理逻辑
     }
 }
-

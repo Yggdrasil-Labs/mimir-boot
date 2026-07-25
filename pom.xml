@@ -50,6 +50,9 @@
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
         <gpg-maven-plugin.version>3.2.8</gpg-maven-plugin.version>
+        <maven.deploy.plugin.version>3.1.4</maven.deploy.plugin.version>
+        <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
+        <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
     </properties>
 
     <!-- 开发者信息 -->
@@ -173,17 +176,6 @@
                     </java>
                 </configuration>
                 <executions>
-                    <!-- 在 compile 阶段自动格式化代码（仅 dev profile） -->
-                    <execution>
-                        <id>spotless-apply</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>apply</goal>
-                        </goals>
-                        <configuration>
-                            <skip>false</skip>
-                        </configuration>
-                    </execution>
                     <!-- 在 validate 阶段执行格式检查（CI 环境） -->
                     <execution>
                         <id>spotless-check</id>
@@ -237,6 +229,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
+                <version>${maven.deploy.plugin.version}</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>

@@ -170,7 +170,6 @@
                     <version>${jacoco.plugin.version}</version>
                     <configuration>
                         <excludes>
-                            <exclude>**/config/**</exclude>
                             <exclude>**/entity/**</exclude>
                             <exclude>**/dto/**</exclude>
                             <exclude>**/vo/**</exclude>
@@ -335,17 +334,6 @@
                         </java>
                     </configuration>
                     <executions>
-                        <!-- 在 compile 阶段自动格式化代码（编译后可以更准确地识别未使用的导入） -->
-                        <execution>
-                            <id>spotless-apply</id>
-                            <phase>compile</phase>
-                            <goals>
-                                <goal>apply</goal>
-                            </goals>
-                            <configuration>
-                                <skip>false</skip>
-                            </configuration>
-                        </execution>
                         <!-- 在 validate 阶段执行格式检查（CI 环境） -->
                         <execution>
                             <id>spotless-check</id>
@@ -377,6 +365,15 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
                     <version>${maven.javadoc.plugin.version}</version>
+                </plugin>
+                <!-- Maven Deploy Plugin (发布) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>${maven.deploy.plugin.version}</version>
+                    <configuration>
+                        <skip>${maven.deploy.skip}</skip>
+                    </configuration>
                 </plugin>
 
                 <!-- Central Publishing Maven Plugin (Maven Central 发布) -->
@@ -420,7 +417,7 @@
                 <artifactId>sonar-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Spotless Plugin - 自动格式化代码（所有子模块自动继承） -->
+            <!-- Spotless Plugin - 代码格式检查（所有子模块自动继承） -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
@@ -430,6 +427,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
+                <version>${maven.source.plugin.version}</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -445,6 +443,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven.javadoc.plugin.version}</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <doclint>none</doclint>
@@ -466,6 +465,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
+                <version>${maven.deploy.plugin.version}</version>
                 <configuration>
                     <skip>${maven.deploy.skip}</skip>
                 </configuration>
