@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-17
+updated: 2026-07-24
 ---
 
 # 活跃版本索引
@@ -11,4 +11,5 @@ updated: 2026-07-17
 
 | 版本号 | 分支 | 状态 | 开始日期 | 路径 |
 |--------|------|------|----------|------|
-| 能力复审（2026-07） | main | 修复待启动 | 2026-07-17 | [capability-review-2026-07/](./capability-review-2026-07/) |
+| 能力复审（2026-07） | main | 修复完成 | 2026-07-17 | [capability-review-2026-07/](./capability-review-2026-07/) |
+| 工程质量优化 | main | 文档待整理 | 2026-06-26 | [quality-refinement/](./quality-refinement/) |

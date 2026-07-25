@@ -1,3 +1,11 @@
+---
+id: quality-refinement
+status: draft
+owner: Yggdrasil Labs
+created: 2026-06-26
+updated: 2026-07-24
+---
+
 # Quality Refinement — 工程质量与文档治理
 
 ## Context

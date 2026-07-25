@@ -91,13 +91,27 @@ created: 2026-07-17
 
 ### R-010 至 R-014
 
-- [ ] 删除或实现 `WebProperties.Security` 中未生效的公开配置。
-- [ ] 为 Trace ID 增加格式、长度与控制字符校验。
-- [ ] 为 `MimirBootTest` 的有效属性补齐 `@AliasFor`，移除无效属性。
-- [ ] 将 JaCoCo 排除缩小到无行为的纯配置载体，恢复自动配置的行为测试覆盖。
-- [ ] 移除 `compile` 阶段的 `spotless:apply`；保留显式格式化命令和 CI `spotless:check`。
-- [ ] 为 deploy、source、javadoc 等 Maven 插件锁定版本。
-- [ ] 更新 Starter README、产品能力说明和迁移说明。
+- [x] 将 `WebProperties.Security` 标记弃用并保留 2.x no-op 兼容，提供迁移说明。
+- [x] 为 Trace ID 增加格式、长度与控制字符校验；无效请求头不复用 MDC。
+- [x] 为 `MimirBootTest` 的有效属性补齐 `@AliasFor`，无效属性以弃用 no-op 形式保留 2.x 兼容。
+- [x] 移除 JaCoCo 对整个 `config` 包的排除，以行为测试覆盖自动配置。
+- [x] 移除 `compile` 阶段的 `spotless:apply`；保留显式格式化命令和 CI `spotless:check`。
+- [x] 为 deploy、source、javadoc 等 Maven 插件锁定版本，并验证发布 parent。
+- [x] 更新 Starter README、产品能力说明、安全边界和迁移说明。
+
+**R-010 至 R-014 完成记录（2026-07-24）**：未被运行时消费的
+`mimir.boot.web.security`、`WebProperties.Security` 和访问器在 2.x 中保留为已弃用 no-op，
+上传大小限制迁移至 Spring Boot 的 `spring.servlet.multipart`，XSS 防护由应用根据渲染入口采用
+CSP、输出编码等机制；这些兼容 API 计划在下一个主版本移除。外部 Trace ID 仅接受最长 64 位、
+以字母或数字开头的 ASCII `[A-Za-z0-9._-]` 字符串，请求头存在但无效时重新生成且不复用 MDC。
+`MimirBootTest` 的 `classes`、`properties` 和 `webEnvironment` 明确映射至 `SpringBootTest`；
+`useDefaultFilters`、`excludeAutoConfiguration` 保留原签名和默认值并标记弃用，继续保持 no-op。
+JaCoCo 不再排除整个 `config` 包，Web MVC 与 RPC Core 自动配置均有行为测试；
+`spotless:apply` 不再绑定编译阶段，需格式化时显式执行 `./mvnw spotless:apply`。deploy、source、
+javadoc 插件已锁定版本，deploy 的版本和默认 skip 配置会进入 flattened parent。
+
+定向验证覆盖 Trace、WebProperties、`MimirBootTest` 和 RPC Core；RPC Core 18 项测试通过且
+JaCoCo 门禁满足，XML 解析确认 flattened parent 中 deploy plugin 为 3.1.4、`skip=true`。
 
 **验收标准**：CI 无 Maven 插件版本警告；`@MimirBootTest` 不再产生 Spring 弃用警告；公开配置均有实现、弃用说明或删除记录。
 

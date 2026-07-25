@@ -8,10 +8,10 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 
 - ✅ **CORS 跨域配置**：统一配置跨域资源共享策略
 - ✅ **Jackson 序列化配置**：统一日期时间格式、空值处理等
-- ✅ **Trace 拦截器**：自动生成或获取 traceId，设置到 MDC 和响应头
+- ✅ **Trace 拦截器**：自动生成或获取受限格式的 traceId，设置到 MDC 和响应头
 - ✅ **Web 拦截器**：自动提取客户端 IP、清理请求上下文
 - ✅ **响应体增强器**：自动为 `R` 响应对象填充 traceId
-- ✅ **安全配置**：请求大小限制、XSS 防护等
+- ✅ **上传限制迁移**：使用 Spring Boot multipart 配置管理请求和文件大小
 - ✅ **可配置开关**：支持通过配置文件启用/禁用各项功能
 
 ## 快速开始
@@ -180,31 +180,9 @@ public class UserVO {
 }
 ```
 
-### 安全配置
+### 请求大小限制迁移
 
-**配置项**：`mimir.boot.web.security`
-
-**默认值**：
-
-- `enabled: true` - 启用安全增强
-- `maxRequestSize: 10` - 最大请求大小 10MB
-- `maxFileSize: 10` - 单个文件最大大小 10MB
-- `xssProtectionEnabled: true` - 启用 XSS 防护
-
-**示例**：
-
-```yaml
-mimir:
-  boot:
-    web:
-      security:
-        enabled: true
-        maxRequestSize: 50  # 最大请求大小 50MB
-        maxFileSize: 20  # 单个文件最大大小 20MB
-        xssProtectionEnabled: true
-```
-
-**注意**：请求大小限制需要配合 Spring Boot 配置使用：
+`mimir.boot.web.security` 已弃用，并将在下一个主版本移除。为保持 2.x 配置绑定和 Java API 兼容，`WebProperties.Security` 与 `getSecurity()` 暂时保留，但仍是 no-op：配置它不会产生 XSS 防护或请求大小限制。请使用 Spring Boot 的 multipart 配置管理上传大小限制：
 
 ```yaml
 spring:
@@ -213,6 +191,8 @@ spring:
       max-file-size: 20MB
       max-request-size: 50MB
 ```
+
+XSS 防护应由应用根据渲染入口实施：服务端模板和 API 输出需要进行上下文相关的输出编码；浏览器页面应配置 Content Security Policy（CSP）。
 
 ### 响应增强配置
 
@@ -253,14 +233,16 @@ mimir:
 - 自动生成或从请求头获取 traceId
 - 将 traceId 设置到 MDC 和响应头 `X-Trace-Id`
 - 支持与 Micrometer Tracing 集成（自动禁用）
+- 仅接受最长 64 位、以字母或数字开头的 ASCII `[A-Za-z0-9._-]`；无效请求头会生成新的 traceId
 
 **使用方式**：
 
 ```java
 // 自动处理，无需手动编码
-// 1. 从请求头 X-Trace-Id 获取（如果存在）
-// 2. 从 MDC 获取（可能已被其他组件设置，如 Micrometer Tracing）
-// 3. 生成新的 UUID（去除连字符）
+// 1. 请求头 X-Trace-Id 合法时直接使用
+// 2. 请求头存在但非法时生成新的 UUID（去除连字符），不复用 MDC
+// 3. 请求头缺失时使用 MDC 中的合法 traceId
+// 4. 请求头与 MDC 均无可用值时生成新的 UUID
 ```
 
 **请求头示例**：

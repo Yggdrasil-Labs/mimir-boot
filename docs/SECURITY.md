@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-24
+updated: 2026-07-24
 ---
 
 # 安全要求
@@ -16,9 +16,18 @@ updated: 2026-06-24
 ## 2. 当前已知安全相关能力
 
 - `mimir-boot-starter-log`：日志脱敏
-- `mimir-boot-starter-web`：Web 安全增强与请求限制
+- `mimir-boot-starter-web`：安全默认的 CORS 开关与白名单、外部 Trace ID 格式和长度限制
 - `mimir-boot-starter-nacos`：配置加解密
 - 规划中的 `starter-security`：尚未正式落地
+
+`mimir-boot-starter-web` **不提供**通用 XSS 防护，也不强制请求或上传大小限制。已弃用的
+`mimir.boot.web.security` 仅为保持 2.x 配置绑定和 Java API 兼容而保留，不产生运行时效果：
+
+- 上传大小通过 Spring Boot 的 `spring.servlet.multipart.max-file-size` 和
+  `spring.servlet.multipart.max-request-size` 配置，并按部署环境在网关层设置请求体上限。
+- XSS 防护由应用根据 HTML、JavaScript、URL 等输出上下文编码，并为浏览器页面配置 CSP。
+- 外部 `X-Trace-Id` 仅接受最长 64 位、以字母或数字开头的 ASCII
+  `[A-Za-z0-9._-]`；请求头存在但无效时生成新的 Trace ID。
 
 此外，发布凭证与签名材料也属于安全边界的一部分：
 
@@ -31,7 +40,7 @@ updated: 2026-06-24
 以下改动应视为高风险：
 
 - 更改日志脱敏规则
-- 更改默认请求大小限制
+- 新增或更改请求大小限制及其默认值
 - 更改配置解密语义
 - 引入新的认证、签名、token 传播方案
 - 修改发布凭证相关流程

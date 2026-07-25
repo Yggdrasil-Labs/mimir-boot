@@ -101,13 +101,13 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 ## P2：后续工程债务
 
-| 编号 | 位置 | 问题 | 修复方向 |
-|------|------|------|----------|
-| R-010 | `WebProperties.java:151-177` | 请求大小、文件大小、XSS 等公开配置未被运行时消费 | 实现、明确委托关系，或弃用删除 |
-| R-011 | `TraceInterceptor.java:51-64` | 外部 Trace ID 未限制长度或字符集，直接进入 MDC 与响应头 | 限制格式和长度；无效值重新生成 |
-| R-012 | `MimirBootTest.java:38` | 约定式注解属性覆盖已被 Spring 弃用 | 使用 `@AliasFor` 或移除无效属性 |
-| R-013 | `mimir-boot-parent/pom.xml:172-178` | JaCoCo 排除全部 `config/**`，高风险自动配置不受覆盖率约束 | 缩小排除范围，以行为测试覆盖配置逻辑 |
-| R-014 | `mimir-boot-parent/pom.xml:337-360` | `compile` 阶段执行 `spotless:apply`，且部分 Maven 插件版本未锁定 | 将格式化改为显式命令，CI 仅 check；锁定插件版本 |
+| 编号 | 位置 | 问题 | 修复方向 | 状态 |
+|------|------|------|----------|------|
+| R-010 | `WebProperties.java` | 请求大小、文件大小、XSS 等公开配置未被运行时消费 | 2.x 保留弃用 no-op API，并说明 Spring Boot multipart 与应用侧 XSS 防护迁移路径 | 已修复（2026-07-24） |
+| R-011 | `TraceInterceptor.java` | 外部 Trace ID 未限制长度或字符集，直接进入 MDC 与响应头 | 限制格式和长度；请求头存在但无效时重新生成且不复用 MDC | 已修复（2026-07-24） |
+| R-012 | `MimirBootTest.java` | 约定式注解属性覆盖已被 Spring 弃用 | 有效属性使用 `@AliasFor`；无效属性保留弃用 no-op 以兼容 2.x | 已修复（2026-07-24） |
+| R-013 | `mimir-boot-parent/pom.xml` | JaCoCo 排除全部 `config/**`，高风险自动配置不受覆盖率约束 | 移除宽泛排除，以 Web MVC 和 RPC Core 行为测试覆盖配置逻辑 | 已修复（2026-07-24） |
+| R-014 | `mimir-boot-parent/pom.xml` | `compile` 阶段执行 `spotless:apply`，且部分 Maven 插件版本未锁定 | 将格式化改为显式命令；在发布 parent 的 pluginManagement 锁定插件版本 | 已修复（2026-07-24） |
 
 ## 通过门槛
 

@@ -8,7 +8,7 @@
 |---|---|---|
 | `mimir-boot-starter-log` | 统一日志、脱敏、访问日志、链路标识 | 绝大多数服务 |
 | `mimir-boot-starter-exception` | 统一异常处理与返回格式 | Web / API 服务 |
-| `mimir-boot-starter-web` | Web 层增强、CORS、Trace、响应增强 | HTTP 服务 |
+| `mimir-boot-starter-web` | Web 层增强、CORS、受限格式 Trace、响应增强 | HTTP 服务 |
 | `mimir-boot-starter-mybatis` | MyBatis-Plus 增强、审计、字段加解密 | 数据驱动服务 |
 | `mimir-boot-starter-mybatis-processor` | 编译期 Mapper 生成与扫描辅助 | 需要减少样板代码的持久层项目 |
 | `mimir-boot-starter-nacos` | Nacos 配置加密与解密 | 使用 Nacos 的配置中心场景 |

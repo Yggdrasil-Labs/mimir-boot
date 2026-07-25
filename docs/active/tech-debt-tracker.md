@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-23
+updated: 2026-07-24
 ---
 
 # 技术债务追踪
@@ -18,7 +18,6 @@ updated: 2026-07-23
 | TD-005 | ci | release.yml publish-gpr 与 publish-maven-central 大量重复步骤，待用 reusable workflow 重构 | 中 | 2026-06-26 | — | 已通过 `.github/actions/maven-release-prepare/` composite action 解决 |
 | TD-006 | bom | BOM 中约 60% 的依赖版本声明未被任何 starter 引用（如 elasticsearch、mongodb、redis、kafka、xxl-job 等），增加 Dependabot 噪音和维护负担，且模糊了"版本基线"的边界 | 中 | 2026-06-29 | ORPHAN | 需评估是否精简为仅本仓库实际使用的依赖，或将生态系统版本管理拆分到独立 BOM |
 | TD-007 | nacos | 自动配置 Bean 监听 `ApplicationEnvironmentPreparedEvent`，启动期解密不会执行；属性前缀、动态刷新和密码学默认值亦存在缺口 | 紧急 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-0恢复-nacos-启动期能力) |
-| TD-011 | quality | 自动配置覆盖率被整体排除；测试注解、格式化构建副作用与 Maven 插件版本仍需治理 | 中 | 2026-07-17 | ORPHAN | [能力复审修复清单](./capability-review-2026-07/fix-checklist.md#phase-3补齐工程质量) |
 
 ## 优先级含义（智能体行为指南）
 

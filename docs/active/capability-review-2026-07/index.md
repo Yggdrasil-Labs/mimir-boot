@@ -10,4 +10,4 @@ created: 2026-07-17
 - [复审报告](./review-report.md)：范围、证据、风险分级与结论。
 - [修复清单](./fix-checklist.md)：按优先级拆分的修复步骤和验收门禁。
 
-本轮不包含运行时代码修改。技术债摘要登记在[技术债务追踪](../tech-debt-tracker.md)。
+本轮包含 Trace 边界、2.x 兼容 API 与工程质量修复。技术债摘要登记在[技术债务追踪](../tech-debt-tracker.md)。
