@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.test.annotation;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.lang.annotation.*;
@@ -44,6 +45,7 @@ public @interface MimirBootTest {
      *
      * @return 主类
      */
+    @AliasFor(annotation = SpringBootTest.class, attribute = "classes")
     Class<?>[] classes() default {};
 
     /**
@@ -51,13 +53,16 @@ public @interface MimirBootTest {
      *
      * @return 属性配置
      */
+    @AliasFor(annotation = SpringBootTest.class, attribute = "properties")
     String[] properties() default {};
 
     /**
-     * 是否使用默认过滤器
+     * 已弃用的兼容属性，此属性从未影响 Spring Boot 测试过滤行为。
      *
-     * @return true 使用默认过滤器，false 不使用
+     * @return 始终仅作为注解元数据保留
+     * @deprecated 无有效语义，仅为保持 2.x 源兼容而保留
      */
+    @Deprecated(since = "2.1.1", forRemoval = false)
     boolean useDefaultFilters() default true;
 
     /**
@@ -65,14 +70,15 @@ public @interface MimirBootTest {
      *
      * @return Web 环境类型
      */
-    org.springframework.boot.test.context.SpringBootTest.WebEnvironment webEnvironment()
-            default org.springframework.boot.test.context.SpringBootTest.WebEnvironment.MOCK;
+    @AliasFor(annotation = SpringBootTest.class, attribute = "webEnvironment")
+    SpringBootTest.WebEnvironment webEnvironment() default SpringBootTest.WebEnvironment.MOCK;
 
     /**
-     * 排除的自动配置类
+     * 已弃用的兼容属性，此属性从未排除 Spring Boot 自动配置。
      *
-     * @return 要排除的自动配置类
+     * @return 始终仅作为注解元数据保留
+     * @deprecated 无有效语义，仅为保持 2.x 源兼容而保留
      */
+    @Deprecated(since = "2.1.1", forRemoval = false)
     Class<?>[] excludeAutoConfiguration() default {};
 }
-

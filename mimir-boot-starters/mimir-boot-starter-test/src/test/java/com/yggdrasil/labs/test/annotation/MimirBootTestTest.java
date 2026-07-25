@@ -2,6 +2,7 @@ package com.yggdrasil.labs.test.annotation;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -35,7 +36,6 @@ class MimirBootTestTest {
     @MimirBootTest(
             classes = {String.class},
             properties = {"test.property=value"},
-            useDefaultFilters = false,
             webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
     )
     static class TestClassWithCustomProperties {
@@ -71,11 +71,8 @@ class MimirBootTestTest {
         // 验证默认值
         assertEquals(0, annotation.classes().length, "classes 默认应为空数组");
         assertEquals(0, annotation.properties().length, "properties 默认应为空数组");
-        assertTrue(annotation.useDefaultFilters(), "useDefaultFilters 默认应为 true");
         assertEquals(SpringBootTest.WebEnvironment.MOCK, annotation.webEnvironment(),
                 "webEnvironment 默认应为 MOCK");
-        assertEquals(0, annotation.excludeAutoConfiguration().length,
-                "excludeAutoConfiguration 默认应为空数组");
     }
 
     @Test
@@ -88,9 +85,42 @@ class MimirBootTestTest {
         assertEquals(String.class, annotation.classes()[0], "classes 应包含 String.class");
         assertEquals(1, annotation.properties().length, "properties 应包含 1 个属性");
         assertEquals("test.property=value", annotation.properties()[0], "properties 应包含指定值");
-        assertFalse(annotation.useDefaultFilters(), "useDefaultFilters 应为 false");
         assertEquals(SpringBootTest.WebEnvironment.RANDOM_PORT, annotation.webEnvironment(),
                 "webEnvironment 应为 RANDOM_PORT");
+    }
+
+    @Test
+    void testMimirBootTestAnnotation_KeepsDeprecatedCompatibilityAttributes() {
+        var useDefaultFilters = java.util.Arrays.stream(MimirBootTest.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("useDefaultFilters"))
+                .findFirst();
+        var excludeAutoConfiguration = java.util.Arrays.stream(MimirBootTest.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("excludeAutoConfiguration"))
+                .findFirst();
+
+        assertTrue(useDefaultFilters.isPresent(), "应保留 useDefaultFilters 以兼容既有测试源码");
+        assertEquals(true, useDefaultFilters.orElseThrow().getDefaultValue());
+        assertTrue(useDefaultFilters.orElseThrow().isAnnotationPresent(Deprecated.class));
+        assertTrue(excludeAutoConfiguration.isPresent(),
+                "应保留 excludeAutoConfiguration 以兼容既有测试源码");
+        assertArrayEquals(new Class<?>[0],
+                (Class<?>[]) excludeAutoConfiguration.orElseThrow().getDefaultValue());
+        assertTrue(excludeAutoConfiguration.orElseThrow().isAnnotationPresent(Deprecated.class));
+    }
+
+    @Test
+    void testMimirBootTestAnnotation_UsesExplicitSpringBootAliases() throws NoSuchMethodException {
+        assertAliasForSpringBootTest("classes", "classes");
+        assertAliasForSpringBootTest("properties", "properties");
+        assertAliasForSpringBootTest("webEnvironment", "webEnvironment");
+    }
+
+    private void assertAliasForSpringBootTest(String methodName, String targetAttribute) throws NoSuchMethodException {
+        AliasFor aliasFor = MimirBootTest.class.getDeclaredMethod(methodName).getAnnotation(AliasFor.class);
+
+        assertNotNull(aliasFor, methodName + " 应使用 @AliasFor 显式覆盖 SpringBootTest 属性");
+        assertEquals(SpringBootTest.class, aliasFor.annotation());
+        assertEquals(targetAttribute, aliasFor.attribute());
     }
 
     @Test
@@ -118,4 +148,3 @@ class MimirBootTestTest {
                 "@Retention 值应为 RetentionPolicy.RUNTIME");
     }
 }
-
