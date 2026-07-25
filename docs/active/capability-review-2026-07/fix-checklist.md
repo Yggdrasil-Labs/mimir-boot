@@ -1,6 +1,7 @@
 ---
-status: active
+status: completed
 created: 2026-07-17
+updated: 2026-07-25
 ---
 
 # 能力复审修复清单
@@ -9,23 +10,37 @@ created: 2026-07-17
 
 ## 发布门禁
 
-- [ ] R-001 至 R-009 已关闭。
-- [ ] 安全默认值变更已提供迁移说明和示例配置。
-- [ ] `./mvnw -B verify -Pci` 通过。
-- [ ] 新增或修改的安全、Nacos、RPC 行为均有集成测试。
-- [ ] 复审报告与技术债追踪器状态已同步。
+- [x] R-001 至 R-014 已关闭。
+- [x] 安全默认值变更已提供迁移说明和示例配置。
+- [x] `./mvnw -B verify -Pci` 通过。
+- [x] 新增或修改的安全、Nacos、RPC 行为均有集成测试。
+- [x] 复审报告与技术债追踪器状态已同步。
+
+**发布门禁完成记录（2026-07-25）**：R-001 至 R-014 均已关闭并具备回归证据；CORS、
+Nacos 启动与刷新、MyBatis 字段加密、SQL/访问日志、Dubbo 和 Feign 均有真实框架行为测试。
+安全默认值、兼容策略和迁移示例已同步到 Starter README 与 `docs/SECURITY.md`。最终执行
+`mise exec java@17 -- ./mvnw -o -B -Pci verify`，15 个 Reactor 项全部成功，Maven 日志无
+插件版本或 Spring 注解弃用警告；复审报告与技术债追踪器已同步。
 
 ## Phase 0：恢复 Nacos 启动期能力
 
 ### R-001：替换错误的生命周期监听方式
 
-- [ ] 使用 `EnvironmentPostProcessor` 或等效的 Spring Boot 早期扩展点处理密文。
-- [ ] 将扩展点注册到 Spring Boot 可发现的位置。
-- [ ] 确保解密属性源的优先级只覆盖原始密文来源。
-- [ ] 增加启动集成测试：包含 `ENC(...)` 的连接配置在 Bean 创建前可被读取为明文。
-- [ ] 增加动态刷新测试：替换为新的 `ENC(...)` 后重新获得对应明文。
+- [x] 使用 `EnvironmentPostProcessor` 或等效的 Spring Boot 早期扩展点处理密文。
+- [x] 将扩展点注册到 Spring Boot 可发现的位置。
+- [x] 确保解密属性源的优先级只覆盖原始密文来源。
+- [x] 增加启动集成测试：包含 `ENC(...)` 的连接配置在 Bean 创建前可被读取为明文。
+- [x] 增加动态刷新测试：替换为新的 `ENC(...)` 后重新获得对应明文。
 
 **验收标准**：Nacos 初始化和后续刷新都能解密；密钥缺失或密文非法时按明确策略失败，不静默以密文继续运行。
+
+**R-001 完成记录（2026-07-18）**：提交 `be073c1` 以
+`NacosEncryptEnvironmentPostProcessor` 在 Environment 准备阶段处理密文，并通过
+`META-INF/spring.factories` 注册。解密属性源只写入实际密文键，测试
+`shouldNotOverrideHigherPriorityPlaintextProperty` 验证高优先级明文不会被覆盖；
+`shouldDecryptPropertyBeforeBeanCreation` 通过真实 `SpringApplication` 验证 Bean 创建前可读取明文，
+`shouldRefreshDecryptedPropertyAfterEnvironmentChange` 验证配置刷新后获得新明文。缺失密钥、非法密文和
+严格模式刷新失败路径均有失败策略测试。
 
 ## Phase 1：修复安全默认值与敏感数据泄露
 

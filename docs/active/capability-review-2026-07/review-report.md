@@ -1,6 +1,7 @@
 ---
-status: active
+status: completed
 reviewed-date: 2026-07-17
+updated: 2026-07-25
 baseline-commit: 0fd2f61
 ---
 
@@ -8,9 +9,13 @@ baseline-commit: 0fd2f61
 
 ## 结论
 
-当前版本不满足直接发布条件。复审发现 1 项 P0 和 8 项 P1：Nacos 配置加密的启动期解密不会在正常 Spring Boot 生命周期中执行；此外，CORS 默认策略、日志脱敏、密钥管理和 RPC 上下文传播均存在高风险缺口。
+基线提交 `0fd2f61` 不满足直接发布条件。复审当时发现 1 项 P0、8 项 P1 和 5 项 P2：
+Nacos 启动期解密不会在正常 Spring Boot 生命周期中执行，CORS 默认策略、日志脱敏、密钥管理、
+RPC 上下文传播和工程质量门禁也存在缺口。
 
-在 P0 与所有 P1 关闭并通过对应验收测试前，不应将相关能力作为生产级默认能力推广。
+截至 2026-07-25，R-001 至 R-014 均已修复并通过对应回归测试；全仓 `-Pci verify`、覆盖率门禁、
+发布 POM 检查和文档 lint 均通过。当前代码满足本轮复审定义的发布质量门槛；实际发布仍应遵循签名、
+制品上传和远端 CI 等常规发布流程。
 
 ## 范围与验证证据
 
@@ -48,6 +53,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 - **证据**：`ApplicationEnvironmentPreparedEvent` 在 ApplicationContext 创建及自动配置 Bean 实例化之前发布。作为自动配置 Bean 的 `ApplicationListener` 不会收到已发生的事件。
 - **影响**：文档承诺的“启动早期解密”不成立；依赖 Nacos 密文的连接配置、凭证配置可能以 `ENC(...)` 形式参与初始化并导致应用启动失败。
 - **修复方向**：以 Spring Boot 注册机制实现 `EnvironmentPostProcessor`，在 Environment 准备阶段处理；补充真实启动上下文和 Nacos 属性源的集成测试。
+- **修复状态（2026-07-18）**：提交 `be073c1` 新增并注册 `NacosEncryptEnvironmentPostProcessor`；真实 `SpringApplication` 测试验证 Bean 创建前解密，刷新测试验证密文变化后更新明文，属性源优先级测试确认高优先级明文不被覆盖。
 
 ## P1：高优先级修复项
 
@@ -111,7 +117,20 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 ## 通过门槛
 
-1. R-001 至 R-009 全部关闭并有对应回归测试。
+1. R-001 至 R-014 全部关闭并有对应回归测试。
 2. `./mvnw -B verify -Pci` 成功，且不再输出 Spring 注解弃用警告或 Maven 插件版本警告。
 3. CORS、Nacos、字段加密、SQL 日志、Dubbo 与 Feign 均至少具备一个真实框架集成测试。
 4. 安全默认值变更附带迁移说明和兼容性说明。
+
+## 最终验证
+
+2026-07-25 在 Java 17、Spring Boot 3.3.13 环境执行：
+
+```bash
+mise exec java@17 -- ./mvnw -o -B -Pci verify
+node /mnt/c/Users/YangYang/.kiro/skills/docs-evolve/scripts/lint-docs.mjs
+```
+
+Maven Reactor 的 15 个项目全部成功，JaCoCo、Spotless、Enforcer、source/javadoc 和发布 POM 检查均通过；
+Dubbo 26 项、Feign 19 项、RPC Core 18 项、Web 43 项和 Test Starter 141 项测试均无失败或错误。
+flattened parent 中 `maven-deploy-plugin` 为 3.1.4 且默认 `skip=true`；文档健康检查通过。
