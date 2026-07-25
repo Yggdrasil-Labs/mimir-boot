@@ -2,6 +2,7 @@ package com.yggdrasil.labs.web.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.DeprecatedConfigurationProperty;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.List;
  * <p>功能说明：</p>
  * <ul>
  * <li>统一配置 Web 层的通用特性</li>
- * <li>支持 CORS、序列化、安全等配置</li>
+ * <li>支持 CORS、序列化和响应增强等配置</li>
  * <li>提供合理地默认值</li>
  * </ul>
  *
@@ -41,14 +42,40 @@ public class WebProperties {
     private Serialization serialization = new Serialization();
 
     /**
-     * 安全配置
+     * 已弃用的安全配置，仅为保持 2.x Java API 与配置绑定兼容而保留。
      */
+    @Deprecated(since = "2.1.1", forRemoval = false)
     private Security security = new Security();
 
     /**
      * 响应增强配置
      */
     private Response response = new Response();
+
+    /**
+     * 获取已弃用的安全配置。
+     *
+     * @return 仅用于兼容的安全配置
+     * @deprecated 该配置从未被 starter 消费；上传限制请使用 Spring Boot multipart 配置，XSS 防护由应用负责
+     */
+    @Deprecated(since = "2.1.1", forRemoval = false)
+    @DeprecatedConfigurationProperty(
+            reason = "该配置从未被 starter 消费；请使用 Spring Boot multipart 配置和应用侧 XSS 防护",
+            since = "2.1.1")
+    public Security getSecurity() {
+        return security;
+    }
+
+    /**
+     * 设置已弃用的安全配置。
+     *
+     * @param security 仅用于兼容的安全配置
+     * @deprecated 该配置从未被 starter 消费
+     */
+    @Deprecated(since = "2.1.1", forRemoval = false)
+    public void setSecurity(Security security) {
+        this.security = security;
+    }
 
     /**
      * CORS 跨域配置
@@ -148,9 +175,12 @@ public class WebProperties {
     }
 
     /**
-     * 安全配置
+     * 已弃用的安全配置载体。
+     *
+     * @deprecated 这些属性从未被 starter 消费，仅为保持 2.x 兼容而保留
      */
     @Data
+    @Deprecated(since = "2.1.1", forRemoval = false)
     public static class Security {
         /**
          * 是否启用安全增强

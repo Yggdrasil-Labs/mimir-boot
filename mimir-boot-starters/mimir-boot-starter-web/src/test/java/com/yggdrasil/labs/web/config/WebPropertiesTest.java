@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.web.config;
 
 import com.yggdrasil.labs.test.base.BaseUnitTest;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +41,6 @@ class WebPropertiesTest extends BaseUnitTest {
         assertTrue(webProperties.isEnabled());
         assertNotNull(webProperties.getCors());
         assertNotNull(webProperties.getSerialization());
-        assertNotNull(webProperties.getSecurity());
         assertNotNull(webProperties.getResponse());
     }
 
@@ -80,17 +80,26 @@ class WebPropertiesTest extends BaseUnitTest {
         assertTrue(serialization.isIgnoreUnknownProperties());
     }
 
-    /**
-     * 测试安全默认配置
-     */
     @Test
-    void testSecurityDefaultValues() {
-        WebProperties.Security security = webProperties.getSecurity();
+    void shouldKeepDeprecatedSecurityApiForCompatibility() {
+        var securityField = Arrays.stream(WebProperties.class.getDeclaredFields())
+                .filter(field -> field.getName().equals("security"))
+                .findFirst();
+        var securityClass = Arrays.stream(WebProperties.class.getDeclaredClasses())
+                .filter(nestedClass -> nestedClass.getSimpleName().equals("Security"))
+                .findFirst();
+        var securityGetter = Arrays.stream(WebProperties.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("getSecurity"))
+                .findFirst();
 
-        assertTrue(security.isEnabled());
-        assertEquals(10, security.getMaxRequestSize());
-        assertEquals(10, security.getMaxFileSize());
-        assertTrue(security.isXssProtectionEnabled());
+        assertTrue(securityField.isPresent(), "应保留 security 字段以兼容既有绑定和 Java API");
+        assertTrue(securityField.orElseThrow().isAnnotationPresent(Deprecated.class));
+        assertTrue(securityClass.isPresent(), "应保留 WebProperties.Security 类型");
+        assertTrue(securityClass.orElseThrow().isAnnotationPresent(Deprecated.class));
+        assertTrue(securityGetter.isPresent(), "应保留 getSecurity() 方法");
+        assertTrue(securityGetter.orElseThrow().isAnnotationPresent(Deprecated.class));
+        assertTrue(securityGetter.orElseThrow().isAnnotationPresent(
+                org.springframework.boot.context.properties.DeprecatedConfigurationProperty.class));
     }
 
     /**

@@ -73,6 +73,53 @@ class TraceInterceptorTest extends BaseUnitTest {
         verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, expectedTraceId);
     }
 
+    @Test
+    void testPreHandleWithInvalidTraceIdFromHeader() {
+        String invalidTraceId = "invalid trace\n" + "a".repeat(65);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn(invalidTraceId);
+
+        boolean result = traceInterceptor.preHandle(request, response, handler);
+
+        assertTrue(result);
+        String traceId = org.slf4j.MDC.get("traceId");
+        assertNotNull(traceId);
+        assertNotEquals(invalidTraceId, traceId);
+        assertEquals(32, traceId.length());
+        verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
+    }
+
+    @Test
+    void testPreHandleWithInvalidHeaderShouldNotReuseValidTraceIdFromMdc() {
+        String existingTraceId = "existing-valid-trace-id";
+        org.slf4j.MDC.put("traceId", existingTraceId);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn("invalid trace id");
+
+        boolean result = traceInterceptor.preHandle(request, response, handler);
+
+        assertTrue(result);
+        String traceId = org.slf4j.MDC.get("traceId");
+        assertNotNull(traceId);
+        assertNotEquals(existingTraceId, traceId);
+        assertEquals(32, traceId.length());
+        verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
+    }
+
+    @Test
+    void testPreHandleShouldReplaceInvalidTraceIdInMdc() {
+        String invalidTraceId = "invalid trace\n" + "a".repeat(65);
+        org.slf4j.MDC.put("traceId", invalidTraceId);
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn(invalidTraceId);
+
+        boolean result = traceInterceptor.preHandle(request, response, handler);
+
+        assertTrue(result);
+        String traceId = org.slf4j.MDC.get("traceId");
+        assertNotNull(traceId);
+        assertNotEquals(invalidTraceId, traceId);
+        assertEquals(32, traceId.length());
+        verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
+    }
+
     /**
      * 测试生成新的 traceId（当请求头中没有时）
      */
@@ -164,4 +211,3 @@ class TraceInterceptorTest extends BaseUnitTest {
         assertEquals(traceId, org.slf4j.MDC.get("traceId"));
     }
 }
-

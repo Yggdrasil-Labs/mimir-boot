@@ -9,6 +9,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Trace 拦截器
@@ -33,6 +34,7 @@ import java.util.UUID;
 public class TraceInterceptor implements HandlerInterceptor {
 
     public static final String TRACE_ID = CommonConstants.TRACE_ID;
+    private static final Pattern TRACE_ID_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
 
     /**
      * 请求处理前
@@ -47,18 +49,11 @@ public class TraceInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // 检查请求头中是否有 traceId
-        String headerTraceId = request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER);
-        boolean hasHeaderTraceId = StringUtils.hasText(headerTraceId);
-
         // 获取或生成 traceId
         String traceId = getOrGenerateTraceId(request);
 
         // 设置到 MDC
-        // 如果请求头中有 traceId，或者 MDC 中还没有 traceId，则更新 MDC
-        if (hasHeaderTraceId || !StringUtils.hasText(org.slf4j.MDC.get(TRACE_ID))) {
-            org.slf4j.MDC.put(TRACE_ID, traceId);
-        }
+        org.slf4j.MDC.put(TRACE_ID, traceId);
 
         // 将 traceId 添加到响应头
         response.setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
@@ -92,29 +87,36 @@ public class TraceInterceptor implements HandlerInterceptor {
      * 获取或生成 traceId
      * <p>
      * 优先级：
-     * 1. 从请求头 X-Trace-Id 获取
-     * 2. 从 MDC 获取（可能已被其他组件设置）
-     * 3. 生成新的 UUID（去除连字符）
+     * 1. 请求头存在且合法时直接使用
+     * 2. 请求头存在但非法时生成新的 UUID，不回退 MDC
+     * 3. 请求头缺失时使用 MDC 中的合法 traceId
+     * 4. 请求头与 MDC 均无可用值时生成新的 UUID（去除连字符）
      * </p>
      *
      * @param request HTTP 请求
      * @return traceId
      */
     private String getOrGenerateTraceId(HttpServletRequest request) {
-        // 优先从请求头获取 traceId
+        // 请求头存在时必须先验证；非法值不允许回退并复用 MDC
         String traceId = request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER);
-        if (StringUtils.hasText(traceId)) {
-            return traceId;
+        if (traceId != null) {
+            return isValidTraceId(traceId) ? traceId : generateTraceId();
         }
 
-        // 从 MDC 获取（可能已被其他组件设置，如 Micrometer Tracing）
+        // 请求头缺失时才从 MDC 获取（可能已被其他组件设置）
         traceId = org.slf4j.MDC.get(TRACE_ID);
-        if (StringUtils.hasText(traceId)) {
+        if (isValidTraceId(traceId)) {
             return traceId;
         }
 
-        // 生成新的 traceId（使用 UUID，去除连字符）
+        return generateTraceId();
+    }
+
+    private String generateTraceId() {
         return UUID.randomUUID().toString().replace("-", "");
     }
-}
 
+    private boolean isValidTraceId(String traceId) {
+        return StringUtils.hasText(traceId) && TRACE_ID_PATTERN.matcher(traceId).matches();
+    }
+}
