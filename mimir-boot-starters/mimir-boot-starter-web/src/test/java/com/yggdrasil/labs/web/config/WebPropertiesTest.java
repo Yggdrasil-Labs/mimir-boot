@@ -86,7 +86,7 @@ class WebPropertiesTest extends BaseUnitTest {
                 .filter(field -> field.getName().equals("security"))
                 .findFirst();
         var securityClass = Arrays.stream(WebProperties.class.getDeclaredClasses())
-                .filter(nestedClass -> nestedClass.getSimpleName().equals("Security"))
+                .filter(WebProperties.Security.class::equals)
                 .findFirst();
         var securityGetter = Arrays.stream(WebProperties.class.getDeclaredMethods())
                 .filter(method -> method.getName().equals("getSecurity"))
