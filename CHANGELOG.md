@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.1...v2.1.2) (2026-07-26)
+
+
+### 🐛 Bug Fixes
+
+* **release:** 修复 GitHub Packages 发布生命周期 ([2a74b31](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2a74b315632ec88af0f843a3d49601f4e8078ada))
+* **release:** 修复发布补偿前置条件 ([d031e42](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d031e42fdc290ec731d465fd87623a97ef7fa0d3))
+
+
+### 👷 Continuous Integration
+
+* **release:** 完善自动发布与失败补偿 ([5e6793a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5e6793a300d8416c2285d731f0f2e8743d1de503))
+
 ## [2.1.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.0...v2.1.1) (2026-07-26)
 
 
