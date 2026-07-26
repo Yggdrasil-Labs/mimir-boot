@@ -4,20 +4,30 @@ on:
   push:
     tags:
       - 'v*'
-  # 支持手动触发
+  # 手动触发仅用于确定性的故障补偿；所有外部副作用均须显式选择。
   workflow_dispatch:
     inputs:
       version:
         description: '发布版本号（例如：2.0.2，不需要 v 前缀）'
         required: true
         type: string
-      skip_gpr:
-        description: '跳过 GitHub Packages 发布'
+      publish_gpr:
+        description: '补偿发布到 GitHub Packages'
         required: false
         type: boolean
         default: false
-      skip_maven_central:
-        description: '跳过 Maven Central 发布'
+      publish_maven_central:
+        description: '补偿发布到 Maven Central'
+        required: false
+        type: boolean
+        default: false
+      finalize_github_release:
+        description: '补偿创建 GitHub Release'
+        required: false
+        type: boolean
+        default: false
+      update_dev_version:
+        description: '补偿回写下一开发版本'
         required: false
         type: boolean
         default: false
@@ -25,15 +35,42 @@ on:
 env:
   MAVEN_OPTS: -Xmx1024m -XX:+UseG1GC
 
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   build-verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
+      # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
+      - name: Bootstrap local Action
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
       - uses: ./.github/actions/checkout-setup
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
+
+      - name: Validate manual recovery selection
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          PUBLISH_GPR: ${{ github.event.inputs.publish_gpr }}
+          PUBLISH_MAVEN_CENTRAL: ${{ github.event.inputs.publish_maven_central }}
+          FINALIZE_GITHUB_RELEASE: ${{ github.event.inputs.finalize_github_release }}
+          UPDATE_DEV_VERSION: ${{ github.event.inputs.update_dev_version }}
+        run: |
+          set -euo pipefail
+          if [ "$PUBLISH_GPR" != 'true' ] \
+            && [ "$PUBLISH_MAVEN_CENTRAL" != 'true' ] \
+            && [ "$FINALIZE_GITHUB_RELEASE" != 'true' ] \
+            && [ "$UPDATE_DEV_VERSION" != 'true' ]; then
+            echo "Error: select at least one recovery operation when manually dispatching Release"
+            exit 1
+          fi
 
       - name: Make Maven Wrapper executable
         run: |
@@ -48,10 +85,15 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [ build-verify ]
     permissions:
       contents: read
     steps:
+      # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
+      - name: Bootstrap local Action
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
       - uses: ./.github/actions/checkout-setup
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
@@ -72,13 +114,17 @@ jobs:
 
   publish-gpr:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [ release ]
-    # 手动触发时支持跳过
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.skip_gpr != 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_gpr == 'true' }}
     permissions:
       contents: read
       packages: write
     steps:
+      # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
+      - name: Bootstrap local Action
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
       - uses: ./.github/actions/checkout-setup
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
@@ -122,12 +168,16 @@ jobs:
 
   publish-maven-central:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: [ release ]
-    # 手动触发时支持跳过
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.skip_maven_central != 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_maven_central == 'true' }}
     permissions:
       contents: read
     steps:
+      # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
+      - name: Bootstrap local Action
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
       - uses: ./.github/actions/checkout-setup
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
@@ -201,16 +251,26 @@ jobs:
 
   create-github-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # 等两个仓库发布都完成（成功或被跳过）后再创建 GitHub Release
     needs: [ release, publish-gpr, publish-maven-central ]
     if: >-
       ${{ always()
           && needs.release.result == 'success'
           && (needs['publish-gpr'].result == 'success' || needs['publish-gpr'].result == 'skipped')
-          && (needs['publish-maven-central'].result == 'success' || needs['publish-maven-central'].result == 'skipped') }}
+          && (needs['publish-maven-central'].result == 'success' || needs['publish-maven-central'].result == 'skipped')
+          && (github.event_name != 'workflow_dispatch' || github.event.inputs.finalize_github_release == 'true') }}
     permissions:
       contents: write
     steps:
+      - name: Bootstrap release helpers
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Preserve release-version guard
+        run: cp .github/scripts/release-version.sh "$RUNNER_TEMP/release-version.sh"
+
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -235,6 +295,9 @@ jobs:
             VERSION=${TAG_NAME#v}
             echo "Tag push detected"
           fi
+
+          source "$RUNNER_TEMP/release-version.sh"
+          require_release_version "$VERSION"
 
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
@@ -336,18 +399,45 @@ jobs:
 
   update-dev-version:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # 等 GitHub Release 创建成功后，再更新开发版本号
     needs: [ create-github-release ]
-    # tag push / 手动触发 都更新开发版本号（需先成功创建 GitHub Release）
-    if: ${{ needs['create-github-release'].result == 'success' }}
+    # 自动路径在 GitHub Release 成功后回写；手动路径仅在明确选择后执行。
+    if: >-
+      ${{ always()
+          && ((github.event_name != 'workflow_dispatch'
+               && needs['create-github-release'].result == 'success')
+              || (github.event_name == 'workflow_dispatch'
+                  && github.event.inputs.update_dev_version == 'true'
+                  && (needs['create-github-release'].result == 'success'
+                      || needs['create-github-release'].result == 'skipped'))) }}
     permissions:
       contents: write
     steps:
-      - name: Checkout code
+      - name: Bootstrap release helpers
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Preserve release-version guard
+        run: cp .github/scripts/release-version.sh "$RUNNER_TEMP/release-version.sh"
+
+      - name: Require release automation token
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "${RELEASE_TOKEN:-}" ]; then
+            echo "Error: RELEASE_TOKEN secret is required to push the next development version through CI"
+            exit 1
+          fi
+
+      - name: Checkout current main for development version reconciliation
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Get released version from tag
         id: get_version
@@ -372,6 +462,9 @@ jobs:
             echo "Tag push detected"
           fi
 
+          source "$RUNNER_TEMP/release-version.sh"
+          require_release_version "$VERSION"
+
           # 获取 tag 指向的 commit SHA
           TAG_SHA=$(git rev-parse "${TAG_NAME}^{commit}")
 
@@ -382,11 +475,24 @@ jobs:
           echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "tag_sha=$TAG_SHA" >> "$GITHUB_OUTPUT"
 
+      - name: Verify GitHub Release exists before manual development version recovery
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.update_dev_version == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.get_version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null
+
       - name: Calculate next development version
         id: next_version
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/release-version.sh"
+          require_release_version "$VERSION"
+
           # 移除可能的 -SNAPSHOT 后缀（如果有）
           VERSION=${VERSION%-SNAPSHOT}
           
@@ -394,55 +500,56 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           
           # 计算下一个开发版本（patch + 1，然后加上 -SNAPSHOT）
-          NEXT_PATCH=$((PATCH + 1))
+          NEXT_PATCH=$((10#$PATCH + 1))
           NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}-SNAPSHOT"
           
           echo "Current released version: $VERSION"
           echo "Next development version: $NEXT_VERSION"
           echo "next_version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout main branch
-        run: |
-          git checkout main
-          git pull origin main
-
-      - name: Update version
+      - name: Reconcile next development version
+        id: update_version
         env:
+          VERSION: ${{ steps.get_version.outputs.version }}
           NEXT_VERSION: ${{ steps.next_version.outputs.next_version }}
         run: |
-          # 更新 pom.xml 中的版本号
-          echo "Updating pom.xml to version: $NEXT_VERSION"
-          sed -i.bak "s|<revision>[^<]*</revision>|<revision>$NEXT_VERSION</revision>|" pom.xml
-          rm -f pom.xml.bak
-          
-          echo "Updated pom.xml content:"
-          grep -A 2 -B 2 "<revision>" pom.xml
+          set -euo pipefail
+          source "$RUNNER_TEMP/release-version.sh"
+          require_release_version "${NEXT_VERSION%-SNAPSHOT}"
+
+          CURRENT_VERSION=$(sed -n 's|.*<revision>\([^<]*\)</revision>.*|\1|p' pom.xml)
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Error: pom.xml does not contain a revision property"
+            exit 1
+          fi
+          require_maven_revision "$CURRENT_VERSION"
+
+          if [ "$CURRENT_VERSION" = "$NEXT_VERSION" ]; then
+            echo "Development version is already $NEXT_VERSION; no commit is required."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$CURRENT_VERSION" != "$VERSION" ]; then
+            echo "Error: current main revision $CURRENT_VERSION is neither released version $VERSION nor next development version $NEXT_VERSION"
+            exit 1
+          fi
+
+          echo "Updating pom.xml from $CURRENT_VERSION to $NEXT_VERSION"
+          update_maven_revision pom.xml "$NEXT_VERSION"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push changes
+        if: steps.update_version.outputs.changed == 'true'
         env:
           NEXT_VERSION: ${{ steps.next_version.outputs.next_version }}
         run: |
+          set -euo pipefail
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          # 在提交前拉取最新更改
-          echo "Pulling latest changes from main before committing..."
-          git pull --rebase origin main || git pull origin main
-
-          # 添加所有更改的文件
           git add pom.xml
+          git commit -m "chore: bump version to $NEXT_VERSION for next development cycle"
+          git push origin "HEAD:${{ github.event.repository.default_branch }}"
 
-          # 检查是否有更改
-          if git diff --staged --quiet; then
-            echo "No changes to commit (version may already be updated)"
-          else
-            # 构建提交消息
-            COMMIT_MSG="chore: bump version to $NEXT_VERSION for next development cycle"
-
-            git commit -m "$COMMIT_MSG"
-
-            # 推送更改
-            git push origin main
-
-            echo "Successfully updated version to $NEXT_VERSION"
-          fi
+          echo "Successfully updated version to $NEXT_VERSION"

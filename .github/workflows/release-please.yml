@@ -3,10 +3,11 @@ name: Release Please
 on:
   push:
     branches: [ main ]
-  pull_request:
-    types: [opened, synchronize, closed]
-    branches: [ main ]
   workflow_dispatch: {}
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -15,18 +16,10 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    # 避免重复执行：
-    # - 当 PR 合并时，会同时触发 push 和 pull_request 事件
-    # - 我们只在 push 事件时执行，忽略 pull_request closed 事件（因为会触发 push）
-    # - 但保留 pull_request opened/synchronize 事件（用于更新 release PR）
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && github.event.action != 'closed') ||
-      (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false)
+    timeout-minutes: 15
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
-        continue-on-error: true
         with:
           # 使用默认的 GITHUB_TOKEN
           # 如需使用 PAT，可配置 token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
@@ -39,26 +32,17 @@ jobs:
           skip-github-release: true
 
       - name: Add 🚀 release label to PR
+        if: steps.release.outputs.prs_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
         run: |
-          echo "Waiting for PR to be searchable..."
-          # 简单的重试逻辑：尝试 5 次，每次间隔 5 秒
-          for i in {1..5}; do
-            # 显式指定 repo 以避免需要 checkout
-            PR_NUMBER=$(gh pr list --repo ${{ github.repository }} --search "head:release-please--branches--main is:open" --json number --jq '.[0].number')
-            
-            if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
-              echo "Found Release PR: #$PR_NUMBER"
-              gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --add-label "🚀 release"
-              echo "Added '🚀 release' label to PR #$PR_NUMBER"
-              exit 0
-            fi
-            
-            echo "Attempt $i: No open release PR found yet. Retrying in 5s..."
-            sleep 5
-          done
-          
-          echo "Failed to find release PR after retries."
-          # 不报错退出，避免标记 workflow 为失败
-          exit 0
+          set -euo pipefail
+          PR_NUMBER=$(jq -er '.number' <<< "$RELEASE_PR")
+
+          if gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "🚀 release"; then
+            echo "Added '🚀 release' label to PR #$PR_NUMBER"
+          else
+            echo "::warning::Release PR #$PR_NUMBER was created or updated, but its optional label could not be applied."
+            echo "- ⚠️ Release PR #$PR_NUMBER was created or updated, but the optional label could not be applied." >> "$GITHUB_STEP_SUMMARY"
+          fi

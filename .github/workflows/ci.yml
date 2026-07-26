@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   MAVEN_OPTS: -Xmx1024m -XX:+UseG1GC
   JAVA_VERSION: '17'
@@ -13,6 +17,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -32,23 +37,15 @@ jobs:
         run: chmod +x mvnw
 
       - name: Markdown lint
-        if: github.actor != 'dependabot[bot]'
         uses: DavidAnson/markdownlint-cli2-action@6bf21b07787794f89a243495939cd651942aeabe # v24.1.0
         with:
           globs: '**/*.md'
 
       - name: Build and test
-        if: github.actor != 'dependabot[bot]'
         run: ./mvnw -B -U verify -Pci
 
-      - name: Build only (Dependabot)
-        # Dependabot PR 只进行编译检查，不运行测试和格式检查
-        if: github.actor == 'dependabot[bot]'
-        run: ./mvnw -B -U clean compile -DskipTests
-
       - name: Upload test reports
-        # Dependabot PR 不生成测试报告
-        if: always() && github.actor != 'dependabot[bot]'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: surefire-reports
@@ -58,8 +55,7 @@ jobs:
           retention-days: 7
 
       - name: Upload JaCoCo coverage report
-        # Dependabot PR 不生成覆盖率报告
-        if: always() && github.actor != 'dependabot[bot]'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: jacoco-report
@@ -70,6 +66,7 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [ build ]
     # Dependabot PR 跳过 SonarQube 分析
     if: github.actor != 'dependabot[bot]'

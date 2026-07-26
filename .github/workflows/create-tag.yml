@@ -1,15 +1,26 @@
 name: Create Tag
 
 on:
-  # 监听 release-please 工作流的完成
   workflow_run:
     workflows: ["Release Please"]
-    types:
-      - completed
-    branches:
-      - main
-  # 允许手动触发以修复失败的 tag
+    types: [completed]
+    branches: [main]
+  # 手动恢复必须显式指定版本和目标提交，避免从当前 main 猜测。
   workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号（例如：2.1.1，不需要 v 前缀）'
+        required: true
+        type: string
+      target_sha:
+        description: '要打 tag 的 40 位合并提交 SHA'
+        required: true
+        type: string
+
+concurrency:
+  group: create-tag-${{ github.event.workflow_run.head_sha || github.event.inputs.target_sha }}
+  cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: write
@@ -17,6 +28,7 @@ permissions:
 jobs:
   check-release-pr-merged:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
@@ -25,234 +37,140 @@ jobs:
       is_release_pr: ${{ steps.check.outputs.is_release_pr }}
       merge_commit_sha: ${{ steps.check.outputs.merge_commit_sha }}
     steps:
-      - name: Check if release PR was merged
+      - name: Check whether the merged PR was created by Release Please
         id: check
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // 获取触发此工作流的 release-please 工作流运行信息
             const workflowRun = context.payload.workflow_run;
-            console.log(`Release Please workflow run: ${workflowRun.id}`);
-            console.log(`Conclusion: ${workflowRun.conclusion}`);
-            console.log(`Event: ${workflowRun.event}`);
-            console.log(`Head branch: ${workflowRun.head_branch}`);
-            console.log(`Head SHA: ${workflowRun.head_sha}`);
-            
-            // 直接查找与触发 commit 关联的 PR
-            // 这比列出最近 PR 并检查时间戳更可靠，也避免了竞态条件
             const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: workflowRun.head_sha,
             });
-            
-            console.log(`Found ${prs.length} associated PRs`);
-            
+
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            const releaseBranch = /^release-please--branches--main(?:--components--[A-Za-z0-9_.-]+)?$/;
+            const releaseTitle = /^chore\(main\): release [0-9]+\.[0-9]+\.[0-9]+$/i;
             const releasePR = prs.find(pr => {
-              // 确保 PR 已合并
               if (!pr.merged_at) return false;
 
-              // 支持两种分支格式：
-              // 1. simple release type: release-please--branches--main
-              // 2. java release type: release-please--branches--main--components--*
-              const isReleaseBranch = pr.head.ref.startsWith('release-please--branches--main');
-
-              // 兼容 Release Please 默认标题，同时避免误判包含 "action-gh-release" 等依赖升级 PR
-              const title = pr.title || '';
-              const lowerTitle = title.toLowerCase();
-
-              const isReleaseTitle =
-                // 标准 release-please 标题：chore(main): release x.y.z
-                /chore\(main\): release\b/i.test(title) ||
-                // 其他以 release 开头的标题：如 "release 1.2.3" / "Release: 1.2.3"
-                lowerTitle.startsWith('release ') ||
-                lowerTitle.startsWith('release:') ||
-                lowerTitle.startsWith('release-');
-              
-              return isReleaseBranch || isReleaseTitle;
+              const isInternalPR = pr.head.repo?.full_name === repository;
+              const isGeneratedByBot = pr.user?.login === 'github-actions[bot]';
+              const isReleaseBranch = releaseBranch.test(pr.head.ref || '');
+              const isReleaseTitle = releaseTitle.test(pr.title || '');
+              return isInternalPR && isGeneratedByBot && isReleaseBranch && isReleaseTitle;
             });
-            
-            if (releasePR) {
-              console.log(`✓ Found associated release PR: #${releasePR.number}`);
-              console.log(`  Title: ${releasePR.title}`);
-              console.log(`  Head ref: ${releasePR.head.ref}`);
-              console.log(`  Merged at: ${releasePR.merged_at}`);
-              console.log(`  Merge commit SHA: ${releasePR.merge_commit_sha}`);
-              
-              core.setOutput('is_release_pr', 'true');
-              // 如果有关联 PR，使用其 merge_commit_sha；否则回退到 workflow_run.head_sha
-              core.setOutput('merge_commit_sha', releasePR.merge_commit_sha || workflowRun.head_sha);
-            } else {
-              console.log('ℹ️  No associated release PR found for this commit');
-              console.log('   This workflow will be skipped');
+
+            if (!releasePR || !releasePR.merge_commit_sha) {
+              console.log('No merged Release Please PR is associated with this workflow run.');
               core.setOutput('is_release_pr', 'false');
               core.setOutput('merge_commit_sha', '');
+              return;
             }
+
+            console.log(`Found Release Please PR #${releasePR.number} at ${releasePR.merge_commit_sha}`);
+            core.setOutput('is_release_pr', 'true');
+            core.setOutput('merge_commit_sha', releasePR.merge_commit_sha);
 
   create-and-push-tag:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [check-release-pr-merged]
-    # 如果是手动触发，或者是自动触发且检测到是 release PR，则执行
     if: |
-      always() && 
+      always() &&
       (github.event_name == 'workflow_dispatch' || needs.check-release-pr-merged.outputs.is_release_pr == 'true')
     permissions:
       contents: write
     steps:
-      - name: Checkout code
+      - name: Bootstrap release helpers
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          fetch-depth: 1
-          # checkout 到合并后的 commit（优先使用 merge_commit_sha，否则使用 main 分支）
-          ref: ${{ (needs.check-release-pr-merged.outputs.merge_commit_sha != '' && needs.check-release-pr-merged.outputs.merge_commit_sha) || 'main' }}
-          # 关键：不持久化 GITHUB_TOKEN，避免它干扰后续使用 RELEASE_TOKEN 的推送
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Preserve release-version guard
+        run: cp .github/scripts/release-version.sh "$RUNNER_TEMP/release-version.sh"
+
+      - name: Validate manual recovery target
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TARGET_SHA: ${{ github.event.inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Error: target_sha must be a 40-character commit SHA"
+            exit 1
+          fi
+
+      - name: Checkout release commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_sha || needs.check-release-pr-merged.outputs.merge_commit_sha }}
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
-      - name: Extract version from manifest
+      - name: Resolve release version
         id: get_version
-        run: |
-          echo "=== Extracting Version ==="
-          echo "Current commit SHA: $(git rev-parse HEAD)"
-          echo "Current branch: $(git branch --show-current)"
-          
-          # 优先从 .release-please-manifest.json 中提取版本号（Release Please 的权威版本源）
-          if [ -f ".github/.release-please-manifest.json" ]; then
-            echo "Manifest file exists, reading..."
-            cat .github/.release-please-manifest.json
-            VERSION=$(jq -r '.["."]' .github/.release-please-manifest.json 2>/dev/null || echo "")
-            if [ -n "$VERSION" ] && [ "$VERSION" != "null" ]; then
-              echo "✓ Extracted version from manifest: $VERSION"
-            else
-              echo "⚠ Manifest exists but version is empty or null: '$VERSION'"
-            fi
-          else
-            echo "⚠ Manifest file not found at .github/.release-please-manifest.json"
-          fi
-          
-          # 如果从 manifest 获取失败，尝试从 CHANGELOG.md 中提取最新版本
-          if [ -z "$VERSION" ] || [ "$VERSION" == "null" ]; then
-            if [ -f "CHANGELOG.md" ]; then
-              # 从 CHANGELOG 中提取第一个版本号（格式：## [1.1.0] 或 ## 1.1.0）
-              VERSION=$(grep -m 1 -E '^## \[?[0-9]+\.[0-9]+\.[0-9]+\]?' CHANGELOG.md | sed -E 's/^## \[?([0-9]+\.[0-9]+\.[0-9]+)\]?.*/\1/' | head -1)
-              if [ -n "$VERSION" ]; then
-                echo "Extracted version from CHANGELOG: $VERSION"
-              fi
-            fi
-          fi
-          
-          # 如果还是失败，回退到从 pom.xml 中提取（兼容旧版本）
-          if [ -z "$VERSION" ] || [ "$VERSION" == "null" ]; then
-            if [ -f "pom.xml" ]; then
-              # 提取 <revision> 标签中的版本号（使用 sed，更兼容）
-              VERSION=$(sed -n 's/.*<revision>\([^<]*\)<\/revision>.*/\1/p' pom.xml | head -1)
-              if [ -z "$VERSION" ]; then
-                # 如果没有 revision，尝试提取 <version>
-                VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' pom.xml | head -1)
-              fi
-              if [ -n "$VERSION" ]; then
-                echo "Extracted version from pom.xml: $VERSION"
-                # 移除 -SNAPSHOT 后缀（如果有）
-                VERSION=${VERSION%-SNAPSHOT}
-              fi
-            fi
-          fi
-          
-          if [ -z "$VERSION" ] || [ "$VERSION" == "null" ]; then
-            echo "Error: Could not extract version from manifest, CHANGELOG, or pom.xml"
-            echo "Manifest content:"
-            cat .github/.release-please-manifest.json 2>/dev/null || echo "Manifest not found"
-            echo "CHANGELOG first 10 lines:"
-            head -10 CHANGELOG.md 2>/dev/null || echo "CHANGELOG not found"
-            exit 1
-          fi
-          
-          # 移除 -SNAPSHOT 后缀（如果有，虽然 manifest 中通常不会有）
-          VERSION=${VERSION%-SNAPSHOT}
-          
-          # 生成 tag 名称（确保以 v 开头）
-          if [[ "$VERSION" =~ ^v ]]; then
-            TAG_NAME="$VERSION"
-          else
-            TAG_NAME="v$VERSION"
-          fi
-          
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "Final version: $VERSION"
-          echo "Final tag name: $TAG_NAME"
-
-      - name: Create and push tag
         env:
-          TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
-          VERSION: ${{ steps.get_version.outputs.version }}
-          # 使用 RELEASE_TOKEN (PAT) 来推送 tag，这样能自动触发 release 工作流
-          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_VERSION: ${{ github.event.inputs.version }}
         run: |
-          echo "=== Creating Tag for Release ==="
-          echo "Version: $VERSION"
-          echo "Tag name: $TAG_NAME"
-          echo "================================="
-          
-          if [ -z "$TAG_NAME" ] || [ -z "$VERSION" ]; then
-            echo "Error: TAG_NAME or VERSION is empty"
-            echo "TAG_NAME: $TAG_NAME"
-            echo "VERSION: $VERSION"
+          set -euo pipefail
+          source "$RUNNER_TEMP/release-version.sh"
+
+          if [ ! -f .github/.release-please-manifest.json ]; then
+            echo "Error: Release Please manifest is missing from the target commit"
             exit 1
           fi
-          
-          # 确保 tag 名称以 'v' 开头
-          if [[ ! "$TAG_NAME" =~ ^v ]]; then
-            TAG_NAME="v$TAG_NAME"
-            echo "Adjusted tag name to: $TAG_NAME"
-          fi
-          
-          # 获取当前 commit SHA
-          COMMIT_SHA=$(git rev-parse HEAD)
-          echo "Current commit SHA: $COMMIT_SHA"
-          
-          # 检查 tag 是否已存在
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            EXISTING_SHA=$(git rev-parse "$TAG_NAME")
-            if [ "$EXISTING_SHA" == "$COMMIT_SHA" ]; then
-              echo "✓ Tag $TAG_NAME already exists and points to the same commit, skipping creation"
-            else
-              echo "⚠ Warning: Tag $TAG_NAME exists but points to different commit"
-              echo "  Existing: $EXISTING_SHA"
-              echo "  Current:  $COMMIT_SHA"
+          MANIFEST_VERSION=$(jq -r '.["."] // empty' .github/.release-please-manifest.json)
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$MANUAL_VERSION"
+            if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+              echo "Error: manual version $VERSION does not match target commit manifest version $MANIFEST_VERSION"
               exit 1
             fi
           else
-            # 创建 tag（指向当前 HEAD，即合并后的 commit）
-            echo "Creating annotated tag: $TAG_NAME"
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -a "$TAG_NAME" -m "Release $VERSION"
-            
-            # 使用 RELEASE_TOKEN (PAT) 推送 tag，这样能自动触发 release 工作流
-            # 如果 RELEASE_TOKEN 不存在，回退到 GITHUB_TOKEN（但不会触发工作流）
-            if [ -n "$RELEASE_TOKEN" ] && [ "$RELEASE_TOKEN" != "" ]; then
-              echo "Using RELEASE_TOKEN to push tag (will trigger Release workflow automatically)"
-              
-              # 直接构造带 Token 的 URL 进行推送，这是最稳健的方式
-              # 避免依赖 git config 清理和 credential helper 可能导致的回退问题
-              GIT_API_URL="https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-              
-              # 推送 tag
-              echo "Pushing tag $TAG_NAME..."
-              if git push "$GIT_API_URL" "$TAG_NAME"; then
-                echo "✓ Successfully created and pushed tag: $TAG_NAME using RELEASE_TOKEN"
-                echo "✓ This should trigger the Release workflow automatically"
-              else
-                echo "❌ Failed to push tag"
-                exit 1
-              fi
-            else
-              echo "⚠️  RELEASE_TOKEN not found, using GITHUB_TOKEN (will NOT trigger Release workflow)"
-              echo "   Please configure RELEASE_TOKEN secret to enable automatic workflow triggering"
-              git push origin "$TAG_NAME"
-              echo "✓ Tag pushed, but Release workflow will NOT be triggered automatically"
-              echo "   You need to manually trigger it or configure RELEASE_TOKEN secret"
-            fi
+            VERSION="$MANIFEST_VERSION"
           fi
+
+          require_release_version "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create or verify release tag
+        env:
+          TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/release-version.sh"
+          require_release_version "$VERSION"
+
+          COMMIT_SHA=$(git rev-parse HEAD)
+          git fetch --force --tags origin
+
+          if git ls-remote --exit-code --refs origin "refs/tags/$TAG_NAME" >/dev/null; then
+            EXISTING_COMMIT=$(git rev-parse "${TAG_NAME}^{commit}")
+            if [ "$EXISTING_COMMIT" = "$COMMIT_SHA" ]; then
+              echo "Tag $TAG_NAME already points to $COMMIT_SHA; no tag mutation is required."
+              exit 0
+            fi
+
+            echo "Error: tag $TAG_NAME points to $EXISTING_COMMIT, not $COMMIT_SHA"
+            exit 1
+          fi
+
+          if [ -z "${RELEASE_TOKEN:-}" ]; then
+            echo "Error: RELEASE_TOKEN secret is required to create release tags"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG_NAME" -m "Release $VERSION" "$COMMIT_SHA"
+          git push "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG_NAME"
