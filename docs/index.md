@@ -7,6 +7,7 @@
 - 业务领域划分：[`DOMAINS.md`](./DOMAINS.md)
 - 安全策略：[`SECURITY.md`](./SECURITY.md)
 - 可靠性标准：[`RELIABILITY.md`](./RELIABILITY.md)
+- SonarCloud 质量纪律：[`SONAR_QUALITY_DISCIPLINE.md`](./SONAR_QUALITY_DISCIPLINE.md)
 - 产品思维：[`PRODUCT_SENSE.md`](./PRODUCT_SENSE.md)
 - 质量评分：[`QUALITY_SCORE.md`](./QUALITY_SCORE.md)
 

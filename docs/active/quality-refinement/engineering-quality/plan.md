@@ -1,12 +1,14 @@
 ---
 id: quality-refinement
-status: not-started
+status: completed
 owner: Yggdrasil Labs
 created: 2026-06-26
-updated: 2026-07-24
+updated: 2026-07-26
 ---
 
 # Quality Refinement
+
+> **状态校正（2026-07-26）**：T1 至 T10 的实施结果已由当前 CI、源代码、集成测试和 Java 17 全量 `verify` 复核。下方未勾选的步骤保留为当时的执行记录，不再表示待办；该计划等待随下一版本归档。
 
 **Branch:** main（直接在 main 上修改，工程质量改善不需要特性分支）
 **Baseline SHA:** 6fe0b1079e95ca73ba8463514a2ed88ff18543b7

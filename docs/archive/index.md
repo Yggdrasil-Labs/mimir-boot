@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-24
+updated: 2026-07-26
 ---
 
 # 版本归档索引
@@ -13,4 +13,4 @@ updated: 2026-06-24
 
 | 版本 | 归档日期 | 保留至 | 前序版本 | 包含需求 (slug) | 路径 |
 |------|----------|--------|----------|----------------|------|
-| — | 2026-06-26 | 2027-06-26 | — | exception-handler-adapter | `exception-handler-adapter/` |
+| v2.1.0 | 2026-06-28 | 2027-06-28 | v2.0.4 | exception-handler-adapter | [`exception-handler-adapter/`](./exception-handler-adapter/) |

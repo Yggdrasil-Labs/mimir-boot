@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-24
+updated: 2026-07-26
 ---
 
 # 可靠性要求
@@ -18,7 +18,7 @@ updated: 2026-06-24
 从现有流程可见：
 
 - CI 会执行格式检查、编译、测试与覆盖率产物上传
-- Sonar 分析作为质量观察手段
+- SonarCloud 作为新代码质量门禁，具体执行纪律见 [`SONAR_QUALITY_DISCIPLINE.md`](./SONAR_QUALITY_DISCIPLINE.md)
 - 发布通过 GitHub Actions + release-please 驱动
 - Maven Wrapper 是首选构建入口
 

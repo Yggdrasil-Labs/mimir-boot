@@ -15,7 +15,6 @@ updated: 2026-07-26
 | 编号 | 领域 | 问题描述 | 优先级 | 记录日期 | Owner | 关联计划 |
 |------|------|----------|--------|----------|-------|----------|
 | TD-004 | product | 规划中的治理、指标、安全 starter 尚无正式产品规格（已从 README 移除，待正式立项时再补） | 低 | 2026-04-11 | ORPHAN | — |
-| TD-005 | ci | release.yml publish-gpr 与 publish-maven-central 大量重复步骤，待用 reusable workflow 重构 | 中 | 2026-06-26 | — | 已通过 `.github/actions/maven-release-prepare/` composite action 解决 |
 | TD-006 | bom | BOM 中约 60% 的依赖版本声明未被任何 starter 引用（如 elasticsearch、mongodb、redis、kafka、xxl-job 等），增加 Dependabot 噪音和维护负担，且模糊了"版本基线"的边界 | 中 | 2026-06-29 | ORPHAN | 需评估是否精简为仅本仓库实际使用的依赖，或将生态系统版本管理拆分到独立 BOM |
 
 ## 优先级含义（智能体行为指南）

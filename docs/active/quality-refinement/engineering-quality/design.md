@@ -1,18 +1,18 @@
 ---
 id: quality-refinement
-status: draft
+status: verified
 owner: Yggdrasil Labs
 created: 2026-06-26
-updated: 2026-07-24
+updated: 2026-07-26
 ---
 
 # Quality Refinement — 工程质量与文档治理
 
-## Context
+## 实施前背景
 
 Mimir Boot 自 v2.0.4 发布以来（2026-03-23），已完成 exception-handler-adapter 功能并积累了依赖更新。release-please 已准备好 v2.1.0 Release PR。
 
-当前存在几类工程债务：
+当时存在几类工程债务：
 
 1. SonarCloud CI 用 `sonar.coverage.exclusions=**` 完全排除覆盖率，Quality Gate 形同虚设
 2. CI workflow 结构冗余（build job 分三步启动 JVM、release.yml 两个 publish job 大量重复）
@@ -30,6 +30,13 @@ Mimir Boot 自 v2.0.4 发布以来（2026-03-23），已完成 exception-handler
 - README 与实际代码库状态一致，不含虚假模块
 - 文档技术债 TD-001~TD-004 全部解决或降级
 - 已有 starter 的 AutoConfiguration 有集成测试保障
+
+## 实施结果（2026-07-26 验证）
+
+- CI 已使用单步 `verify -Pci`，并将 JaCoCo XML 报告提供给 SonarCloud；全局覆盖率排除配置已移除。
+- Markdown lint、README 规划模块清理、归档与技术债治理已落地；发布准备步骤已提取为 composite action。
+- Web 与 Exception starter 的 AutoConfiguration 集成测试、`ErrorCode` Javadoc 与全量 Java 17 `verify` 已具备验证证据。
+- 本设计对应的实施任务已完成，保留在活跃目录仅等待随下一版本统一归档；新的 Sonar 门禁运行纪律以 [`SONAR_QUALITY_DISCIPLINE.md`](../../../SONAR_QUALITY_DISCIPLINE.md) 为准。
 
 ## Non-Goal
 
