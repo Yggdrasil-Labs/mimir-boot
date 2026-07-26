@@ -17,6 +17,7 @@ import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcException;
+import org.apache.dubbo.rpc.AsyncRpcResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,46 +79,77 @@ public class RpcDubboFilter implements Filter {
         boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
-        if (properties.isContextPropagationEnabled() && providerSide) {
-            tracerBridge.extract(context, attachments == null ? Map.of() : attachments);
-        }
-        hookChain.before(context);
-
-        if (properties.isContextPropagationEnabled() && !providerSide) {
-            Map<String, String> injected = tracerBridge.inject(context);
-            if (injected != null && !injected.isEmpty()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("RpcDubboFilter: Injecting context propagation headers: {}", injected.keySet());
-                }
-                injected.forEach(invocation::setAttachment);
-            }
-        }
-
         try {
-            Result result = invoker.invoke(invocation);
-            Duration duration = Duration.between(start, Instant.now());
-            if (log.isDebugEnabled()) {
-                log.debug("RpcDubboFilter: RPC call succeeded - service={}, method={}, duration={}ms",
-                        metadata.getService(),
-                        metadata.getMethod(),
-                        duration.toMillis());
+            if (properties.isContextPropagationEnabled() && providerSide) {
+                tracerBridge.extract(context, attachments == null ? Map.of() : attachments);
             }
-            hookChain.after(context, RpcCallResult.success(duration));
+            hookChain.before(context);
+
+            if (properties.isContextPropagationEnabled() && !providerSide) {
+                Map<String, String> injected = tracerBridge.inject(context);
+                if (injected != null && !injected.isEmpty()) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("RpcDubboFilter: Injecting context propagation headers: {}", injected.keySet());
+                    }
+                    injected.forEach(invocation::setAttachment);
+                }
+            }
+
+            Result result = invoker.invoke(invocation);
+            if (result instanceof AsyncRpcResult) {
+                result.whenCompleteWithContext((completedResult, throwable) ->
+                        completeCall(hookChain, context, metadata, start, completedResult, throwable));
+            } else {
+                completeCall(hookChain, context, metadata, start, result, null);
+            }
             return result;
         } catch (RuntimeException ex) {
-            Duration duration = Duration.between(start, Instant.now());
-            if (log.isDebugEnabled()) {
-                log.debug("RpcDubboFilter: RPC call failed - service={}, method={}, duration={}ms, error={}",
-                        metadata.getService(),
-                        metadata.getMethod(),
-                        duration.toMillis(),
-                        ex.getClass().getSimpleName(),
-                        ex);
-            }
-            hookChain.onError(context, RpcCallResult.failure(duration, ex));
+            completeCall(hookChain, context, metadata, start, null, ex);
             throw ex;
+        }
+    }
+
+    private void completeCall(
+            RpcHookChain hookChain,
+            RpcCallContext context,
+            RpcCallMetadata metadata,
+            Instant start,
+            Result result,
+            Throwable throwable) {
+        Duration duration = Duration.between(start, Instant.now());
+        try {
+            Throwable error = throwable != null ? throwable : result != null && result.hasException()
+                    ? result.getException()
+                    : null;
+            if (error != null) {
+                logFailure(metadata, duration, error);
+                hookChain.onError(context, RpcCallResult.failure(duration, error));
+            } else {
+                logSuccess(metadata, duration);
+                hookChain.after(context, RpcCallResult.success(duration));
+            }
         } finally {
             hookChain.cleanup(context);
+        }
+    }
+
+    private void logSuccess(RpcCallMetadata metadata, Duration duration) {
+        if (log.isDebugEnabled()) {
+            log.debug("RpcDubboFilter: RPC call succeeded - service={}, method={}, duration={}ms",
+                    metadata.getService(),
+                    metadata.getMethod(),
+                    duration.toMillis());
+        }
+    }
+
+    private void logFailure(RpcCallMetadata metadata, Duration duration, Throwable error) {
+        if (log.isDebugEnabled()) {
+            log.debug("RpcDubboFilter: RPC call failed - service={}, method={}, duration={}ms, error={}",
+                    metadata.getService(),
+                    metadata.getMethod(),
+                    duration.toMillis(),
+                    error.getClass().getSimpleName(),
+                    error);
         }
     }
 }

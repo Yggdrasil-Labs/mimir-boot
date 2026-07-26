@@ -160,18 +160,19 @@ password: SECRET(encrypted_value)  # 使用自定义前缀
 
 ```yaml
 mimir:
-  nacos:
-    encrypt:
-      # 是否启用配置加密脱敏功能
-      enabled: true
+  boot:
+    nacos:
+      encrypt:
+        # 是否启用配置加密脱敏功能
+        enabled: true
       
-      # 加密密钥（Base64 编码），必填
-      # 可以通过工具类生成：NacosEncryptUtil.generateKey()
-      key: YOUR_BASE64_ENCODED_KEY
+        # 加密密钥（Base64 编码），必填
+        # 可以通过工具类生成：NacosEncryptUtil.generateKey()
+        key: YOUR_BASE64_ENCODED_KEY
       
-      # 加密前缀，默认 ENC
-      # 配置值格式：prefix(encrypted_value)
-      prefix: ENC
+        # 加密前缀，默认 ENC
+        # 配置值格式：prefix(encrypted_value)
+        prefix: ENC
 ```
 
 ### 配置项说明
@@ -378,15 +379,17 @@ api:
 ```yaml
 # application-dev.yml
 mimir:
-  nacos:
-    encrypt:
-      key: ${DEV_ENCRYPT_KEY}
+  boot:
+    nacos:
+      encrypt:
+        key: ${DEV_ENCRYPT_KEY}
 
 # application-prod.yml
 mimir:
-  nacos:
-    encrypt:
-      key: ${PROD_ENCRYPT_KEY}  # 生产环境使用不同的密钥
+  boot:
+    nacos:
+      encrypt:
+        key: ${PROD_ENCRYPT_KEY}  # 生产环境使用不同的密钥
 ```
 
 ## 常见问题
@@ -510,7 +513,7 @@ password: SECRET(encrypted_value)  # 使用新前缀
 1. **配置加载阶段**：`EnvironmentPostProcessor` 在 ApplicationContext 刷新前处理已加载的配置属性源
 2. **配置扫描**：遍历所有配置属性源，查找包含 `ENC(...)` 格式的值
 3. **自动解密**：提取加密内容，使用配置的密钥进行解密
-4. **配置替换**：将解密后的值添加到环境配置的最高优先级位置
+4. **配置替换**：将解密后的值紧邻原属性源之前加入，只覆盖对应密文键并保持其他属性源的优先级
 5. **动态刷新**：监听 `EnvironmentChangeEvent`，配置刷新时重新解密
 
 ### 安全说明

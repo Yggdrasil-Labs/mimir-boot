@@ -9,9 +9,12 @@ import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.rpc.AppResponse;
+import org.apache.dubbo.rpc.AsyncRpcResult;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
+import org.apache.dubbo.rpc.RpcInvocation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +23,7 @@ import org.mockito.InOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
@@ -156,6 +160,98 @@ class RpcDubboFilterTest {
         inOrder.verify(hook).cleanup(any());
         verify(tracerBridge, never()).inject(any());
         verify(invocation, never()).setAttachment(anyString(), anyString());
+    }
+
+    @Test
+    void shouldReportResultContainedExceptionAsFailure() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        RuntimeException ex = new RuntimeException("business failure");
+        Result result = new AppResponse(ex);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
+        verify(hook).onError(any(), resultCaptor.capture());
+        verify(hook).cleanup(any());
+        verify(hook, never()).after(any(), any());
+        org.junit.jupiter.api.Assertions.assertFalse(resultCaptor.getValue().isSuccess());
+        assertSame(ex, resultCaptor.getValue().getError().orElseThrow());
+    }
+
+    @Test
+    void shouldCompleteHooksOnlyAfterAsyncResultCompletes() {
+        Invocation invocation = new RpcInvocation();
+        ((RpcInvocation) invocation).setMethodName("m1");
+        Invoker<?> invoker = mockInvoker();
+        CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+        Result result = new AsyncRpcResult(responseFuture, invocation);
+        when(invoker.invoke(invocation)).thenReturn(result);
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verify(hook).before(any());
+        verify(hook, never()).after(any(), any());
+        verify(hook, never()).onError(any(), any());
+        verify(hook, never()).cleanup(any());
+
+        responseFuture.complete(new AppResponse("ok"));
+
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+        verify(hook, never()).onError(any(), any());
+    }
+
+    @Test
+    void shouldReportAsyncResultContainedExceptionAfterCompletion() {
+        Invocation invocation = new RpcInvocation();
+        ((RpcInvocation) invocation).setMethodName("m1");
+        Invoker<?> invoker = mockInvoker();
+        CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+        Result result = new AsyncRpcResult(responseFuture, invocation);
+        RuntimeException ex = new RuntimeException("async business failure");
+        when(invoker.invoke(invocation)).thenReturn(result);
+
+        filter.invoke(invoker, invocation);
+
+        verify(hook, never()).onError(any(), any());
+        verify(hook, never()).cleanup(any());
+
+        responseFuture.complete(new AppResponse(ex));
+
+        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
+        verify(hook).onError(any(), resultCaptor.capture());
+        verify(hook).cleanup(any());
+        verify(hook, never()).after(any(), any());
+        org.junit.jupiter.api.Assertions.assertFalse(resultCaptor.getValue().isSuccess());
+        assertSame(ex, resultCaptor.getValue().getError().orElseThrow());
+    }
+
+    @Test
+    void shouldReportAndCleanUpWhenProviderExtractionFails() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RuntimeException ex = new RuntimeException("extract failure");
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
+        doThrow(ex).when(tracerBridge).extract(any(), any());
+
+        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+
+        assertSame(ex, thrown);
+        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
+        verify(hook).onError(any(), resultCaptor.capture());
+        verify(hook).cleanup(any());
+        verify(hook, never()).before(any());
+        verify(invoker, never()).invoke(any());
+        org.junit.jupiter.api.Assertions.assertFalse(resultCaptor.getValue().isSuccess());
+        assertSame(ex, resultCaptor.getValue().getError().orElseThrow());
     }
 
     @Test

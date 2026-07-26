@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <p>功能说明：</p>
  * <ul>
  * <li>支持配置加密密钥</li>
- * <li>新密文固定使用 AES-GCM，并兼容读取旧 AES 密文</li>
+ * <li>新密文固定使用 AES-GCM；旧 AES 密文仅支持通过显式的迁移 API 离线读取</li>
  * <li>支持启用/禁用配置解密功能</li>
  * </ul>
  *

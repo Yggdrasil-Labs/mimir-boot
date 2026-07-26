@@ -1,7 +1,7 @@
 ---
 status: completed
 reviewed-date: 2026-07-17
-updated: 2026-07-25
+updated: 2026-07-26
 baseline-commit: 0fd2f61
 ---
 
@@ -13,7 +13,7 @@ baseline-commit: 0fd2f61
 Nacos 启动期解密不会在正常 Spring Boot 生命周期中执行，CORS 默认策略、日志脱敏、密钥管理、
 RPC 上下文传播和工程质量门禁也存在缺口。
 
-截至 2026-07-25，R-001 至 R-014 均已修复并通过对应回归测试；全仓 `-Pci verify`、覆盖率门禁、
+截至 2026-07-26，R-001 至 R-014 均已修复并通过对应回归测试；全仓 `-Pci verify`、覆盖率门禁、
 发布 POM 检查和文档 lint 均通过。当前代码满足本轮复审定义的发布质量门槛；实际发布仍应遵循签名、
 制品上传和远端 CI 等常规发布流程。
 
@@ -97,7 +97,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 - **位置**：`RpcDubboFilter.java:23,53-87`
 - **影响**：Filter 同时用于 Consumer 与 Provider，却只调用 `inject`；Provider 无法续接上游 Trace。
-- **修复状态（2026-07-22）**：已在当前分支修复。Filter 按 Dubbo URL 的 `side` 参数分支：Consumer 注入并写入 attachments，Provider 在 Hook 前提取入站上下文且不再注入。单元测试覆盖 Provider 成功、异常与清理路径；进程内 Consumer → Provider 端到端测试验证 trace attachment 连续传递。
+- **修复状态（2026-07-26）**：已在当前分支修复。Filter 按 Dubbo URL 的 `side` 参数分支：Consumer 注入并写入 attachments，Provider 在 Hook 前提取入站上下文且不再注入。同步 `Result` 与 `AsyncRpcResult` 都在终态执行 Hook；Result 内异常和异步完成异常进入 `onError`，成功进入 `after`，任意前置步骤异常仍会执行 `cleanup`。单元测试覆盖 Provider 成功、调用异常、提取异常、同步业务异常、异步成功和异步业务异常；进程内 Consumer → Provider 端到端测试验证 trace attachment 连续传递。
 
 ### R-009：Feign 包装可能绕过用户 Client
 
@@ -124,7 +124,7 @@ mise exec java@17 -- ./mvnw -B -pl \
 
 ## 最终验证
 
-2026-07-25 在 Java 17、Spring Boot 3.3.13 环境执行：
+2026-07-26 在 Java 17、Spring Boot 3.3.13 环境执行：
 
 ```bash
 mise exec java@17 -- ./mvnw -o -B -Pci verify
@@ -132,5 +132,5 @@ node /mnt/c/Users/YangYang/.kiro/skills/docs-evolve/scripts/lint-docs.mjs
 ```
 
 Maven Reactor 的 15 个项目全部成功，JaCoCo、Spotless、Enforcer、source/javadoc 和发布 POM 检查均通过；
-Dubbo 26 项、Feign 19 项、RPC Core 18 项、Web 43 项和 Test Starter 141 项测试均无失败或错误。
+Dubbo 29 项、Feign 19 项、RPC Core 18 项、Web 43 项和 Test Starter 141 项测试均无失败或错误。
 flattened parent 中 `maven-deploy-plugin` 为 3.1.4 且默认 `skip=true`；文档健康检查通过。

@@ -1,7 +1,7 @@
 ---
 status: completed
 created: 2026-07-17
-updated: 2026-07-25
+updated: 2026-07-26
 ---
 
 # 能力复审修复清单
@@ -16,7 +16,7 @@ updated: 2026-07-25
 - [x] 新增或修改的安全、Nacos、RPC 行为均有集成测试。
 - [x] 复审报告与技术债追踪器状态已同步。
 
-**发布门禁完成记录（2026-07-25）**：R-001 至 R-014 均已关闭并具备回归证据；CORS、
+**发布门禁完成记录（2026-07-26）**：R-001 至 R-014 均已关闭并具备回归证据；CORS、
 Nacos 启动与刷新、MyBatis 字段加密、SQL/访问日志、Dubbo 和 Feign 均有真实框架行为测试。
 安全默认值、兼容策略和迁移示例已同步到 Starter README 与 `docs/SECURITY.md`。最终执行
 `mise exec java@17 -- ./mvnw -o -B -Pci verify`，15 个 Reactor 项全部成功，Maven 日志无
@@ -89,7 +89,7 @@ Nacos 启动与刷新、MyBatis 字段加密、SQL/访问日志、Dubbo 和 Feig
 - [x] Hook 的前置、后置、异常和清理语义在两端保持一致。
 - [x] 增加 Consumer → Provider 的真实 Dubbo 集成测试。
 
-**R-008 完成记录（2026-07-22）**：`RpcDubboFilter` 按 Dubbo URL 的 `side` 参数区分角色：Consumer 仅注入并写入 attachments，Provider 在 Hook 前提取入站上下文且不再写入 attachments。单元测试覆盖 Provider 成功与异常路径的 Hook 顺序、错误处理和清理；进程内 `ServiceConfig` → `ReferenceConfig` 端到端测试验证 Consumer 注入的 trace attachment 被 Provider 提取。验证命令：`mise exec java@17 -- ./mvnw -o -B -pl mimir-boot-starters/mimir-boot-starter-dubbo -am -Pci test`（215 项通过）。
+**R-008 完成记录（2026-07-26）**：`RpcDubboFilter` 按 Dubbo URL 的 `side` 参数区分角色：Consumer 仅注入并写入 attachments，Provider 在 Hook 前提取入站上下文且不再写入 attachments。同步 `Result` 与 `AsyncRpcResult` 均在终态才执行 Hook：业务异常进入 `onError`，成功进入 `after`，并始终执行 `cleanup`。单元测试覆盖 Provider 提取失败、同步业务异常、异步成功与异步业务异常；进程内 `ServiceConfig` → `ReferenceConfig` 端到端测试验证 Consumer 注入的 trace attachment 被 Provider 提取。验证命令：`mise exec java@17 -- ./mvnw -o -B -pl mimir-boot-starters/mimir-boot-starter-dubbo -am -Pci test`。
 
 ### R-009：保留 Feign delegate
 
