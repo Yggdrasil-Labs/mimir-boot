@@ -160,11 +160,12 @@ jobs:
           VERSION: ${{ steps.prepare.outputs.version }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          # maven-central 未设 activeByDefault，此处不激活即只发 GPR
+          # 保持 package 与直接 deploy goal 在同一 Maven 会话中：前者绑定构件，
+          # 后者不经过 verify，因此与历史 GPR 行为一致，不触发 Central 专用的 GPG 签名。
           ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
             -Dmaven.deploy.skip=false \
-            -Dgpg.skip=true \
-            deploy \
+            package \
+            org.apache.maven.plugins:maven-deploy-plugin:deploy \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/$REPOSITORY
 
   publish-maven-central:
