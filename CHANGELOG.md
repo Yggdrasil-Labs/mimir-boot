@@ -1,5 +1,71 @@
 # Changelog
 
+## [2.1.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.0...v2.1.1) (2026-07-26)
+
+
+### 🐛 Bug Fixes
+
+* **dubbo:** 修复双端追踪上下文传播 ([6637e92](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6637e92a2e935e63f3bd7d0f7c5bb78cbdd241e8))
+* **feign:** 保留客户端委托链路 ([2dd81f6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2dd81f6448b453f0138622ea44bacd8713a42790))
+* **log:** 修复访问日志流式响应 ([1a2806c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1a2806cd2831b7f27824ce3e7090acdd3c66731c))
+* **mybatis:** 加强 SQL 参数脱敏 ([63b1426](https://github.com/Yggdrasil-Labs/mimir-boot/commit/63b14267d1f0fc5b8f349536e52cb6c7353220ac))
+* **mybatis:** 强制稳定字段加密密钥 ([8eb68d8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8eb68d888386e0c43352f653baac335f26f0e216))
+* **nacos:** 加固配置认证解密 ([0ee8253](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0ee825393be36a773797838bda191151c0a6fe6c))
+* **nacos:** 启动期解密 Nacos 配置 ([7e54514](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7e545149a1d8639cdaf67ebcdc47394e2ec7599d))
+* **starters:** 修复 Dubbo 异步生命周期与文档漂移 ([ebbe764](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ebbe7644bf8ce13447f716aef23a414a36c76cfa))
+* **starters:** 修复敏感日志与追踪空值问题 ([cfa1c4a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cfa1c4a44828a5a36f263511d64313d54184f0f0))
+* **test:** 恢复 MimirBootTest 兼容属性 ([ba84427](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ba84427c1373210c8c8343baa9d5e40edf9814f4))
+* **web:** 修复 Trace 边界并恢复旧配置 API ([d04e6bc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d04e6bc614df117c8859a413760996339db0eea8))
+* **web:** 收紧 CORS 默认策略 ([5da69c1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5da69c183d10c13b59951b5ce7cea74bf902949c))
+
+
+### 📝 Documentation
+
+* **governance:** 刷新质量纪律与归档状态 ([5585306](https://github.com/Yggdrasil-Labs/mimir-boot/commit/55853062c1e74ff829e98884fefc296c8cd48c04))
+* **review:** 同步已修复问题状态 ([ff0e509](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ff0e509317d992b1d957a76ceb657932d1cfa608))
+* **review:** 完成能力复审清单收口 ([3e9b781](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3e9b781616326c3fde9700870f5fcbce492d0483))
+* 同步安全边界和复审记录 ([ddbd8ff](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ddbd8ffa7a3150ad4b686b6cb65e3d5dd7243dac))
+
+
+### ♻️ Code Refactoring
+
+* **ci:** release workflow 重构 — 提取 composite action，消除安全反模式，更新文档 ([29a3780](https://github.com/Yggdrasil-Labs/mimir-boot/commit/29a3780b7f75487573239bb26b33ca25a65d2f0e))
+
+
+### ✅ Tests
+
+* **web:** 修复反射类型比较规则 ([12f2a02](https://github.com/Yggdrasil-Labs/mimir-boot/commit/12f2a02012b67b20a97cf77da7b2fe44d4d37b1e))
+
+
+### 🔨 Build System
+
+* **maven:** 收紧覆盖率并固化发布插件 ([cbe37a6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cbe37a6bf97b88e9c82b9a829203fd424f409c9c))
+
+
+### 👷 Continuous Integration
+
+* **deps:** bump actions/setup-java from 5.3.0 to 5.4.0 ([2662b88](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2662b8808a963855dfb47784f3119fb68d3a4904))
+* **deps:** bump actions/setup-java from 5.4.0 to 5.6.0 ([d990171](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d990171b5a1866e797a7045271eb9846cba0d36a))
+* **deps:** bump actions/setup-java from 5.4.0 to 5.6.0 ([bdc4cf2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bdc4cf2478071c25832adf99c019dff7da5560ac))
+* **deps:** bump DavidAnson/markdownlint-cli2-action from 19.1.0 to 23.2.0 ([0fd2f61](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0fd2f61ee99cb3a9f87379a2fb6647e82fd40aa5))
+* **deps:** bump DavidAnson/markdownlint-cli2-action from 23.2.0 to 24.1.0 ([d0e6a97](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d0e6a978217f98d4bb6eb45c7995a886a83e5a8b))
+* **deps:** bump DavidAnson/markdownlint-cli2-action from 23.2.0 to 24.1.0 ([40cdc59](https://github.com/Yggdrasil-Labs/mimir-boot/commit/40cdc597e632e93b769a40497b38a0a5b6120a51))
+* **deps:** bump softprops/action-gh-release from 3.0.1 to 3.0.2 ([aba55ce](https://github.com/Yggdrasil-Labs/mimir-boot/commit/aba55ceaa1fcd31c32853e9914a660b01026a14c))
+* **deps:** bump softprops/action-gh-release from 3.0.1 to 3.0.2 ([8c203da](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8c203da408783549fa51cb81a01aa55c118e0af0))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.1.1-SNAPSHOT for next development cycle ([d72e46a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d72e46a4a6f01ccd274648f767cf2de2626bdb63))
+* **deps-dev:** bump spring-boot-maven-plugin from 3.5.15 to 3.5.16 ([0814341](https://github.com/Yggdrasil-Labs/mimir-boot/commit/08143414b7244c959bfd85af789923085e3e847d))
+* **deps:** bump cn.hutool:hutool-all from 5.8.46 to 5.8.47 in the utilities group ([8ac7047](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8ac7047a0bfec0b3123373ec0f6c76f0f88e3fd7))
+* **deps:** bump cn.hutool:hutool-all in the utilities group ([aaf749e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/aaf749ed298c3314e1f0c3705700754b788a4687))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin ([fb826e5](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fb826e552c6a5dd3c7783afb1f4bcf614246ebf1))
+* **deps:** bump com.diffplug.spotless:spotless-maven-plugin from 3.7.0 to 3.8.0 ([edeb6d8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/edeb6d86dbb27109f961332754a82a96a2d85b5a))
+* **deps:** bump org.codehaus.mojo:flatten-maven-plugin ([#277](https://github.com/Yggdrasil-Labs/mimir-boot/issues/277)) ([a3b38a9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a3b38a9f621f855261bc8cd50511f61fa9369726))
+* **deps:** bump the database group across 1 directory with 2 updates ([#271](https://github.com/Yggdrasil-Labs/mimir-boot/issues/271)) ([460a880](https://github.com/Yggdrasil-Labs/mimir-boot/commit/460a88006709731c5acc2a1944cbb035f54fbecc))
+* 添加 .worktrees/ 到 gitignore ([7a1405d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7a1405ddcbb86f13d552c0de09d6b6b10ad60409))
+
 ## [2.1.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.0.4...v2.1.0) (2026-06-28)
 
 
