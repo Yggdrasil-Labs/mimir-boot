@@ -163,6 +163,7 @@ jobs:
           # maven-central 未设 activeByDefault，此处不激活即只发 GPR
           ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
             -Dmaven.deploy.skip=false \
+            -Dgpg.skip=true \
             deploy \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/$REPOSITORY
 
@@ -401,14 +402,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # 等 GitHub Release 创建成功后，再更新开发版本号
-    needs: [ create-github-release ]
-    # 自动路径在 GitHub Release 成功后回写；手动路径仅在明确选择后执行。
+    needs: [ create-github-release, publish-gpr, publish-maven-central ]
+    # 自动路径在 GitHub Release 成功后回写；手动路径仅在明确选择后执行，
+    # 且本次同时选择的发布或收尾操作必须成功，避免失败后错误推进 main。
     if: >-
       ${{ always()
           && ((github.event_name != 'workflow_dispatch'
                && needs['create-github-release'].result == 'success')
               || (github.event_name == 'workflow_dispatch'
                   && github.event.inputs.update_dev_version == 'true'
+                  && (github.event.inputs.publish_gpr != 'true'
+                      || needs['publish-gpr'].result == 'success')
+                  && (github.event.inputs.publish_maven_central != 'true'
+                      || needs['publish-maven-central'].result == 'success')
+                  && (github.event.inputs.finalize_github_release != 'true'
+                      || needs['create-github-release'].result == 'success')
                   && (needs['create-github-release'].result == 'success'
                       || needs['create-github-release'].result == 'skipped'))) }}
     permissions:
