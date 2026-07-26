@@ -13,4 +13,5 @@ updated: 2026-07-26
 
 | 版本 | 归档日期 | 保留至 | 前序版本 | 包含需求 (slug) | 路径 |
 |------|----------|--------|----------|----------------|------|
-| v2.1.0 | 2026-06-28 | 2027-06-28 | v2.0.4 | exception-handler-adapter | [`exception-handler-adapter/`](./exception-handler-adapter/) |
+| v2.1.1 | 2026-07-26 | 2027-07-26 | v2.1.0 | capability-review-2026-07, quality-refinement | [`v2.1.1/`](./v2.1.1/) |
+| v2.1.0 | 2026-06-28 | 2027-06-28 | v2.0.4 | documentation-system-rebuild, exception-handler-adapter | [`v2.1.0/`](./v2.1.0/) |
