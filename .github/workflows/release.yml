@@ -163,7 +163,7 @@ jobs:
           # maven-central 未设 activeByDefault，此处不激活即只发 GPR
           ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
             -Dmaven.deploy.skip=false \
-            org.apache.maven.plugins:maven-deploy-plugin:deploy \
+            deploy \
             -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/$REPOSITORY
 
   publish-maven-central:
