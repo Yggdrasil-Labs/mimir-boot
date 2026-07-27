@@ -49,7 +49,7 @@ jobs:
     steps:
       # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
       - name: Bootstrap local Action
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
 
       - uses: ./.github/actions/checkout-setup
         with:
@@ -92,7 +92,7 @@ jobs:
     steps:
       # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
       - name: Bootstrap local Action
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
 
       - uses: ./.github/actions/checkout-setup
         with:
@@ -123,7 +123,7 @@ jobs:
     steps:
       # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
       - name: Bootstrap local Action
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
 
       - uses: ./.github/actions/checkout-setup
         with:
@@ -178,7 +178,7 @@ jobs:
     steps:
       # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
       - name: Bootstrap local Action
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
 
       - uses: ./.github/actions/checkout-setup
         with:
@@ -266,7 +266,7 @@ jobs:
       contents: write
     steps:
       - name: Bootstrap release helpers
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: ${{ github.event.repository.default_branch }}
 
@@ -274,7 +274,7 @@ jobs:
         run: cp .github/scripts/release-version.sh "$RUNNER_TEMP/release-version.sh"
 
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           # tag push: 使用 github.ref; 手动触发: 使用对应标签
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
@@ -424,7 +424,7 @@ jobs:
       contents: write
     steps:
       - name: Bootstrap release helpers
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: ${{ github.event.repository.default_branch }}
 
@@ -441,7 +441,7 @@ jobs:
           fi
 
       - name: Checkout current main for development version reconciliation
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
           ref: ${{ github.event.repository.default_branch }}
