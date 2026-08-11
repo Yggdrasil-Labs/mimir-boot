@@ -1,9 +1,9 @@
 ---
 id: project-governance
-status: draft
+status: verified
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-05
+updated: 2026-08-11
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
@@ -48,14 +48,18 @@ flowchart LR
     Change["代码或文档变更"] --> Local["本地同源预检"]
     Local --> CI["单一 CI Build Job"]
     CI --> Docs["Markdown + 客观事实检查"]
-    CI --> Maven["一次 verify -Pci"]
+    Docs --> Sonar{"可信事件且凭据完整?"}
+    Sonar -->|否| Maven["一次 verify -Pci"]
+    Sonar -->|是| MavenSonar["一次 verify -Pci sonar:sonar"]
     Maven --> Unit["Surefire 单元测试"]
+    MavenSonar --> Unit
     Maven --> IT["Failsafe 集成测试"]
+    MavenSonar --> IT
     Maven --> Coverage["JaCoCo 产物"]
+    MavenSonar --> Coverage
     Coverage --> Reports["报告存在性断言"]
-    Reports --> Sonar{"可信事件且凭据完整?"}
-    Sonar -->|是| Analyze["复用 target 执行 sonar:sonar"]
-    Sonar -->|否| Skip["仅跳过 Sonar"]
+    MavenSonar --> Analyze["Sonar + Quality Gate"]
+    Maven --> Skip["仅跳过 Sonar"]
 
     Tag["标签或手动补偿"] --> Verify["一次 Release 前置验证"]
     Verify --> GPR["GPR 独立发布/补偿"]
@@ -127,7 +131,7 @@ BOM 的依赖平台和 Parent 的构建插件都引用：
 服务 Behavior“构建与发布门禁可信”和“文档与依赖维护自动化”。
 
 文件：`.github/workflows/ci.yml`、`.gitignore`、新增 `package.json`、`package-lock.json`、
-`scripts/ci-preflight.sh`、`scripts/lint-ci.mjs`、`scripts/lint-docs.mjs`、
+`scripts/ci-preflight.sh`、`scripts/ci-preflight.test.sh`、`scripts/lint-ci.mjs`、`scripts/lint-docs.mjs`、
 `scripts/sonar-eligibility.mjs`
 
 #### CI Job
@@ -139,10 +143,27 @@ bash scripts/ci-preflight.sh
 ```
 
 脚本要求 Java 17 和 Node.js 22，依次执行 `npm ci --ignore-scripts`、`npm test`、Markdown lint、项目事实
-检查、Workflow 静态检查、`./mvnw -B -Pci verify`，随后用一个 NUL-safe 报告数组断言至少存在 2 个
-Failsafe XML；同一数组以 `rg -o --no-filename '<testcase '` 统计不少于基线 11 个 testcase，并断言
-失败数为 0；最后断言至少存在 1 个 JaCoCo XML。这里使用下界而非精确值，
-避免后续增加集成测试时把正常增长误判为 CI 失败。
+检查和 Workflow 静态检查。`RUN_SONAR` 只允许 `true|false`，本地默认 `false`；脚本通过可单测的
+`build_maven_args` 函数建立唯一 Maven 参数数组：false 时执行 `./mvnw -B -Pci verify`；true 时先要求
+`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 均非空，再在同一次 invocation 中执行：
+
+```text
+./mvnw -B -Pci verify sonar:sonar
+-Dsonar.host.url=https://sonarcloud.io
+-Dsonar.organization=$SONAR_ORGANIZATION
+-Dsonar.projectKey=$SONAR_PROJECT_KEY
+-Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
+-Dsonar.qualitygate.wait=true
+-Dsonar.qualitygate.timeout=300
+```
+
+`SONAR_TOKEN` 只通过环境变量供 Scanner 读取，不进入命令参数、stdout 或测试快照；organization 与
+project key 作为 Maven 属性进入参数数组。`scripts/ci-preflight.test.sh` source 预检脚本并直接测试
+`build_maven_args`：false 路径只有 `verify`，true 路径参数完整，缺少任一配置时在 Maven 启动前失败，
+且参数和输出均不包含 token 值。脚本主流程用 `BASH_SOURCE` guard 隔离 source 与实际执行。
+Maven 返回后，用一个 NUL-safe 报告数组断言至少存在 2 个 Failsafe XML；同一数组以
+`rg -o --no-filename '<testcase '` 统计不少于基线 11 个 testcase，并断言失败数为 0；最后断言至少
+存在 1 个 JaCoCo XML。这里使用下界而非精确值，避免后续增加集成测试时把正常增长误判为 CI 失败。
 CI 与本地都调用该脚本；本地推荐入口为：
 
 ```bash
@@ -159,28 +180,33 @@ lockfile；不得引入应用运行时 Node 依赖。`.gitignore` 必须忽略�
 checkout PR merge ref / push ref (fetch-depth=0)
 -> setup Java 17 + Maven cache
 -> setup Node 22 + npm cache
--> bash scripts/ci-preflight.sh
--> 条件执行 ./mvnw -B sonar:sonar ...
+-> 计算 Sonar eligibility
+-> 仅调用一次 bash scripts/ci-preflight.sh（RUN_SONAR + 三项 Sonar 配置）
 -> always 上传 Surefire/Failsafe/JaCoCo 报告
 ```
 
 - 删除独立 `sonar` Job，不通过 artifact 传递整个多模块 `target/`。
 - 不使用 `paths`/`paths-ignore` 跳过整个 Workflow，避免 required check 因跳过而长期 Pending。
 - Pull Request 必须检出 GitHub 生成的 PR merge ref；删除“只检出主仓库就不会执行 fork 代码”的误导注释。
-- Build 步骤不使用 `-U`。
-- Sonar 步骤不得包含 `clean`、`package` 或 `verify`。
+- Build 步骤不使用 `-U`，且每次只启动一次 Maven Reactor。
+- `RUN_SONAR=true` 时 `sonar:sonar` 必须紧跟同一次 Maven invocation 的 `verify`；
+  `sonar-maven-plugin` 继续由 POM 的显式版本属性锁定，不能退回“解析最新版本”。
 - 无条件执行 `sonar-eligibility.mjs`，只把事件名、actor、仓库名、PR head 仓库名和三个 Sonar Secret
   映射到该 Step；脚本把且只把 `run=true|false` 追加写入 `GITHUB_OUTPUT`，stdout 不作为 Step output，
   不得输出 Secret 内容。单元测试为 `GITHUB_OUTPUT` 提供临时文件并读取该文件断言结果。
 - 资格公式固定为：三个配置值均非空、actor 不是 Dependabot，并且事件是主仓库 push，或事件是
-  `pull_request` 且 PR head 仓库等于当前仓库。Sonar Step 只判断
-  `steps.sonar-eligibility.outputs.run == 'true'`。
-- Sonar 跳过不得改变 Build Job 的成功判定。
+  `pull_request` 且 PR head 仓库等于当前仓库。唯一 Build Step 把
+  `steps.sonar-eligibility.outputs.run` 映射为 `RUN_SONAR`，并把三个 Sonar Secret 映射为同名环境变量，
+  但自身不带 `if`。`SONAR_TOKEN` 不得转成命令行参数。
+- Sonar 跳过不得改变 Build Job 的成功判定；预检必须输出固定的非敏感状态行
+  `Sonar analysis: skipped (not eligible)`，不得依赖不存在的独立 Sonar Step 展示 skipped 状态。
 - Sonar 确实执行后若扫描或质量门禁失败，Build Job 失败；不得用 `continue-on-error` 隐藏真实问题。
-- Sonar 命令固定增加 `-Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300`，上传成功但
-  Quality Gate 失败仍必须返回非 0。
+- Sonar 命令固定包含 host、organization、project key、JaCoCo XML 路径和 Quality Gate 等待参数；
+  上传成功但 Quality Gate 失败仍必须返回非 0。
 - Job 权限保持 `contents: read`；核心预检不读取发布 Secret，不使用 `pull_request_target`。
 - Artifact 上传保持 `if: always()`，但报告缺失由预检脚本在上传前明确失败，不依赖 artifact action 的默认行为判断。
+- 保留普通 CI 的同分支取消策略；Release 保留 `cancel-in-progress: false` 与 `queue: max`，不得改成
+  取消正在发布的运行，也不得同时配置 `cancel-in-progress: true`。
 
 #### CI 失败分类
 
@@ -189,8 +215,21 @@ checkout PR merge ref / push ref (fetch-depth=0)
 | Markdown、事实、Workflow 静态、格式、编译、测试、覆盖率失败 | 是 | 本地与 CI 同源命令，Push 前可复现 |
 | Failsafe/JaCoCo 报告缺失 | 是 | 预检脚本给出专用错误，不产生“构建绿但报告空” |
 | Dependabot、fork 或 Secret 缺失 | 否 | 仅 Sonar 条件跳过，核心门禁照常执行 |
-| Sonar 已进入执行后失败 | 是 | 视为真实质量门禁或外部服务故障，保留明确 Step，不触发第二次构建 |
+| Sonar 已进入执行后失败 | 是 | 视为真实质量门禁或外部服务故障，由同一 Build Step 失败，不触发第二次构建 |
 | 发布凭据或远程仓库失败 | 不影响普通 CI | 只存在于标签/手动 Release 工作流，可按既有粒度补偿 |
+
+#### 普通 CI 路径矩阵
+
+| 路径 | Sonar 资格 | Maven 目标 | 可观察结果 |
+|------|------------|------------|------------|
+| 主仓库 push，三项配置完整 | true | `verify sonar:sonar` + 完整项目参数 | 扫描与 Quality Gate 参与 Build 结果 |
+| 主仓库内部 PR，三项配置完整 | true | `verify sonar:sonar` + 完整项目参数 | 扫描与 Quality Gate 参与 Build 结果 |
+| fork PR | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
+| Dependabot | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
+| 任一 Sonar 配置缺失 | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
+| 本地默认执行 | false | `verify` | 无需 Sonar 配置即可复现核心门禁 |
+
+六条路径是普通 CI 的冻结验收矩阵；终审不得再用新的路径分类扩张本版本范围。
 
 #### 文档事实检查 CLI
 
@@ -207,17 +246,27 @@ node scripts/lint-docs.mjs
 | 规则 ID | 事实来源 | 校验对象 |
 |---------|----------|----------|
 | DOC-001 | 根 POM `revision` | 活跃版本号与版本索引 |
-| DOC-002 | Starter 聚合 POM `modules` | Starter 数量和名称 |
-| DOC-003 | 递归 POM `modules` | Reactor 模块数量 |
+| DOC-002 | Starter 聚合 POM `modules` | README、DOMAINS、QUALITY 中的 Starter 数量和名称 |
+| DOC-003 | 递归 POM `modules` | README、ARCHITECTURE、DOMAINS、QUALITY 中的 Reactor 模块数量 |
 | DOC-004 | `docs/active/` 版本目录 | `docs/active/index.md` 入口 |
-| DOC-005 | Markdown 相对链接目标 | 仓库内文档链接存在性 |
-| DOC-006 | GOV 专题标题 | GOV-001—GOV-020 唯一且连续 |
+| DOC-005 | Markdown 相对链接目标 | 全仓已跟踪 Markdown 的仓库内链接存在性 |
+| DOC-006 | GOV 专题块 | GOV-001—GOV-020 唯一连续，状态与证据字段组合有效 |
 | DOC-007 | BOM POM 显式依赖管理 | “已验证”与“仅管理”集合完整、互斥 |
 
 DOC-001 的比较先做确定性归一化：根 POM `revision` 必须匹配
 `MAJOR.MINOR.PATCH` 或 `MAJOR.MINOR.PATCH-SNAPSHOT`，移除可选 `-SNAPSHOT` 得到逻辑版本；活跃目录名
 必须为 `v<逻辑版本>`，版本索引展示值也先移除可选前缀 `v` 再比较。其他预发布后缀和无法解析的
 版本一律报错，错误同时输出原始值和归一化值。
+
+DOC-005 扫描全仓已跟踪 Markdown；排除 `target/`、`.git/`、`.cursor/` 和 `CHANGELOG.md` 中外部生成的
+历史片段。归档文档仍属于可导航文档，不排除。合法 Markdown 链接必须指向存在的文件、目录或锚点；
+示例中的占位链接必须改成代码文本，不能用假目标绕过检查。T2 在启用 DOC-005 的同一提交先修复现有
+5 个基线断链，因此门禁从首次启用起就是绿色。
+
+DOC-006 只做轻量状态约束：`讨论中` 和 `已设计` 不要求验证证据；`已验证` 必须有引用 `Tn ACx` 和
+`T12 AC2` 的 `验证证据`；无实现的 `已关闭` 必须有 `决策证据`；`延期` 必须有 Owner、原因和目标版本。脚本解析
+`plan.md` 的 T1—T12 及各 Task `AC Verification`，拒绝不存在的 Task、AC 编号或缺失的 `T12 AC2`；
+它不生成治理契约，也不解析自然语言结论。
 
 脚本不得写文件，不读取网络，不把描述性文案纳入判断。
 
@@ -230,17 +279,23 @@ node scripts/lint-ci.mjs
 该脚本用 `yaml@2.9.0` 解析 `.github/workflows/*.yml` 和 `.github/dependabot.yml`，并在 Push 前检查：
 
 - 普通 CI 不含 `pull_request_target` 和整个 Workflow 的 `paths`/`paths-ignore` 过滤。
-- 普通 CI 只有一个完整 Reactor 构建入口，Sonar 命令不含 `clean`、`package` 或 `verify`。
-- Dependabot、fork、缺 Secret 三类路径只跳过 Sonar，核心预检 Step 不带条件。
+- 普通 CI 只调用一次预检脚本，脚本只启动一次 Maven Reactor；目标顺序固定为 `verify` 后可选
+  `sonar:sonar`，不得包含 `clean`、`package` 或第二次 Maven 调用。
+- Build Step 无条件执行，`RUN_SONAR` 和三个 Sonar 配置均来自明确的环境映射；true 路径包含 host、
+  organization、project key、JaCoCo XML 和 Quality Gate 参数，Token 只通过环境变量传递。
+- 六路径矩阵逐项成立；fork、Dependabot、缺 Secret 和本地默认路径只跳过 Sonar 并输出固定状态行，
+  核心预检 Step 不带条件。
 - Release 只有一个前置验证 Job；解析后的 `needs` 图、Job `if`、最小权限、并发组和手动补偿选择
   与变更前的语义快照一致，外部发布与补偿 Job 都仍指向该前置 Job。
 - 所有普通和发布 Maven 命令不含 `-U`。
 - 所有外部 `uses` 引用继续使用完整 commit SHA，并保留版本注释；仓库内 `./.github/actions/*` 例外。
 
 正常时退出码 0；错误时逐条输出规则 ID、文件和 YAML 路径后退出 1。测试使用最小 YAML fixture
-覆盖合法、重复构建、错误 Secret 条件、`pull_request_target`、`-U`、未固定 Action 引用，以及 Release
+覆盖合法、重复构建、缺失 Sonar 参数、Token 进入命令行、错误 Secret 条件、`pull_request_target`、
+`-U`、未固定 Action 引用，以及 Release
 `needs`、`if`、权限、并发或手动补偿选择任一漂移。
-`sonar-eligibility.mjs` 另以 trusted push、内部 PR、fork PR、Dependabot、任一 Secret 为空五组输入测试。
+`sonar-eligibility.mjs` 与 `ci-preflight.test.sh` 共同覆盖主仓库 push、内部 PR、fork PR、Dependabot、
+任一 Secret 为空和本地默认六条路径。
 
 规则按修改它所验证对象的 Task 原子启用，避免中间提交被最终态规则误判：T2 只启用普通 CI、Sonar
 资格、外部 Action 固定和 DOC-001—DOC-006；T3 在同一提交修改 Release 并启用 Release 单一前检、
@@ -518,14 +573,17 @@ public Object handleNoResourceFoundException(
 
 | 异常类别 | HTTP 状态 | 现有错误语义 |
 |----------|-----------|--------------|
-| 方法校验、约束校验、缺少请求头、缺少路径变量 | 400 | `PARAM_INVALID` 或 `PARAM_MISSING` |
+| 方法入参校验、约束校验、缺少请求头 | 400 | `PARAM_INVALID` 或 `PARAM_MISSING` |
+| 方法返回值校验、缺少路径变量 | 500 | 服务端契约或处理器映射错误 |
 | 静态资源或请求资源不存在 | 404 | `DATA_NOT_FOUND` |
 | 响应媒体类型不可接受 | 406 | `OPERATION_NOT_ALLOWED` |
 | 上传大小超限 | 413 | `PARAM_INVALID` |
 | 请求媒体类型不支持 | 415 | `OPERATION_NOT_ALLOWED` |
 
-所有响应继续经过 `ExceptionResponseFactory`，工厂失败继续降级为 `R.fail`。日志只包含净化后的字段、
-状态和 URI，不记录请求体。`BizException` 的 HTTP 200 行为不变。
+`HandlerMethodValidationException` 必须按 `isForReturnValue()` 分支：入参校验返回 400，返回值校验
+返回 500。`MissingPathVariableException` 保持 Spring 默认的 500 语义，不得作为缺少客户端输入映射
+为 400。所有响应继续经过 `ExceptionResponseFactory`，工厂失败继续降级为 `R.fail`。日志只包含
+净化后的字段、状态和 URI，不记录请求体。`BizException` 的 HTTP 200 行为不变。
 
 ### 11. Nacos 动态刷新验证与条件修复
 
@@ -708,7 +766,7 @@ Execution SHA 与 T1—T12 Files 清单，并读取 Git 提交树。只有 `Crea
 | GOV-014 | 静态/空缓存构建 | 搜索 `-U` 并从空缓存构建 | 工作流无 `-U`，构建成功 |
 | GOV-015 | Actions 结构/补偿 | 检查 needs 图和手动输入 | 一个前置验证，四类补偿仍独立 |
 | GOV-016 | 单元/跨模块集成 | Feign test-scope 引入 Web 后执行真实 HTTP 链路，并覆盖 Dubbo 传播和 Feign scope 依赖树 | ID 传播、校验、恢复和自定义覆盖均通过，Web 只存在于 Feign test scope |
-| GOV-017 | MVC 集成 | 每类异常触发一次 | 400/404/406/413/415 与统一结构匹配 |
+| GOV-017 | MVC 集成 | 每类异常触发一次 | 客户端错误映射 400/404/406/413/415，返回值校验和缺少路径变量保持 500 |
 | GOV-018 | Spring 集成 | 可变属性源 + 环境变更事件 | Environment 与 Bean 均得到新明文 |
 | GOV-019 | 临时 Maven 消费项目 | 只引入测试 Starter 运行 Suite；检查依赖清理无消费侧变化 | Suite 执行成功，消费树仍无 Testcontainers |
 | GOV-020 | ApplicationContextRunner | 默认与用户 Bean 两组上下文 | 每类能力恰好一个有效实例 |
@@ -722,3 +780,34 @@ Execution SHA 与 T1—T12 Files 清单，并读取 Git 提交树。只有 `Crea
 | G2 主线 B：CI 与文档治理 | GOV-001、007、009—015 | G1 |
 | G3 主线 A：功能代码优化 | GOV-002—006、016—020 | G2 提供同源预检和集成门禁 |
 | G4 版本级验证 | 20 项状态、全量构建、文档事实和遗留债务 | G2—G3 |
+
+## 官方依据
+
+- GitHub Actions 的 [Workflow 语法](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+  与[并发控制](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
+  支撑普通 CI 取消旧运行、Release 排队且不取消正在发布运行的语义。
+- GitHub 的 [Contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts)、
+  [Secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) 与
+  [Script injections](https://docs.github.com/en/actions/concepts/security/script-injections)
+  支撑把可信事件元数据和 Secret 映射为 Step 环境变量，再由固定脚本只输出布尔资格；不在 shell 中
+  拼接不可信表达式值。GitHub 明确说明 fork PR 和 Dependabot 事件拿不到 Actions Secret，因此这两类
+  事件只令 `RUN_SONAR=false`，不会跳过构建。
+- GitHub 的 [Variables reference](https://docs.github.com/en/actions/reference/workflows-and-actions/variables)
+  说明普通 `pull_request` 的 `GITHUB_REF` 是 `refs/pull/<number>/merge`，因此 CI 保留默认 merge ref
+  检出，不自行切换到有权限差异的 base ref。
+- GitHub 的 [Skipping workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs)
+  说明被路径或分支过滤跳过的 required check 会保持 Pending，因此普通 CI 不使用 Workflow 级路径过滤。
+- Maven Failsafe 的 [Usage](https://maven.apache.org/surefire/maven-failsafe-plugin/usage.html) 与
+  [`failsafe:verify`](https://maven.apache.org/surefire/maven-failsafe-plugin/verify-mojo.html)
+  支撑将 `integration-test`、`verify` 绑定到生命周期并以 `mvn verify` 统一裁决集成测试。
+- Maven 的 [Dependency Mechanism](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
+  支撑用 `test` scope 验证 Feign 的测试期 Web 依赖不会进入消费者运行类路径。
+- Sonar 的 [SonarScanner for Maven](https://docs.sonarsource.com/sonarqube-cloud/advanced-setup/ci-based-analysis/sonarscanner-for-maven)
+  建议 Scanner 与构建目标使用同一 Maven 调用；本方案先计算资格，可信路径执行一次
+  `verify sonar:sonar`，不可信路径执行一次 `verify`，两条路径都只有一次 Reactor 构建。
+  [CI integration](https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/ci-integration/overview)
+  定义 `sonar.qualitygate.wait=true` 时质量门禁失败应使流水线失败。
+- Spring Framework 的 [`HandlerMethodValidationException`](https://docs.spring.io/spring-framework/docs/6.1.21/javadoc-api/org/springframework/web/method/annotation/HandlerMethodValidationException.html)、
+  [`MissingPathVariableException`](https://docs.spring.io/spring-framework/docs/6.1.21/javadoc-api/org/springframework/web/bind/MissingPathVariableException.html)
+  与 [`DefaultHandlerExceptionResolver`](https://docs.spring.io/spring-framework/docs/6.1.21/javadoc-api/org/springframework/web/servlet/mvc/support/DefaultHandlerExceptionResolver.html)
+  支撑“入参校验 400、返回值校验 500、缺少路径变量 500”的状态语义。

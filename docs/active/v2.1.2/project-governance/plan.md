@@ -3,7 +3,7 @@ id: project-governance
 status: not-started
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-05
+updated: 2026-08-11
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
@@ -29,7 +29,10 @@ resolved-path: docs/active/v2.1.2/project-governance/
 - 逻辑版本固定为 `2.1.2`，治理目录固定为 `docs/active/v2.1.2/project-governance/`。
 - Java 固定为 17，Spring Boot 依赖平台和 Maven Plugin 固定为同一 `3.3.13` 属性源。
 - Node.js 固定为 22，治理依赖精确锁定 `markdownlint-cli2@0.23.2` 和 `yaml@2.9.0`。
-- 普通 CI 每次只执行 1 次完整 `./mvnw -B -Pci verify`；Sonar 不得再次执行 `clean`、`package` 或 `verify`。
+- 普通 CI 每次只启动 1 次 Maven Reactor；不运行 Sonar 时执行 `verify`，具备资格时同一次 invocation
+  执行 `verify sonar:sonar`。
+- `RUN_SONAR=true` 时 Build Step 必须同时映射 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和
+  `SONAR_PROJECT_KEY`；Token 只通过环境变量传递，其他项目参数由预检脚本加入 Maven 参数数组。
 - 普通 CI 不使用 `pull_request_target` 或 Workflow 级 `paths`/`paths-ignore`，核心 Job 权限为 `contents: read`。
 - Dependabot、fork PR 或 Sonar 配置不完整时只跳过 Sonar，核心预检、测试和报告上传必须执行。
 - 普通 CI、Release 和发布准备命令默认不使用 `-U`；仅人工故障排查可显式使用。
@@ -86,8 +89,8 @@ flowchart TD
 |---------------|------|--------------|
 | Push 前执行同源预检 | T2 | `ci-preflight.sh` 本地执行与 CI 唯一调用断言 |
 | 普通变更执行完整质量门禁 | T1、T2 | Reactor `verify -Pci`、报告存在性和单次构建规则 |
-| 具备代码分析凭据 | T2 | Sonar trusted push/internal PR fixture 与 Quality Gate 参数断言 |
-| 不具备代码分析凭据 | T2 | fork/Dependabot/空配置 fixture，核心预检无条件执行断言 |
+| 具备代码分析凭据 | T2 | 主仓库 push/internal PR 的完整参数数组、环境映射与 Quality Gate 断言 |
+| 不具备代码分析凭据 | T2 | fork/Dependabot/空配置/本地默认 fixture，核心预检和 skipped 状态行断言 |
 | 标签发布进入前置验证 | T3 | Release DAG fixture 与单一 `release-verify` 断言 |
 | 固定依赖正常解析 | T2 | 空 Maven 本地仓库解析测试 |
 | Web 请求结束 | T5 | Trace/Web/AccessLog MDC 保存与恢复测试 |
@@ -111,6 +114,7 @@ flowchart TD
 | 容器依赖清理不改变消费边界 | T11 | 临时消费者依赖树与 BOM 管理断言 |
 | 消费者替换默认自动装配 Bean | T6 | ApplicationContextRunner 单实例断言 |
 | 项目事实与文档一致 | T2 | DOC-001—DOC-006 正向 fixture |
+| Spring MVC 服务端契约错误 | T9 | 返回值校验与缺少路径变量 500 断言 |
 | 人工文档发生事实漂移 | T2 | 文档漂移反向 fixture |
 | 文档检查发现差异 | T2 | 错误格式、退出码和只读性 fixture |
 | 常规依赖更新 | T4 | Dependabot minor/patch 分组 fixture |
@@ -163,7 +167,7 @@ flowchart TD
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -206,6 +210,7 @@ Expected: **PASS**
 - Create: `package.json`
 - Create: `package-lock.json`
 - Create: `scripts/ci-preflight.sh`
+- Create: `scripts/ci-preflight.test.sh`
 - Create: `scripts/lint-docs.mjs`
 - Create: `scripts/lint-docs.test.mjs`
 - Create: `scripts/lint-ci.mjs`
@@ -213,8 +218,16 @@ Expected: **PASS**
 - Create: `scripts/sonar-eligibility.mjs`
 - Create: `scripts/sonar-eligibility.test.mjs`
 - Modify: `.github/workflows/ci.yml`
+- Modify: `README.md`
+- Test (read-only baseline): `ARCHITECTURE.md`
+- Modify: `docs/DOMAINS.md`
 - Modify: `docs/QUALITY_SCORE.md`
 - Modify: `docs/SONAR_QUALITY_DISCIPLINE.md`
+- Modify: `docs/index.md`
+- Modify: `docs/product-specs/new-user-onboarding.md`
+- Modify: `docs/archive/v2.1.1/capability-review-2026-07/index.md`
+- Modify: `docs/archive/v2.1.1/quality-refinement/engineering-quality/design.md`
+- Modify: `docs/archive/v2.1.1/quality-refinement/engineering-quality/plan.md`
 
 **Interfaces:**
 
@@ -226,10 +239,14 @@ Expected: **PASS**
 **Acceptance Criteria:**
 
 - [ ] 本地同源预检在 Java 17/Node 22 下完成 Markdown、DOC-001—DOC-006、CI 静态规则、Surefire、Failsafe、JaCoCo；Failsafe 至少 2 份报告、不少于基线 11 个 testcase 且失败数为 0，入口退出码为 0。
-- [ ] CI YAML 只有一个核心 Build Job 和一个 `ci-preflight.sh` 调用，Sonar 命令不含 `clean`/`package`/`verify`。
-- [ ] Dependabot、fork 和空 Sonar 配置 fixture 均只让 Sonar 条件为 false，核心预检仍为无条件 Step。
-- [ ] trusted push 与内部 PR 的 Sonar 资格为 true；fork PR、Dependabot 和任一配置为空时为 false。
+- [ ] CI YAML 只有一个核心 Build Job 和一个无条件 `ci-preflight.sh` 调用；Build Step 显式映射
+  `RUN_SONAR` 与三项 Sonar 配置，Scanner 使用 POM 锁定版本。
+- [ ] 主仓库 push、内部 PR、fork PR、Dependabot、任一配置为空和本地默认六条路径均符合冻结矩阵；
+  后四条路径只跳过 Sonar，核心预检仍执行并输出固定 skipped 状态行。
+- [ ] true 路径在一次 Maven invocation 中执行 `verify sonar:sonar`，参数包含 host、organization、
+  project key、JaCoCo XML 和 Quality Gate 等待；Token 只通过环境变量传递且不会进入参数或输出。
 - [ ] 使用空 Maven 本地仓库执行固定版本解析时可正常下载缺失构件，命令不含 `-U`。
+- [ ] DOC-005 在首次启用时扫描全仓已跟踪 Markdown，现有 5 个基线断链修复后错误数为 0。
 
 **Execution:**
 
@@ -245,26 +262,47 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
 **Step 1: Red**
 
-Run: `test ! -f scripts/ci-preflight.sh && test "$(rg -c 'clean verify sonar:sonar|verify -Pci' .github/workflows/ci.yml)" -ge 2 && rg -n '\-U' .github/workflows/ci.yml`
-Expected: **PASS** — 当前没有同源入口、会重复完整构建且强制更新依赖。
+Run:
+
+```bash
+test ! -f scripts/ci-preflight.sh
+test "$(rg -c 'clean verify sonar:sonar|verify -Pci' .github/workflows/ci.yml)" -ge 2
+rg -n '\-U' .github/workflows/ci.yml
+test ! -e docs/generated
+test ! -e docs/PLANS.md
+test ! -e docs/archive/v2.1.1/tech-debt-tracker.md
+test ! -e docs/archive/v2.1.1/SONAR_QUALITY_DISCIPLINE.md
+rg -n '\]\(链接\)' docs/archive/v2.1.1/quality-refinement/engineering-quality/plan.md
+```
+
+Expected: **PASS** — 当前没有同源入口、会重复完整构建且强制更新依赖；DOC-005 对应的 5 个已知
+基线断链可重复确认，避免启用门禁后才发现历史文档假红。
 
 **Step 2: Green**
 
 精确锁定两项 Node 开发依赖并在 `.gitignore` 忽略 `node_modules/`；实现只读文档/Workflow 检查及
 fixture 测试；DOC-001 把 `2.1.2-SNAPSHOT` 与 `v2.1.2` 归一为逻辑版本 `2.1.2`，其他后缀报错。
+先把 README、DOMAINS、QUALITY、SONAR 的客观事实修正为当前 10 个 Starter、15 个 Reactor 模块和
+真实实现名称；修复 DOC-005 已确认的 5 个基线断链，目标必须指向现有权威入口，示例占位链接改为
+代码文本。ARCHITECTURE 只作为正确基线参与 DOC-002/003 校验，不在无 RFC 的情况下修改。
 本 Task 只启用普通 CI、Sonar 资格、外部 Action 固定和 DOC-001—DOC-006；尚未修改的 Release 与
 Dependabot/BOM 最终规则分别由 T3、T4 和对应配置变更在同一提交启用，不允许提前制造中间态假红。
-预检脚本检查 Java/Node 主版本、执行 npm 与 Maven 门禁，并使用同一个 NUL-safe Failsafe 报告数组和
+预检脚本检查 Java/Node 主版本、执行 npm 与 Maven 门禁；`RUN_SONAR` 默认 false 且只接受
+`true|false`。实现带 `BASH_SOURCE` guard 的 `build_maven_args`：false 时目标为 `verify`；true 时先校验
+三项 Sonar 配置，再组装 `verify sonar:sonar`、host、organization、project key、JaCoCo XML 和 300 秒
+Quality Gate 等待参数，Token 只留在环境变量中。`ci-preflight.test.sh` source 脚本并机械验证六路径
+参数和失败条件，不执行真实扫描。随后使用同一个 NUL-safe Failsafe 报告数组和
 `rg -o --no-filename` 断言至少 2 份 XML、不少于基线 11 个 testcase、零失败及非空 JaCoCo XML；
 CI 删除独立 Sonar Job。资格 Step 用纯函数计算五类事件，
-把唯一的 `run=true|false` 追加写入 `GITHUB_OUTPUT`；Sonar Step 只消费该 output，并以 300 秒等待
-Quality Gate；报告始终上传。
+把唯一的 `run=true|false` 追加写入 `GITHUB_OUTPUT`；唯一 Build Step 无条件执行，只把该 output
+映射为 `RUN_SONAR`，并把三项 Sonar Secret 映射为同名环境变量；false 路径输出固定 skipped 状态行；
+报告始终上传。
 
 **Step 3: Verify**
 
@@ -273,13 +311,17 @@ Expected: **PASS**
 
 **AC Verification:**
 
-- AC1: `npm test && node scripts/lint-docs.mjs && node scripts/lint-ci.mjs` → 截至 T2 启用的普通 CI、
-  Sonar、Action 固定和 DOC-001—DOC-006 规则为 0 error，测试证明 Release 最终态规则尚未启用。
-- AC2: `test "$(rg -c 'ci-preflight\.sh' .github/workflows/ci.yml)" -eq 1 && ! rg -n 'clean verify sonar:sonar|\-U|pull_request_target|paths-ignore|^[[:space:]]+paths:' .github/workflows/ci.yml` → 单次构建与安全触发成立。
-- AC3: `node --test scripts/sonar-eligibility.test.mjs` → 临时 `GITHUB_OUTPUT` 中 trusted push/内部 PR
-  精确为 `run=true`，fork/Dependabot/空配置精确为 `run=false`，stdout 不含配置值。
-- AC4: `rg -n 'sonar\.qualitygate\.wait=true|sonar\.qualitygate\.timeout=300|steps\.sonar-eligibility\.outputs\.run' .github/workflows/ci.yml` → Quality Gate 等待和唯一布尔条件存在。
-- AC5: 执行 `empty_m2_dir="$(mktemp -d -t mimir-empty-m2.XXXXXX)"` 并注册
+- AC1: `npm test && bash scripts/ci-preflight.test.sh && node scripts/lint-docs.mjs && node scripts/lint-ci.mjs` → 截至 T2 启用的普通 CI、
+  Sonar、Action 固定和 DOC-001—DOC-006 规则为 0 error，测试证明 Scanner 版本由 POM 锁定且 Release
+  最终态规则尚未启用。
+- AC2: `test "$(rg -c 'ci-preflight\.sh' .github/workflows/ci.yml)" -eq 1 && ! rg -n './mvnw|\-U|pull_request_target|paths-ignore|^[[:space:]]+paths:' .github/workflows/ci.yml`，再由 `lint-ci.test.mjs` 断言 Build Step 无 `if`、`RUN_SONAR` 只来自 eligibility output、三项 Sonar Secret 映射为同名环境变量、预检脚本只调用一次 `./mvnw` 且目标顺序为 `verify` 后可选 `sonar:sonar` → 单次构建与配置传递成立。
+- AC3: `node --test scripts/sonar-eligibility.test.mjs && bash scripts/ci-preflight.test.sh` → 主仓库 push/内部 PR
+  精确为 `run=true`，fork/Dependabot/空配置/本地默认精确为 false；true 路径参数数组包含全部项目与
+  Quality Gate 参数但不含 token，缺少任一配置时在 Maven 前失败，false 路径输出固定 skipped 状态行。
+- AC4: `node scripts/lint-docs.mjs` → 全仓已跟踪 Markdown 的相对文件、目录和锚点链接错误数为 0；
+  README、ARCHITECTURE、DOMAINS、QUALITY 的 Starter/Reactor 客观事实与 POM 一致。
+- AC5: `rg -n 'sonar:sonar|sonar\.host\.url|sonar\.organization|sonar\.projectKey|sonar\.coverage\.jacoco\.xmlReportPaths|sonar\.qualitygate\.wait=true|sonar\.qualitygate\.timeout=300' scripts/ci-preflight.sh && rg -n 'steps\.sonar-eligibility\.outputs\.run|SONAR_TOKEN|SONAR_ORGANIZATION|SONAR_PROJECT_KEY' .github/workflows/ci.yml` → 完整 Scanner 配置、Quality Gate 等待和环境映射存在；参数顺序与 Token 不泄露由 AC3 的数组测试裁决。
+- AC6: 执行 `empty_m2_dir="$(mktemp -d -t mimir-empty-m2.XXXXXX)"` 并注册
   `trap 'rm -rf -- "$empty_m2_dir"' EXIT`，再执行
   `mise exec java@17 -- ./mvnw -B -Pci -Dmaven.repo.local="$empty_m2_dir" -DskipTests -pl :mimir-boot-common -am clean package`
   → 缺失构件正常解析且退出 0；`git check-ignore node_modules` 退出 0。
@@ -330,7 +372,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -406,7 +448,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -479,7 +521,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -550,7 +592,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -611,6 +653,8 @@ Expected: **PASS**
 - [ ] before 或 tracer 失败时业务调用次数为 0，已进入 Hook 的 cleanup 各执行 1 次并逆序。
 - [ ] 业务成功不被后置失败改写；业务异常保留为主异常，后置/清理异常只作为 suppressed 且剩余清理继续。
 - [ ] 两个并发或异步调用持有不同 Invocation，entered 列表和关闭状态互不串扰，重复完成只清理一次。
+- [ ] `completeSuccess`、`completeFailure` 与 `close` 发生三方竞态时，恰好一个终态路径执行，
+  after/onError 总执行次数至多 1、cleanup 精确 1 次且最终状态为 `CLOSED`。
 
 **Execution:**
 
@@ -626,7 +670,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -724,7 +768,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -789,11 +833,13 @@ Expected: **PASS**
 - Produces: `handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e, HttpServletRequest request): Object`
 - Produces: `handleNoResourceFoundException(NoResourceFoundException e, HttpServletRequest request): Object`
 
-**Behavior:** 常见客户端错误返回正确 HTTP 状态与统一结构；工厂失败仍安全降级，未知服务端异常仍为 500，BizException 继续 HTTP 200。
+**Behavior:** 常见客户端错误返回正确 HTTP 状态与统一结构；返回值校验和处理器路径变量错误保持 500；
+工厂失败仍安全降级，未知服务端异常仍为 500，BizException 继续 HTTP 200。
 
 **Acceptance Criteria:**
 
-- [ ] 八类新增异常分别映射到 400/404/406/413/415，并通过 ExceptionResponseFactory 返回统一结构。
+- [ ] 八类新增处理器按 Spring 语义映射：客户端错误为 400/404/406/413/415，返回值方法校验与
+  `MissingPathVariableException` 为 500，并通过 ExceptionResponseFactory 返回统一结构。
 - [ ] BizException、未知异常和工厂失败回归测试保持现有 200/500/降级语义，日志不包含请求体。
 
 **Execution:**
@@ -810,19 +856,20 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
 **Step 1: Red**
 
-新增八类异常状态和统一响应断言。
+新增八类处理器的状态和统一响应断言；`HandlerMethodValidationException` 同时覆盖入参与返回值分支。
 Run: `mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-exception -am test`
 Expected: **FAIL** — 当前处理器缺少这些 Spring 6 映射。
 
 **Step 2: Green**
 
-添加精确 `@ExceptionHandler` 方法，复用现有响应工厂、净化日志和降级路径，不改变 BizException。
+添加精确 `@ExceptionHandler` 方法；方法校验按 `isForReturnValue()` 分支，缺少路径变量映射 500；
+复用现有响应工厂、净化日志和降级路径，不改变 BizException。
 
 **Step 3: Verify**
 
@@ -831,7 +878,8 @@ Expected: **PASS**
 
 **AC Verification:**
 
-- AC1: MimirExceptionHandlerTest 参数化状态矩阵 → 八类映射全部通过。
+- AC1: MimirExceptionHandlerTest 参数化状态矩阵 → 八类处理器全部通过，方法入参 400、方法返回值 500、
+  缺少路径变量 500，其余客户端状态与设计矩阵一致。
 - AC2: 现有 BizException/未知异常/工厂失败测试 → 兼容行为全部通过。
 
 **Step 4: Commit**
@@ -877,7 +925,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -908,11 +956,55 @@ Expected: **PASS**
 
 - AC1: NacosEncryptRefreshIT 成功场景 → Environment 与 Bean 均更新。
 - AC2: NacosEncryptRefreshIT 错误密钥场景 → 失败明确、Environment/Bean 保持旧值且三类敏感材料未出现在日志。
-- AC3: 提交归属校验器解析 Red Result JSON，并对记录的 T10 Commit SHA 执行
-  `git diff-tree --no-commit-id --name-only -r <sha>`：`refresh-order` 只放行
-  `NacosEncryptAutoConfiguration.java`，`rollback`/`log-safety` 只放行 `ConfigDecryptProcessor.java`；
-  授权数组为空时 main 文件集合必须为空，并机械检查 `failureKind`、退出码、tests 与两个集合的关系。
-  已暂存、已提交或当前工作区状态都不得绕过该检查。
+- AC3: 提交前执行下列只读校验；它从 T10 Execution 读取 Red Result，验证结果字段关系，并用
+  `git diff HEAD` 同时覆盖已暂存和未暂存的两个受控 main 文件：
+
+  ```bash
+  node --input-type=module - docs/active/v2.1.2/project-governance/plan.md <<'NODE'
+  import { execFileSync } from "node:child_process";
+  import { readFileSync } from "node:fs";
+
+  const plan = readFileSync(process.argv[2], "utf8");
+  const block = plan.match(/^### T10:[\s\S]*?(?=^---$\n\n### T11:)/m)?.[0];
+  const raw = block?.match(/^- \*\*Red Result:\*\* (.+)$/m)?.[1];
+  if (!raw || raw === "null") throw new Error("T10 Red Result must be JSON");
+  const result = JSON.parse(raw);
+  const allowed = new Set(["refresh-order", "rollback", "log-safety"]);
+  const failed = new Set(result.failedContracts ?? []);
+  const authorized = new Set(result.runtimeChangeAuthorization ?? []);
+  if ([...failed, ...authorized].some((item) => !allowed.has(item))) {
+    throw new Error("unknown contract or authorization");
+  }
+  const sameSet = failed.size === authorized.size
+    && [...failed].every((item) => authorized.has(item));
+  const validNone = result.failureKind === "none" && result.exitCode === 0
+    && result.failsafeTests > 0 && failed.size === 0 && authorized.size === 0;
+  const validContract = result.failureKind === "contract" && result.exitCode !== 0
+    && result.failsafeTests > 0 && failed.size > 0 && sameSet;
+  const validEnvironment = result.failureKind === "environment" && result.exitCode !== 0
+    && authorized.size === 0;
+  if (!(validNone || validContract || validEnvironment)) {
+    throw new Error("Red Result fields are inconsistent");
+  }
+
+  const refresh = "mimir-boot-starters/mimir-boot-starter-nacos/src/main/java/"
+    + "com/yggdrasil/labs/nacos/config/NacosEncryptAutoConfiguration.java";
+  const processor = "mimir-boot-starters/mimir-boot-starter-nacos/src/main/java/"
+    + "com/yggdrasil/labs/nacos/decrypt/ConfigDecryptProcessor.java";
+  const expected = new Set();
+  if (authorized.has("refresh-order")) expected.add(refresh);
+  if (authorized.has("rollback") || authorized.has("log-safety")) expected.add(processor);
+  const output = execFileSync("git", ["diff", "--name-only", "HEAD", "--", refresh, processor],
+    { encoding: "utf8" }).trim();
+  const actual = new Set(output ? output.split("\n") : []);
+  if (actual.size !== expected.size || [...actual].some((item) => !expected.has(item))) {
+    throw new Error(`unauthorized main diff: ${[...actual].join(",")}`);
+  }
+  NODE
+  ```
+
+  T12 AC3 再用最终 T10 Commit SHA 和 `git diff-tree` 复核已提交范围；T10 不依赖尚未创建的
+  `verify-task-commits.mjs` 或尚不存在的自身 Commit SHA。
 
 **Step 4: Commit**
 
@@ -961,7 +1053,7 @@ Testcontainers test-scope 依赖并保留 BOM 管理。该清理不宣称改变�
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
 - [ ] Per-task AC checkbox synced
 
@@ -1053,7 +1145,7 @@ Expected: **PASS**
 
 - [ ] Red Result exists and passed
 - [ ] Verify Result exists and passed
-- [ ] AC Result: null (task AC declares no per-task AC) OR (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only or equals `final-record-exception`
 - [ ] Per-task AC checkbox synced
 
@@ -1068,12 +1160,12 @@ topic_files=(
   docs/active/v2.1.2/project-governance/starter-functional-completeness.md
 )
 test "$(rg --no-filename '^- \*\*状态\*\*：' "${topic_files[@]}" | wc -l)" -eq 20
-test "$(rg --no-filename '^- \*\*状态\*\*：讨论中' "${topic_files[@]}" | wc -l)" -eq 19
+test "$(rg --no-filename '^- \*\*状态\*\*：已设计' "${topic_files[@]}" | wc -l)" -eq 19
 awk '/^### GOV-008/{inside=1} /^### GOV-009/{exit} inside{print}' "${topic_files[0]}" \
   | rg -q '^- \*\*状态\*\*：已关闭'
 ```
 
-Expected: **PASS** — 19 个待实施项和 1 个兼容性关闭项构成完整预实施基线；不扫描 Spec/Design/Plan
+Expected: **PASS** — 19 个已设计待实施项和 1 个兼容性关闭项构成完整预实施基线；不扫描 Spec/Design/Plan
 的说明文字，避免命令或 AC 自身包含状态词造成假阳性。
 
 **Step 2: Green**
@@ -1082,7 +1174,9 @@ T12 开始、修改任何文件前，把当前 `git rev-parse HEAD` 写入 `Impl
 Task 的 commit、测试与门禁结果同步状态；实现只读提交归属校验器及其 fixture 测试。校验器只把
 `Create`/`Modify` 计入普通允许范围，禁止提交 `Test (read-only baseline)` 路径；T10 条件路径必须由
 结构化 Red Result 授权并以记录的 commit diff 验证。无法验证的 P2 必须记录 Owner、原因和目标版本，
-P0/P1 不允许延期关闭版本。
+P0/P1 不允许延期关闭版本。同步每个 GOV 专题块：`已验证` 写入指向具体 `Tn ACx` 和 `T12 AC2` 的
+`验证证据`；无实现的 `已关闭` 保留 `决策证据`；延期项写入 Owner、原因和目标版本。DOC-006 对这四种
+状态组合做结构校验，不增加独立治理契约文件。
 
 **Step 3: Verify**
 
@@ -1099,7 +1193,8 @@ Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 File
 
 **AC Verification:**
 
-- AC1: GOV 状态脚本/人工表核对 → 20 项唯一且连续，P0/P1 未关闭数为 0。
+- AC1: GOV 状态脚本与 DOC-006 核对 → 20 项唯一且连续，P0/P1 未关闭数为 0；每个已验证项均引用
+  具体 Task AC 与 T12 AC2，已关闭/延期项分别具备决策证据或 Owner、原因、目标版本。
 - AC2: 同源预检、`git diff --check` 和精确暂存后的 `git diff --cached --check` → 全部退出 0，
   Failsafe/JaCoCo 报告非空，新建 T12 文件未绕过检查。
 - AC3: `node --test scripts/verify-task-commits.test.mjs && node scripts/verify-task-commits.mjs --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`

@@ -3,7 +3,7 @@ id: project-governance
 status: in-progress
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-04
+updated: 2026-08-11
 ---
 
 # Project Governance
@@ -24,9 +24,9 @@ updated: 2026-08-04
 
 | 议题 | 范围 | 收益 | 状态 | 入口 |
 |------|------|------|------|------|
-| 整体设计审查问题整改 | GOV-001—GOV-010 | 中—高 | 设计已复核，待确认 | [overall-design-review.md](./overall-design-review.md) |
-| 单人维护提效 | GOV-011—GOV-015 | 中—高 | 设计已复核，待确认 | [solo-maintainer-efficiency.md](./solo-maintainer-efficiency.md) |
-| Starter 功能完整性 | GOV-016—GOV-020 | 中—高 | 设计已复核，待确认 | [starter-functional-completeness.md](./starter-functional-completeness.md) |
+| 整体设计审查问题整改 | GOV-001—GOV-010 | 中—高 | 已设计 | [overall-design-review.md](./overall-design-review.md) |
+| 单人维护提效 | GOV-011—GOV-015 | 中—高 | 已设计 | [solo-maintainer-efficiency.md](./solo-maintainer-efficiency.md) |
+| Starter 功能完整性 | GOV-016—GOV-020 | 中—高 | 已设计 | [starter-functional-completeness.md](./starter-functional-completeness.md) |
 
 ## 实施主线
 
@@ -65,5 +65,9 @@ GOV-008 是 v2.x 兼容性边界决策，不修改生产 API；编译回归并�
 | 已设计 | Spec 与 Design 已确认，可进入实施计划 |
 | 实施中 | 已按确认计划进入代码或文档修改 |
 | 已验证 | 定向验证和版本级门禁均通过 |
-| 已延期 | 已记录 Owner、理由和目标版本 |
+| 延期 | 已记录 Owner、理由和目标版本 |
 | 已关闭 | 已验证，或经决策确认本版本无需实施 |
+
+Spec 的 front matter 使用 `in-progress` 表示范围已确认且需求仍活跃；Design 使用 `verified` 表示设计
+审查已完成；Plan 使用 `not-started` 对应“待实施”。治理入口和三个专题文件在版本关闭前保持
+`in-progress`，表示需求仍活跃，不表示方案仍待确认。

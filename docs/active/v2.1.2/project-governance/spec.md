@@ -1,9 +1,9 @@
 ---
 id: project-governance
-status: draft
+status: in-progress
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-05
+updated: 2026-08-11
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
@@ -67,7 +67,7 @@ And 同一工作流中的完整项目构建次数等于 1
 Given 当前事件来自依赖机器人、外部仓库或未配置分析凭据
 When 执行质量门禁
 Then 完整构建、测试和报告上传仍然执行
-And 代码分析步骤显示为按条件跳过而不是失败
+And 同一个 Build Step 明确记录代码分析已跳过而不是失败
 
 ### Scenario: 标签发布进入前置验证
 
@@ -171,7 +171,7 @@ And 不依赖不存在的外部 Starter 接管该能力
 
 ### Scenario: 常见客户端 HTTP 错误
 
-Given 请求触发方法校验失败、缺少必需请求信息或资源不存在
+Given 请求触发入参方法校验失败、缺少必需请求头或资源不存在
 When 全局异常处理生成响应
 Then HTTP 状态分别属于 400 或 404
 And 响应继续使用统一错误结构
@@ -182,6 +182,13 @@ Given 请求触发不可接受响应类型、不支持的请求媒体类型或�
 When 全局异常处理生成响应
 Then HTTP 状态分别为 406、415 或 413
 And 未知服务端异常仍返回 500
+
+### Scenario: Spring MVC 服务端契约错误
+
+Given 控制器返回值方法校验失败或处理器声明的路径变量无法解析
+When 全局异常处理生成响应
+Then HTTP 状态为 500
+And 不把服务端映射或返回值契约错误伪装成客户端 400
 
 ### Scenario: 业务异常兼容
 
@@ -312,4 +319,5 @@ And v2.1.2 不包含该变更的实现任务
 - 文档事实检查、Workflow 静态检查、Markdown lint，以及覆盖已跟踪与新建治理文件的 Git whitespace
   check，允许错误数均为 0。
 - v2.1.2 关闭时未验证 P0/P1 数量必须为 0；P2 必须完成或记录 Owner、理由和目标版本。
-- 每个进入“已验证”的 GOV 项至少具有 1 条定向验证证据和 1 条版本级门禁证据。
+- 每个进入“已验证”的 GOV 项必须记录指向 Task AC 的定向验证证据，并共同引用 T12 AC2
+  作为版本级门禁证据；“已关闭”和“延期”分别记录决策证据或 Owner、原因、目标版本。
