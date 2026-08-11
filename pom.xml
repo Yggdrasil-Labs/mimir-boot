@@ -27,6 +27,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <java.version>17</java.version>
+        <spring.boot.version>3.3.13</spring.boot.version>
 
         <!-- 项目信息 -->
         <project.name>Mimir Boot</project.name>

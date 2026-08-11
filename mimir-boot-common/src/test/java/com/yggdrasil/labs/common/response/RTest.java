@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.common.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yggdrasil.labs.common.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 
@@ -65,6 +67,21 @@ class RTest {
         assertNotNull(r.getTimestamp());
         assertTrue(r.getTimestamp() >= before && r.getTimestamp() <= after);
     }
+
+    @Test
+    void json_serialization_preserves_response_fields() throws Exception {
+        R<String> r = R.success("payload");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(r));
+
+        assertEquals(ErrorCode.SUCCESS.getCode(), json.get("code").asText());
+        assertEquals(ErrorCode.SUCCESS.getMessage(), json.get("message").asText());
+        assertEquals("payload", json.get("data").asText());
+        assertEquals(r.getTimestamp(), json.get("timestamp").asLong());
+        assertTrue(json.get("traceId").isNull());
+        assertTrue(json.get("success").asBoolean());
+        assertFalse(json.get("fail").asBoolean());
+        assertEquals(7, json.size());
+    }
 }
-
-

@@ -1,27 +1,27 @@
 ---
 id: project-governance
-status: not-started
+status: in-progress
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-11
+updated: 2026-08-12
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
 
 # Project Governance Implementation Plan
 
-**Branch:** [待填充]
-**Baseline SHA:** [待填充]
+**Branch:** codex/project-governance-ci
+**Baseline SHA:** 766ae3b35ef7de8127f1aeb26a1719b9cf97a23b
 **Implementation Head SHA:** [待填充]
-**Worktree Path:** [待填充]
-**Started At:** [待填充]
-**Updated At:** [待填充]
+**Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/project-governance-ci
+**Started At:** 2026-08-11T23:48:59+08:00
+**Updated At:** 2026-08-12T07:33:18+08:00
 
 **Goal:** 先建立 Push 前可复现的 CI 与文档治理门禁，再完成中高收益的功能代码优化。
 **Architecture:** 主线 B 把本地预检、GitHub Actions、Release、Dependabot 和事实文档收敛为自动校验；主线 A 在该门禁下修复 Web、RPC、异常、Nacos 和测试 Starter。外部发布副作用保持独立，v2.x 公共兼容边界保持不变。
 **Tech Stack:** Java 17、Spring Boot 3.3.13、Maven 3.9.x、Node.js 22、GitHub Actions、JUnit 5、AssertJ
 **Commit Mode:** per-task
-**Effective Execution Mode:** [待填充]
+**Effective Execution Mode:** serial，隔离 worktree；`plan.md` 作为每 Task 即时执行账本
 **Final Record Mode:** final-record-exception
 
 ## Global Constraints
@@ -38,9 +38,11 @@ resolved-path: docs/active/v2.1.2/project-governance/
 - 普通 CI、Release 和发布准备命令默认不使用 `-U`；仅人工故障排查可显式使用。
 - 不引入新 Starter、消费者契约工程、自动合并、文档自动改写或 BOM 精简。
 - v2.x 不移除 `Serializable` 公共泛型边界，不静默改变 BizException HTTP 200 语义。
-- 每个 Task 单独提交，提交信息使用中文 Conventional Commits，只提交该 Task 声明的文件。
+- 每个 Task 单独提交，提交信息使用中文 Conventional Commits，只提交该 Task 声明的文件及
+  `docs/active/v2.1.2/project-governance/plan.md` 的即时执行记录。
 - `Files` 中只有 `Create`、`Modify` 和满足结构化 Red 授权的 `Modify only if authorized` 是提交允许范围；
-  `Test (read-only baseline)` 只能执行不得修改，`External fixture` 位于动态临时目录且不得进入 Git。
+  `plan.md` 的执行元数据、Execution、Task Completion Gate 和对应 Acceptance Criteria 状态为每个 Task 的
+  显式例外；`Test (read-only baseline)` 只能执行不得修改，`External fixture` 位于动态临时目录且不得进入 Git。
 
 ## Dependency Graph
 
@@ -135,6 +137,7 @@ flowchart TD
 - Modify: `pom.xml`
 - Modify: `mimir-boot-parent/pom.xml`
 - Modify: `mimir-boot-bom/pom.xml`
+- Modify: `mimir-boot-common/pom.xml`
 - Modify: `mimir-boot-common/src/test/java/com/yggdrasil/labs/common/response/RTest.java`
 - Create: `mimir-boot-common/src/test/java/com/yggdrasil/labs/common/response/RGenericBoundCompilationTest.java`
 - Test (read-only baseline): `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/config/ExceptionAutoConfigurationIT.java`
@@ -149,27 +152,27 @@ flowchart TD
 
 **Acceptance Criteria:**
 
-- [ ] `verify -Pci` 生成至少 2 个 `failsafe-reports/TEST-*.xml`，11 个现有 IT 测试用例全部通过。
-- [ ] effective/flattened POM 中 Spring Boot 依赖平台与 Maven Plugin 都解析为 `3.3.13`，不残留独立的 `3.5.16`。
-- [ ] Serializable 响应数据继续编译且 JSON 语义不变，非 Serializable 泛型用法继续在编译期失败。
+- [x] `verify -Pci` 生成至少 2 个 `failsafe-reports/TEST-*.xml`，11 个现有 IT 测试用例全部通过。
+- [x] effective/flattened POM 中 Spring Boot 依赖平台与 Maven Plugin 都解析为 `3.3.13`，不残留独立的 `3.5.16`。
+- [x] Serializable 响应数据继续编译且 JSON 语义不变，非 Serializable 泛型用法继续在编译期失败。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHA:** null
-- **Attempts:** 0
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"! rg -n '<artifactId>maven-failsafe-plugin</artifactId>' mimir-boot-parent/pom.xml | tail -n +2 | rg . && rg -n '3.5.16' mimir-boot-parent/pom.xml","confirmed":true,"evidence":"Failsafe 仅位于 pluginManagement；Parent 第 38 行存在独立的 3.5.16 Boot Plugin 版本。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci clean verify","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；Failsafe 执行 ExceptionAutoConfigurationIT 与 WebAutoConfigurationIT。"}]}
+- **AC Result:** {"pass":3,"total":3,"deferred":[],"details":{"AC1":"2 份 Failsafe 报告、11 个 testcase、零 failures/errors。","AC2":"15 模块 flatten:flatten 通过；flattened POM 中 Boot 依赖平台与 Plugin 均为 3.3.13，且无 3.5.16 或未解析属性。","AC3":"common 模块 40 个测试通过；RTest 直接断言 code、message、data、timestamp、traceId、success、fail 的 JSON 语义，RGenericBoundCompilationTest 验证 Serializable 正例可编译、NonSerializable 反例编译失败。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -1129,7 +1132,9 @@ Expected: **PASS**
 
 - [ ] GOV-001—GOV-020 均为已验证、已关闭或按规则延期，未验证 P0/P1 数量为 0。
 - [ ] Java 17/Node 22 同源预检、未暂存与已暂存 diff check、DOC/CI 静态规则全部通过，15 个 Reactor 模块成功。
-- [ ] Baseline 到 Implementation Head 之间每个提交只属于 T1—T11 的一个 Task；其后最多一个仅含 T12 Files 的终验提交，T12 记录使用 `final-record-exception`，最终工作区干净。
+- [ ] Baseline 到 Implementation Head 之间每个提交只属于 T1—T11 的一个 Task，且仅含该 Task 的
+  `Create`/`Modify` 允许文件与 `plan.md` 即时执行记录；其后最多一个仅含 T12 Files 的终验提交，T12 记录使用
+  `final-record-exception`，最终工作区干净。
 
 **Execution:**
 
@@ -1171,8 +1176,9 @@ Expected: **PASS** — 19 个已设计待实施项和 1 个兼容性关闭项构
 **Step 2: Green**
 
 T12 开始、修改任何文件前，把当前 `git rev-parse HEAD` 写入 `Implementation Head SHA`。只依据各
-Task 的 commit、测试与门禁结果同步状态；实现只读提交归属校验器及其 fixture 测试。校验器只把
-`Create`/`Modify` 计入普通允许范围，禁止提交 `Test (read-only baseline)` 路径；T10 条件路径必须由
+Task 的 commit、测试与门禁结果同步状态；实现只读提交归属校验器及其 fixture 测试。校验器将
+`plan.md` 作为每个 Task 的即时执行账本允许文件，并只把 `Create`/`Modify` 计入其余普通允许范围，禁止提交
+`Test (read-only baseline)` 路径；T10 条件路径必须由
 结构化 Red Result 授权并以记录的 commit diff 验证。无法验证的 P2 必须记录 Owner、原因和目标版本，
 P0/P1 不允许延期关闭版本。同步每个 GOV 专题块：`已验证` 写入指向具体 `Tn ACx` 和 `T12 AC2` 的
 `验证证据`；无实现的 `已关闭` 保留 `决策证据`；延期项写入 Owner、原因和目标版本。DOC-006 对这四种
@@ -1198,8 +1204,8 @@ Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 File
 - AC2: 同源预检、`git diff --check` 和精确暂存后的 `git diff --cached --check` → 全部退出 0，
   Failsafe/JaCoCo 报告非空，新建 T12 文件未绕过检查。
 - AC3: `node --test scripts/verify-task-commits.test.mjs && node scripts/verify-task-commits.mjs --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
-  → T1—T11 的唯一 SHA 集合恰好覆盖 Baseline..Implementation Head；普通允许路径、只读 Test 路径和
-  T10 条件授权均按规则验证；index 是 T12 Files 子集且无其他工作区文件。
+  → T1—T11 的唯一 SHA 集合恰好覆盖 Baseline..Implementation Head；每 Task 的 `plan.md` 即时执行记录、
+  普通允许路径、只读 Test 路径和 T10 条件授权均按规则验证；index 是 T12 Files 子集且无其他工作区文件。
 
 **Step 4: Commit**
 
