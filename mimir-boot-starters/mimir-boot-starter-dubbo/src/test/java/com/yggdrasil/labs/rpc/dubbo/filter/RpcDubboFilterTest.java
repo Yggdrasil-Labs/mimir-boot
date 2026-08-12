@@ -140,6 +140,25 @@ class RpcDubboFilterTest {
     }
 
     @Test
+    void shouldCompleteFailureLifecycleWhenInvokerThrowsError() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        AssertionError primary = new AssertionError("fatal");
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+        when(invoker.invoke(invocation)).thenThrow(primary);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        AssertionError thrown = org.junit.jupiter.api.Assertions.assertThrows(
+                AssertionError.class, () -> filter.invoke(invoker, invocation));
+
+        assertSame(primary, thrown);
+        verify(hook).before(any());
+        verify(hook).onError(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
     void shouldExtractProviderContextAndCleanUpWhenInvocationFails() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
@@ -233,7 +252,7 @@ class RpcDubboFilterTest {
     }
 
     @Test
-    void shouldReportAndCleanUpWhenProviderExtractionFails() {
+    void shouldNotInvokeHooksWhenProviderExtractionFailsBeforeInvocationOpens() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
         RuntimeException ex = new RuntimeException("extract failure");
@@ -245,13 +264,8 @@ class RpcDubboFilterTest {
                 RuntimeException.class, () -> filter.invoke(invoker, invocation));
 
         assertSame(ex, thrown);
-        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
-        verify(hook).onError(any(), resultCaptor.capture());
-        verify(hook).cleanup(any());
-        verify(hook, never()).before(any());
+        verifyNoInteractions(hook);
         verify(invoker, never()).invoke(any());
-        org.junit.jupiter.api.Assertions.assertFalse(resultCaptor.getValue().isSuccess());
-        assertSame(ex, resultCaptor.getValue().getError().orElseThrow());
     }
 
     @Test
@@ -425,6 +439,36 @@ class RpcDubboFilterTest {
         org.junit.jupiter.api.Assertions.assertEquals("v1", metadataAttachments.get("k1"));
         org.junit.jupiter.api.Assertions.assertEquals("123", metadataAttachments.get("k2"));
         org.junit.jupiter.api.Assertions.assertEquals("true", metadataAttachments.get("k3"));
+    }
+
+    @Test
+    void shouldNotInvokeBusinessWhenBeforeFailsAndShouldCleanUp() {
+        RuntimeException beforeFailure = new RuntimeException("before failure");
+        java.util.concurrent.atomic.AtomicInteger cleanupCalls = new java.util.concurrent.atomic.AtomicInteger();
+        RpcHook failingHook = new RpcHook() {
+            @Override
+            public void before(RpcCallContext context) {
+                throw beforeFailure;
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                cleanupCalls.incrementAndGet();
+            }
+        };
+        RpcDubboSupportHolder.set(new RpcHookChain(List.of(failingHook)), tracerBridge, properties);
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of());
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+
+        assertSame(beforeFailure, thrown);
+        verify(invoker, never()).invoke(any());
+        org.junit.jupiter.api.Assertions.assertEquals(1, cleanupCalls.get());
     }
 
     private Invoker<?> mockInvoker() {

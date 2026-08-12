@@ -237,6 +237,23 @@ class RpcFeignClientTest {
     }
 
     @Test
+    void shouldCompleteFailureLifecycleWhenDelegateThrowsError() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", Map.of(), null, StandardCharsets.UTF_8, null);
+        AssertionError primary = new AssertionError("fatal");
+        when(delegate.execute(any(), any())).thenThrow(primary);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        AssertionError thrown = Assertions.assertThrows(
+                AssertionError.class, () -> client.execute(request, new Request.Options()));
+
+        assertSame(primary, thrown);
+        verify(hook).before(any());
+        verify(hook).onError(any(), any(RpcCallResult.class));
+        verify(hook).cleanup(any());
+    }
+
+    @Test
     void shouldHandleMultipleHeaders() throws Exception {
         Map<String, Collection<String>> headers = Map.of(
                 "h1", List.of("v1"),
@@ -315,5 +332,32 @@ class RpcFeignClientTest {
         verify(hook).before(any());
         verify(hook).after(any(), any(RpcCallResult.class));
         verify(hook).cleanup(any());
+    }
+
+    @Test
+    void shouldNotCallDelegateWhenBeforeFailsAndShouldCleanUp() {
+        RuntimeException beforeFailure = new RuntimeException("before failure");
+        java.util.concurrent.atomic.AtomicInteger cleanupCalls = new java.util.concurrent.atomic.AtomicInteger();
+        RpcHook failingHook = new RpcHook() {
+            @Override
+            public void before(RpcCallContext context) {
+                throw beforeFailure;
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                cleanupCalls.incrementAndGet();
+            }
+        };
+        client = new RpcFeignClient(delegate, new RpcHookChain(List.of(failingHook)), tracerBridge, properties);
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", Map.of(), null, StandardCharsets.UTF_8, null);
+
+        RuntimeException thrown = Assertions.assertThrows(
+                RuntimeException.class, () -> client.execute(request, new Request.Options()));
+
+        assertSame(beforeFailure, thrown);
+        verifyNoInteractions(delegate);
+        Assertions.assertEquals(1, cleanupCalls.get());
     }
 }

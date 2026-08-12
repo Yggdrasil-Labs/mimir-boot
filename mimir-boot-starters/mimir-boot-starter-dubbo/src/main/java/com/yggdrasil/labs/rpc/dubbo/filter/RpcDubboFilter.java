@@ -4,6 +4,7 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
@@ -76,6 +77,7 @@ public class RpcDubboFilter implements Filter {
         }
 
         Instant start = Instant.now();
+        RpcHookInvocation hookInvocation = hookChain.open(context);
         boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
@@ -83,7 +85,7 @@ public class RpcDubboFilter implements Filter {
             if (properties.isContextPropagationEnabled() && providerSide) {
                 tracerBridge.extract(context, attachments == null ? Map.of() : attachments);
             }
-            hookChain.before(context);
+            hookInvocation.before();
 
             if (properties.isContextPropagationEnabled() && !providerSide) {
                 Map<String, String> injected = tracerBridge.inject(context);
@@ -98,38 +100,33 @@ public class RpcDubboFilter implements Filter {
             Result result = invoker.invoke(invocation);
             if (result instanceof AsyncRpcResult) {
                 result.whenCompleteWithContext((completedResult, throwable) ->
-                        completeCall(hookChain, context, metadata, start, completedResult, throwable));
+                        completeCall(hookInvocation, metadata, start, completedResult, throwable));
             } else {
-                completeCall(hookChain, context, metadata, start, result, null);
+                completeCall(hookInvocation, metadata, start, result, null);
             }
             return result;
-        } catch (RuntimeException ex) {
-            completeCall(hookChain, context, metadata, start, null, ex);
-            throw ex;
+        } catch (Throwable throwable) {
+            completeCall(hookInvocation, metadata, start, null, throwable);
+            throw propagate(throwable);
         }
     }
 
     private void completeCall(
-            RpcHookChain hookChain,
-            RpcCallContext context,
+            RpcHookInvocation hookInvocation,
             RpcCallMetadata metadata,
             Instant start,
-            Result result,
-            Throwable throwable) {
+        Result result,
+        Throwable throwable) {
         Duration duration = Duration.between(start, Instant.now());
-        try {
-            Throwable error = throwable != null ? throwable : result != null && result.hasException()
-                    ? result.getException()
-                    : null;
-            if (error != null) {
-                logFailure(metadata, duration, error);
-                hookChain.onError(context, RpcCallResult.failure(duration, error));
-            } else {
-                logSuccess(metadata, duration);
-                hookChain.after(context, RpcCallResult.success(duration));
-            }
-        } finally {
-            hookChain.cleanup(context);
+        Throwable error = throwable != null ? throwable : result != null && result.hasException()
+                ? result.getException()
+                : null;
+        if (error != null) {
+            logFailure(metadata, duration, error);
+            hookInvocation.completeFailure(RpcCallResult.failure(duration, error), error);
+        } else {
+            logSuccess(metadata, duration);
+            hookInvocation.completeSuccess(RpcCallResult.success(duration));
         }
     }
 
@@ -140,6 +137,16 @@ public class RpcDubboFilter implements Filter {
                     metadata.getMethod(),
                     duration.toMillis());
         }
+    }
+
+    private RpcException propagate(Throwable throwable) {
+        if (throwable instanceof Error error) {
+            throw error;
+        }
+        if (throwable instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        return new RpcException(throwable);
     }
 
     private void logFailure(RpcCallMetadata metadata, Duration duration, Throwable error) {

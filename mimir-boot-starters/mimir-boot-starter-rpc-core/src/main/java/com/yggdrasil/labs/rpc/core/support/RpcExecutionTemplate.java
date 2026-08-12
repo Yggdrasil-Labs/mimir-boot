@@ -3,6 +3,7 @@ package com.yggdrasil.labs.rpc.core.support;
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import java.time.Duration;
 import java.time.Instant;
@@ -52,17 +53,10 @@ public class RpcExecutionTemplate {
                     contextPropagationEnabled);
         }
         Instant start = Instant.now();
-        hookChain.before(context);
-        if (contextPropagationEnabled) {
-            Map<String, String> injected = tracerBridge.inject(context);
-            if (log.isDebugEnabled() && injected != null && !injected.isEmpty()) {
-                log.debug("Injected context propagation headers: {}", injected.keySet());
-            }
-            if (injected != null && !injected.isEmpty()) {
-                injected.forEach(context::putAttachment);
-            }
-        }
+        RpcHookInvocation invocation = hookChain.open(context);
         try {
+            invocation.before();
+            injectContext(context);
             T result = callable.call();
             Duration duration = Duration.between(start, Instant.now());
             if (log.isDebugEnabled()) {
@@ -71,29 +65,43 @@ public class RpcExecutionTemplate {
                         context.getMetadata().getMethod(),
                         duration.toMillis());
             }
-            hookChain.after(context, RpcCallResult.success(duration));
+            invocation.completeSuccess(RpcCallResult.success(duration));
             return result;
-        } catch (Exception ex) {
+        } catch (Throwable throwable) {
             Duration duration = Duration.between(start, Instant.now());
             if (log.isDebugEnabled()) {
                 log.debug("RPC call failed: service={}, method={}, duration={}ms, error={}",
                         context.getMetadata().getService(),
                         context.getMetadata().getMethod(),
                         duration.toMillis(),
-                        ex.getClass().getSimpleName(),
-                        ex);
+                        throwable.getClass().getSimpleName(),
+                        throwable);
             }
-            hookChain.onError(context, RpcCallResult.failure(duration, ex));
-            throw wrapIfNeeded(ex);
-        } finally {
-            hookChain.cleanup(context);
+            invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
+            throw propagate(throwable);
         }
     }
 
-    private RuntimeException wrapIfNeeded(Exception ex) {
-        if (ex instanceof RuntimeException runtimeException) {
+    private void injectContext(RpcCallContext context) {
+        if (!contextPropagationEnabled) {
+            return;
+        }
+        Map<String, String> injected = tracerBridge.inject(context);
+        if (log.isDebugEnabled() && injected != null && !injected.isEmpty()) {
+            log.debug("Injected context propagation headers: {}", injected.keySet());
+        }
+        if (injected != null && !injected.isEmpty()) {
+            injected.forEach(context::putAttachment);
+        }
+    }
+
+    private RuntimeException propagate(Throwable throwable) {
+        if (throwable instanceof Error error) {
+            throw error;
+        }
+        if (throwable instanceof RuntimeException runtimeException) {
             return runtimeException;
         }
-        return new RuntimeException(ex);
+        return new RuntimeException(throwable);
     }
 }

@@ -134,6 +134,121 @@ class RpcExecutionTemplateTest {
         Assertions.assertEquals(1, tracerInvoked.get());
     }
 
+    @Test
+    void shouldCompleteFailureLifecycleWhenBusinessThrowsError() {
+        RecordingHook hook = new RecordingHook();
+        RpcExecutionTemplate template = new RpcExecutionTemplate(
+                new RpcHookChain(List.of(hook)), noOpTracer(), false);
+        AssertionError primary = new AssertionError("fatal");
+
+        AssertionError thrown = Assertions.assertThrows(
+                AssertionError.class, () -> template.execute(context("error"), () -> {
+                    throw primary;
+                }));
+
+        Assertions.assertSame(primary, thrown);
+        Assertions.assertEquals(List.of("before", "onError", "cleanup"), hook.events);
+    }
+
+    @Test
+    void shouldPreventBusinessCallAndCleanUpEnteredHooksWhenBeforeFails() {
+        List<String> events = new ArrayList<>();
+        AtomicInteger businessCalls = new AtomicInteger();
+        RuntimeException beforeFailure = new RuntimeException("before failure");
+        RpcHook first = hook("first", events, null, null, null);
+        RpcHook second = hook("second", events, beforeFailure, null, null);
+        RpcExecutionTemplate template = new RpcExecutionTemplate(
+                new RpcHookChain(List.of(first, second)), noOpTracer(), true);
+
+        RuntimeException thrown = Assertions.assertThrows(
+                RuntimeException.class,
+                () -> template.execute(context("beforeFailure"), () -> {
+                    businessCalls.incrementAndGet();
+                    return "unexpected";
+                }));
+
+        Assertions.assertSame(beforeFailure, thrown);
+        Assertions.assertEquals(0, businessCalls.get());
+        Assertions.assertEquals(
+                List.of("first-before", "second-before", "first-onError", "second-onError", "second-cleanup", "first-cleanup"),
+                events);
+    }
+
+    @Test
+    void shouldPreserveBusinessOutcomeWhenPostHooksFail() {
+        RuntimeException primary = new RuntimeException("business failure");
+        RuntimeException onErrorFailure = new RuntimeException("onError failure");
+        RuntimeException cleanupFailure = new RuntimeException("cleanup failure");
+        RpcHook failing = hook("failing", new ArrayList<>(), null, null, onErrorFailure);
+        RpcHook cleanupFailing = new RpcHook() {
+            @Override
+            public void cleanup(RpcCallContext context) {
+                throw cleanupFailure;
+            }
+        };
+        RpcExecutionTemplate template = new RpcExecutionTemplate(
+                new RpcHookChain(List.of(failing, cleanupFailing)), noOpTracer(), false);
+
+        RuntimeException thrown = Assertions.assertThrows(
+                RuntimeException.class, () -> template.execute(context("failure"), asCallable(primary)));
+
+        Assertions.assertSame(primary, thrown);
+        Assertions.assertArrayEquals(new Throwable[] {onErrorFailure, cleanupFailure}, thrown.getSuppressed());
+    }
+
+    private static RpcCallContext context(String method) {
+        return RpcCallContext.create(RpcCallMetadata.builder().service("svc").method(method).build());
+    }
+
+    private static RpcTracerBridge noOpTracer() {
+        return new RpcTracerBridge() {
+            @Override
+            public Map<String, String> inject(RpcCallContext context) {
+                return Map.of();
+            }
+
+            @Override
+            public void extract(RpcCallContext context, Map<String, String> carrier) {}
+        };
+    }
+
+    private static RpcHook hook(
+            String name,
+            List<String> events,
+            RuntimeException beforeFailure,
+            RuntimeException afterFailure,
+            RuntimeException onErrorFailure) {
+        return new RpcHook() {
+            @Override
+            public void before(RpcCallContext context) {
+                events.add(name + "-before");
+                if (beforeFailure != null) {
+                    throw beforeFailure;
+                }
+            }
+
+            @Override
+            public void after(RpcCallContext context, RpcCallResult result) {
+                if (afterFailure != null) {
+                    throw afterFailure;
+                }
+            }
+
+            @Override
+            public void onError(RpcCallContext context, RpcCallResult result) {
+                events.add(name + "-onError");
+                if (onErrorFailure != null) {
+                    throw onErrorFailure;
+                }
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                events.add(name + "-cleanup");
+            }
+        };
+    }
+
     private Callable<Void> asCallable(Exception toThrow) {
         return () -> {
             throw toThrow;

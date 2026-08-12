@@ -31,6 +31,17 @@ public class RpcHookChain {
         }
     }
 
+    /**
+     * 创建调用级生命周期状态，禁止在单例 Chain 上保存每次调用的 entered Hook。
+     */
+    public RpcHookInvocation open(RpcCallContext context) {
+        return new RpcHookInvocation(context, hooks);
+    }
+
+    /**
+     * @deprecated 请改用 {@link #open(RpcCallContext)} 获取调用级 Invocation。
+     */
+    @Deprecated(forRemoval = false)
     public void before(RpcCallContext context) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing before hooks for service={}, method={}, hooks={}",
@@ -43,6 +54,10 @@ public class RpcHookChain {
         }
     }
 
+    /**
+     * @deprecated 请改用 {@link RpcHookInvocation#completeSuccess(RpcCallResult)}。
+     */
+    @Deprecated(forRemoval = false)
     public void after(RpcCallContext context, RpcCallResult result) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing after hooks for service={}, method={}, duration={}ms, hooks={}",
@@ -56,6 +71,10 @@ public class RpcHookChain {
         }
     }
 
+    /**
+     * @deprecated 请改用 {@link RpcHookInvocation#completeFailure(RpcCallResult, Throwable)}。
+     */
+    @Deprecated(forRemoval = false)
     public void onError(RpcCallContext context, RpcCallResult result) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing onError hooks for service={}, method={}, duration={}ms, error={}, hooks={}",
@@ -70,6 +89,10 @@ public class RpcHookChain {
         }
     }
 
+    /**
+     * @deprecated 请改用 {@link RpcHookInvocation#close()}。
+     */
+    @Deprecated(forRemoval = false)
     public void cleanup(RpcCallContext context) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing cleanup hooks for service={}, method={}, hooks={}",
@@ -82,4 +105,3 @@ public class RpcHookChain {
         }
     }
 }
-

@@ -4,6 +4,7 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.feign.config.FeignProperties;
 import feign.Client;
@@ -73,28 +74,11 @@ public class RpcFeignClient implements Client {
         }
 
         Instant start = Instant.now();
-        hookChain.before(context);
-
-        Request wrapped = request;
-        if (properties.isContextPropagationEnabled()) {
-            Map<String, String> injected = tracerBridge.inject(context);
-            if (injected != null && !injected.isEmpty()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("RpcFeignClient: Injecting context propagation headers: {}", injected.keySet());
-                }
-                Map<String, Collection<String>> newHeaders = new HashMap<>(request.headers());
-                injected.forEach((k, v) -> newHeaders.put(k, java.util.List.of(v)));
-                wrapped = Request.create(
-                        request.httpMethod(),
-                        request.url(),
-                        newHeaders,
-                        request.body(),
-                        request.charset(),
-                        request.requestTemplate());
-            }
-        }
+        RpcHookInvocation invocation = hookChain.open(context);
 
         try {
+            invocation.before();
+            Request wrapped = injectContext(request, context);
             Response response = delegate.execute(wrapped, options);
             Duration duration = Duration.between(start, Instant.now());
             if (log.isDebugEnabled()) {
@@ -105,9 +89,9 @@ public class RpcFeignClient implements Client {
                         response.status(),
                         duration.toMillis());
             }
-            hookChain.after(context, RpcCallResult.success(duration));
+            invocation.completeSuccess(RpcCallResult.success(duration));
             return response;
-        } catch (IOException | RuntimeException ex) {
+        } catch (Throwable throwable) {
             Duration duration = Duration.between(start, Instant.now());
             if (log.isDebugEnabled()) {
                 log.debug("RpcFeignClient: HTTP call failed - service={}, method={}, url={}, duration={}ms, error={}",
@@ -115,14 +99,47 @@ public class RpcFeignClient implements Client {
                         metadata.getMethod(),
                         request.url(),
                         duration.toMillis(),
-                        ex.getClass().getSimpleName(),
-                        ex);
+                        throwable.getClass().getSimpleName(),
+                        throwable);
             }
-            hookChain.onError(context, RpcCallResult.failure(duration, ex));
-            throw ex;
-        } finally {
-            hookChain.cleanup(context);
+            invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
+            throw propagate(throwable);
         }
+    }
+
+    private Request injectContext(Request request, RpcCallContext context) {
+        if (!properties.isContextPropagationEnabled()) {
+            return request;
+        }
+        Map<String, String> injected = tracerBridge.inject(context);
+        if (injected == null || injected.isEmpty()) {
+            return request;
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("RpcFeignClient: Injecting context propagation headers: {}", injected.keySet());
+        }
+        Map<String, Collection<String>> newHeaders = new HashMap<>(request.headers());
+        injected.forEach((key, value) -> newHeaders.put(key, java.util.List.of(value)));
+        return Request.create(
+                request.httpMethod(),
+                request.url(),
+                newHeaders,
+                request.body(),
+                request.charset(),
+                request.requestTemplate());
+    }
+
+    private IOException propagate(Throwable throwable) throws IOException {
+        if (throwable instanceof Error error) {
+            throw error;
+        }
+        if (throwable instanceof IOException ioException) {
+            return ioException;
+        }
+        if (throwable instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        return new IOException("RPC Feign call failed", throwable);
     }
 
     private Map<String, String> toStringMap(Map<String, Collection<String>> headers) {
