@@ -1,7 +1,7 @@
 name: Checkout and Setup
 description: |
   Checkout repository at release tag and set up JDK 17 with Maven caching.
-  Used by build-verify, release, publish-gpr, and publish-maven-central jobs.
+  Used by release-verify, publish-gpr, and publish-maven-central jobs.
   Not used by create-github-release (no Java needed) or update-dev-version
   (needs token-based checkout).
 

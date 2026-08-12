@@ -41,7 +41,7 @@ concurrency:
   queue: max
 
 jobs:
-  build-verify:
+  release-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -81,41 +81,12 @@ jobs:
           chmod +x mvnw
 
       - name: Verify build (format check + compile)
-        run: ./mvnw -B -U spotless:check clean package -DskipTests
-
-  release:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs: [ build-verify ]
-    permissions:
-      contents: read
-    steps:
-      # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
-      - name: Bootstrap local Action
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-
-      - uses: ./.github/actions/checkout-setup
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
-
-      - name: Make Maven Wrapper executable
-        run: |
-          if [ ! -f "mvnw" ]; then
-            echo "Error: mvnw not found"
-            exit 1
-          fi
-          chmod +x mvnw
-
-      - name: Final verification
-        run: |
-          # 使用 package 而不是 verify，避免触发 GPG 签名
-          # （v2.0.2 等旧版本的 pom.xml 中 GPG 签名硬编码在 verify 阶段，无法通过参数跳过）
-          ./mvnw -B -U clean package
+        run: ./mvnw -B spotless:check clean package -DskipTests
 
   publish-gpr:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [ release ]
+    needs: [ release-verify ]
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_gpr == 'true' }}
     permissions:
       contents: read
@@ -162,7 +133,7 @@ jobs:
         run: |
           # 保持 package 与直接 deploy goal 在同一 Maven 会话中：前者绑定构件，
           # 后者不经过 verify，因此与历史 GPR 行为一致，不触发 Central 专用的 GPG 签名。
-          ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
+          ./mvnw -B -Dmaven.test.skip=true -Drevision="$VERSION" \
             -Dmaven.deploy.skip=false \
             package \
             org.apache.maven.plugins:maven-deploy-plugin:deploy \
@@ -171,7 +142,7 @@ jobs:
   publish-maven-central:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: [ release ]
+    needs: [ release-verify ]
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_maven_central == 'true' }}
     permissions:
       contents: read
@@ -244,7 +215,7 @@ jobs:
           echo "Publishing to Maven Central with version: $VERSION"
           # 激活 maven-central profile，使 central-publishing-maven-plugin（extensions=true）接管 deploy
           # -Dmaven.deploy.skip=false 覆盖 mimir-boot-parent 的默认值
-          ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
+          ./mvnw -B -Dmaven.test.skip=true -Drevision="$VERSION" \
             -P maven-central \
             -Dmaven.deploy.skip=false \
             -Dgpg.skip=false \
@@ -255,10 +226,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # 等两个仓库发布都完成（成功或被跳过）后再创建 GitHub Release
-    needs: [ release, publish-gpr, publish-maven-central ]
+    needs: [ release-verify, publish-gpr, publish-maven-central ]
     if: >-
       ${{ always()
-          && needs.release.result == 'success'
+          && needs.release-verify.result == 'success'
           && (needs['publish-gpr'].result == 'success' || needs['publish-gpr'].result == 'skipped')
           && (needs['publish-maven-central'].result == 'success' || needs['publish-maven-central'].result == 'skipped')
           && (github.event_name != 'workflow_dispatch' || github.event.inputs.finalize_github_release == 'true') }}

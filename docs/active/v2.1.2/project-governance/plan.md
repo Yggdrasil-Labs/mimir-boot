@@ -15,7 +15,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 **Implementation Head SHA:** [待填充]
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/project-governance-ci
 **Started At:** 2026-08-11T23:48:59+08:00
-**Updated At:** 2026-08-12T08:25:59+08:00
+**Updated At:** 2026-08-12T22:07:53+08:00
 
 **Goal:** 先建立 Push 前可复现的 CI 与文档治理门禁，再完成中高收益的功能代码优化。
 **Architecture:** 主线 B 把本地预检、GitHub Actions、Release、Dependabot 和事实文档收敛为自动校验；主线 A 在该门禁下修复 Web、RPC、异常、Nacos 和测试 Starter。外部发布副作用保持独立，v2.x 公共兼容边界保持不变。
@@ -229,8 +229,8 @@ Expected: **PASS**
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHA:** null
+- **Status:** done
+- **Commit SHA:** c3949c5
 - **Attempts:** 2
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"test ! -f scripts/ci-preflight.sh && rg -n '^  sonar:|./mvnw -B -U verify -Pci' .github/workflows/ci.yml","confirmed":true,"evidence":"同源 Bash 入口不存在；CI 同时存在独立 sonar Job 和带 -U 的 Maven 构建。"}]}
@@ -257,7 +257,7 @@ Expected: **PASS**
 - [x] Red Result exists and passed
 - [x] Verify Result exists and passed
 - [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
+- [x] Commit SHA belongs to this task only
 - [x] Per-task AC checkbox synced
 
 **Historical Step 1: Red (superseded by Scope Adjustment)**
@@ -316,28 +316,28 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] Release 只含一个 `release-verify` 前置 Job，`build-verify` 和 `release` 两阶段重复验证被移除。
-- [ ] 所有 Release/复合 Action Maven 命令不含 `-U`；YAML 解析结果证明四类外部操作的 `needs`、
+- [x] Release 只含一个 `release-verify` 前置 Job，`build-verify` 和 `release` 两阶段重复验证被移除。
+- [x] 所有 Release/复合 Action Maven 命令不含 `-U`；YAML 结构断言证明四类外部操作的 `needs`、
   `if`、权限、并发和补偿选择除前置 Job 名外保持不变。
-- [ ] 手动触发未选择任何补偿操作时仍在外部副作用前失败。
+- [x] 手动触发未选择任何补偿操作时仍在外部副作用前失败。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** done
 - **Commit SHA:** null
-- **Attempts:** 0
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"rg -n '^  (build-verify|release):|\\-U' .github/workflows/release.yml .github/actions/maven-release-prepare/action.yml","confirmed":true,"evidence":"命中 build-verify（第 44 行）、release（第 86 行）以及 6 处 -U，证明重复前检和强制更新参数均存在。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"passed","evidence":"15 个 Reactor 模块 clean verify 完成；预检报告校验通过。"},{"cmd":"Bash 结构断言（git show HEAD 正规化允许改动后 diff）","status":"passed","evidence":"仅保留 release-verify；GPR/Central 直接 needs 它，GitHub Release 等待它与两种发布 job；四外部操作的其他工作流结构逐字保持。"},{"cmd":"! rg -n -- '(^|[[:space:]])-U([[:space:]]|$)' .github/workflows/release.yml .github/actions/checkout-setup/action.yml .github/actions/maven-release-prepare/action.yml && git diff --check","status":"passed","evidence":"三个 Release 配置文件无 -U，且 diff 无空白错误。"}]}
+- **AC Result:** {"pass":3,"total":3,"deferred":[]}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 

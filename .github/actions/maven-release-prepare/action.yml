@@ -95,7 +95,7 @@ runs:
         VERSION: ${{ steps.get_version.outputs.version }}
       run: |
         echo "Executing flatten:flatten to replace \${revision} variables with version: $VERSION"
-        ./mvnw -B -U -Drevision="$VERSION" flatten:flatten
+        ./mvnw -B -Drevision="$VERSION" flatten:flatten
         echo "Flatten completed. Verifying flattened POMs..."
         find . -name ".flattened-pom.xml" -type f | head -3 | while read pom; do
           echo "Checking: $pom"
@@ -112,7 +112,7 @@ runs:
         VERSION: ${{ steps.get_version.outputs.version }}
       run: |
         echo "Building packages with version: $VERSION"
-        ./mvnw -B -U -Dmaven.test.skip=true -Drevision="$VERSION" \
+        ./mvnw -B -Dmaven.test.skip=true -Drevision="$VERSION" \
           package
         echo "Verifying jar files were built..."
         find . -name "*.jar" -path "*/target/*" -not -path "*/original-*" | head -10
