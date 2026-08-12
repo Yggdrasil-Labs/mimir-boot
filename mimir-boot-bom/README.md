@@ -19,9 +19,9 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 
 ```xml
 <parent>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>1.0.0</version>
+    <version>YOUR_RELEASE_VERSION</version> <!-- 替换为实际已发布版本 -->
 </parent>
 ```
 
@@ -33,9 +33,9 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>com.yggdrasil.labs</groupId>
+            <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>1.0.0</version>
+            <version>YOUR_RELEASE_VERSION</version> <!-- 替换为实际已发布版本 -->
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -158,9 +158,9 @@ BOM 通过 `dependencyManagement` 管理版本，子项目继承父 POM 时自�
 
 ```xml
 <parent>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>1.0.0</version>
+    <version>YOUR_RELEASE_VERSION</version> <!-- 替换为实际已发布版本 -->
 </parent>
 
 <!-- Parent POM 已自动引入 BOM，无需额外配置 -->
@@ -195,9 +195,9 @@ BOM 通过 `dependencyManagement` 管理版本，子项目继承父 POM 时自�
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>com.yggdrasil.labs</groupId>
+            <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>1.0.0</version>
+            <version>YOUR_RELEASE_VERSION</version> <!-- 替换为实际已发布版本 -->
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -221,9 +221,9 @@ BOM 通过 `dependencyManagement` 管理版本，子项目继承父 POM 时自�
 
 ```xml
 <parent>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>1.0.0</version>
+    <version>YOUR_RELEASE_VERSION</version> <!-- 替换为实际已发布版本 -->
 </parent>
 ```
 
