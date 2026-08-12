@@ -35,6 +35,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring 6 参数约束异常 API（不引入校验实现） -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+
         <!-- Spring Boot 自动配置支持 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

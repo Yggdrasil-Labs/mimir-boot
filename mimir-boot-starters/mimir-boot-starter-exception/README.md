@@ -10,7 +10,7 @@ Mimir Boot Starter Exception 提供了开箱即用的全局异常处理功能：
 - ✅ **业务异常**：`BizException` - 业务层面的可预期异常
 - ✅ **系统异常**：`SystemException` - 系统层面的不可预期异常
 - ✅ **参数校验异常**：自动处理 `@Valid`、`@ModelAttribute` 等校验异常
-- ✅ **HTTP 异常**：处理 404、405、400 等 HTTP 相关异常
+- ✅ **Spring 6 HTTP 异常**：处理 400、404、405、406、413、415 等 HTTP 相关异常
 - ✅ **统一响应格式**：所有异常统一返回 `R` 格式
 - ✅ **日志记录**：自动记录异常日志，支持日志安全清理
 - ✅ **可配置开关**：支持通过配置文件启用/禁用
@@ -375,6 +375,24 @@ spring:
   "traceId": "a1b2c3d4e5f6"
 }
 ```
+
+### 10. Spring 6 请求与资源异常
+
+下列异常同样返回统一 `R` 响应，并保留 Spring 的 HTTP 语义：
+
+| 异常 | HTTP 状态 | 错误码语义 |
+| --- | --- | --- |
+| `HandlerMethodValidationException`（入参） | 400 | `PARAM_INVALID` |
+| `HandlerMethodValidationException`（返回值） | 500 | `SYSTEM_ERROR` |
+| `ConstraintViolationException` | 400 | `PARAM_INVALID` |
+| `MissingRequestHeaderException` | 400 | `PARAM_MISSING` |
+| `MissingPathVariableException` | 500 | `SYSTEM_ERROR` |
+| `HttpMediaTypeNotAcceptableException` | 406 | `OPERATION_NOT_ALLOWED` |
+| `HttpMediaTypeNotSupportedException` | 415 | `OPERATION_NOT_ALLOWED` |
+| `MaxUploadSizeExceededException` | 413 | `PARAM_INVALID` |
+| `NoResourceFoundException` | 404 | `DATA_NOT_FOUND` |
+
+`jakarta.validation-api` 仅用于公开异常处理器签名；Starter 不会因此引入校验实现或改变应用现有的校验策略。
 
 ## 异常处理流程
 
