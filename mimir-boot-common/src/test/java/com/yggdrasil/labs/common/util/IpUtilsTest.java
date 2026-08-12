@@ -31,6 +31,18 @@ class IpUtilsTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
+    void deprecatedResolveClientIpIgnoresForgedProxyClientHeaders() {
+        assertEquals("198.51.100.10", IpUtils.resolveClientIp(
+                header -> switch (header) {
+                    case "Proxy-Client-IP" -> "203.0.113.12";
+                    case "WL-Proxy-Client-IP" -> "203.0.113.13";
+                    default -> null;
+                },
+                () -> "198.51.100.10"));
+    }
+
+    @Test
     void forwardedResolutionDoesNotReadHeadersForUntrustedDirectPeer() {
         AtomicBoolean headerRead = new AtomicBoolean();
 
@@ -71,6 +83,26 @@ class IpUtilsTest {
                 "2001:db8::ff"::equals);
 
         assertEquals("2001:db8::10", resolved);
+    }
+
+    @Test
+    void forwardedResolutionRetainsBracketedIpv6TokenWithoutNormalizingIt() {
+        String resolved = resolveForwardedClientIp(
+                header -> "[fd00:fefe:1::4], 10.0.0.8",
+                () -> "10.0.0.9",
+                TRUSTED_PRIVATE_PROXY);
+
+        assertEquals("[fd00:fefe:1::4]", resolved);
+    }
+
+    @Test
+    void forwardedResolutionRetainsPortQualifiedTokenWithoutNormalizingIt() {
+        String resolved = resolveForwardedClientIp(
+                header -> "198.51.100.8:1234, 10.0.0.8",
+                () -> "10.0.0.9",
+                TRUSTED_PRIVATE_PROXY);
+
+        assertEquals("198.51.100.8:1234", resolved);
     }
 
     @Test

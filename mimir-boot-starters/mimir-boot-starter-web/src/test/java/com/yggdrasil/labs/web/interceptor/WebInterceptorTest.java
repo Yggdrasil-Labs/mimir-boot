@@ -35,6 +35,8 @@ class WebInterceptorTest extends BaseUnitTest {
         request.setRemoteAddr("198.51.100.10");
         request.addHeader("X-Forwarded-For", "203.0.113.10");
         request.addHeader("X-Real-IP", "203.0.113.11");
+        request.addHeader("Proxy-Client-IP", "203.0.113.12");
+        request.addHeader("WL-Proxy-Client-IP", "203.0.113.13");
 
         assertTrue(webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object()));
 

@@ -306,7 +306,16 @@ server:
 
 不要把 `internal-proxies` 配成 `.*`，并确保客户端不能绕过反向代理直连应用端口；否则伪造的转发头可能影响容器改写后的地址。
 
-配置项的定义可参见 [Spring Boot 3.3 的嵌入式 Web Server 指南](https://docs.spring.io/spring-boot/3.3/how-to/webserver.html)。
+若需要 Spring MVC 处理协议、主机或客户端地址等转发信息，只有在边界反向代理已经移除客户端带来的 `Forwarded`/`X-Forwarded-*`，再写入受控转发头，并且客户端不能直连应用监听端口时，才能启用：
+
+```yaml
+server:
+  forward-headers-strategy: framework
+```
+
+此模式由 Spring 的 `ForwardedHeaderFilter` 处理，不会让 Mimir Starter 自行信任任意头。普通或默认部署保持 `framework`/`NATIVE` 关闭（使用 `NONE`），访问日志仍只读取 `request.getRemoteAddr()`。若只需移除而不使用转发头，可由应用自行注册 `ForwardedHeaderFilter` 并设置 `removeOnly`；Starter 不新增该 Bean。
+
+配置项定义见 [Spring Boot 3.3 嵌入式 Web Server 指南](https://docs.spring.io/spring-boot/3.3/how-to/webserver.html) 和 [Spring Framework 6.1 ForwardedHeaderFilter](https://docs.spring.io/spring-framework/docs/6.1.x/javadoc-api/org/springframework/web/filter/ForwardedHeaderFilter.html)。
 
 ### 敏感信息脱敏
 
