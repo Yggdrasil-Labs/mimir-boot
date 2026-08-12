@@ -257,6 +257,22 @@ Web 测试基类，提供：
 当前 `mimir-boot-starter-test` 会向下游暴露完整的 Spring Boot 测试基础栈，因此在大多数场景下，
 只需要引入该 Starter 即可开始编写基于 JUnit 5、Mockito、AssertJ 和 Spring Test 的测试代码。
 
+### JUnit Suite
+
+Starter 也会向下游测试类路径提供 JUnit Suite API 和 Engine。可以直接用 Suite 聚合不符合
+Surefire 默认命名规则的测试类：
+
+```java
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+
+@Suite
+@SelectClasses({OrderScenario.class, PaymentScenario.class})
+class AcceptanceSuiteTest {}
+```
+
+Testcontainers 按业务模块的实际需要单独引入；Starter 不再内置未使用的容器测试依赖。
+
 ## 📝 最佳实践
 
 1. **使用测试基类**：继承相应的测试基类，减少样板代码
