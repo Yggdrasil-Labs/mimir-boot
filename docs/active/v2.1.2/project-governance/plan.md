@@ -3,7 +3,7 @@ id: project-governance
 status: in-progress
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-12
+updated: 2026-08-13
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
@@ -12,10 +12,10 @@ resolved-path: docs/active/v2.1.2/project-governance/
 
 **Branch:** codex/project-governance-ci
 **Baseline SHA:** 766ae3b35ef7de8127f1aeb26a1719b9cf97a23b
-**Implementation Head SHA:** [待填充]
+**Implementation Head SHA:** 76c6357d080bb2d9843b09e26c2d1d697b7461d7
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/project-governance-ci
 **Started At:** 2026-08-11T23:48:59+08:00
-**Updated At:** 2026-08-12T23:04:26+08:00
+**Updated At:** 2026-08-13T01:55:00+08:00
 
 **Goal:** 先建立 Push 前可复现的 CI 与文档治理门禁，再完成中高收益的功能代码优化。
 **Architecture:** 主线 B 把本地预检、GitHub Actions、Release、Dependabot 和事实文档收敛为自动校验；主线 A 在该门禁下修复 Web、RPC、异常、Nacos 和测试 Starter。外部发布副作用保持独立，v2.x 公共兼容边界保持不变。
@@ -38,7 +38,9 @@ resolved-path: docs/active/v2.1.2/project-governance/
 - 普通 CI、Release 和发布准备命令默认不使用 `-U`；仅人工故障排查可显式使用。
 - 不引入新 Starter、消费者契约工程、自动合并、文档自动改写或 BOM 精简。
 - v2.x 不移除 `Serializable` 公共泛型边界，不静默改变 BizException HTTP 200 语义。
-- 每个 Task 单独提交，提交信息使用中文 Conventional Commits，只提交该 Task 声明的文件及
+- 每个 Task 有且只有一个主提交，提交信息使用中文 Conventional Commits；独立审查产生的同一 Task
+  修复提交必须紧随主提交、只含该 Task 允许文件，并登记为 `Supplemental Commit SHAs`。主提交和补充
+  提交共同构成该 Task 的完整提交集合，只提交该 Task 声明的文件及
   `docs/active/v2.1.2/project-governance/plan.md` 的即时执行记录。
 - `Files` 中只有 `Create`、`Modify` 和满足结构化 Red 授权的 `Modify only if authorized` 是提交允许范围；
   `plan.md` 的执行元数据、Execution、Task Completion Gate 和对应 Acceptance Criteria 状态为每个 Task 的
@@ -159,7 +161,7 @@ flowchart TD
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** 43d491b
+- **Commit SHA:** 43d491b614c2372665c30df526c7440e5aefab51
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"! rg -n '<artifactId>maven-failsafe-plugin</artifactId>' mimir-boot-parent/pom.xml | tail -n +2 | rg . && rg -n '3.5.16' mimir-boot-parent/pom.xml","confirmed":true,"evidence":"Failsafe 仅位于 pluginManagement；Parent 第 38 行存在独立的 3.5.16 Boot Plugin 版本。"}]}
@@ -230,7 +232,8 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** c3949c5
+- **Commit SHA:** c3949c596cc66e4ae64d83525a2a925a4472eeb4
+- **Supplemental Commit SHAs:** ["7d270eff9002798d9dae5de2e39132bc51935be1"]
 - **Attempts:** 2
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"test ! -f scripts/ci-preflight.sh && rg -n '^  sonar:|./mvnw -B -U verify -Pci' .github/workflows/ci.yml","confirmed":true,"evidence":"同源 Bash 入口不存在；CI 同时存在独立 sonar Job 和带 -U 的 Maven 构建。"}]}
@@ -324,7 +327,7 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** cd63b23
+- **Commit SHA:** 6c85cdc8775ae19d21c6de791a0cc2e30279188e
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"rg -n '^  (build-verify|release):|\\-U' .github/workflows/release.yml .github/actions/maven-release-prepare/action.yml","confirmed":true,"evidence":"命中 build-verify（第 44 行）、release（第 86 行）以及 6 处 -U，证明重复前检和强制更新参数均存在。"}]}
@@ -393,7 +396,8 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** 8f0438c
+- **Commit SHA:** 2c8633439523cd38181e28f6e47a706047a796b7
+- **Supplemental Commit SHAs:** ["5ae63fa969f7a37878287c26561ac5dfa1a4e0d2"]
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"! rg -n 'github-actions-minor-patch|仅管理|已验证' .github/dependabot.yml mimir-boot-bom/README.md","confirmed":true,"evidence":"命令以 0 退出，确认 Actions 分组与 BOM 支持等级尚未存在。"}]}
@@ -468,7 +472,8 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** 4080501
+- **Commit SHA:** 04beb2ec0876fc9486847ed872721eea8b9266ce
+- **Supplemental Commit SHAs:** ["630209048350ec025e7d2291b09d674c90715212"]
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log -am test","status":"pass","evidence":"按预期以 exit 1 失败：旧两参数 API 返回伪造 X-Forwarded-For，且缺少单参数与显式可信代理 API。"}]}
@@ -539,7 +544,7 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** null
+- **Commit SHA:** 6b7d7ec736ab4d548b2dfb0dc85aa29ad65f4d57
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web -am test -Dtest=WebAutoConfigurationIT -Dsurefire.failIfNoSpecifiedTests=false","status":"pass","evidence":"按预期 exit 1：消费者 SimpleModule 因 JacksonConfig 的 modules(...) 被替换而未生效。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log,:mimir-boot-starter-mybatis -am test","status":"pass","evidence":"按预期依次暴露 Web 三类、同名 accessLogFilter 与用户 MybatisPlusInterceptor 不能覆盖默认 Bean。"}]}
@@ -551,7 +556,7 @@ Expected: **PASS**
 - [x] Red Result exists and passed
 - [x] Verify Result exists and passed
 - [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
+- [x] Commit SHA belongs to this task only
 - [x] Per-task AC checkbox synced
 
 **Step 1: Red**
@@ -608,29 +613,31 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] before 或 tracer 失败时业务调用次数为 0，已进入 Hook 的 cleanup 各执行 1 次并逆序。
-- [ ] 业务成功不被后置失败改写；业务异常保留为主异常，后置/清理异常只作为 suppressed 且剩余清理继续。
-- [ ] 两个并发或异步调用持有不同 Invocation，entered 列表和关闭状态互不串扰，重复完成只清理一次。
-- [ ] `completeSuccess`、`completeFailure` 与 `close` 发生三方竞态时，恰好一个终态路径执行，
+- [x] before 或 tracer 失败时业务调用次数为 0，已进入 Hook 的 cleanup 各执行 1 次并逆序。
+- [x] 业务成功不被后置失败改写；业务异常保留为主异常，后置/清理异常只作为 suppressed 且剩余清理继续。
+- [x] 两个并发或异步调用持有不同 Invocation，entered 列表和关闭状态互不串扰，重复完成只清理一次。
+- [x] `completeSuccess`、`completeFailure` 与 `close` 发生三方竞态时，恰好一个终态路径执行，
   after/onError 总执行次数至多 1、cleanup 精确 1 次且最终状态为 `CLOSED`。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHA:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHA:** 1449d95863a84753eae448ac41ba5ee8b2f9c829
+- **Supplemental Commit SHAs:** ["3ff1d168ebfd1a8b90050481f6d1cdc36e7d5fb8"]
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter-feign,:mimir-boot-starter-dubbo -am test","confirmed":true,"evidence":"新增 Invocation 用例后，RPC Core testCompile 以 exit 1 失败：RpcHookInvocation 与 RpcHookChain.open(RpcCallContext) 均不存在，共 6 个 cannot find symbol 错误。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter-feign,:mimir-boot-starter-dubbo -am test","confirmed":true,"evidence":"补充 Error 生命周期回归后，RpcExecutionTemplateTest.shouldCompleteFailureLifecycleWhenBusinessThrowsError 期望 [before, onError, cleanup]、实际 [before]，证明旧实现未处理 Throwable。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter-feign,:mimir-boot-starter-dubbo -am verify","status":"pass","evidence":"审查修复后 7 个 Reactor 模块 BUILD SUCCESS；RPC Core 27、Dubbo 31、Feign 21 测试均为零失败、零错误、零跳过，JaCoCo 门禁通过。"},{"cmd":"git diff --check && git show --check 1449d958 3ff1d16","status":"pass","evidence":"工作区与两条 T7 提交均无空白错误；独立复审确认 checked primary/suppressed、tracer 失败、双 Invocation 交错、三方竞争和 close 兜底全部闭合。"}]}
+- **AC Result:** {"pass":4,"total":4,"deferred":[],"details":{"AC1":"before 与 tracer inject 失败均验证业务调用为 0、已进入 Hook 逆序 cleanup。","AC2":"成功后置异常不改写结果；受检/运行时/Error 主异常保留，后置与 cleanup 异常作为 suppressed。","AC3":"两个 Invocation 在不同线程交错完成，分别验证 entered、suppressed、cleanup 与 CLOSED 状态隔离。","AC4":"ready(3)+go(1) 三方竞态证明仅一个终态路径、cleanup 精确一次。"}}
+- **Concerns:** 独立审查修复提交 `3ff1d16` 只包含 T7 文件，补齐受检异常、兜底关闭和并发测试。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -707,28 +714,28 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] 合法 ID 跨 Feign/Dubbo 传播；Dubbo 载体的非法 traceId 被替换为 32 位十六进制值，非法 requestId 在调用期间保持缺失且结束后恢复旧 MDC。
-- [ ] Scope 幂等关闭并只恢复两个自有键；自定义 RpcTracerBridge 存在时默认 Bean 不创建。
-- [ ] 仅存在 Micrometer 类但无自定义 TraceInterceptor 时，响应仍包含合法 `X-Trace-Id`。
-- [ ] Web 入站从 `X-Request-Id` 写入合法 requestId，缺失/非法时生成新值，请求结束后恢复旧值。
+- [x] 合法 ID 跨 Feign/Dubbo 传播；Dubbo 载体的非法 traceId 被替换为 32 位十六进制值，非法 requestId 在调用期间保持缺失且结束后恢复旧 MDC。
+- [x] Scope 幂等关闭并只恢复两个自有键；自定义 RpcTracerBridge 存在时默认 Bean 不创建。
+- [x] 仅存在 Micrometer 类但无自定义 TraceInterceptor 时，响应仍包含合法 `X-Trace-Id`。
+- [x] Web 入站从 `X-Request-Id` 写入合法 requestId，缺失/非法时生成新值，请求结束后恢复旧值。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHA:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHA:** 6e0b5e081d64fd735aaa8c518f1e7c4521d58811
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter-feign,:mimir-boot-starter-dubbo,:mimir-boot-starter-web -am test","confirmed":true,"evidence":"新增测试先以 testCompile 失败，缺少 MdcRpcTracerBridge、RpcTraceScope 与 requestId 常量。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-dubbo -am test -Dtest=RpcDubboFilterTest","confirmed":true,"evidence":"新增 Provider scope 断言在旧实现上失败，extractScope 未被调用。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-feign -am test -Dtest=FeignAutoConfigurationEndToEndTest","confirmed":true,"evidence":"真实 Web 入站测试初始无法编译，Feign 测试 classpath 缺少 Web Starter。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter-feign,:mimir-boot-starter-dubbo,:mimir-boot-starter-web -am clean install","status":"pass","evidence":"9 个 Reactor 模块 BUILD SUCCESS；四目标模块 Surefire 共 130 tests，0 failures，0 errors。"},{"cmd":"mise exec java@17 -- ./mvnw -B -f mimir-boot-starters/mimir-boot-starter-feign/pom.xml dependency:tree -Dscope=runtime -Dincludes=io.github.yggdrasil-labs:mimir-boot-starter-web -DoutputFile=target/web-runtime-tree.txt","status":"pass","evidence":"runtime tree 文件存在且不含 mimir-boot-starter-web。"},{"cmd":"mise exec java@17 -- ./mvnw -B -f mimir-boot-starters/mimir-boot-starter-feign/pom.xml dependency:tree -Dscope=test -Dincludes=io.github.yggdrasil-labs:mimir-boot-starter-web -DoutputFile=target/web-test-tree.txt","status":"pass","evidence":"test tree 含 io.github.yggdrasil-labs:mimir-boot-starter-web:jar:2.1.2-SNAPSHOT:test。"},{"cmd":"git show --check 6e0b5e0 && git diff --check","status":"pass","evidence":"提交与剩余工作树均无空白错误；独立复审补齐 Provider 异步 scope 与 Micrometer 响应头断言后结论 PASS。"}]}
+- **AC Result:** {"pass":4,"total":4,"deferred":[],"details":{"AC1":"Feign/Dubbo 端到端传播、非法 trace 生成、非法 request 调用期移除及旧 MDC 恢复均已验证。","AC2":"Scope 幂等且仅恢复 traceId/requestId；自定义 Bridge 触发默认 Bean 按类型回退。","AC3":"Micrometer classpath 用例驱动真实 TraceInterceptor 并断言合法响应头。","AC4":"Web 入站合法 requestId 写入；缺失/非法生成并在结束后恢复旧值。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -775,6 +782,9 @@ Expected: **PASS**
 
 **Files:**
 
+- Modify: `mimir-boot-starters/mimir-boot-starter-exception/pom.xml`（2026-08-13 授权：公开
+  `ConstraintViolationException` 处理器签名需要直接 `jakarta.validation-api` 编译依赖；不引入
+  Validation Starter 或改变运行时校验策略）
 - Modify: `mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/handler/MimirExceptionHandler.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/handler/MimirExceptionHandlerTest.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-exception/src/test/java/com/yggdrasil/labs/exception/config/ExceptionAutoConfigurationIT.java`
@@ -796,27 +806,27 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] 八类新增处理器按 Spring 语义映射：客户端错误为 400/404/406/413/415，返回值方法校验与
+- [x] 八类新增处理器按 Spring 语义映射：客户端错误为 400/404/406/413/415，返回值方法校验与
   `MissingPathVariableException` 为 500，并通过 ExceptionResponseFactory 返回统一结构。
-- [ ] BizException、未知异常和工厂失败回归测试保持现有 200/500/降级语义，日志不包含请求体。
+- [x] BizException、未知异常和工厂失败回归测试保持现有 200/500/降级语义，日志不包含请求体。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHA:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHA:** 85ab48d8e3bd8327fb8621ce90acbf059db925da
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-exception -am test","confirmed":true,"evidence":"先因 jakarta.validation-api 不在编译 classpath 失败；获授权加入最小 API 依赖后，新增测试以缺少八个 handler 方法的 9 个 cannot-find-symbol 错误失败。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-exception -am verify","status":"pass","evidence":"最终 5-Reactor BUILD SUCCESS；Exception Surefire 56、Failsafe 5，JaCoCo 门禁通过。"},{"cmd":"git show --check 85ab48d && git diff --check","status":"pass","evidence":"提交与剩余工作树均无空白错误；复审最终 PASS。"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"八类处理器经 ResponseEntity 明确状态，真实 MockMvc 证明自定义工厂返回 200 不会覆盖目标 404；方法入参 400、返回值 500、缺失路径变量 500。","AC2":"BizException、未知异常与工厂失败回归通过；新增工厂失败路径也保持目标 HTTP 状态和 R.fail 降级，日志仅记录净化字段与 URI。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -865,27 +875,27 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] 旧明文→新密文→环境变更后，Environment 和绑定 Bean 均为新明文。
-- [ ] 错误密钥刷新失败，Environment 与配置 Bean 保持旧明文，捕获日志不包含密钥、密文和解密明文。
-- [ ] 只有 Decision Evidence 中实际执行的契约场景失败时才修改运行时代码；成功刷新顺序失败时监听优先级先于 rebinder，其他失败只做对应不变量的最小修复。
+- [x] 旧明文→新密文→环境变更后，Environment 和绑定 Bean 均为新明文。
+- [x] 错误密钥刷新失败，Environment 与配置 Bean 保持旧明文，捕获日志不包含密钥、密文和解密明文。
+- [x] 只有 Decision Evidence 中实际执行的契约场景失败时才修改运行时代码；成功刷新顺序失败时监听优先级先于 rebinder，其他失败只做对应不变量的最小修复。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHA:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHA:** 347b17931a07e0531ab94639857035c06c20bbcb
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"command":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-nacos -am -Dit.test=NacosEncryptRefreshIT -Dfailsafe.failIfNoSpecifiedTests=false verify","exitCode":1,"failsafeTests":3,"failureKind":"contract","failedContracts":["refresh-order"],"runtimeChangeAuthorization":["refresh-order"]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-nacos -am -Dit.test=NacosEncryptRefreshIT -Dfailsafe.failIfNoSpecifiedTests=false verify","status":"pass","evidence":"Failsafe 3/3 通过；Nacos 单元测试 73/73 通过。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-nacos -am verify","status":"pass","evidence":"5 个 Reactor 模块 BUILD SUCCESS；Nacos Failsafe 3/3 通过，覆盖检查通过。"},{"cmd":"git diff --check && 独立复审","status":"pass","evidence":"diff 检查通过；复审 PASS，确认唯一最高优先级监听器、真实 rebinder 集成测试、回滚及日志脱敏。"}]}
+- **AC Result:** {"pass":3,"total":3,"deferred":[],"details":{"AC1":"成功刷新后 Environment 与真实绑定 Bean 均为新明文。","AC2":"错误密钥场景保持 Environment/Bean 的旧明文，捕获日志不含密钥、密文或解密明文。","AC3":"Decision Evidence 仅授权 refresh-order；提交仅修改 NacosEncryptAutoConfiguration 与两个测试文件，监听器为 Ordered.HIGHEST_PRECEDENCE。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -947,27 +957,27 @@ Testcontainers test-scope 依赖并保留 BOM 管理。该清理不宣称改变�
 
 **Acceptance Criteria:**
 
-- [ ] 临时 Maven 消费项目仅以 test scope 引入 Starter 时，Suite API 编译且 Engine 发现并执行测试。
-- [ ] Starter POM 不再包含内部未使用的 Testcontainers test 依赖；解析后的消费依赖树仍不含
+- [x] 临时 Maven 消费项目仅以 test scope 引入 Starter 时，Suite API 编译且 Engine 发现并执行测试。
+- [x] Starter POM 不再包含内部未使用的 Testcontainers test 依赖；解析后的消费依赖树仍不含
   `org.testcontainers`，BOM 中版本管理保留。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHA:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHA:** 76c6357d080bb2d9843b09e26c2d1d697b7461d7
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/test-suite-consumer.sh","confirmed":true,"evidence":"旧版 Starter 下游 testCompile 失败：org.junit.platform.suite.api 不存在，@Suite 与 @SelectClasses 无法解析。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci install && mise exec java@17 -- bash scripts/test-suite-consumer.sh","status":"pass","evidence":"15 模块 Reactor BUILD SUCCESS；临时消费者编译成功，Suite 运行 HiddenSuiteMember，汇总 Tests run: 1；脚本断言 marker、Suite 报告、无成员独立报告与无 org.testcontainers 消费树后退出 0。"},{"cmd":"bash -n scripts/test-suite-consumer.sh && git diff --check","status":"pass","evidence":"Shell 语法和 diff 检查均通过。"},{"cmd":"独立复审","status":"pass","evidence":"T11 reviewer PASS；确认 Maven scope 传递、动态消费者覆盖、Testcontainers 清理及 README 一致性。"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"动态消费者仅以 test scope 引入 Starter，Suite API 编译且 Engine 执行隐藏成员一次。","AC2":"Starter POM 无 Testcontainers，消费者树无 org.testcontainers，BOM 仍保留版本管理。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -1039,29 +1049,29 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] GOV-001—GOV-020 均为已验证、已关闭或按规则延期，未验证 P0/P1 数量为 0。
-- [ ] Java 17 同源预检、未暂存与已暂存 diff check、轻量 CI 结构断言全部通过，15 个 Reactor 模块成功。
-- [ ] Baseline 到 Implementation Head 之间每个提交只属于 T1—T11 的一个 Task，且仅含该 Task 的
+- [x] GOV-001—GOV-020 均为已验证、已关闭或按规则延期，未验证 P0/P1 数量为 0。
+- [x] Java 17 同源预检、未暂存与已暂存 diff check、轻量 CI 结构断言全部通过，15 个 Reactor 模块成功。
+- [x] Baseline 到 Implementation Head 之间每个提交只属于 T1—T11 的一个 Task，且仅含该 Task 的
   `Create`/`Modify` 允许文件与 `plan.md` 即时执行记录；其后最多一个仅含 T12 Files 的终验提交，T12 记录使用
   `final-record-exception`，最终工作区干净。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHA:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHA:** final-record-exception
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"bash scripts/verify-task-commits.test.sh","confirmed":true,"evidence":"校验器尚不存在时 exit 127，确认提交归属终验缺失。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查、轻量 CI 结构断言与 diff check 通过。"},{"cmd":"bash -n scripts/verify-task-commits.sh scripts/verify-task-commits.test.sh && bash scripts/verify-task-commits.test.sh","status":"pass","evidence":"覆盖正常提交前后、缺失/重复/区间外 SHA、额外提交、越界/只读路径、T10 授权、index 与工作区负例。"},{"cmd":"GOV 状态结构检查 && bash scripts/verify-task-commits.sh --print-t12-files0 docs/active/v2.1.2/project-governance/plan.md && git diff --check","status":"pass","evidence":"20 个 GOV 为 19 已验证、1 已关闭；证据结构、GOV-008 决策证据、冻结区间解析及差异检查均通过。"}]}
+- **AC Result:** {"pass":3,"total":3,"deferred":[],"details":{"AC1":"GOV-001—020 状态与验证/决策证据已同步，未验证 P0/P1 为 0。","AC2":"同源预检通过 15 模块，差异检查与 CI 结构断言通过。","AC3":"校验器 fixture 覆盖提交、范围、只读和 T10 条件授权反例；冻结区间主/补充提交双向完整覆盖。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only or equals `final-record-exception`
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only or equals `final-record-exception`
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -1126,7 +1136,7 @@ Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 File
 
 ## Acceptance Criteria
 
-- [ ] AC1: 普通 Push/PR 的核心质量门禁在本地可用同一入口复现，CI 只进行一次完整 Reactor 构建，Dependabot/fork/缺 Secret 不产生伪失败。
-- [ ] AC2: `verify -Pci` 同时执行 Surefire 与 Failsafe，Web/RPC/Nacos/Exception/Test Starter 的新增行为和兼容路径全部通过。
-- [ ] AC3: Release 只有一次前置验证且四类外部副作用仍可独立补偿；所有默认 Maven 命令不含 `-U`。
-- [ ] AC4: DOC-001—DOC-007、CI 静态规则、Markdown、15 模块构建、未暂存及已暂存 diff check 均为 0 error，GOV-001—GOV-020 状态可追溯。
+- [x] AC1: 普通 Push/PR 的核心质量门禁在本地可用同一入口复现，CI 只进行一次完整 Reactor 构建，Dependabot/fork/缺 Secret 不产生伪失败。
+- [x] AC2: `verify -Pci` 同时执行 Surefire 与 Failsafe，Web/RPC/Nacos/Exception/Test Starter 的新增行为和兼容路径全部通过。
+- [x] AC3: Release 只有一次前置验证且四类外部副作用仍可独立补偿；所有默认 Maven 命令不含 `-U`。
+- [x] AC4: DOC-001—DOC-007、CI 静态规则、Markdown、15 模块构建、未暂存及已暂存 diff check 均为 0 error，GOV-001—GOV-020 状态可追溯。

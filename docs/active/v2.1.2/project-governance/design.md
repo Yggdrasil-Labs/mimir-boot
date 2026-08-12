@@ -3,7 +3,7 @@ id: project-governance
 status: verified
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-11
+updated: 2026-08-13
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
@@ -29,6 +29,11 @@ Starter 修改。GOV-008 是兼容性约束，不形成独立实施流。
 - 完成主线 A 的 10 个 GOV 条目，同时保持现有公开替换点和 v2.x 公共边界可用。
 - 将版本、10 个 Starter、15 个 Reactor 模块和内部链接纳入 0-error 文档事实门禁。
 - v2.1.2 关闭时 GOV-001 至 GOV-020 均已验证、关闭或按规则延期，P0/P1 未关闭数为 0。
+
+## 实施验证
+
+本设计的运行时与构建契约已由 T1—T11 的定向 AC 验证。T12 使用 Java 17 同源预检、
+文档状态核对和提交归属校验器复核版本级结果；GOV-008 保持既有公共边界并记录为 3.0 候选。
 
 ## Non-Goal
 

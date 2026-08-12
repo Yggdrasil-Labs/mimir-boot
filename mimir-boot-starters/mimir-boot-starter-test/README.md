@@ -2,6 +2,10 @@
 
 Mimir Boot 测试 Starter，提供统一的测试依赖管理、测试工具类和测试基类。
 
+## v2.1.2 治理验证
+
+下游只以 test scope 引入 Starter 即可编译和运行 JUnit Suite；Starter 不再内置未使用的 Testcontainers 依赖，见 T11 与 T12 AC2。
+
 引入该 Starter 后，下游测试模块除了可以使用 `BaseUnitTest`、`BaseIntegrationTest`、`BaseWebTest`
 和 `@MimirBootTest` 等抽象外，也可以直接使用 `spring-boot-starter-test` 提供的常用测试能力，
 例如 JUnit 5、Mockito、AssertJ、Spring Test 与 MockMvc 等，无需再额外补充基础测试依赖。

@@ -3,7 +3,7 @@ version: v2.1.2
 status: in-progress
 branch: main
 created: 2026-07-30
-updated: 2026-08-11
+updated: 2026-08-13
 ---
 
 # v2.1.2 活跃需求
@@ -15,7 +15,7 @@ updated: 2026-08-11
 
 | 需求 | 路径 | 状态 | 简述 |
 |------|------|------|------|
-| 项目治理 | [`project-governance/`](./project-governance/) | 治理范围与设计已确认，待实施 | 20 项中高收益治理需求，分 CI/文档治理与功能代码优化两条主线 |
+| 项目治理 | [`project-governance/`](./project-governance/) | 治理验证完成 | 20 项中高收益治理需求已完成 CI/文档治理与功能代码优化两条主线验证 |
 
 ## 版本边界
 

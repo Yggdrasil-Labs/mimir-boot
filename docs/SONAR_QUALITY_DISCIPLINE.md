@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-26
+updated: 2026-08-13
 ---
 
 # SonarCloud 质量纪律
@@ -16,8 +16,9 @@ updated: 2026-07-26
 
 ## 2. 当前质量门禁
 
-CI 的 Sonar job 会在 `build` 成功后执行 `clean verify sonar:sonar -Pci`，并上传各模块的
-JaCoCo XML 报告。新代码必须满足下列条件：
+CI 的单一 Build Job 先执行同源 `scripts/ci-preflight.sh`，具备可信事件与三项配置时，
+在同一次 Maven invocation 中追加 `sonar:sonar`，并上传各模块的 JaCoCo XML 报告；不具备资格时只跳过分析。
+新代码必须满足下列条件：
 
 | 指标 | 要求 | 处理原则 |
 |---|---:|---|
@@ -40,7 +41,7 @@ JaCoCo XML 报告。新代码必须满足下列条件：
 2. 使用仓库目标运行时执行完整门禁：
 
    ```bash
-   mise exec java@17 -- ./mvnw -o -B -Pci verify
+   mise exec java@17 -- bash scripts/ci-preflight.sh
    ```
 
 3. 运行 `git diff --check`；格式问题由 `verify` 内的 Spotless 检查兜底，不应依赖 CI 自动修复。

@@ -1,9 +1,9 @@
 ---
 id: project-governance
-status: in-progress
+status: verified
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-11
+updated: 2026-08-13
 ---
 
 # Project Governance
@@ -24,9 +24,9 @@ updated: 2026-08-11
 
 | 议题 | 范围 | 收益 | 状态 | 入口 |
 |------|------|------|------|------|
-| 整体设计审查问题整改 | GOV-001—GOV-010 | 中—高 | 已设计 | [overall-design-review.md](./overall-design-review.md) |
-| 单人维护提效 | GOV-011—GOV-015 | 中—高 | 已设计 | [solo-maintainer-efficiency.md](./solo-maintainer-efficiency.md) |
-| Starter 功能完整性 | GOV-016—GOV-020 | 中—高 | 已设计 | [starter-functional-completeness.md](./starter-functional-completeness.md) |
+| 整体设计审查问题整改 | GOV-001—GOV-010 | 中—高 | 已验证/已关闭 | [overall-design-review.md](./overall-design-review.md) |
+| 单人维护提效 | GOV-011—GOV-015 | 中—高 | 已验证 | [solo-maintainer-efficiency.md](./solo-maintainer-efficiency.md) |
+| Starter 功能完整性 | GOV-016—GOV-020 | 中—高 | 已验证 | [starter-functional-completeness.md](./starter-functional-completeness.md) |
 
 ## 实施主线
 
@@ -36,6 +36,7 @@ updated: 2026-08-11
 | A：功能代码优化 | GOV-002—006、016—020 | 再修复运行时上下文、失败语义和 Starter 默认能力缺口 | 后实施 |
 
 GOV-008 是 v2.x 兼容性边界决策，不修改生产 API；编译回归并入 T1，不形成第三条实施主线。
+其余 GOV-001—GOV-020 的实现与版本级门禁证据见各专题的 `验证证据` 和 T12 AC1—AC3。
 
 ## 范围原则
 

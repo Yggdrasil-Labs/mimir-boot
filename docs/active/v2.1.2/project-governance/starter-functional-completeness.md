@@ -1,9 +1,9 @@
 ---
 id: starter-functional-completeness
-status: in-progress
+status: verified
 owner: Yggdrasil Labs
 created: 2026-08-02
-updated: 2026-08-11
+updated: 2026-08-13
 ---
 
 # Starter 功能完整性治理清单
@@ -26,7 +26,8 @@ updated: 2026-08-11
 - **边界**：只管理本 Bridge 拥有的 MDC 键；同步调用结束恢复原值，异步完成回调不得依赖调用线程 MDC。
 - **关闭条件**：Feign 与 Dubbo 默认场景均能传播合法 ID；非法 ID 不进入下游 MDC；调用完成后原 MDC 恢复；
   自定义 Bridge 时默认 Bridge 不创建。
-- **状态**：已设计
+- **状态**：已验证
+- **验证证据**：T8 AC1—AC4；T12 AC2。
 
 ## GOV-017：Spring 6 常见 HTTP 异常落入通用 500
 
@@ -41,7 +42,8 @@ updated: 2026-08-11
 - **边界**：`BizException` 返回 HTTP 200 的 2.x 兼容语义不变，不重新设计业务错误模型。
 - **关闭条件**：每类异常的 HTTP 状态、错误码和响应结构均有可断言测试；入参校验为 400，返回值校验
   与缺少路径变量为 500，未知服务端异常仍为 500。
-- **状态**：已设计
+- **状态**：已验证
+- **验证证据**：T9 AC1、AC2；T12 AC2。
 
 ## GOV-018：Nacos 动态刷新闭环缺少证据
 
@@ -55,7 +57,8 @@ updated: 2026-08-11
   日志安全对应路径，测试通过则不改运行时代码。
 - **边界**：不直接改写 Nacos PropertySource，不引入 Nacos 私有监听 API，不在日志输出密文或明文。
 - **关闭条件**：密文变更并发布环境变更事件后，Environment 与配置 Bean 都读取新明文；错误密钥明确失败。
-- **状态**：已设计
+- **状态**：已验证
+- **验证证据**：T10 AC1—AC3；T12 AC2。
 
 ## GOV-019：JUnit Suite 对下游不可见
 
@@ -69,7 +72,8 @@ updated: 2026-08-11
 - **边界**：不把数据库、消息队列或缓存容器模块加入基础测试 Starter。
 - **关闭条件**：下游只以 test scope 引入本 Starter 即可编译并运行一个 JUnit Suite；消费依赖树继续
   不包含 Testcontainers，且 BOM 版本管理保留。后两项是依赖清理回归，不作为新增功能收益。
-- **状态**：已设计
+- **状态**：已验证
+- **验证证据**：T11 AC1、AC2；T12 AC2。
 
 ## GOV-020：默认自动装配缺少一致覆盖规则
 
@@ -83,7 +87,8 @@ updated: 2026-08-11
   用户 `MybatisPlusInterceptor` 完整替换 Starter 实例。
 - **边界**：不新增 Customizer API，不自动合并用户与 Starter 的 MyBatis 内部拦截器。
 - **关闭条件**：每个默认组件均有上下文测试证明默认创建、用户提供时回退且容器中只有一个有效实例。
-- **状态**：已设计
+- **状态**：已验证
+- **验证证据**：T6 AC2；T12 AC2。
 
 ## 明确不采纳
 

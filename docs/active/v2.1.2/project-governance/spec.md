@@ -1,9 +1,9 @@
 ---
 id: project-governance
-status: in-progress
+status: verified
 owner: Yggdrasil Labs
 created: 2026-07-30
-updated: 2026-08-11
+updated: 2026-08-13
 version: 2.1.2
 resolved-path: docs/active/v2.1.2/project-governance/
 ---
@@ -17,6 +17,11 @@ resolved-path: docs/active/v2.1.2/project-governance/
 
 实施范围分为两条主线：先完成 CI 与文档治理，使后续变更在 Push 前即可复现核心门禁；
 再实施功能代码优化。GOV-008 只定义 v2.x 兼容性边界，不形成第三条实施主线。
+
+## 实施验证
+
+GOV-001—GOV-020 已按 T1—T11 的验收结果完成，GOV-008 以 v2.x 保持兼容的决策关闭。
+版本级预检、文档状态与提交归属由 T12 AC1—AC3 复核。
 
 ## Workstreams
 

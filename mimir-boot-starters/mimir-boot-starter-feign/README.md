@@ -2,6 +2,10 @@
 
 Feign 接入层，基于 RPC Core 统一调用钩子与上下文传播，治理/观测/安全能力由外部 Starter（log/metrics/security/governance 等）按需接入。
 
+## v2.1.2 治理验证
+
+Feign 真实 HTTP 链路会传播合法 traceId/requestId，并仅在测试 scope 引入 Web Starter；生命周期失败语义见 T7、T8 与 T12 AC2。
+
 ## 模块概述和用途
 
 - 定位：Feign 适配层，复用 RPC Core 抽象

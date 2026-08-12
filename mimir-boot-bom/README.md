@@ -2,6 +2,10 @@
 
 Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理所有第三方依赖版本，确保依赖兼容性和版本一致性。
 
+## v2.1.2 治理验证
+
+宽 BOM 保持兼容边界。每个显式管理依赖均标注为“已验证”或“仅管理”，分类由 T4 AC2 与 T12 AC1、AC2 复核。
+
 ## 📋 概述
 
 `mimir-boot-bom` 是 Maven BOM（Bill of Materials）模块，通过 `dependencyManagement` 统一管理项目中所有第三方依赖的版本。使用 BOM 可以：

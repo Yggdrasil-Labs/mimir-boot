@@ -2,6 +2,10 @@
 
 Dubbo 接入层，基于 RPC Core 统一过滤调用并暴露可插拔钩子，治理/观测/安全能力由外部 Starter（log/metrics/security/governance 等）接入。
 
+## v2.1.2 治理验证
+
+Consumer/Provider 会传播并校验合法 traceId/requestId；Provider 在返回前关闭自身 Scope，异步 Hook 仍由完成回调唯一收尾，见 T7、T8 与 T12 AC2。
+
 ## 模块概述和用途
 
 - 定位：Dubbo 适配层，复用 RPC Core 抽象

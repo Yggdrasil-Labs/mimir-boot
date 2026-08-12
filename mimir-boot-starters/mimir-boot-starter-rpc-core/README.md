@@ -2,6 +2,10 @@
 
 RPC 内核抽象模块，提供统一调用模型、上下文与可插拔扩展点，供 Dubbo/Feign 等 RPC 框架适配。治理、观测、安全等具体实现由其他 Starter（log/metrics/security/governance 等）按需接入。
 
+## v2.1.2 治理验证
+
+默认 MDC Bridge 传播合法 traceId/requestId，Scope 只恢复自身两个键；Hook 生命周期保留业务主结果并以最佳努力完成清理，见 T7、T8 与 T12 AC2。
+
 ## 模块概述和用途
 
 - 定位：企业级 RPC 基线抽象，不耦合具体治理/观测/安全实现
