@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -127,6 +128,78 @@ class RpcHookChainTest {
         Assertions.assertTrue(afterCalls.get() + errorCalls.get() <= 1);
         Assertions.assertTrue(first.isClosed());
         Assertions.assertFalse(second.isClosed());
+    }
+
+    @Test
+    void shouldWaitForBeforeToFinishBeforeTerminalCleanup() throws Exception {
+        List<String> events = java.util.Collections.synchronizedList(new ArrayList<>());
+        CountDownLatch beforeStarted = new CountDownLatch(1);
+        CountDownLatch releaseBefore = new CountDownLatch(1);
+        CountDownLatch terminalStarted = new CountDownLatch(1);
+        RpcHook hook = new RpcHook() {
+            @Override
+            public void before(RpcCallContext context) {
+                events.add("before-started");
+                beforeStarted.countDown();
+                await(releaseBefore);
+                events.add("before-finished");
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                events.add("cleanup");
+            }
+        };
+        RpcHookInvocation invocation = new RpcHookChain(List.of(hook)).open(context());
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            var beforeFuture = executor.submit(invocation::before);
+            Assertions.assertTrue(beforeStarted.await(5, TimeUnit.SECONDS));
+            var terminalFuture = executor.submit(() -> {
+                terminalStarted.countDown();
+                invocation.completeSuccess(RpcCallResult.success(Duration.ZERO));
+            });
+
+            Assertions.assertTrue(terminalStarted.await(5, TimeUnit.SECONDS));
+            Assertions.assertFalse(terminalFuture.isDone());
+
+            releaseBefore.countDown();
+            beforeFuture.get(5, TimeUnit.SECONDS);
+            terminalFuture.get(5, TimeUnit.SECONDS);
+        } finally {
+            releaseBefore.countDown();
+            executor.shutdownNow();
+        }
+
+        Assertions.assertEquals(List.of("before-started", "before-finished", "cleanup"), events);
+        Assertions.assertTrue(invocation.isClosed());
+    }
+
+    @Test
+    void shouldRejectTerminalReentryFromBeforePhase() {
+        AtomicReference<RpcHookInvocation> invocationRef = new AtomicReference<>();
+        AtomicInteger cleanupCalls = new AtomicInteger();
+        RpcHook hook = new RpcHook() {
+            @Override
+            public void before(RpcCallContext context) {
+                Assertions.assertThrows(
+                        IllegalStateException.class,
+                        () -> invocationRef.get().completeSuccess(RpcCallResult.success(Duration.ZERO)));
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                cleanupCalls.incrementAndGet();
+            }
+        };
+        RpcHookInvocation invocation = new RpcHookChain(List.of(hook)).open(context());
+        invocationRef.set(invocation);
+
+        invocation.before();
+        invocation.completeSuccess(RpcCallResult.success(Duration.ZERO));
+
+        Assertions.assertEquals(1, cleanupCalls.get());
+        Assertions.assertTrue(invocation.isClosed());
     }
 
     @Test
@@ -250,6 +323,15 @@ class RpcHookChainTest {
             ready.countDown();
             go.await();
             action.run();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(exception);
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new AssertionError(exception);

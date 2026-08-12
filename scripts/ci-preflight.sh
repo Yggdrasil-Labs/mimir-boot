@@ -40,9 +40,13 @@ build_maven_args() {
 }
 
 verify_reports() {
+  local -a surefire_reports=()
   local -a failsafe_reports=()
 
-  find . -path '*/target/surefire-reports/TEST-*.xml' -type f -size +0c -print -quit | rg .
+  mapfile -d '' surefire_reports < <(find . -path '*/target/surefire-reports/TEST-*.xml' -type f -size +0c -print0)
+  test "${#surefire_reports[@]}" -gt 0
+  ! rg 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${surefire_reports[@]}"
+  ! rg 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${surefire_reports[@]}"
   mapfile -d '' failsafe_reports < <(find . -path '*/target/failsafe-reports/TEST-*.xml' -type f -print0)
   test "${#failsafe_reports[@]}" -ge 2
   test "$(rg -o --no-filename '<testcase ' "${failsafe_reports[@]}" | wc -l)" -ge 11

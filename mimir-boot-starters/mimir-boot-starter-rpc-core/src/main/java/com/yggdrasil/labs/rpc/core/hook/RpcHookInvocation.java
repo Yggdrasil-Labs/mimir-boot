@@ -21,7 +21,9 @@ public final class RpcHookInvocation implements AutoCloseable {
     private final RpcCallContext context;
     private final List<RpcHook> hooks;
     private final List<RpcHook> entered = Collections.synchronizedList(new ArrayList<>());
-    private final AtomicReference<State> state = new AtomicReference<>(State.OPEN);
+    private final Object lifecycleMonitor = new Object();
+    private final AtomicReference<State> state = new AtomicReference<>(State.NEW);
+    private Thread beforeThread;
 
     RpcHookInvocation(RpcCallContext context, List<RpcHook> hooks) {
         this.context = context;
@@ -32,10 +34,26 @@ public final class RpcHookInvocation implements AutoCloseable {
      * 依序执行前置阶段。Hook 会在调用前登记，以便其前置阶段抛错时仍可获得清理。
      */
     public void before() {
-        ensureOpen();
-        for (RpcHook hook : hooks) {
-            entered.add(hook);
-            hook.before(context);
+        synchronized (lifecycleMonitor) {
+            if (state.get() != State.NEW) {
+                throw new IllegalStateException("RPC Hook invocation before phase is already running or completed");
+            }
+            state.set(State.BEFORE_RUNNING);
+            beforeThread = Thread.currentThread();
+        }
+        try {
+            for (RpcHook hook : hooks) {
+                entered.add(hook);
+                hook.before(context);
+            }
+        } finally {
+            synchronized (lifecycleMonitor) {
+                beforeThread = null;
+                if (state.get() == State.BEFORE_RUNNING) {
+                    state.set(State.READY);
+                }
+                lifecycleMonitor.notifyAll();
+            }
         }
     }
 
@@ -92,14 +110,39 @@ public final class RpcHookInvocation implements AutoCloseable {
         return state.get() == State.CLOSED;
     }
 
-    private void ensureOpen() {
-        if (state.get() != State.OPEN) {
-            throw new IllegalStateException("RPC Hook invocation is already completing or closed");
+    private boolean claimCompletion() {
+        synchronized (lifecycleMonitor) {
+            waitForBeforeToFinish();
+            if (state.get() == State.NEW) {
+                state.set(State.COMPLETING);
+                return true;
+            }
+            if (state.get() != State.READY) {
+                return false;
+            }
+            state.set(State.COMPLETING);
+            return true;
         }
     }
 
-    private boolean claimCompletion() {
-        return state.compareAndSet(State.OPEN, State.COMPLETING);
+    private void waitForBeforeToFinish() {
+        boolean interrupted = false;
+        try {
+            while (state.get() == State.BEFORE_RUNNING) {
+                if (beforeThread == Thread.currentThread()) {
+                    throw new IllegalStateException("RPC Hook invocation cannot complete from its before phase");
+                }
+                try {
+                    lifecycleMonitor.wait();
+                } catch (InterruptedException exception) {
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private List<RpcHook> enteredSnapshot() {
@@ -145,7 +188,9 @@ public final class RpcHookInvocation implements AutoCloseable {
     }
 
     private enum State {
-        OPEN,
+        NEW,
+        BEFORE_RUNNING,
+        READY,
         COMPLETING,
         CLOSED
     }

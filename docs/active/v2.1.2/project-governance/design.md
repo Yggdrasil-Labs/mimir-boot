@@ -131,83 +131,30 @@ BOM 的依赖平台和 Parent 的构建插件都引用：
 - Parent 的 `maven.spring.boot.plugin.version` 删除或改为 `${spring.boot.version}`，不得再维护第二个数值。
 - 发布后的扁平 POM 必须包含可解析的具体版本，不泄漏无法解析的仓库内部属性。
 
-### 2. CI 单次构建与文档门禁
+### 2. CI 单次构建与轻量预检
 
-服务 Behavior“构建与发布门禁可信”和“文档与依赖维护自动化”。
+服务 Behavior“构建与发布门禁可信”。为降低单人维护成本，普通 CI 不引入项目级 Node 工具链、YAML 解析器或
+文档治理脚本；文档事实与链接治理由独立文档任务处理。
 
-文件：`.github/workflows/ci.yml`、`.gitignore`、新增 `package.json`、`package-lock.json`、
-`scripts/ci-preflight.sh`、`scripts/ci-preflight.test.sh`、`scripts/lint-ci.mjs`、`scripts/lint-docs.mjs`、
-`scripts/sonar-eligibility.mjs`
+文件：`.github/workflows/ci.yml`、`scripts/ci-preflight.sh`。
 
 #### CI Job
 
-仓库新增唯一的核心预检入口：
+唯一预检入口为 `bash scripts/ci-preflight.sh`。它要求 Java 17，默认以一次
+`./mvnw -B -Pci clean verify` 构建整个 Reactor；`RUN_SONAR` 只允许 `true|false`，true 路径先要求
+`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 均非空，再在同一次 Maven invocation 中追加
+`sonar:sonar` 以及 host、organization、project key、JaCoCo XML 和 Quality Gate 参数。Token 始终只通过
+环境变量供 Scanner 读取，绝不进入命令行或输出。
 
-```bash
-bash scripts/ci-preflight.sh
-```
+Maven 返回后，预检必须确认至少一份非空 Surefire XML 且零 failures/errors/skipped；至少两份 Failsafe
+XML、至少 11 个 testcase 且零 failures/errors/skipped；并存在非空 JaCoCo XML。下界避免新增集成测试时
+将正常增长误判为失败。
 
-脚本要求 Java 17 和 Node.js 22，依次执行 `npm ci --ignore-scripts`、`npm test`、Markdown lint、项目事实
-检查和 Workflow 静态检查。`RUN_SONAR` 只允许 `true|false`，本地默认 `false`；脚本通过可单测的
-`build_maven_args` 函数建立唯一 Maven 参数数组：false 时执行 `./mvnw -B -Pci verify`；true 时先要求
-`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 均非空，再在同一次 invocation 中执行：
-
-```text
-./mvnw -B -Pci verify sonar:sonar
--Dsonar.host.url=https://sonarcloud.io
--Dsonar.organization=$SONAR_ORGANIZATION
--Dsonar.projectKey=$SONAR_PROJECT_KEY
--Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
--Dsonar.qualitygate.wait=true
--Dsonar.qualitygate.timeout=300
-```
-
-`SONAR_TOKEN` 只通过环境变量供 Scanner 读取，不进入命令参数、stdout 或测试快照；organization 与
-project key 作为 Maven 属性进入参数数组。`scripts/ci-preflight.test.sh` source 预检脚本并直接测试
-`build_maven_args`：false 路径只有 `verify`，true 路径参数完整，缺少任一配置时在 Maven 启动前失败，
-且参数和输出均不包含 token 值。脚本主流程用 `BASH_SOURCE` guard 隔离 source 与实际执行。
-Maven 返回后，用一个 NUL-safe 报告数组断言至少存在 2 个 Failsafe XML；同一数组以
-`rg -o --no-filename '<testcase '` 统计不少于基线 11 个 testcase，并断言失败数为 0；最后断言至少
-存在 1 个 JaCoCo XML。这里使用下界而非精确值，避免后续增加集成测试时把正常增长误判为 CI 失败。
-CI 与本地都调用该脚本；本地推荐入口为：
-
-```bash
-mise exec java@17 node@22 -- bash scripts/ci-preflight.sh
-```
-
-`package.json` 只承载治理工具，精确锁定 `markdownlint-cli2@0.23.2` 和 `yaml@2.9.0`，并提交
-lockfile；不得引入应用运行时 Node 依赖。`.gitignore` 必须忽略根目录和子目录的 `node_modules/`，
-使本地预检产生的可重建依赖目录不进入任务提交范围或终验工作区判断。
-
-`ci.yml` 保留一个核心 Build Job：
-
-```text
-checkout PR merge ref / push ref (fetch-depth=0)
--> setup Java 17 + Maven cache
--> setup Node 22 + npm cache
--> 计算 Sonar eligibility
--> 仅调用一次 bash scripts/ci-preflight.sh（RUN_SONAR + 三项 Sonar 配置）
--> always 上传 Surefire/Failsafe/JaCoCo 报告
-```
-
-- 删除独立 `sonar` Job，不通过 artifact 传递整个多模块 `target/`。
-- 不使用 `paths`/`paths-ignore` 跳过整个 Workflow，避免 required check 因跳过而长期 Pending。
-- Pull Request 必须检出 GitHub 生成的 PR merge ref；删除“只检出主仓库就不会执行 fork 代码”的误导注释。
-- Build 步骤不使用 `-U`，且每次只启动一次 Maven Reactor。
-- `RUN_SONAR=true` 时 `sonar:sonar` 必须紧跟同一次 Maven invocation 的 `verify`；
-  `sonar-maven-plugin` 继续由 POM 的显式版本属性锁定，不能退回“解析最新版本”。
-- 无条件执行 `sonar-eligibility.mjs`，只把事件名、actor、仓库名、PR head 仓库名和三个 Sonar Secret
-  映射到该 Step；脚本把且只把 `run=true|false` 追加写入 `GITHUB_OUTPUT`，stdout 不作为 Step output，
-  不得输出 Secret 内容。单元测试为 `GITHUB_OUTPUT` 提供临时文件并读取该文件断言结果。
-- 资格公式固定为：三个配置值均非空、actor 不是 Dependabot，并且事件是主仓库 push，或事件是
-  `pull_request` 且 PR head 仓库等于当前仓库。唯一 Build Step 把
-  `steps.sonar-eligibility.outputs.run` 映射为 `RUN_SONAR`，并把三个 Sonar Secret 映射为同名环境变量，
-  但自身不带 `if`。`SONAR_TOKEN` 不得转成命令行参数。
-- Sonar 跳过不得改变 Build Job 的成功判定；预检必须输出固定的非敏感状态行
-  `Sonar analysis: skipped (not eligible)`，不得依赖不存在的独立 Sonar Step 展示 skipped 状态。
-- Sonar 确实执行后若扫描或质量门禁失败，Build Job 失败；不得用 `continue-on-error` 隐藏真实问题。
-- Sonar 命令固定包含 host、organization、project key、JaCoCo XML 路径和 Quality Gate 等待参数；
-  上传成功但 Quality Gate 失败仍必须返回非 0。
+`ci.yml` 仅保留一个 Build Job：checkout、Java 17 + Maven cache、Markdown lint、一次预检调用和报告上传。
+它不使用 `-U`、独立 Sonar Job、`paths`/`paths-ignore` 或项目级 Node 步骤。Sonar 仅在可信 push 且三项配置
+齐全时运行；所有 PR、fork、Dependabot、缺配置和本地默认路径继续执行核心预检并输出
+`Sonar analysis: skipped (not eligible)`。三个 Sonar 环境变量也仅在 push 映射真实 Secret，避免 PR 代码接触
+凭据。
 - Job 权限保持 `contents: read`；核心预检不读取发布 Secret，不使用 `pull_request_target`。
 - Artifact 上传保持 `if: always()`，但报告缺失由预检脚本在上传前明确失败，不依赖 artifact action 的默认行为判断。
 - 保留普通 CI 的同分支取消策略；Release 保留 `cancel-in-progress: false` 与 `queue: max`，不得改成
@@ -217,7 +164,7 @@ checkout PR merge ref / push ref (fetch-depth=0)
 
 | 类型 | 是否阻断 | 设计处理 |
 |------|----------|----------|
-| Markdown、事实、Workflow 静态、格式、编译、测试、覆盖率失败 | 是 | 本地与 CI 同源命令，Push 前可复现 |
+| Markdown、格式、编译、测试、覆盖率失败 | 是 | 本地与 CI 同源命令，Push 前可复现 |
 | Failsafe/JaCoCo 报告缺失 | 是 | 预检脚本给出专用错误，不产生“构建绿但报告空” |
 | Dependabot、fork 或 Secret 缺失 | 否 | 仅 Sonar 条件跳过，核心门禁照常执行 |
 | Sonar 已进入执行后失败 | 是 | 视为真实质量门禁或外部服务故障，由同一 Build Step 失败，不触发第二次构建 |
@@ -228,23 +175,13 @@ checkout PR merge ref / push ref (fetch-depth=0)
 | 路径 | Sonar 资格 | Maven 目标 | 可观察结果 |
 |------|------------|------------|------------|
 | 主仓库 push，三项配置完整 | true | `verify sonar:sonar` + 完整项目参数 | 扫描与 Quality Gate 参与 Build 结果 |
-| 主仓库内部 PR，三项配置完整 | true | `verify sonar:sonar` + 完整项目参数 | 扫描与 Quality Gate 参与 Build 结果 |
+| 主仓库内部 PR，三项配置完整 | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
 | fork PR | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
 | Dependabot | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
 | 任一 Sonar 配置缺失 | false | `verify` | 固定日志记录 skipped，核心门禁继续 |
 | 本地默认执行 | false | `verify` | 无需 Sonar 配置即可复现核心门禁 |
 
-六条路径是普通 CI 的冻结验收矩阵；终审不得再用新的路径分类扩张本版本范围。
-
-#### 文档事实检查 CLI
-
-```text
-node scripts/lint-docs.mjs
-```
-
-输入：仓库当前工作树，只读。
-
-输出：每个错误一行，包含规则 ID、文件路径、实际值和期望值；无错误时退出码 0，有错误时退出码 1。
+上述路径是普通 CI 的冻结验收矩阵；终审不得再用新的路径分类扩张本版本范围。
 
 检查规则固定为：
 
@@ -274,38 +211,6 @@ DOC-006 只做轻量状态约束：`讨论中` 和 `已设计` 不要求验证�
 它不生成治理契约，也不解析自然语言结论。
 
 脚本不得写文件，不读取网络，不把描述性文案纳入判断。
-
-#### Workflow 静态检查 CLI
-
-```text
-node scripts/lint-ci.mjs
-```
-
-该脚本用 `yaml@2.9.0` 解析 `.github/workflows/*.yml` 和 `.github/dependabot.yml`，并在 Push 前检查：
-
-- 普通 CI 不含 `pull_request_target` 和整个 Workflow 的 `paths`/`paths-ignore` 过滤。
-- 普通 CI 只调用一次预检脚本，脚本只启动一次 Maven Reactor；目标顺序固定为 `verify` 后可选
-  `sonar:sonar`，不得包含 `clean`、`package` 或第二次 Maven 调用。
-- Build Step 无条件执行，`RUN_SONAR` 和三个 Sonar 配置均来自明确的环境映射；true 路径包含 host、
-  organization、project key、JaCoCo XML 和 Quality Gate 参数，Token 只通过环境变量传递。
-- 六路径矩阵逐项成立；fork、Dependabot、缺 Secret 和本地默认路径只跳过 Sonar 并输出固定状态行，
-  核心预检 Step 不带条件。
-- Release 只有一个前置验证 Job；解析后的 `needs` 图、Job `if`、最小权限、并发组和手动补偿选择
-  与变更前的语义快照一致，外部发布与补偿 Job 都仍指向该前置 Job。
-- 所有普通和发布 Maven 命令不含 `-U`。
-- 所有外部 `uses` 引用继续使用完整 commit SHA，并保留版本注释；仓库内 `./.github/actions/*` 例外。
-
-正常时退出码 0；错误时逐条输出规则 ID、文件和 YAML 路径后退出 1。测试使用最小 YAML fixture
-覆盖合法、重复构建、缺失 Sonar 参数、Token 进入命令行、错误 Secret 条件、`pull_request_target`、
-`-U`、未固定 Action 引用，以及 Release
-`needs`、`if`、权限、并发或手动补偿选择任一漂移。
-`sonar-eligibility.mjs` 与 `ci-preflight.test.sh` 共同覆盖主仓库 push、内部 PR、fork PR、Dependabot、
-任一 Secret 为空和本地默认六条路径。
-
-规则按修改它所验证对象的 Task 原子启用，避免中间提交被最终态规则误判：T2 只启用普通 CI、Sonar
-资格、外部 Action 固定和 DOC-001—DOC-006；T3 在同一提交修改 Release 并启用 Release 单一前检、
-补偿结构和 Release `-U` 规则；T4 在同一提交修改 Dependabot/BOM 分类并启用对应规则与 DOC-007。
-每个 Task 的 Verify 只要求截至该 Task 已启用的规则全部通过，T4 之后 `ci-preflight.sh` 执行完整最终规则集。
 
 ### 3. Release 前置验证
 
@@ -616,27 +521,11 @@ public Object handleNoResourceFoundException(
 自动配置监听顺序，`rollback`/`log-safety` 只允许修改解密处理器对应不变量。错误密钥路径必须明确
 失败，Environment 与配置 Bean 保持刷新前的旧明文，日志不得包含密钥、密文和明文。
 
-### 12. 任务提交归属校验
+### 12. 任务提交归属验收记录
 
-服务版本级终验，不改变运行时行为。
-
-`scripts/verify-task-commits.mjs` 只读解析 `plan.md` 的 Baseline、Implementation Head、T1—T11
-Execution SHA 与 T1—T12 Files 清单，并读取 Git 提交树。只有 `Create`、`Modify` 和满足结构化 Red
-授权的 `Modify only if authorized` 路径可进入对应 Task 提交；仓库内 `Test (read-only baseline)`
-路径必须保持未修改，外部临时 fixture 不进入 Git 范围。它验证：两个边界提交存在；T1—T11 各有一个
-40 位唯一 SHA；这些 SHA 的集合恰好等于 `Baseline..ImplementationHead` 的全部提交，不限制同一并行
-组的提交顺序；每个提交的文件都是对应 Task 声明范围的子集。T10 条件授权读取其结构化 Red Result，
-并以 `git diff-tree` 检查已记录的 Task commit，而不是检查当前未暂存差异。
-
-`--print-t12-files0` 只向 stdout 输出解析后的 T12 `Create`/`Modify` 路径并以 NUL 分隔，供
-`xargs -0 git add --` 精确暂存。提交前使用该输出把 T12 Files 加入 index，再运行
-`--allow-t12-index`；此时 HEAD 必须等于 Implementation Head，index 中的文件必须是 T12 Files 的
-子集，仓库内不得残留其他已跟踪或未跟踪文件。终验提交后
-不带该参数执行，此时
-`ImplementationHead..HEAD` 必须恰好一个提交、该提交只含 T12 Files，且工作区为空。脚本不得修改
-计划或 Git 状态；任何缺失、重复、区间外提交、越界文件或无法解析都输出边界、Task、SHA、实际文件
-和允许文件后退出 1。fixture 测试至少覆盖正常提交前、正常提交后、缺失 SHA、重复 SHA、额外提交、
-越界提交文件、只读 Test 文件被改、T10 无授权/错授权、index 中新文件和越界工作区文件。
+服务版本级终验，不改变运行时行为。T12 已在完成时一次性核对 Baseline、Implementation Head、T1—T11
+Execution SHA、任务允许文件和 T10 结构化授权，并确认终验提交范围及工作区状态。该校验工具只服务于
+v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本或日常开发门禁。
 
 ### 13. JUnit Suite 下游依赖
 

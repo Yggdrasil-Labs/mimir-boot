@@ -224,7 +224,7 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [x] 本地预检在 Java 17 下执行一次 Maven `verify`，并校验 Surefire、Failsafe（至少 2 份、至少 11 个 testcase、零失败）和非空 JaCoCo XML。
+- [x] 本地预检在 Java 17 下执行一次 Maven `verify`，并校验 Surefire、Failsafe（至少 2 份、至少 11 个 testcase，均为零失败、零错误、零跳过）和非空 JaCoCo XML。
 - [x] CI YAML 只有一个核心 Build Job 和一个无条件 `ci-preflight.sh` 调用；Build Step 显式映射 `RUN_SONAR` 与三项 Sonar 配置，且不含 `-U`。
 - [x] 非可信事件或任一 Sonar 配置为空时只跳过 Sonar、仍执行核心预检并输出固定 skipped 状态行；可信 push 的 true 路径在一次 Maven invocation 中执行 `verify sonar:sonar`，Token 只通过环境变量传递。
 - [x] 仓库不新增 `package.json`、`package-lock.json` 或项目级 Node 运行时步骤。
@@ -250,7 +250,7 @@ Expected: **PASS**
 
 **Revised AC Verification:**
 
-- AC1: 上述预检命令退出 0，Failsafe 至少 2 份、至少 11 个 testcase、零失败、零错误、零跳过，JaCoCo XML 非空。
+- AC1: 上述预检命令退出 0，Surefire 与 Failsafe 均为零失败、零错误、零跳过；Failsafe 至少 2 份、至少 11 个 testcase，JaCoCo XML 非空。
 - AC2: `test "$(rg -c 'ci-preflight\\.sh' .github/workflows/ci.yml)" -eq 1 && ! rg -n '^[[:space:]]+sonar:|\\-U' .github/workflows/ci.yml`。
 - AC3: 未配置 Sonar 时执行 `RUN_SONAR=true bash scripts/ci-preflight.sh` 必须在 Maven 前失败；默认路径输出 `Sonar analysis: skipped (not eligible)`；脚本不包含 token 参数。
 - AC4: `test ! -e package.json && test ! -e package-lock.json && ! rg -n 'setup-node|node@|npm ' .github/workflows/ci.yml scripts/ci-preflight.sh`。
@@ -1029,8 +1029,6 @@ Expected: **PASS**
 - Modify: `docs/active/tech-debt-tracker.md`
 - Modify: `docs/QUALITY_SCORE.md`
 - Modify: `docs/SONAR_QUALITY_DISCIPLINE.md`
-- Create: `scripts/verify-task-commits.sh`
-- Create: `scripts/verify-task-commits.test.sh`
 - Modify: `mimir-boot-bom/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-web/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/README.md`
@@ -1043,9 +1041,9 @@ Expected: **PASS**
 **Interfaces:**
 
 - Consumes: `bash scripts/ci-preflight.sh`; all task verification evidence
-- Produces: project governance status, version-level acceptance record and deterministic Task commit verifier
+- Produces: project governance status and version-level acceptance record
 
-**Behavior:** 所有 20 项 GOV 的状态、验证证据和延期理由与代码事实一致；最终门禁从实施基线提交区间核验 Task 提交归属，并完成与普通 CI 相同的本地预检。
+**Behavior:** 所有 20 项 GOV 的状态、验证证据和延期理由与代码事实一致；完成时已从实施基线提交区间核验 Task 提交归属，并完成与普通 CI 相同的本地预检。该一次性验收工具在版本收尾后清理。
 
 **Acceptance Criteria:**
 
@@ -1061,8 +1059,8 @@ Expected: **PASS**
 - **Commit SHA:** final-record-exception
 - **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** {"commands":[{"cmd":"bash scripts/verify-task-commits.test.sh","confirmed":true,"evidence":"校验器尚不存在时 exit 127，确认提交归属终验缺失。"}]}
-- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查、轻量 CI 结构断言与 diff check 通过。"},{"cmd":"bash -n scripts/verify-task-commits.sh scripts/verify-task-commits.test.sh && bash scripts/verify-task-commits.test.sh","status":"pass","evidence":"覆盖正常提交前后、缺失/重复/区间外 SHA、额外提交、越界/只读路径、T10 授权、index 与工作区负例。"},{"cmd":"GOV 状态结构检查 && bash scripts/verify-task-commits.sh --print-t12-files0 docs/active/v2.1.2/project-governance/plan.md && git diff --check","status":"pass","evidence":"20 个 GOV 为 19 已验证、1 已关闭；证据结构、GOV-008 决策证据、冻结区间解析及差异检查均通过。"}]}
+- **Red Result:** {"commands":[{"cmd":"一次性验收前提交归属校验器不存在","confirmed":true,"evidence":"确认版本级提交归属终验缺失。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查、轻量 CI 结构断言与 diff check 通过。"},{"cmd":"一次性提交归属校验 fixture","status":"pass","evidence":"完成时已覆盖正常提交前后、缺失/重复/区间外 SHA、额外提交、越界/只读路径、T10 授权、index 与工作区负例；验收脚本随后按版本收尾策略清理。"},{"cmd":"GOV 状态结构检查与冻结区间解析","status":"pass","evidence":"20 个 GOV 为 19 已验证、1 已关闭；证据结构、GOV-008 决策证据与冻结区间归属均已在完成时核对。"}]}
 - **AC Result:** {"pass":3,"total":3,"deferred":[],"details":{"AC1":"GOV-001—020 状态与验证/决策证据已同步，未验证 P0/P1 为 0。","AC2":"同源预检通过 15 模块，差异检查与 CI 结构断言通过。","AC3":"校验器 fixture 覆盖提交、范围、只读和 T10 条件授权反例；冻结区间主/补充提交双向完整覆盖。"}}
 
 **Task Completion Gate:**
@@ -1095,10 +1093,9 @@ Expected: **PASS** — 19 个已设计待实施项和 1 个兼容性关闭项构
 **Step 2: Green**
 
 T12 开始、修改任何文件前，把当前 `git rev-parse HEAD` 写入 `Implementation Head SHA`。只依据各
-Task 的 commit、测试与门禁结果同步状态；实现只读提交归属校验器及其 fixture 测试。校验器将
-`plan.md` 作为每个 Task 的即时执行账本允许文件，并只把 `Create`/`Modify` 计入其余普通允许范围，禁止提交
-`Test (read-only baseline)` 路径；T10 条件路径必须由
-结构化 Red Result 授权并以记录的 commit diff 验证。无法验证的 P2 必须记录 Owner、原因和目标版本，
+Task 的 commit、测试与门禁结果同步状态；完成时一次性核对 `plan.md` 中的任务账本、允许路径、只读 Test
+路径与 T10 结构化 Red Result 授权。该核对结果作为本版本的历史验收证据保留，脚本不进入长期工具链。
+无法验证的 P2 必须记录 Owner、原因和目标版本，
 P0/P1 不允许延期关闭版本。同步每个 GOV 专题块：`已验证` 写入指向具体 `Tn ACx` 和 `T12 AC2` 的
 `验证证据`；无实现的 `已关闭` 保留 `决策证据`；延期项写入 Owner、原因和目标版本。DOC-006 对这四种
 状态组合做结构校验，不增加独立治理契约文件。
@@ -1108,13 +1105,7 @@ P0/P1 不允许延期关闭版本。同步每个 GOV 专题块：`已验证` 写
 Run: `mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check`
 Expected: **PASS**
 
-Run: `set -o pipefail; bash scripts/verify-task-commits.sh --print-t12-files0 docs/active/v2.1.2/project-governance/plan.md | xargs -0 git add -- && git diff --cached --check`
-`--print-t12-files0` 只输出解析后的 T12 `Create`/`Modify` 路径，以 NUL 分隔；不得使用目录、glob 或
-`git add -A`。
-Expected: **PASS** — 包括新建脚本在内的全部 T12 内容都进入 index 且无 whitespace error。
-
-Run: `bash scripts/verify-task-commits.sh --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
-Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 Files，仓库内无其他未暂存或未跟踪文件。
+提交归属核验仅在本版本完成时执行；后续维护不重复运行，避免固定 `Implementation Head` 对新提交产生错误约束。
 
 **AC Verification:**
 
@@ -1122,15 +1113,13 @@ Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 File
   具体 Task AC 与 T12 AC2，已关闭/延期项分别具备决策证据或 Owner、原因、目标版本。
 - AC2: 同源预检、`git diff --check` 和精确暂存后的 `git diff --cached --check` → 全部退出 0，
   Failsafe/JaCoCo 报告非空，新建 T12 文件未绕过检查。
-- AC3: `bash scripts/verify-task-commits.test.sh && bash scripts/verify-task-commits.sh --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
-  → T1—T11 的唯一 SHA 集合恰好覆盖 Baseline..Implementation Head；每 Task 的 `plan.md` 即时执行记录、
-  普通允许路径、只读 Test 路径和 T10 条件授权均按规则验证；index 是 T12 Files 子集且无其他工作区文件。
+- AC3: 版本完成时的提交归属核验已确认 T1—T11 的唯一 SHA 集合覆盖 Baseline..Implementation Head；
+  每 Task 的 `plan.md` 即时执行记录、普通允许路径、只读 Test 路径和 T10 条件授权均按规则验证。验收脚本已清理。
 
 **Step 4: Commit**
 
 提交前先把本 Task 的 Execution Commit SHA 记为 `final-record-exception`，然后提交：
-`docs(governance): 同步 v2.1.2 治理验证结果`。提交后执行
-`bash scripts/verify-task-commits.sh docs/active/v2.1.2/project-governance/plan.md && test -z "$(git status --porcelain)"`：Implementation Head 之后必须恰好一个终验提交且只含 T12 Files，工作区必须为空；不为回填自身 SHA 创建第二个提交。
+`docs(governance): 同步 v2.1.2 治理验证结果`。提交归属已在当时完成核验；本版本收尾后清理一次性验收脚本，后续提交不再受固定边界约束。
 
 ---
 
