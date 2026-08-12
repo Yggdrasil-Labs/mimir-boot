@@ -213,6 +213,42 @@ class TraceInterceptorTest extends BaseUnitTest {
     }
 
     @Test
+    void afterCompletionRestoresRequestIdAndKeepsExternalMdcKey() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
+        localRequest.addHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "new-request-id");
+        org.slf4j.MDC.put("traceId", "previous-trace-id");
+        org.slf4j.MDC.put("requestId", "previous-request-id");
+        org.slf4j.MDC.put("external", "keep-me");
+
+        traceInterceptor.preHandle(localRequest, new MockHttpServletResponse(), handler);
+
+        assertEquals("new-request-id", org.slf4j.MDC.get("requestId"));
+
+        traceInterceptor.afterCompletion(localRequest, new MockHttpServletResponse(), handler, null);
+
+        assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
+        assertEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
+    }
+
+    @Test
+    void missingRequestIdGeneratesNewValueAndRestoresPreviousValue() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
+        org.slf4j.MDC.put("requestId", "previous-request-id");
+
+        traceInterceptor.preHandle(localRequest, new MockHttpServletResponse(), handler);
+
+        assertNotEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
+        assertEquals(32, org.slf4j.MDC.get("requestId").length());
+
+        traceInterceptor.afterCompletion(localRequest, new MockHttpServletResponse(), handler, null);
+
+        assertEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
+    }
+
+    @Test
     void nestedPreHandleAndAfterCompletionPairingRestoresEachTraceId() {
         MockHttpServletRequest localRequest = new MockHttpServletRequest();
         MockHttpServletResponse localResponse = new MockHttpServletResponse();

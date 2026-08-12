@@ -2,7 +2,9 @@ package com.yggdrasil.labs.rpc.dubbo.filter;
 
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 import org.apache.dubbo.config.ApplicationConfig;
@@ -12,6 +14,7 @@ import org.apache.dubbo.config.ServiceConfig;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -66,9 +69,71 @@ class RpcDubboFilterEndToEndTest {
         assertEquals("consumer-trace", tracerBridge.extractedCarriers().get(0).get("x-trace-id"));
     }
 
+    @Test
+    void defaultMdcBridgePropagatesAndRestoresProviderContext() {
+        DubboProperties properties = new DubboProperties();
+        properties.setEnabled(true);
+        properties.setContextPropagationEnabled(true);
+        RpcDubboSupportHolder.set(new RpcHookChain(List.of()), new MdcRpcTracerBridge(), properties);
+        MdcRecordingEchoService serviceImplementation = new MdcRecordingEchoService();
+
+        ProtocolConfig protocol = new ProtocolConfig("injvm");
+        ServiceConfig<EchoService> service = new ServiceConfig<>();
+        service.setInterface(EchoService.class);
+        service.setRef(serviceImplementation);
+        service.setProtocol(protocol);
+        service.setFilter("rpcDubboFilter");
+
+        ReferenceConfig<EchoService> reference = new ReferenceConfig<>();
+        reference.setInterface(EchoService.class);
+        reference.setInjvm(true);
+        reference.setCheck(true);
+        reference.setFilter("rpcDubboFilter");
+
+        bootstrap = DubboBootstrap.newInstance();
+        bootstrap.application(new ApplicationConfig("rpc-dubbo-mdc-integration-test"))
+                .protocol(protocol)
+                .service(service)
+                .reference(reference)
+                .start();
+
+        MDC.put(CommonConstants.TRACE_ID, "consumer-trace-id");
+        MDC.put(CommonConstants.REQUEST_ID, "consumer-request-id");
+        try {
+            assertEquals("echo:hello", reference.get().echo("hello"));
+            assertEquals("consumer-trace-id", serviceImplementation.traceId());
+            assertEquals("consumer-request-id", serviceImplementation.requestId());
+            assertEquals("consumer-trace-id", MDC.get(CommonConstants.TRACE_ID));
+            assertEquals("consumer-request-id", MDC.get(CommonConstants.REQUEST_ID));
+        } finally {
+            MDC.clear();
+        }
+    }
+
     interface EchoService {
 
         String echo(String value);
+    }
+
+    private static final class MdcRecordingEchoService implements EchoService {
+
+        private String traceId;
+        private String requestId;
+
+        @Override
+        public String echo(String value) {
+            traceId = MDC.get(CommonConstants.TRACE_ID);
+            requestId = MDC.get(CommonConstants.REQUEST_ID);
+            return "echo:" + value;
+        }
+
+        String traceId() {
+            return traceId;
+        }
+
+        String requestId() {
+            return requestId;
+        }
     }
 
     private static final class RecordingTracerBridge implements RpcTracerBridge {

@@ -8,7 +8,7 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 
 - ✅ **CORS 跨域配置**：统一配置跨域资源共享策略
 - ✅ **Jackson 序列化配置**：统一日期时间格式、空值处理等
-- ✅ **Trace 拦截器**：自动生成或获取受限格式的 traceId，设置到 MDC 和响应头
+- ✅ **Trace 拦截器**：处理受限格式的 traceId/requestId，写入 MDC，并将 traceId 写入响应头
 - ✅ **Web 拦截器**：记录容器提供的直连 IP，并只恢复自己写入的 MDC 键
 - ✅ **响应体增强器**：自动为 `R` 响应对象填充 traceId
 - ✅ **上传限制迁移**：使用 Spring Boot multipart 配置管理请求和文件大小
@@ -232,7 +232,8 @@ mimir:
 
 - 自动生成或从请求头获取 traceId
 - 将 traceId 设置到 MDC 和响应头 `X-Trace-Id`
-- 支持与 Micrometer Tracing 集成（自动禁用）
+- 从 `X-Request-Id` 获取合法 requestId，缺失或非法时生成新的 32 位十六进制值
+- 仅在请求范围内修改 traceId/requestId，完成后恢复进入前状态
 - 仅接受最长 64 位、以字母或数字开头的 ASCII `[A-Za-z0-9._-]`；无效请求头会生成新的 traceId
 
 **使用方式**：
@@ -250,6 +251,7 @@ mimir:
 ```http
 GET /api/user/123 HTTP/1.1
 X-Trace-Id: a1b2c3d4e5f6
+X-Request-Id: request-123
 ```
 
 **响应头示例**：
@@ -259,10 +261,7 @@ HTTP/1.1 200 OK
 X-Trace-Id: a1b2c3d4e5f6
 ```
 
-**与 Micrometer Tracing 集成**：
-
-- 如果检测到 classpath 中存在 `io.micrometer.tracing.Tracer`，Trace 拦截器会自动禁用
-- 由 Micrometer Tracing 或 `starter-trace` 模块接管 Trace 逻辑
+Micrometer Tracing 在 classpath 中不会禁用默认拦截器；应用如需替换行为，可声明自己的 `TraceInterceptor` Bean。
 
 ### 2. Web 拦截器
 
@@ -473,7 +472,7 @@ WebInterceptor（afterCompletion）
 
 ## 与 Micrometer Tracing 集成
 
-### 自动集成
+### 共存方式
 
 如果项目中引入了 Micrometer Tracing：
 
@@ -484,7 +483,7 @@ WebInterceptor（afterCompletion）
 </dependency>
 ```
 
-Starter Web 会自动检测并禁用内置的 Trace 拦截器，由 Micrometer Tracing 接管 Trace 逻辑。
+Starter Web 保留内置 Trace 拦截器；Micrometer Tracing 可共存。需要完全替换时，声明自定义 `TraceInterceptor` Bean。
 
 ### 手动集成
 

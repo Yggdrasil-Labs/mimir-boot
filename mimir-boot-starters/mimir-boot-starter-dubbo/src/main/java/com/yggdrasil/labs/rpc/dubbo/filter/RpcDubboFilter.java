@@ -6,6 +6,7 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 import java.time.Duration;
@@ -79,12 +80,14 @@ public class RpcDubboFilter implements Filter {
         Instant start = Instant.now();
         RpcHookInvocation hookInvocation = hookChain.open(context);
         boolean asyncInvocation = false;
+        RpcTraceScope traceScope = RpcTraceScope.noop();
         boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
         try {
             if (properties.isContextPropagationEnabled() && providerSide) {
-                tracerBridge.extract(context, attachments == null ? Map.of() : attachments);
+                RpcTraceScope extractedScope = tracerBridge.extractScope(context, attachments == null ? Map.of() : attachments);
+                traceScope = extractedScope == null ? RpcTraceScope.noop() : extractedScope;
             }
             hookInvocation.before();
 
@@ -99,6 +102,8 @@ public class RpcDubboFilter implements Filter {
             }
 
             Result result = invoker.invoke(invocation);
+            traceScope.close();
+            traceScope = RpcTraceScope.noop();
             if (result instanceof AsyncRpcResult) {
                 result.whenCompleteWithContext((completedResult, throwable) ->
                         completeCall(hookInvocation, metadata, start, completedResult, throwable));
@@ -111,6 +116,7 @@ public class RpcDubboFilter implements Filter {
             completeCall(hookInvocation, metadata, start, null, throwable);
             throw propagate(throwable);
         } finally {
+            traceScope.close();
             if (!asyncInvocation) {
                 hookInvocation.close();
             }

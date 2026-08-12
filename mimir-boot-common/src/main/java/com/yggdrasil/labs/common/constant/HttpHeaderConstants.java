@@ -13,6 +13,7 @@ public final class HttpHeaderConstants {
 
     // 业务相关请求头
     public static final String TRACE_ID_HEADER = "X-Trace-Id";
+    public static final String REQUEST_ID_HEADER = "X-Request-Id";
     public static final String USER_ID_HEADER = "X-User-Id";
     public static final String TENANT_ID_HEADER = "X-Tenant-Id";
     public static final String APP_ID_HEADER = "X-App-Id";
@@ -26,5 +27,4 @@ public final class HttpHeaderConstants {
     public static final String PROXY_CLIENT_IP = "Proxy-Client-IP";
     public static final String WL_PROXY_CLIENT_IP = "WL-Proxy-Client-IP";
 }
-
 

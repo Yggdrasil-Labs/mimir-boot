@@ -11,7 +11,7 @@ RPC 内核抽象模块，提供统一调用模型、上下文与可插拔扩展�
 
 - 统一调用元数据与上下文模型
 - Hook 链（before/after/error/cleanup），可由外部 Starter 插拔实现
-- Trace/Span/Request-Id 桥接接口（默认 Noop，可覆盖）
+- 默认 MDC Bridge：传播合法 `traceId`/`requestId`，并允许自定义 `RpcTracerBridge` 按类型覆盖
 - Spring Boot 3 `@AutoConfiguration` 自动装配
 - 配置开关：`mimir.boot.rpc.core.enabled`（默认开启）
 
@@ -62,6 +62,7 @@ public class MicrometerTracerBridge implements RpcTracerBridge {
 
 ## 最佳实践
 
+- 默认 Bridge 仅接受最长 64 位、以字母或数字开头的 ASCII ID；非法 traceId 生成 32 位十六进制值，非法 requestId 不会进入当前调用 MDC
 - 在治理/观测/安全模块中实现 Hook 或 Tracer 覆盖默认值
 - 保持 Hook 幂等、快速返回，避免阻塞主调用
 

@@ -10,7 +10,7 @@ Feign 接入层，基于 RPC Core 统一调用钩子与上下文传播，治理/
 ## 功能特性列表
 
 - 包装 Feign `Client`，在调用前/后/异常/清理阶段调度 RPC Hook
-- Trace/Span/Request-Id 上下文传播（可覆盖）
+- 默认 MDC Bridge 将合法 `traceId`/`requestId` 注入 `X-Trace-Id`/`X-Request-Id`，可由自定义 Bridge 覆盖
 - 配置开关：`mimir.boot.feign.enabled`（默认开启）、`context-propagation-enabled`
 
 ## 快速开始指南
@@ -39,7 +39,7 @@ mimir:
 ## 使用示例
 
 - 自定义 Hook：与 RPC Core 示例一致
-- 自定义 Tracer：覆盖 `RpcTracerBridge`，在 HTTP 头中注入/提取追踪上下文
+- 自定义 Tracer：覆盖 `RpcTracerBridge`，在 HTTP 头中注入/提取追踪上下文；Feign 只负责出站注入，HTTP 入站由 Web Starter 处理
 
 ## 最佳实践
 

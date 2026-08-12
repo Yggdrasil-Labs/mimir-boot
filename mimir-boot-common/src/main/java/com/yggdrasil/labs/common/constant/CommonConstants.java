@@ -54,6 +54,11 @@ public class CommonConstants {
     public static final String TRACE_ID = "traceId";
 
     /**
+     * MDC/字段中的 requestId 关键字
+     */
+    public static final String REQUEST_ID = "requestId";
+
+    /**
      * 通用未知占位
      */
     public static final String UNKNOWN = "unknown";

@@ -17,5 +17,14 @@ public interface RpcTracerBridge {
      * 从载体提取上下文。
      */
     void extract(RpcCallContext context, Map<String, String> carrier);
-}
 
+    /**
+     * 从载体提取上下文，并返回当前调用结束时需要关闭的作用域。
+     *
+     * <p>保留默认实现以兼容仅实现 {@link #extract(RpcCallContext, Map)} 的既有 Bridge。</p>
+     */
+    default RpcTraceScope extractScope(RpcCallContext context, Map<String, String> carrier) {
+        extract(context, carrier);
+        return RpcTraceScope.noop();
+    }
+}

@@ -5,7 +5,6 @@ import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
 import com.yggdrasil.labs.web.interceptor.WebInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -51,25 +50,13 @@ public class WebAutoConfiguration {
 
     /**
      * 注册 Trace 拦截器
-     * <p>
-     * 当检测到 classpath 中存在 Micrometer Tracer 时，此 Bean 不会被创建
-     * 由 starter-trace 模块接管 Trace 逻辑（提供同类型 Bean）
-     * </p>
-     * <p>
-     * 条件说明：
-     * - @ConditionalOnMissingBean: 如果 starter-trace 或应用已提供同类型 Bean，则不创建
-     * - @ConditionalOnMissingClass: 如果 classpath 中存在 Micrometer Tracer，则不创建
-     * </p>
+     * <p>如果应用已提供同类型 Bean，则不创建默认实现。</p>
      *
      * @return Trace 拦截器
      */
     @Bean(name = "traceInterceptor")
     @ConditionalOnMissingBean(TraceInterceptor.class)
-    @ConditionalOnMissingClass("io.micrometer.tracing.Tracer")
     public TraceInterceptor traceInterceptor() {
-        // 仅在以下情况创建：
-        // 1. 不存在 TraceInterceptor Bean（starter-trace 或应用未提供）
-        // 2. classpath 中不存在 Micrometer Tracer
         return new TraceInterceptor();
     }
 

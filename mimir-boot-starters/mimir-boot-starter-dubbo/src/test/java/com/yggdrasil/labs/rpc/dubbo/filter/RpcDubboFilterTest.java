@@ -5,6 +5,7 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 import org.apache.dubbo.common.constants.CommonConstants;
@@ -78,11 +79,32 @@ class RpcDubboFilterTest {
         assertSame(result, actual);
         ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
         InOrder inOrder = inOrder(tracerBridge, hook, invoker);
-        inOrder.verify(tracerBridge).extract(contextCaptor.capture(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(tracerBridge).extractScope(contextCaptor.capture(), eq(Map.of("x-trace-id", "upstream-trace")));
         inOrder.verify(hook).before(contextCaptor.getValue());
         inOrder.verify(invoker).invoke(invocation);
         verify(tracerBridge, never()).inject(any());
         verify(invocation, never()).setAttachment(anyString(), anyString());
+    }
+
+    @Test
+    void shouldCloseProviderTraceScopeBeforeReturningToCaller() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        Result result = mock(Result.class);
+        RpcTraceScope scope = mock(RpcTraceScope.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("m1");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
+        when(tracerBridge.extractScope(any(), any())).thenReturn(scope);
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        InOrder inOrder = inOrder(tracerBridge, hook, invoker, scope);
+        inOrder.verify(tracerBridge).extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(hook).before(any());
+        inOrder.verify(invoker).invoke(invocation);
+        inOrder.verify(scope).close();
     }
 
     @Test
@@ -172,7 +194,7 @@ class RpcDubboFilterTest {
 
         assertSame(ex, thrown);
         InOrder inOrder = inOrder(tracerBridge, hook, invoker);
-        inOrder.verify(tracerBridge).extract(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(tracerBridge).extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
         inOrder.verify(hook).before(any());
         inOrder.verify(invoker).invoke(invocation);
         inOrder.verify(hook).onError(any(), any(RpcCallResult.class));
@@ -227,6 +249,36 @@ class RpcDubboFilterTest {
     }
 
     @Test
+    void shouldCloseProviderTraceScopeBeforeAsyncResultCompletes() {
+        Invocation invocation = new RpcInvocation();
+        ((RpcInvocation) invocation).setMethodName("m1");
+        ((RpcInvocation) invocation).setObjectAttachments(Map.of("x-trace-id", "upstream-trace"));
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RpcTraceScope scope = mock(RpcTraceScope.class);
+        CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+        Result result = new AsyncRpcResult(responseFuture, invocation);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(tracerBridge.extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace"))))
+                .thenReturn(scope);
+
+        Result actual = filter.invoke(invoker, invocation);
+
+        assertSame(result, actual);
+        verify(scope, times(1)).close();
+        verify(hook).before(any());
+        verify(hook, never()).after(any(), any());
+        verify(hook, never()).onError(any(), any());
+        verify(hook, never()).cleanup(any());
+
+        responseFuture.complete(new AppResponse("ok"));
+
+        verify(scope, times(1)).close();
+        verify(hook, times(1)).after(any(), any(RpcCallResult.class));
+        verify(hook, never()).onError(any(), any());
+        verify(hook, times(1)).cleanup(any());
+    }
+
+    @Test
     void shouldReportAsyncResultContainedExceptionAfterCompletion() {
         Invocation invocation = new RpcInvocation();
         ((RpcInvocation) invocation).setMethodName("m1");
@@ -258,7 +310,7 @@ class RpcDubboFilterTest {
         RuntimeException ex = new RuntimeException("extract failure");
         when(invocation.getMethodName()).thenReturn("m1");
         when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
-        doThrow(ex).when(tracerBridge).extract(any(), any());
+        doThrow(ex).when(tracerBridge).extractScope(any(), any());
 
         RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
                 RuntimeException.class, () -> filter.invoke(invoker, invocation));

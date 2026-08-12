@@ -10,7 +10,6 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -21,13 +20,6 @@ import java.util.regex.Pattern;
  * <ul>
  * <li>自动生成或从请求头获取 traceId</li>
  * <li>将 traceId 设置到 MDC 和响应头</li>
- * <li>支持与 Micrometer Tracing 集成（当检测到 Tracer 时自动禁用）</li>
- * </ul>
- *
- * <p>注意：</p>
- * <ul>
- * <li>如果 classpath 中存在 Micrometer Tracer，此拦截器将被禁用</li>
- * <li>由 starter-trace 模块接管 Trace 逻辑</li>
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -37,7 +29,7 @@ import java.util.regex.Pattern;
 public class TraceInterceptor implements HandlerInterceptor {
 
     public static final String TRACE_ID = CommonConstants.TRACE_ID;
-    private static final String TRACE_ID_MDC_STACK_ATTRIBUTE = TraceInterceptor.class.getName() + ".traceIdMdcStack";
+    private static final String MDC_STACK_ATTRIBUTE = TraceInterceptor.class.getName() + ".mdcStack";
     private static final Pattern TRACE_ID_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
 
     /**
@@ -59,8 +51,10 @@ public class TraceInterceptor implements HandlerInterceptor {
         // 将 traceId 添加到响应头
         response.setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
 
-        traceIdMdcStack(request).push(Optional.ofNullable(org.slf4j.MDC.get(TRACE_ID)));
+        mdcStack(request).push(new MdcState(
+                org.slf4j.MDC.get(TRACE_ID), org.slf4j.MDC.get(CommonConstants.REQUEST_ID)));
         org.slf4j.MDC.put(TRACE_ID, traceId);
+        org.slf4j.MDC.put(CommonConstants.REQUEST_ID, getOrGenerateRequestId(request));
 
         return true;
     }
@@ -68,7 +62,7 @@ public class TraceInterceptor implements HandlerInterceptor {
     /**
      * 请求处理后
      * <p>
-     * 仅恢复此拦截器写入前的 traceId，其他 MDC 键由其所有者负责。
+     * 仅恢复此拦截器写入前的 traceId 与 requestId，其他 MDC 键由其所有者负责。
      * </p>
      *
      * @param request  请求对象
@@ -82,13 +76,15 @@ public class TraceInterceptor implements HandlerInterceptor {
             HttpServletResponse response,
             Object handler,
             Exception ex) {
-        Deque<Optional<String>> stack = traceIdMdcStackOrNull(request);
+        Deque<MdcState> stack = mdcStackOrNull(request);
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        restoreMdcValue(TRACE_ID, stack.pop());
+        MdcState previous = stack.pop();
+        restoreMdcValue(TRACE_ID, previous.traceId());
+        restoreMdcValue(CommonConstants.REQUEST_ID, previous.requestId());
         if (stack.isEmpty()) {
-            request.removeAttribute(TRACE_ID_MDC_STACK_ATTRIBUTE);
+            request.removeAttribute(MDC_STACK_ATTRIBUTE);
         }
     }
 
@@ -125,30 +121,38 @@ public class TraceInterceptor implements HandlerInterceptor {
         return UUID.randomUUID().toString().replace("-", "");
     }
 
+    private String getOrGenerateRequestId(HttpServletRequest request) {
+        String requestId = request.getHeader(HttpHeaderConstants.REQUEST_ID_HEADER);
+        return isValidTraceId(requestId) ? requestId : generateTraceId();
+    }
+
     private boolean isValidTraceId(String traceId) {
         return StringUtils.hasText(traceId) && TRACE_ID_PATTERN.matcher(traceId).matches();
     }
 
     @SuppressWarnings("unchecked")
-    private Deque<Optional<String>> traceIdMdcStack(HttpServletRequest request) {
-        Deque<Optional<String>> stack = traceIdMdcStackOrNull(request);
+    private Deque<MdcState> mdcStack(HttpServletRequest request) {
+        Deque<MdcState> stack = mdcStackOrNull(request);
         if (stack == null) {
             stack = new ArrayDeque<>();
-            request.setAttribute(TRACE_ID_MDC_STACK_ATTRIBUTE, stack);
+            request.setAttribute(MDC_STACK_ATTRIBUTE, stack);
         }
         return stack;
     }
 
     @SuppressWarnings("unchecked")
-    private Deque<Optional<String>> traceIdMdcStackOrNull(HttpServletRequest request) {
-        return (Deque<Optional<String>>) request.getAttribute(TRACE_ID_MDC_STACK_ATTRIBUTE);
+    private Deque<MdcState> mdcStackOrNull(HttpServletRequest request) {
+        return (Deque<MdcState>) request.getAttribute(MDC_STACK_ATTRIBUTE);
     }
 
-    private void restoreMdcValue(String key, Optional<String> previousValue) {
-        if (previousValue.isPresent()) {
-            org.slf4j.MDC.put(key, previousValue.get());
-        } else {
+    private void restoreMdcValue(String key, String previousValue) {
+        if (previousValue == null) {
             org.slf4j.MDC.remove(key);
+        } else {
+            org.slf4j.MDC.put(key, previousValue);
         }
+    }
+
+    private record MdcState(String traceId, String requestId) {
     }
 }

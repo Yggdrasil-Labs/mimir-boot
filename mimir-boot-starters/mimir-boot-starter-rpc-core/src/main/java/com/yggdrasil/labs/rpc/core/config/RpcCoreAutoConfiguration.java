@@ -3,7 +3,7 @@ package com.yggdrasil.labs.rpc.core.config;
 import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.support.RpcExecutionTemplate;
-import com.yggdrasil.labs.rpc.core.tracing.NoopRpcTracerBridge;
+import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import java.util.List;
 import org.slf4j.Logger;
@@ -29,10 +29,10 @@ public class RpcCoreAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(RpcTracerBridge.class)
     public RpcTracerBridge rpcTracerBridge() {
-        log.debug("Creating NoopRpcTracerBridge as default RpcTracerBridge");
-        return new NoopRpcTracerBridge();
+        log.debug("Creating MdcRpcTracerBridge as default RpcTracerBridge");
+        return new MdcRpcTracerBridge();
     }
 
     @Bean
@@ -44,4 +44,3 @@ public class RpcCoreAutoConfiguration {
         return new RpcExecutionTemplate(hookChain, tracerBridge, properties.isContextPropagationEnabled());
     }
 }
-

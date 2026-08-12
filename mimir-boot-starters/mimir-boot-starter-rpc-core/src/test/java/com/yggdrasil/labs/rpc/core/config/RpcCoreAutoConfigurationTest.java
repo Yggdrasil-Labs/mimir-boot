@@ -3,7 +3,7 @@ package com.yggdrasil.labs.rpc.core.config;
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.support.RpcExecutionTemplate;
-import com.yggdrasil.labs.rpc.core.tracing.NoopRpcTracerBridge;
+import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ class RpcCoreAutoConfigurationTest {
             assertThat(context).hasSingleBean(RpcCoreProperties.class);
             assertThat(context).hasSingleBean(RpcHookChain.class);
             assertThat(context).hasSingleBean(RpcTracerBridge.class);
-            assertThat(context).hasSingleBean(NoopRpcTracerBridge.class);
+            assertThat(context).hasSingleBean(MdcRpcTracerBridge.class);
             assertThat(context).hasSingleBean(RpcExecutionTemplate.class);
 
             RpcCoreProperties properties = context.getBean(RpcCoreProperties.class);
@@ -80,7 +80,7 @@ class RpcCoreAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasSingleBean(RpcTracerBridge.class);
                     assertThat(context.getBean(RpcTracerBridge.class)).isSameAs(customTracerBridge);
-                    assertThat(context).doesNotHaveBean(NoopRpcTracerBridge.class);
+                    assertThat(context).doesNotHaveBean(MdcRpcTracerBridge.class);
                 });
     }
 }

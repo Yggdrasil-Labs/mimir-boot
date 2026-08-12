@@ -4,8 +4,24 @@ import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.web.advice.ResponseBodyEnhancer;
 import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
 import com.yggdrasil.labs.web.interceptor.WebInterceptor;
+import java.net.URI;
+import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.util.List;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.slf4j.MDC;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -95,5 +111,41 @@ class WebAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(webInterceptor2);
         assertNotSame(webInterceptor1, webInterceptor2);
     }
-}
 
+    @Test
+    void traceInterceptorRemainsAvailableWhenMicrometerTracerClassExists(@TempDir Path compiledClasses) throws Exception {
+        compileMicrometerTracer(compiledClasses);
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new java.net.URL[] {compiledClasses.toUri().toURL()}, getClass().getClassLoader())) {
+            new WebApplicationContextRunner()
+                    .withClassLoader(classLoader)
+                    .withConfiguration(AutoConfigurations.of(WebAutoConfiguration.class))
+                    .run(context -> {
+                        TraceInterceptor interceptor = context.getBean(TraceInterceptor.class);
+                        MockHttpServletResponse response = new MockHttpServletResponse();
+                        try {
+                            assertTrue(interceptor.preHandle(new MockHttpServletRequest(), response, new Object()));
+                            assertTrue(response.getHeader("X-Trace-Id").matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}"));
+                        } finally {
+                            MDC.clear();
+                        }
+                    });
+        }
+    }
+
+    private void compileMicrometerTracer(Path compiledClasses) throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler);
+        JavaFileObject source = new SimpleJavaFileObject(
+                URI.create("string:///io/micrometer/tracing/Tracer.java"), JavaFileObject.Kind.SOURCE) {
+            @Override
+            public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                return "package io.micrometer.tracing; public interface Tracer {}";
+            }
+        };
+        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
+            fileManager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(compiledClasses));
+            assertTrue(compiler.getTask(null, fileManager, null, null, null, List.of(source)).call());
+        }
+    }
+}
