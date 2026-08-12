@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -34,6 +37,7 @@ import java.util.regex.Pattern;
 public class TraceInterceptor implements HandlerInterceptor {
 
     public static final String TRACE_ID = CommonConstants.TRACE_ID;
+    private static final String TRACE_ID_MDC_STACK_ATTRIBUTE = TraceInterceptor.class.getName() + ".traceIdMdcStack";
     private static final Pattern TRACE_ID_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
 
     /**
@@ -52,11 +56,11 @@ public class TraceInterceptor implements HandlerInterceptor {
         // 获取或生成 traceId
         String traceId = getOrGenerateTraceId(request);
 
-        // 设置到 MDC
-        org.slf4j.MDC.put(TRACE_ID, traceId);
-
         // 将 traceId 添加到响应头
         response.setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
+
+        traceIdMdcStack(request).push(Optional.ofNullable(org.slf4j.MDC.get(TRACE_ID)));
+        org.slf4j.MDC.put(TRACE_ID, traceId);
 
         return true;
     }
@@ -64,8 +68,7 @@ public class TraceInterceptor implements HandlerInterceptor {
     /**
      * 请求处理后
      * <p>
-     * 注意：不清理 MDC，因为 traceId 可能在其他地方仍在使用
-     * 由 WebInterceptor 统一清理
+     * 仅恢复此拦截器写入前的 traceId，其他 MDC 键由其所有者负责。
      * </p>
      *
      * @param request  请求对象
@@ -79,8 +82,14 @@ public class TraceInterceptor implements HandlerInterceptor {
             HttpServletResponse response,
             Object handler,
             Exception ex) {
-        // TraceInterceptor 不清理 MDC，由 WebInterceptor 统一清理
-        // 这样可以确保 traceId 在整个请求生命周期内可用
+        Deque<Optional<String>> stack = traceIdMdcStackOrNull(request);
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+        restoreMdcValue(TRACE_ID, stack.pop());
+        if (stack.isEmpty()) {
+            request.removeAttribute(TRACE_ID_MDC_STACK_ATTRIBUTE);
+        }
     }
 
     /**
@@ -118,5 +127,28 @@ public class TraceInterceptor implements HandlerInterceptor {
 
     private boolean isValidTraceId(String traceId) {
         return StringUtils.hasText(traceId) && TRACE_ID_PATTERN.matcher(traceId).matches();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<Optional<String>> traceIdMdcStack(HttpServletRequest request) {
+        Deque<Optional<String>> stack = traceIdMdcStackOrNull(request);
+        if (stack == null) {
+            stack = new ArrayDeque<>();
+            request.setAttribute(TRACE_ID_MDC_STACK_ATTRIBUTE, stack);
+        }
+        return stack;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<Optional<String>> traceIdMdcStackOrNull(HttpServletRequest request) {
+        return (Deque<Optional<String>>) request.getAttribute(TRACE_ID_MDC_STACK_ATTRIBUTE);
+    }
+
+    private void restoreMdcValue(String key, Optional<String> previousValue) {
+        if (previousValue.isPresent()) {
+            org.slf4j.MDC.put(key, previousValue.get());
+        } else {
+            org.slf4j.MDC.remove(key);
+        }
     }
 }

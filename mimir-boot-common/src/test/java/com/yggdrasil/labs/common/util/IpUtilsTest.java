@@ -2,82 +2,120 @@ package com.yggdrasil.labs.common.util;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class IpUtilsTest {
 
-    private static final String UNKNOWN = "unknown";
+    private static final Predicate<String> TRUSTED_PRIVATE_PROXY = ip -> ip.startsWith("10.");
 
-    private static Map<String, String> headers(String... kv) {
-        if (kv == null) {
-            throw new IllegalArgumentException("headers 参数 kv 不能为 null");
+    @Test
+    void resolveClientIpUsesOnlyDirectRemoteAddress() {
+        assertEquals("198.51.100.10", resolveClientIp(() -> "198.51.100.10"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void deprecatedResolveClientIpIgnoresForwardedHeaders() {
+        assertEquals("198.51.100.10", IpUtils.resolveClientIp(
+                header -> "203.0.113.10",
+                () -> "198.51.100.10"));
+    }
+
+    @Test
+    void forwardedResolutionDoesNotReadHeadersForUntrustedDirectPeer() {
+        AtomicBoolean headerRead = new AtomicBoolean();
+
+        String resolved = resolveForwardedClientIp(header -> {
+            headerRead.set(true);
+            throw new AssertionError("直连不可信时不得读取转发头");
+        }, () -> "198.51.100.10", TRUSTED_PRIVATE_PROXY);
+
+        assertEquals("198.51.100.10", resolved);
+        assertFalse(headerRead.get());
+    }
+
+    @Test
+    void forwardedResolutionSkipsTrustedProxiesFromRightToLeft() {
+        String resolved = resolveForwardedClientIp(
+                header -> "198.51.100.20, 10.0.0.7, 10.0.0.8",
+                () -> "10.0.0.9",
+                TRUSTED_PRIVATE_PROXY);
+
+        assertEquals("198.51.100.20", resolved);
+    }
+
+    @Test
+    void forwardedResolutionIgnoresUnknownAndEmptyTokens() {
+        String resolved = resolveForwardedClientIp(
+                header -> " unknown, , 198.51.100.21 , 10.0.0.8, UNKNOWN ",
+                () -> "10.0.0.9",
+                TRUSTED_PRIVATE_PROXY);
+
+        assertEquals("198.51.100.21", resolved);
+    }
+
+    @Test
+    void forwardedResolutionRetainsIpv6TokenWithoutNormalizingIt() {
+        String resolved = resolveForwardedClientIp(
+                header -> "2001:db8::10, 2001:db8::ff",
+                () -> "2001:db8::ff",
+                "2001:db8::ff"::equals);
+
+        assertEquals("2001:db8::10", resolved);
+    }
+
+    @Test
+    void forwardedResolutionFallsBackToDirectPeerWhenAllTokensAreTrusted() {
+        String resolved = resolveForwardedClientIp(
+                header -> "10.0.0.7, 10.0.0.8",
+                () -> "10.0.0.9",
+                TRUSTED_PRIVATE_PROXY);
+
+        assertEquals("10.0.0.9", resolved);
+    }
+
+    @Test
+    void forwardedResolutionRejectsNullCollaborators() {
+        assertThrows(NullPointerException.class,
+                () -> resolveForwardedClientIp(null, () -> "10.0.0.9", TRUSTED_PRIVATE_PROXY));
+    }
+
+    private static String resolveClientIp(Supplier<String> remoteAddrSupplier) {
+        return invoke("resolveClientIp", new Class<?>[]{Supplier.class}, remoteAddrSupplier);
+    }
+
+    private static String resolveForwardedClientIp(
+            UnaryOperator<String> headerGetter,
+            Supplier<String> remoteAddrSupplier,
+            Predicate<String> trustedProxyPredicate) {
+        return invoke(
+                "resolveForwardedClientIp",
+                new Class<?>[]{UnaryOperator.class, Supplier.class, Predicate.class},
+                headerGetter,
+                remoteAddrSupplier,
+                trustedProxyPredicate);
+    }
+
+    private static String invoke(String methodName, Class<?>[] parameterTypes, Object... arguments) {
+        try {
+            Method method = IpUtils.class.getMethod(methodName, parameterTypes);
+            return (String) method.invoke(null, arguments);
+        } catch (InvocationTargetException ex) {
+            if (ex.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new AssertionError("IP 解析 API 调用失败", ex.getCause());
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("缺少约定的 IP 解析 API: " + methodName, ex);
         }
-        if ((kv.length & 1) == 1) {
-            throw new IllegalArgumentException("headers 参数 kv 必须为偶数个元素（key/value 成对），当前长度=" + kv.length);
-        }
-        Map<String, String> map = new HashMap<>();
-        for (int i = 0; i < kv.length; i += 2) {
-            map.put(kv[i], kv[i + 1]);
-        }
-        return map;
-    }
-
-    @Test
-    void resolve_uses_first_ip_in_x_forwarded_for() {
-        Map<String, String> map = headers(
-                "X-Forwarded-For", " 10.0.0.1, 10.0.0.2 ",
-                "X-Real-IP", "192.168.0.10"
-        );
-        String ip = IpUtils.resolveClientIp(map::get, () -> "127.0.0.1");
-        assertEquals("10.0.0.1", ip);
-    }
-
-    @Test
-    void resolve_fallbacks_to_x_real_ip_when_xff_missing_or_unknown() {
-        Map<String, String> map1 = headers("X-Real-IP", "203.0.113.5");
-        assertEquals("203.0.113.5", IpUtils.resolveClientIp(map1::get, () -> "127.0.0.1"));
-
-        Map<String, String> map2 = headers(
-                "X-Forwarded-For", UNKNOWN,
-                "X-Real-IP", "203.0.113.6"
-        );
-        assertEquals("203.0.113.6", IpUtils.resolveClientIp(map2::get, () -> "127.0.0.1"));
-    }
-
-    @Test
-    void resolve_fallbacks_to_proxy_and_wl_proxy() {
-        Map<String, String> map = headers(
-                "X-Forwarded-For", "",
-                "X-Real-IP", null,
-                "Proxy-Client-IP", "172.16.0.2"
-        );
-        assertEquals("172.16.0.2", IpUtils.resolveClientIp(map::get, () -> "127.0.0.1"));
-
-        Map<String, String> map2 = headers(
-                "X-Forwarded-For", " ",
-                "X-Real-IP", UNKNOWN,
-                "Proxy-Client-IP", UNKNOWN,
-                "WL-Proxy-Client-IP", "172.16.0.3"
-        );
-        assertEquals("172.16.0.3", IpUtils.resolveClientIp(map2::get, () -> "127.0.0.1"));
-    }
-
-    @Test
-    void resolve_trims_value_and_uses_remote_addr_as_last_resort() {
-        Map<String, String> map = headers(
-                "X-Forwarded-For", "  ",
-                "X-Real-IP", "  "
-        );
-        String ip = IpUtils.resolveClientIp(map::get, () -> "10.10.10.10");
-        assertEquals("10.10.10.10", ip);
-
-        Map<String, String> map2 = headers("X-Real-IP", "  198.51.100.8  ");
-        String ip2 = IpUtils.resolveClientIp(map2::get, () -> "10.10.10.10");
-        assertEquals("198.51.100.8", ip2);
     }
 }
-
-

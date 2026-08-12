@@ -8,6 +8,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -195,19 +197,49 @@ class TraceInterceptorTest extends BaseUnitTest {
         verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, headerTraceId);
     }
 
-    /**
-     * 测试 afterCompletion 不清理 MDC
-     */
     @Test
-    void testAfterCompletion() {
-        // 先设置 traceId
-        String traceId = "test-trace-id";
-        org.slf4j.MDC.put("traceId", traceId);
+    void afterCompletionRestoresPreviousTraceIdAndKeepsExternalMdcKeyWhenExceptionExists() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
+        org.slf4j.MDC.put("traceId", "previous-trace-id");
+        org.slf4j.MDC.put("external", "keep-me");
 
-        // 执行 afterCompletion
-        traceInterceptor.afterCompletion(request, response, handler, null);
+        traceInterceptor.preHandle(localRequest, new MockHttpServletResponse(), handler);
+        traceInterceptor.afterCompletion(
+                localRequest, new MockHttpServletResponse(), handler, new RuntimeException("expected"));
 
-        // 验证 MDC 中的 traceId 仍然存在（不清理）
-        assertEquals(traceId, org.slf4j.MDC.get("traceId"));
+        assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
+    }
+
+    @Test
+    void nestedPreHandleAndAfterCompletionPairingRestoresEachTraceId() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        MockHttpServletResponse localResponse = new MockHttpServletResponse();
+        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "outer-trace-id");
+        org.slf4j.MDC.put("traceId", "before-request");
+
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+        localRequest.removeHeader(HttpHeaderConstants.TRACE_ID_HEADER);
+        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "inner-trace-id");
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+
+        traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
+        assertEquals("outer-trace-id", org.slf4j.MDC.get("traceId"));
+
+        traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
+        assertEquals("before-request", org.slf4j.MDC.get("traceId"));
+    }
+
+    @Test
+    void responseHeaderFailureDoesNotLeaveNewTraceIdInMdc() {
+        when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn("new-trace-id");
+        org.slf4j.MDC.put("traceId", "previous-trace-id");
+        doThrow(new IllegalStateException("response committed"))
+                .when(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
+
+        assertThrows(IllegalStateException.class, () -> traceInterceptor.preHandle(request, response, handler));
+
+        assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
     }
 }

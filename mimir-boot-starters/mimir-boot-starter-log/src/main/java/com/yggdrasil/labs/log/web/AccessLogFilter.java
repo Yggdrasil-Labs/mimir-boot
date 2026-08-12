@@ -21,7 +21,7 @@ import java.util.List;
  * <li>记录每个请求的详细信息：IP、URI、耗时、状态码</li>
  * <li>根据耗时判断是否为慢接口，慢接口输出 WARN 级别日志</li>
  * <li>慢接口阈值可配置</li>
- * <li>支持自动获取真实 IP（支持反向代理场景）</li>
+ * <li>记录容器提供的直连对端 IP</li>
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -168,17 +168,15 @@ public class AccessLogFilter implements Filter {
     }
 
     /**
-     * 获取客户端真实 IP
-     * 支持反向代理场景，按优先级检查以下请求头：
-     * 1. X-Forwarded-For
-     * 2. X-Real-IP
-     * 3. getRemoteAddr()
+     * 获取容器提供的直连对端 IP。
+     *
+     * <p>转发头仅应由已建立可信边界的容器改写为 remoteAddr 后使用。</p>
      *
      * @param request HTTP 请求
      * @return 客户端真实 IP
      */
     private String getClientIp(HttpServletRequest request) {
-        return IpUtils.resolveClientIp(request::getHeader, request::getRemoteAddr);
+        return IpUtils.resolveClientIp(request::getRemoteAddr);
     }
 
     /**

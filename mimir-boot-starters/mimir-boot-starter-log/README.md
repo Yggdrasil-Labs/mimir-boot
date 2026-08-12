@@ -242,6 +242,7 @@ spring:
 - `slowThresholdMs=3000` - 慢接口阈值（毫秒）
 - 访问日志仅记录请求路径，不记录 query string，避免令牌、验证码等敏感参数落盘
 - 访问日志不缓存响应体，不影响 SSE、文件下载和大响应的流式写出
+- 审计 IP 默认只使用 `request.getRemoteAddr()`；Starter 不会自行信任任意转发头
 
 **示例**：
 
@@ -283,7 +284,7 @@ mimir:
 **特点**：
 
 - 自动记录请求的 IP、HTTP 方法、URI、状态码、耗时、User-Agent
-- 支持获取真实 IP（自动处理反向代理场景）
+- 默认记录容器提供的直连 IP
 - **智能日志级别**（最佳实践）：
   - 2xx/3xx 成功/重定向：INFO（慢接口为 WARN）
   - 4xx 客户端错误：WARN（如 400、401、403、404、429）
@@ -291,6 +292,21 @@ mimir:
 - 独立的日志文件，与业务日志分离，方便分析
 - 异步写入，不影响业务性能
 - **所有环境都会生成**：dev、test、prod 都会自动记录访问日志
+
+**可信代理边界**：只有网络入口和 Servlet 容器已配置为仅信任受控反向代理，并将可信转发信息安全改写为 `remoteAddr` 时，访问日志才会记录原始客户端地址。Tomcat 可按实际受控网段精确配置：
+
+```yaml
+server:
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      internal-proxies: "10\\.42\\.0\\.\\d{1,3}|192\\.0\\.2\\.10"
+```
+
+不要把 `internal-proxies` 配成 `.*`，并确保客户端不能绕过反向代理直连应用端口；否则伪造的转发头可能影响容器改写后的地址。
+
+配置项的定义可参见 [Spring Boot 3.3 的嵌入式 Web Server 指南](https://docs.spring.io/spring-boot/3.3/how-to/webserver.html)。
 
 ### 敏感信息脱敏
 
@@ -419,8 +435,8 @@ public class UserController {
 
 **扩展方向**：
 
-- 可以通过拦截器自动提取 HTTP 请求信息（IP、路径、方法等）
-- 可以通过过滤器统一处理 MDC 的清除
+- 可以通过拦截器记录容器已经确认的 HTTP 请求信息（IP、路径、方法等）
+- 应由各 MDC 键的所有者恢复自身上下文，避免全局清除
 - 可以根据业务需求自定义额外的 MDC 字段
 
 ---

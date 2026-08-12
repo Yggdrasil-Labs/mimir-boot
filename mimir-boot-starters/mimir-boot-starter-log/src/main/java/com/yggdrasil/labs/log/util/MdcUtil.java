@@ -184,7 +184,7 @@ public class MdcUtil {
      * 清除所有上下文
      */
     public static void clear() {
-        org.slf4j.MDC.clear();
+        getAll().keySet().forEach(org.slf4j.MDC::remove);
     }
 
     /**
@@ -194,4 +194,3 @@ public class MdcUtil {
         org.slf4j.MDC.setContextMap(context);
     }
 }
-

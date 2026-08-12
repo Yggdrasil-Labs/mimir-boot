@@ -15,7 +15,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 **Implementation Head SHA:** [待填充]
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/project-governance-ci
 **Started At:** 2026-08-11T23:48:59+08:00
-**Updated At:** 2026-08-12T22:21:30+08:00
+**Updated At:** 2026-08-12T22:49:07+08:00
 
 **Goal:** 先建立 Push 前可复现的 CI 与文档治理门禁，再完成中高收益的功能代码优化。
 **Architecture:** 主线 B 把本地预检、GitHub Actions、Release、Dependabot 和事实文档收敛为自动校验；主线 A 在该门禁下修复 Web、RPC、异常、Nacos 和测试 Starter。外部发布副作用保持独立，v2.x 公共兼容边界保持不变。
@@ -393,7 +393,7 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** null
+- **Commit SHA:** 8f0438c
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"! rg -n 'github-actions-minor-patch|仅管理|已验证' .github/dependabot.yml mimir-boot-bom/README.md","confirmed":true,"evidence":"命令以 0 退出，确认 Actions 分组与 BOM 支持等级尚未存在。"}]}
@@ -448,6 +448,8 @@ Expected: **PASS**
 - Modify: `mimir-boot-starters/mimir-boot-starter-web/src/test/java/com/yggdrasil/labs/web/interceptor/WebInterceptorTest.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/src/main/java/com/yggdrasil/labs/log/web/AccessLogFilter.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/web/AccessLogFilterTest.java`
+- Modify: `mimir-boot-starters/mimir-boot-starter-log/src/main/java/com/yggdrasil/labs/log/util/MdcUtil.java`（AC1 生产路径禁用 `MDC.clear()`，保留公开清空语义）
+- Modify: `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/util/MdcUtilTest.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-web/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/README.md`
 
@@ -460,26 +462,26 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] 请求完成后 traceId/ip 恢复原值，其他 MDC 键保持不变，生产路径不调用 `MDC.clear()`。
-- [ ] 直连伪造头返回 remoteAddr；可信代理链从应用侧向外跳过可信节点并返回第一个不可信地址。
+- [x] 请求完成后 traceId/ip 恢复原值，其他 MDC 键保持不变，生产路径不调用 `MDC.clear()`。
+- [x] 直连伪造头返回 remoteAddr；可信代理链从应用侧向外跳过可信节点并返回第一个不可信地址。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** done
 - **Commit SHA:** null
-- **Attempts:** 0
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log -am test","status":"pass","evidence":"按预期以 exit 1 失败：旧两参数 API 返回伪造 X-Forwarded-For，且缺少单参数与显式可信代理 API。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log -am verify","status":"pass","evidence":"7 个 Reactor 模块 BUILD SUCCESS；Web 单测 42、Web IT 7，所有覆盖率门禁通过。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-common,:mimir-boot-starter-web,:mimir-boot-starter-log -am test","status":"pass","evidence":"7 个 Reactor 模块 BUILD SUCCESS；IpUtils 8、Log 143、Web 42 测试均通过。"},{"cmd":"! rg -n 'MDC\\.clear\\(\\)' mimir-boot-starters/mimir-boot-starter-web/src/main/java mimir-boot-starters/mimir-boot-starter-log/src/main/java && git diff --check","status":"pass","evidence":"生产 Web/Log 源码不存在 MDC.clear()，且 diff 无空白错误。"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"Trace/Web 用 request attribute 栈恢复各自键；测试覆盖旧值、外部键、异常和嵌套配对，MdcUtil 保留清空语义但不调用 MDC.clear()。","AC2":"默认 API 与 Web/Log 仅取 remoteAddr；显式 API 覆盖直连不可信不读 header、右向左可信代理跳过、unknown/空、IPv6 和全可信回退。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 

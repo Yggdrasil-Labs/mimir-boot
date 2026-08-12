@@ -7,6 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Optional;
+
 /**
  * Web 拦截器
  *
@@ -27,6 +31,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
  */
 @Slf4j
 public class WebInterceptor implements HandlerInterceptor {
+    private static final String IP = "ip";
+    private static final String IP_MDC_STACK_ATTRIBUTE = WebInterceptor.class.getName() + ".ipMdcStack";
     /**
      * 请求处理前
      * <p>
@@ -42,8 +48,9 @@ public class WebInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 提取并设置客户端 IP
         String clientIp = getClientIp(request);
+        ipMdcStack(request).push(Optional.ofNullable(org.slf4j.MDC.get(IP)));
         if (StringUtils.hasText(clientIp)) {
-            org.slf4j.MDC.put("ip", clientIp);
+            org.slf4j.MDC.put(IP, clientIp);
         }
 
         return true;
@@ -52,7 +59,7 @@ public class WebInterceptor implements HandlerInterceptor {
     /**
      * 请求处理后
      * <p>
-     * 清理请求上下文，防止内存泄漏
+     * 仅恢复此拦截器写入前的 IP，防止影响无关 MDC 上下文。
      * </p>
      *
      * @param request  请求对象
@@ -66,25 +73,46 @@ public class WebInterceptor implements HandlerInterceptor {
             HttpServletResponse response,
             Object handler,
             Exception ex) {
-        // 清理 MDC 上下文
-        org.slf4j.MDC.clear();
+        Deque<Optional<String>> stack = ipMdcStackOrNull(request);
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+        restoreMdcValue(IP, stack.pop());
+        if (stack.isEmpty()) {
+            request.removeAttribute(IP_MDC_STACK_ATTRIBUTE);
+        }
     }
 
     /**
-     * 获取客户端真实 IP
-     * <p>
-     * 支持反向代理场景，按优先级检查以下请求头：
-     * 1. X-Forwarded-For
-     * 2. X-Real-IP
-     * 3. Proxy-Client-IP
-     * 4. WL-Proxy-Client-IP
-     * 5. getRemoteAddr()
-     * </p>
+     * 获取直连对端 IP。转发头的可信边界由容器或显式调用方负责。
      *
      * @param request HTTP 请求
      * @return 客户端真实 IP
      */
     private String getClientIp(HttpServletRequest request) {
-        return IpUtils.resolveClientIp(request::getHeader, request::getRemoteAddr);
+        return IpUtils.resolveClientIp(request::getRemoteAddr);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<Optional<String>> ipMdcStack(HttpServletRequest request) {
+        Deque<Optional<String>> stack = ipMdcStackOrNull(request);
+        if (stack == null) {
+            stack = new ArrayDeque<>();
+            request.setAttribute(IP_MDC_STACK_ATTRIBUTE, stack);
+        }
+        return stack;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<Optional<String>> ipMdcStackOrNull(HttpServletRequest request) {
+        return (Deque<Optional<String>>) request.getAttribute(IP_MDC_STACK_ATTRIBUTE);
+    }
+
+    private void restoreMdcValue(String key, Optional<String> previousValue) {
+        if (previousValue.isPresent()) {
+            org.slf4j.MDC.put(key, previousValue.get());
+        } else {
+            org.slf4j.MDC.remove(key);
+        }
     }
 }

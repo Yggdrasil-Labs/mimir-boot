@@ -1,41 +1,20 @@
 package com.yggdrasil.labs.web.interceptor;
 
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Web 拦截器测试
- *
- * <p>测试 WebInterceptor 的功能：</p>
- * <ul>
- * <li>提取客户端 IP</li>
- * <li>设置到 MDC</li>
- * <li>清理 MDC 上下文</li>
- * </ul>
- *
- * @author Yggdrasil Labs
- * @since 1.0.0
- */
 class WebInterceptorTest extends BaseUnitTest {
 
     private WebInterceptor webInterceptor;
-
-    @Mock
-    private HttpServletRequest request;
-
-    @Mock
-    private HttpServletResponse response;
-
-    @Mock
-    private Object handler;
 
     @Override
     @BeforeEach
@@ -50,149 +29,97 @@ class WebInterceptorTest extends BaseUnitTest {
         super.tearDown();
     }
 
-    /**
-     * 测试从 X-Forwarded-For 获取 IP
-     */
     @Test
-    void testPreHandleWithXForwardedFor() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn("192.168.1.100");
-        // getRemoteAddr() 不会被调用，因为 X-Forwarded-For 有值
+    void preHandleUsesDirectRemoteAddressInsteadOfForgedForwardedHeaders() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("198.51.100.10");
+        request.addHeader("X-Forwarded-For", "203.0.113.10");
+        request.addHeader("X-Real-IP", "203.0.113.11");
 
-        boolean result = webInterceptor.preHandle(request, response, handler);
+        assertTrue(webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object()));
 
-        assertTrue(result);
-        assertEquals("192.168.1.100", org.slf4j.MDC.get("ip"));
+        assertEquals("198.51.100.10", org.slf4j.MDC.get("ip"));
     }
 
-    /**
-     * 测试从 X-Forwarded-For 获取第一个 IP（多个 IP 的情况）
-     */
     @Test
-    void testPreHandleWithMultipleIpsInXForwardedFor() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn("192.168.1.100, 10.0.0.1, 172.16.0.1");
-        // getRemoteAddr() 不会被调用，因为 X-Forwarded-For 有值
+    void afterCompletionRestoresOnlyItsPreviousIpAndKeepsOtherMdcKeysWhenExceptionExists() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("198.51.100.10");
+        org.slf4j.MDC.put("ip", "old-ip");
+        org.slf4j.MDC.put("traceId", "trace-owned-by-trace-interceptor");
+        org.slf4j.MDC.put("external", "keep-me");
 
-        boolean result = webInterceptor.preHandle(request, response, handler);
+        webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+        webInterceptor.afterCompletion(request, new MockHttpServletResponse(), new Object(), new RuntimeException("expected"));
 
-        assertTrue(result);
-        assertEquals("192.168.1.100", org.slf4j.MDC.get("ip"));
+        assertEquals("old-ip", org.slf4j.MDC.get("ip"));
+        assertEquals("trace-owned-by-trace-interceptor", org.slf4j.MDC.get("traceId"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
 
-    /**
-     * 测试从 X-Real-IP 获取 IP
-     */
     @Test
-    void testPreHandleWithXRealIp() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn("192.168.1.200");
-        // getRemoteAddr() 不会被调用，因为 X-Real-IP 有值
+    void nestedPreHandleAndAfterCompletionPairingRestoresEachIpValue() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("198.51.100.10");
+        org.slf4j.MDC.put("ip", "before-request");
 
-        boolean result = webInterceptor.preHandle(request, response, handler);
+        webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+        request.setRemoteAddr("198.51.100.11");
+        webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object());
 
-        assertTrue(result);
-        assertEquals("192.168.1.200", org.slf4j.MDC.get("ip"));
+        webInterceptor.afterCompletion(request, new MockHttpServletResponse(), new Object(), null);
+        assertEquals("198.51.100.10", org.slf4j.MDC.get("ip"));
+
+        webInterceptor.afterCompletion(request, new MockHttpServletResponse(), new Object(), null);
+        assertEquals("before-request", org.slf4j.MDC.get("ip"));
     }
 
-    /**
-     * 测试从 Proxy-Client-IP 获取 IP
-     */
     @Test
-    void testPreHandleWithProxyClientIp() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn("192.168.1.300");
-        // getRemoteAddr() 不会被调用，因为 Proxy-Client-IP 有值
+    void afterCompletionWithoutPreHandleDoesNotEraseCurrentIp() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        org.slf4j.MDC.put("ip", "unrelated-ip");
 
-        boolean result = webInterceptor.preHandle(request, response, handler);
+        webInterceptor.afterCompletion(request, new MockHttpServletResponse(), new Object(), null);
 
-        assertTrue(result);
-        assertEquals("192.168.1.300", org.slf4j.MDC.get("ip"));
+        assertEquals("unrelated-ip", org.slf4j.MDC.get("ip"));
     }
 
-    /**
-     * 测试从 WL-Proxy-Client-IP 获取 IP
-     */
     @Test
-    void testPreHandleWithWLProxyClientIp() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn("192.168.1.400");
-        // getRemoteAddr() 不会被调用，因为 WL-Proxy-Client-IP 有值
+    void traceAndWebInterceptorsRestoreTheirOwnKeysInNormalOrder() {
+        TraceInterceptor traceInterceptor = new TraceInterceptor();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Object handler = new Object();
+        request.setRemoteAddr("198.51.100.10");
+        request.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "request-trace-id");
+        request.addHeader("X-Forwarded-For", "203.0.113.10");
+        org.slf4j.MDC.put("traceId", "previous-trace-id");
+        org.slf4j.MDC.put("ip", "previous-ip");
+        org.slf4j.MDC.put("external", "keep-me");
 
-        boolean result = webInterceptor.preHandle(request, response, handler);
+        traceInterceptor.preHandle(request, response, handler);
+        webInterceptor.preHandle(request, response, handler);
+        assertEquals("request-trace-id", org.slf4j.MDC.get("traceId"));
+        assertEquals("198.51.100.10", org.slf4j.MDC.get("ip"));
 
-        assertTrue(result);
-        assertEquals("192.168.1.400", org.slf4j.MDC.get("ip"));
-    }
-
-    /**
-     * 测试使用 getRemoteAddr 作为兜底
-     */
-    @Test
-    void testPreHandleWithRemoteAddr() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
-        when(request.getRemoteAddr()).thenReturn("192.168.1.500");
-
-        boolean result = webInterceptor.preHandle(request, response, handler);
-
-        assertTrue(result);
-        assertEquals("192.168.1.500", org.slf4j.MDC.get("ip"));
-    }
-
-    /**
-     * 测试忽略 "unknown" 值
-     */
-    @Test
-    void testPreHandleIgnoreUnknown() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn("unknown");
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getRemoteAddr()).thenReturn("192.168.1.600");
-
-        boolean result = webInterceptor.preHandle(request, response, handler);
-
-        assertTrue(result);
-        assertEquals("192.168.1.600", org.slf4j.MDC.get("ip"));
-    }
-
-    /**
-     * 测试清理 MDC 上下文
-     */
-    @Test
-    void testAfterCompletionClearsMdc() {
-        // 设置一些 MDC 值
-        org.slf4j.MDC.put("traceId", "test-trace-id");
-        org.slf4j.MDC.put("ip", "192.168.1.100");
-        org.slf4j.MDC.put("userId", "test-user");
-
-        // 执行 afterCompletion
         webInterceptor.afterCompletion(request, response, handler, null);
+        traceInterceptor.afterCompletion(request, response, handler, null);
 
-        // 验证 MDC 已被清理
-        assertNull(org.slf4j.MDC.get("traceId"));
-        assertNull(org.slf4j.MDC.get("ip"));
-        assertNull(org.slf4j.MDC.get("userId"));
+        assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
+        assertEquals("previous-ip", org.slf4j.MDC.get("ip"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
 
-    /**
-     * 测试异常情况下也清理 MDC
-     */
     @Test
-    void testAfterCompletionWithException() {
-        // 设置一些 MDC 值
-        org.slf4j.MDC.put("traceId", "test-trace-id");
-        org.slf4j.MDC.put("ip", "192.168.1.100");
+    void firstPreHandleRemovesOnlyTheIpItIntroduced() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("198.51.100.10");
+        org.slf4j.MDC.put("external", "keep-me");
 
-        // 执行 afterCompletion（带异常）
-        Exception ex = new RuntimeException("Test exception");
-        webInterceptor.afterCompletion(request, response, handler, ex);
+        webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+        webInterceptor.afterCompletion(request, new MockHttpServletResponse(), new Object(), null);
 
-        // 验证 MDC 已被清理
-        assertNull(org.slf4j.MDC.get("traceId"));
         assertNull(org.slf4j.MDC.get("ip"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
 }
-

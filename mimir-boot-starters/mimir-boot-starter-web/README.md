@@ -9,7 +9,7 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 - ✅ **CORS 跨域配置**：统一配置跨域资源共享策略
 - ✅ **Jackson 序列化配置**：统一日期时间格式、空值处理等
 - ✅ **Trace 拦截器**：自动生成或获取受限格式的 traceId，设置到 MDC 和响应头
-- ✅ **Web 拦截器**：自动提取客户端 IP、清理请求上下文
+- ✅ **Web 拦截器**：记录容器提供的直连 IP，并只恢复自己写入的 MDC 键
 - ✅ **响应体增强器**：自动为 `R` 响应对象填充 traceId
 - ✅ **上传限制迁移**：使用 Spring Boot multipart 配置管理请求和文件大小
 - ✅ **可配置开关**：支持通过配置文件启用/禁用各项功能
@@ -268,17 +268,27 @@ X-Trace-Id: a1b2c3d4e5f6
 
 **功能**：
 
-- 自动提取客户端真实 IP（支持反向代理场景）
-- 将 IP 设置到 MDC
-- 请求处理完成后清理 MDC（防止内存泄漏）
+- 默认只使用 `request.getRemoteAddr()`，并将该 IP 设置到 MDC
+- 请求完成后仅恢复此前的 `ip` 值；`traceId` 和业务自定义 MDC 键由各自所有者保留
 
-**IP 提取优先级**：
+**可信代理边界**：
 
-1. `X-Forwarded-For` 请求头
-2. `X-Real-IP` 请求头
-3. `Proxy-Client-IP` 请求头
-4. `WL-Proxy-Client-IP` 请求头
-5. `getRemoteAddr()`
+Starter 不会自行信任任意 `X-Forwarded-For`、`X-Real-IP` 或其他转发头。只有网络入口和 Servlet 容器已经被配置为仅信任受控反向代理，并将可信转发信息安全改写到 `remoteAddr` 时，默认行为才会记录原始客户端地址。
+
+Tomcat 部署在受控反向代理后时，可按实际网段精确配置，例如：
+
+```yaml
+server:
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      internal-proxies: "10\\.42\\.0\\.\\d{1,3}|192\\.0\\.2\\.10"
+```
+
+`internal-proxies` 只能列出实际受控的代理网段或地址，绝不能配置为 `.*`；同时必须阻止客户端绕过反向代理直接访问应用端口。否则客户端可伪造转发头并影响审计 IP。
+
+配置项的定义可参见 [Spring Boot 3.3 的嵌入式 Web Server 指南](https://docs.spring.io/spring-boot/3.3/how-to/webserver.html)。
 
 **使用方式**：
 
@@ -447,7 +457,7 @@ ResponseBodyEnhancer
   - 为 R 响应对象填充 traceId
   ↓
 WebInterceptor（afterCompletion）
-  - 清理 MDC
+  - 仅恢复此前的 IP MDC 值
   ↓
 返回客户端
 ```

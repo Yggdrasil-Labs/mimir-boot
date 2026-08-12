@@ -65,10 +65,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = FilterChainMockBuilder.create()
                 .statusCode(200)
@@ -97,10 +93,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -132,10 +124,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -164,10 +152,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("User-Agent")).thenReturn("Apache-HttpClient/4.5");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -271,18 +255,19 @@ class AccessLogFilterTest extends BaseUnitTest {
     }
 
     /**
-     * 测试获取真实 IP（X-Forwarded-For）
+     * 测试默认仅信任直连地址，不信任伪造的 X-Forwarded-For。
      */
     @Test
-    void testRealIpFromXForwardedFor() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
+    void testUsesDirectRemoteAddressInsteadOfForwardedFor() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
-        when(request.getRequestURI()).thenReturn("/api/test");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-        when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
+        request.setRequestURI("/api/test");
+        request.setMethod("GET");
+        request.addHeader("User-Agent", "Mozilla/5.0");
+        request.addHeader("X-Forwarded-For", "203.0.113.1");
+        request.setRemoteAddr("198.51.100.10");
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -294,23 +279,23 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
-        assertTrue(event.getFormattedMessage().contains("IP=[203.0.113.1]"));
+        assertTrue(event.getFormattedMessage().contains("IP=[198.51.100.10]"));
     }
 
     /**
-     * 测试获取真实 IP（X-Real-IP）
+     * 测试默认仅信任直连地址，不信任伪造的 X-Real-IP。
      */
     @Test
-    void testRealIpFromXRealIp() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
+    void testUsesDirectRemoteAddressInsteadOfRealIp() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
-        when(request.getRequestURI()).thenReturn("/api/test");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn("203.0.113.2");
+        request.setRequestURI("/api/test");
+        request.setMethod("GET");
+        request.addHeader("User-Agent", "Mozilla/5.0");
+        request.addHeader("X-Real-IP", "203.0.113.2");
+        request.setRemoteAddr("198.51.100.11");
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -322,7 +307,7 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
-        assertTrue(event.getFormattedMessage().contains("IP=[203.0.113.2]"));
+        assertTrue(event.getFormattedMessage().contains("IP=[198.51.100.11]"));
     }
 
     /**
@@ -338,10 +323,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -382,10 +363,6 @@ class AccessLogFilterTest extends BaseUnitTest {
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
             when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-            when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-            when(request.getHeader("X-Real-IP")).thenReturn(null);
-            when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-            when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
             final int finalStatusCode = statusCode;
             doAnswer(invocation -> {
@@ -420,10 +397,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0\r\n伪造的日志");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);
@@ -454,10 +427,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getHeader("Proxy-Client-IP")).thenReturn(null);
-        when(request.getHeader("WL-Proxy-Client-IP")).thenReturn(null);
 
         doAnswer(invocation -> {
             HttpServletResponse resp = invocation.getArgument(1);

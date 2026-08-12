@@ -130,14 +130,16 @@ class MdcUtilTest extends BaseUnitTest {
     }
 
     @Test
-    void testClear() {
+    void testClearRemovesEveryCurrentMdcKey() {
         MdcUtil.put("key1", "value1");
         MdcUtil.put("key2", "value2");
+        MdcUtil.put("external", "external-value");
 
         MdcUtil.clear();
 
         assertNull(MdcUtil.get("key1"));
         assertNull(MdcUtil.get("key2"));
+        assertNull(MdcUtil.get("external"));
     }
 
     @Test
@@ -203,4 +205,3 @@ class MdcUtilTest extends BaseUnitTest {
         assertEquals("tenantId", MdcUtil.TENANT_ID);
     }
 }
-
