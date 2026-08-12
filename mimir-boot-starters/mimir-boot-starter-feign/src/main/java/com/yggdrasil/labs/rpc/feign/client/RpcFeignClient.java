@@ -104,6 +104,8 @@ public class RpcFeignClient implements Client {
             }
             invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
             throw propagate(throwable);
+        } finally {
+            invocation.close();
         }
     }
 

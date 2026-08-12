@@ -79,6 +79,8 @@ public class RpcExecutionTemplate {
             }
             invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
             throw propagate(throwable);
+        } finally {
+            invocation.close();
         }
     }
 
@@ -95,13 +97,8 @@ public class RpcExecutionTemplate {
         }
     }
 
-    private RuntimeException propagate(Throwable throwable) {
-        if (throwable instanceof Error error) {
-            throw error;
-        }
-        if (throwable instanceof RuntimeException runtimeException) {
-            return runtimeException;
-        }
-        return new RuntimeException(throwable);
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> RuntimeException propagate(Throwable throwable) throws E {
+        throw (E) throwable;
     }
 }

@@ -78,6 +78,7 @@ public class RpcDubboFilter implements Filter {
 
         Instant start = Instant.now();
         RpcHookInvocation hookInvocation = hookChain.open(context);
+        boolean asyncInvocation = false;
         boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
@@ -101,6 +102,7 @@ public class RpcDubboFilter implements Filter {
             if (result instanceof AsyncRpcResult) {
                 result.whenCompleteWithContext((completedResult, throwable) ->
                         completeCall(hookInvocation, metadata, start, completedResult, throwable));
+                asyncInvocation = true;
             } else {
                 completeCall(hookInvocation, metadata, start, result, null);
             }
@@ -108,6 +110,10 @@ public class RpcDubboFilter implements Filter {
         } catch (Throwable throwable) {
             completeCall(hookInvocation, metadata, start, null, throwable);
             throw propagate(throwable);
+        } finally {
+            if (!asyncInvocation) {
+                hookInvocation.close();
+            }
         }
     }
 

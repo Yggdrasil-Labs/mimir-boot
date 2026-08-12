@@ -75,7 +75,7 @@ class RpcExecutionTemplateTest {
     }
 
     @Test
-    void shouldCallOnErrorCleanupAndWrapCheckedException() {
+    void shouldCallOnErrorCleanupAndPropagateCheckedException() {
         RecordingHook hook = new RecordingHook();
         AtomicInteger tracerInvoked = new AtomicInteger();
         RpcTracerBridge tracer = new RpcTracerBridge() {
@@ -94,14 +94,39 @@ class RpcExecutionTemplateTest {
                 RpcCallMetadata.builder().service("svc").method("fail").build());
 
         Exception checked = new Exception("boom");
-        RuntimeException thrown = Assertions.assertThrows(
-                RuntimeException.class, () -> template.execute(context, asCallable(checked)));
+        Throwable thrown = Assertions.assertThrows(Throwable.class, () -> template.execute(context, asCallable(checked)));
 
-        Assertions.assertSame(checked, thrown.getCause());
+        Assertions.assertSame(checked, thrown);
         Assertions.assertEquals(List.of("before", "onError", "cleanup"), hook.events);
         Assertions.assertEquals(0, tracerInvoked.get());
         Assertions.assertTrue(hook.onErrorCalled);
         Assertions.assertFalse(hook.afterCalled);
+    }
+
+    @Test
+    void shouldPropagateSameCheckedBusinessExceptionWithSuppressedLifecycleFailures() {
+        Exception primary = new Exception("business failure");
+        RuntimeException onErrorFailure = new RuntimeException("onError failure");
+        RuntimeException cleanupFailure = new RuntimeException("cleanup failure");
+        RpcHook hook = new RpcHook() {
+            @Override
+            public void onError(RpcCallContext context, RpcCallResult result) {
+                throw onErrorFailure;
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                throw cleanupFailure;
+            }
+        };
+        RpcExecutionTemplate template = new RpcExecutionTemplate(
+                new RpcHookChain(List.of(hook)), noOpTracer(), false);
+
+        Throwable thrown = Assertions.assertThrows(
+                Throwable.class, () -> template.execute(context("checked"), asCallable(primary)));
+
+        Assertions.assertSame(primary, thrown);
+        Assertions.assertArrayEquals(new Throwable[] {onErrorFailure, cleanupFailure}, thrown.getSuppressed());
     }
 
     @Test
@@ -168,6 +193,39 @@ class RpcExecutionTemplateTest {
                 }));
 
         Assertions.assertSame(beforeFailure, thrown);
+        Assertions.assertEquals(0, businessCalls.get());
+        Assertions.assertEquals(
+                List.of("first-before", "second-before", "first-onError", "second-onError", "second-cleanup", "first-cleanup"),
+                events);
+    }
+
+    @Test
+    void shouldCleanUpEnteredHooksInReverseOrderWhenTracerInjectionFails() {
+        List<String> events = new ArrayList<>();
+        AtomicInteger businessCalls = new AtomicInteger();
+        RuntimeException primary = new RuntimeException("inject failure");
+        RpcHook first = hook("first", events, null, null, null);
+        RpcHook second = hook("second", events, null, null, null);
+        RpcTracerBridge failingTracer = new RpcTracerBridge() {
+            @Override
+            public Map<String, String> inject(RpcCallContext context) {
+                throw primary;
+            }
+
+            @Override
+            public void extract(RpcCallContext context, Map<String, String> carrier) {}
+        };
+        RpcExecutionTemplate template = new RpcExecutionTemplate(
+                new RpcHookChain(List.of(first, second)), failingTracer, true);
+
+        RuntimeException thrown = Assertions.assertThrows(
+                RuntimeException.class,
+                () -> template.execute(context("injectFailure"), () -> {
+                    businessCalls.incrementAndGet();
+                    return "unexpected";
+                }));
+
+        Assertions.assertSame(primary, thrown);
         Assertions.assertEquals(0, businessCalls.get());
         Assertions.assertEquals(
                 List.of("first-before", "second-before", "first-onError", "second-onError", "second-cleanup", "first-cleanup"),

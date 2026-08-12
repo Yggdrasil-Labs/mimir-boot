@@ -107,24 +107,69 @@ class RpcHookChainTest {
         first.before();
         second.before();
 
-        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch ready = new CountDownLatch(3);
+        CountDownLatch go = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(3);
         try {
-            executor.submit(() -> awaitAndRun(start, () -> first.completeSuccess(RpcCallResult.success(Duration.ZERO))));
-            executor.submit(() -> awaitAndRun(start, () -> first.completeFailure(
+            executor.submit(() -> awaitAndRun(ready, go, () -> first.completeSuccess(RpcCallResult.success(Duration.ZERO))));
+            executor.submit(() -> awaitAndRun(ready, go, () -> first.completeFailure(
                     RpcCallResult.failure(Duration.ZERO, new RuntimeException("failure")), new RuntimeException("failure"))));
-            executor.submit(() -> awaitAndRun(start, first::close));
-            start.countDown();
+            executor.submit(() -> awaitAndRun(ready, go, first::close));
+            Assertions.assertTrue(ready.await(5, TimeUnit.SECONDS));
+            go.countDown();
             executor.shutdown();
             Assertions.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         } finally {
             executor.shutdownNow();
         }
 
-        second.completeSuccess(RpcCallResult.success(Duration.ZERO));
+        Assertions.assertEquals(1, cleanupCalls.get());
+        Assertions.assertTrue(afterCalls.get() + errorCalls.get() <= 1);
+        Assertions.assertTrue(first.isClosed());
+        Assertions.assertFalse(second.isClosed());
+    }
 
-        Assertions.assertEquals(2, cleanupCalls.get());
-        Assertions.assertEquals(2, afterCalls.get() + errorCalls.get());
+    @Test
+    void shouldKeepEnteredHooksSuppressedFailuresAndCleanupIsolatedAcrossThreads() throws Exception {
+        List<String> cleanupEvents = java.util.Collections.synchronizedList(new ArrayList<>());
+        RpcHook hook = new RpcHook() {
+            @Override
+            public void onError(RpcCallContext context, RpcCallResult result) {
+                throw new IllegalStateException("onError-" + context.getMetadata().getMethod());
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                cleanupEvents.add(context.getMetadata().getMethod());
+                throw new IllegalArgumentException("cleanup-" + context.getMetadata().getMethod());
+            }
+        };
+        RpcHookChain chain = new RpcHookChain(List.of(hook));
+        RpcHookInvocation first = chain.open(context("first"));
+        RpcHookInvocation second = chain.open(context("second"));
+        first.before();
+        second.before();
+        RuntimeException firstPrimary = new RuntimeException("first-primary");
+        RuntimeException secondPrimary = new RuntimeException("second-primary");
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            executor.submit(() -> awaitAndRun(ready, go, () -> first.completeFailure(
+                    RpcCallResult.failure(Duration.ZERO, firstPrimary), firstPrimary)));
+            executor.submit(() -> awaitAndRun(ready, go, () -> second.completeFailure(
+                    RpcCallResult.failure(Duration.ZERO, secondPrimary), secondPrimary)));
+            Assertions.assertTrue(ready.await(5, TimeUnit.SECONDS));
+            go.countDown();
+            executor.shutdown();
+            Assertions.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertSuppressedMessages(firstPrimary, "onError-first", "cleanup-first");
+        assertSuppressedMessages(secondPrimary, "onError-second", "cleanup-second");
+        Assertions.assertEquals(List.of("first", "second"), cleanupEvents.stream().sorted().toList());
         Assertions.assertTrue(first.isClosed());
         Assertions.assertTrue(second.isClosed());
     }
@@ -145,7 +190,11 @@ class RpcHookChainTest {
     }
 
     private static RpcCallContext context() {
-        return RpcCallContext.create(RpcCallMetadata.builder().service("svc").method("m1").build());
+        return context("m1");
+    }
+
+    private static RpcCallContext context(String method) {
+        return RpcCallContext.create(RpcCallMetadata.builder().service("svc").method(method).build());
     }
 
     private static RpcHook recordingHook(
@@ -196,14 +245,22 @@ class RpcHookChainTest {
         };
     }
 
-    private static void awaitAndRun(CountDownLatch start, Runnable action) {
+    private static void awaitAndRun(CountDownLatch ready, CountDownLatch go, Runnable action) {
         try {
-            start.await();
+            ready.countDown();
+            go.await();
             action.run();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new AssertionError(exception);
         }
+    }
+
+    private static void assertSuppressedMessages(Throwable throwable, String first, String second) {
+        Throwable[] suppressed = throwable.getSuppressed();
+        Assertions.assertEquals(2, suppressed.length);
+        Assertions.assertEquals(first, suppressed[0].getMessage());
+        Assertions.assertEquals(second, suppressed[1].getMessage());
     }
 
     private static class OrderedRecordingHook implements RpcHook {
