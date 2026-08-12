@@ -47,6 +47,7 @@ verify_reports() {
   test "${#failsafe_reports[@]}" -ge 2
   test "$(rg -o --no-filename '<testcase ' "${failsafe_reports[@]}" | wc -l)" -ge 11
   ! rg 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${failsafe_reports[@]}"
+  ! rg 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${failsafe_reports[@]}"
   find . -path '*/target/site/jacoco/jacoco.xml' -type f -size +0c -print -quit | rg .
 }
 

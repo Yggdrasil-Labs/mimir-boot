@@ -234,7 +234,7 @@ Expected: **PASS**
 - **Attempts:** 2
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"test ! -f scripts/ci-preflight.sh && rg -n '^  sonar:|./mvnw -B -U verify -Pci' .github/workflows/ci.yml","confirmed":true,"evidence":"同源 Bash 入口不存在；CI 同时存在独立 sonar Job 和带 -U 的 Maven 构建。"}]}
-- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"单次 clean verify 完成 15 个 Reactor 模块；输出 Sonar skipped，Surefire、2 份 Failsafe（11 testcase、零失败）与 JaCoCo XML 均已检查。"},{"cmd":"mise exec java@17 -- bash -lc 'RUN_SONAR=true bash scripts/ci-preflight.sh'","status":"pass","evidence":"缺少任一 Sonar 配置时在 Maven 前以明确错误退出。"},{"cmd":"Bash/rg 静态断言","status":"pass","evidence":"仅一个 build Job 与一个 preflight 调用；无 sonar Job、-U、setup-node、package.json 或 package-lock.json；Sonar secrets 仅在 push 时映射。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"单次 clean verify 完成 15 个 Reactor 模块；输出 Sonar skipped，Surefire、2 份 Failsafe（11 testcase、零失败、零错误、零跳过）与 JaCoCo XML 均已检查。"},{"cmd":"mise exec java@17 -- bash -lc 'RUN_SONAR=true bash scripts/ci-preflight.sh'","status":"pass","evidence":"缺少任一 Sonar 配置时在 Maven 前以明确错误退出。"},{"cmd":"Bash/rg 静态断言","status":"pass","evidence":"仅一个 build Job 与一个 preflight 调用；无 sonar Job、-U、setup-node、package.json 或 package-lock.json；Sonar secrets 仅在 push 时映射。"}]}
 - **AC Result:** {"pass":4,"total":4,"deferred":[],"details":{"AC1":"Java 17 下单次 clean verify 和三类报告检查通过。","AC2":"唯一 build Job、唯一 preflight 调用、无 -U。","AC3":"默认输出 skipped；缺配置 true 路径在 Maven 前失败；push 条件限制 Sonar secret 映射。","AC4":"仓库无 package.json、package-lock.json 或 setup-node。"}}
 
 **Scope Adjustment (2026-08-12):** 用户要求以低维护成本收缩 T2。本节此前关于项目级 Node、Markdown/DOC-001—DOC-006 以及 YAML 规则脚本的步骤和 AC Verification 已废止，以本节 Files、Behavior、Acceptance Criteria 和下列轻量执行步骤为准；文档事实与链接治理留待独立文档任务处理。
@@ -247,7 +247,7 @@ Expected: **PASS**
 
 **Revised AC Verification:**
 
-- AC1: 上述预检命令退出 0，Failsafe 至少 2 份、至少 11 个 testcase、零失败，JaCoCo XML 非空。
+- AC1: 上述预检命令退出 0，Failsafe 至少 2 份、至少 11 个 testcase、零失败、零错误、零跳过，JaCoCo XML 非空。
 - AC2: `test "$(rg -c 'ci-preflight\\.sh' .github/workflows/ci.yml)" -eq 1 && ! rg -n '^[[:space:]]+sonar:|\\-U' .github/workflows/ci.yml`。
 - AC3: 未配置 Sonar 时执行 `RUN_SONAR=true bash scripts/ci-preflight.sh` 必须在 Maven 前失败；默认路径输出 `Sonar analysis: skipped (not eligible)`；脚本不包含 token 参数。
 - AC4: `test ! -e package.json && test ! -e package-lock.json && ! rg -n 'setup-node|node@|npm ' .github/workflows/ci.yml scripts/ci-preflight.sh`。
