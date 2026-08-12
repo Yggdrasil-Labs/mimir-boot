@@ -468,7 +468,7 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** null
+- **Commit SHA:** 4080501
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log -am test","status":"pass","evidence":"按预期以 exit 1 失败：旧两参数 API 返回伪造 X-Forwarded-For，且缺少单参数与显式可信代理 API。"}]}
@@ -480,7 +480,7 @@ Expected: **PASS**
 - [x] Red Result exists and passed
 - [x] Verify Result exists and passed
 - [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
+- [x] Commit SHA belongs to this task only
 - [x] Per-task AC checkbox synced
 
 **Step 1: Red**
@@ -538,21 +538,21 @@ Expected: **PASS**
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** done
 - **Commit SHA:** null
-- **Attempts:** 0
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web -am test -Dtest=WebAutoConfigurationIT -Dsurefire.failIfNoSpecifiedTests=false","status":"pass","evidence":"按预期 exit 1：消费者 SimpleModule 因 JacksonConfig 的 modules(...) 被替换而未生效。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log,:mimir-boot-starter-mybatis -am test","status":"pass","evidence":"按预期依次暴露 Web 三类、同名 accessLogFilter 与用户 MybatisPlusInterceptor 不能覆盖默认 Bean。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log,:mimir-boot-starter-mybatis -am verify","status":"pass","evidence":"8 个 Reactor 模块 BUILD SUCCESS；34 份 Surefire/Failsafe XML 均为零失败、零错误、零跳过，格式与覆盖率门禁通过。"},{"cmd":"mise exec java@17 -- ./mvnw -B -Pci -pl :mimir-boot-starter-web,:mimir-boot-starter-log,:mimir-boot-starter-mybatis -am test","status":"pass","evidence":"审查注释同步后回归通过；五类 ConditionalOnMissingBean 静态断言存在。"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"Web IT 在真实 JacksonAutoConfiguration ObjectMapper 上同时验证消费者 SimpleModule 与项目 LocalDateTime 格式。","AC2":"Web 三类类型回退、Log 保留名称回退与 MyBatis 完整替换均在 ApplicationContextRunner/WebApplicationContextRunner 中验证单实例。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 

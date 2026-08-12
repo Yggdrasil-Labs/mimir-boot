@@ -44,6 +44,7 @@ public class WebAutoConfiguration {
      * @return 响应体增强器
      */
     @Bean
+    @ConditionalOnMissingBean(ResponseBodyEnhancer.class)
     public ResponseBodyEnhancer responseBodyEnhancer(WebProperties webProperties) {
         return new ResponseBodyEnhancer(webProperties);
     }
@@ -52,22 +53,22 @@ public class WebAutoConfiguration {
      * 注册 Trace 拦截器
      * <p>
      * 当检测到 classpath 中存在 Micrometer Tracer 时，此 Bean 不会被创建
-     * 由 starter-trace 模块接管 Trace 逻辑（提供 traceInterceptor Bean）
+     * 由 starter-trace 模块接管 Trace 逻辑（提供同类型 Bean）
      * </p>
      * <p>
      * 条件说明：
-     * - @ConditionalOnMissingBean: 如果 starter-trace 已提供 traceInterceptor，则不创建
+     * - @ConditionalOnMissingBean: 如果 starter-trace 或应用已提供同类型 Bean，则不创建
      * - @ConditionalOnMissingClass: 如果 classpath 中存在 Micrometer Tracer，则不创建
      * </p>
      *
      * @return Trace 拦截器
      */
     @Bean(name = "traceInterceptor")
-    @ConditionalOnMissingBean(name = "traceInterceptor")
+    @ConditionalOnMissingBean(TraceInterceptor.class)
     @ConditionalOnMissingClass("io.micrometer.tracing.Tracer")
     public TraceInterceptor traceInterceptor() {
         // 仅在以下情况创建：
-        // 1. 不存在 traceInterceptor Bean（starter-trace 未提供）
+        // 1. 不存在 TraceInterceptor Bean（starter-trace 或应用未提供）
         // 2. classpath 中不存在 Micrometer Tracer
         return new TraceInterceptor();
     }
@@ -78,8 +79,8 @@ public class WebAutoConfiguration {
      * @return Web 拦截器
      */
     @Bean
+    @ConditionalOnMissingBean(WebInterceptor.class)
     public WebInterceptor webInterceptor() {
         return new WebInterceptor();
     }
 }
-

@@ -2,6 +2,7 @@ package com.yggdrasil.labs.web.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 /**
  * Jackson 序列化配置
@@ -41,6 +44,7 @@ import java.time.format.DateTimeFormatter;
 public class JacksonConfig {
 
     private final WebProperties webProperties;
+    private final ObjectProvider<Module> modules;
 
     /**
      * 配置 Jackson ObjectMapper 自定义器
@@ -75,7 +79,9 @@ public class JacksonConfig {
             javaTimeModule.addDeserializer(LocalTime.class, new LocalTimeDeserializer(timeFormatter));
 
             // 配置模块和时区
-            builder.modules(javaTimeModule);
+            ArrayList<Module> modulesToInstall = new ArrayList<>(modules.orderedStream().toList());
+            modulesToInstall.add(javaTimeModule);
+            builder.modulesToInstall(modulesToInstall.toArray(Module[]::new));
             builder.timeZone(java.util.TimeZone.getTimeZone(serialization.getTimeZone()));
 
             // 配置序列化特性
@@ -97,4 +103,3 @@ public class JacksonConfig {
         };
     }
 }
-

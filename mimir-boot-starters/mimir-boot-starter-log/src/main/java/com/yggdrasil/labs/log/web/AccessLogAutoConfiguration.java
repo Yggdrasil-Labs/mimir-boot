@@ -2,6 +2,7 @@ package com.yggdrasil.labs.log.web;
 
 import jakarta.servlet.Filter;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -42,6 +43,7 @@ public class AccessLogAutoConfiguration {
      * 注册访问日志过滤器
      */
     @Bean
+    @ConditionalOnMissingBean(name = "accessLogFilter")
     public FilterRegistrationBean<Filter> accessLogFilter() {
         FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<>(
                 new AccessLogFilter(properties.getSlowThresholdMs(), properties.getExcludePaths())
@@ -55,4 +57,3 @@ public class AccessLogAutoConfiguration {
         return registrationBean;
     }
 }
-

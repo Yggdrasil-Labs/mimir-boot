@@ -4,6 +4,8 @@ import com.yggdrasil.labs.test.base.BaseUnitTest;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 1.0.0
  */
 class AccessLogAutoConfigurationTest extends BaseUnitTest {
+
+    private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(AccessLogAutoConfiguration.class));
 
     private AccessLogAutoConfiguration configuration;
 
@@ -78,6 +83,13 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
         assertTrue(filter.getUrlPatterns().contains("/*"));
     }
 
+    @Test
+    void customAccessLogFilterByReservedNameOverridesDefault() {
+        runner.withBean("accessLogFilter", FilterRegistrationBean.class,
+                        () -> new FilterRegistrationBean<>(new AccessLogFilter(500, java.util.List.of())))
+                .run(ctx -> assertEquals(1, ctx.getBeansOfType(FilterRegistrationBean.class).size()));
+    }
+
     /**
      * 测试配置不同的慢接口阈值
      */
@@ -96,4 +108,3 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
         }
     }
 }
-

@@ -42,6 +42,7 @@ public class MybatisPlusAutoConfiguration {
     private static final Logger LOGGER = LoggerFactory.getLogger(MybatisPlusAutoConfiguration.class);
 
     @Bean
+    @ConditionalOnMissingBean(MybatisPlusInterceptor.class)
     @ConditionalOnClass(name = "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor")
     public MybatisPlusInterceptor mybatisPlusInterceptor(
             MybatisProperties properties, ListableBeanFactory beanFactory) {
@@ -186,5 +187,4 @@ public class MybatisPlusAutoConfiguration {
         };
     }
 }
-
 

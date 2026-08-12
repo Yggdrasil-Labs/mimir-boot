@@ -13,6 +13,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,6 +30,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 1.0.0
  */
 class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
+
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(MybatisPlusAutoConfiguration.class));
+
+    @Test
+    void customMybatisPlusInterceptorOverridesDefault() {
+        runner.withBean(MybatisPlusInterceptor.class, MybatisPlusInterceptor::new)
+                .run(ctx -> assertEquals(1, ctx.getBeansOfType(MybatisPlusInterceptor.class).size()));
+    }
 
     /**
      * 创建 MybatisPlusAutoConfiguration 实例的辅助方法
