@@ -13,6 +13,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.ApplicationListener;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
@@ -286,6 +288,14 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
 
         assertThrows(IllegalStateException.class, () -> configuration.processDecrypt(environment));
         assertEquals("first-secret", environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldRegisterHighestPrecedenceEnvironmentChangeListener() {
+        ApplicationListener<EnvironmentChangeEvent> listener = configuration.nacosEncryptRefreshListener();
+
+        assertInstanceOf(Ordered.class, listener);
+        assertEquals(Ordered.HIGHEST_PRECEDENCE, ((Ordered) listener).getOrder());
     }
 
     @Configuration(proxyBeanMethods = false)

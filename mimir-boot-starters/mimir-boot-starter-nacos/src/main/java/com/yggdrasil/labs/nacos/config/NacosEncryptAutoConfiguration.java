@@ -10,7 +10,8 @@ import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.EventListener;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 /**
@@ -51,12 +52,21 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
      *
      * @param event 环境变更事件
      */
-    @EventListener
-    public void onEnvironmentChange(EnvironmentChangeEvent event) {
+    void onEnvironmentChange(EnvironmentChangeEvent event) {
         if (applicationContext != null && applicationContext.getEnvironment() instanceof ConfigurableEnvironment environment) {
             log.debug("检测到配置变更，重新处理配置解密，变更的配置键: {}", event.getKeys());
             processDecrypt(environment);
         }
+    }
+
+    /**
+     * 在配置属性重绑定前更新解密覆盖层，避免绑定 Bean 接收到密文或上一次的明文。
+     *
+     * @return 最高优先级的环境变更监听器
+     */
+    @Bean
+    public ApplicationListener<EnvironmentChangeEvent> nacosEncryptRefreshListener() {
+        return new NacosEncryptRefreshListener(this);
     }
 
     /**
@@ -69,5 +79,25 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
         log.debug("开始处理 Nacos 配置解密");
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(activeProperties);
         processor.process(environment);
+    }
+
+    private static final class NacosEncryptRefreshListener
+            implements ApplicationListener<EnvironmentChangeEvent>, Ordered {
+
+        private final NacosEncryptAutoConfiguration configuration;
+
+        private NacosEncryptRefreshListener(NacosEncryptAutoConfiguration configuration) {
+            this.configuration = configuration;
+        }
+
+        @Override
+        public void onApplicationEvent(EnvironmentChangeEvent event) {
+            configuration.onEnvironmentChange(event);
+        }
+
+        @Override
+        public int getOrder() {
+            return Ordered.HIGHEST_PRECEDENCE;
+        }
     }
 }
