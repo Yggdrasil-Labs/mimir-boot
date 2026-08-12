@@ -15,11 +15,11 @@ resolved-path: docs/active/v2.1.2/project-governance/
 **Implementation Head SHA:** [待填充]
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/project-governance-ci
 **Started At:** 2026-08-11T23:48:59+08:00
-**Updated At:** 2026-08-12T07:33:18+08:00
+**Updated At:** 2026-08-12T08:25:59+08:00
 
 **Goal:** 先建立 Push 前可复现的 CI 与文档治理门禁，再完成中高收益的功能代码优化。
 **Architecture:** 主线 B 把本地预检、GitHub Actions、Release、Dependabot 和事实文档收敛为自动校验；主线 A 在该门禁下修复 Web、RPC、异常、Nacos 和测试 Starter。外部发布副作用保持独立，v2.x 公共兼容边界保持不变。
-**Tech Stack:** Java 17、Spring Boot 3.3.13、Maven 3.9.x、Node.js 22、GitHub Actions、JUnit 5、AssertJ
+**Tech Stack:** Java 17、Spring Boot 3.3.13、Maven 3.9.x、Bash、GitHub Actions、JUnit 5、AssertJ
 **Commit Mode:** per-task
 **Effective Execution Mode:** serial，隔离 worktree；`plan.md` 作为每 Task 即时执行账本
 **Final Record Mode:** final-record-exception
@@ -28,7 +28,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 
 - 逻辑版本固定为 `2.1.2`，治理目录固定为 `docs/active/v2.1.2/project-governance/`。
 - Java 固定为 17，Spring Boot 依赖平台和 Maven Plugin 固定为同一 `3.3.13` 属性源。
-- Node.js 固定为 22，治理依赖精确锁定 `markdownlint-cli2@0.23.2` 和 `yaml@2.9.0`。
+- 不引入项目级 Node 工具链或治理依赖；治理脚本仅在有明确低维护收益时使用 Bash。
 - 普通 CI 每次只启动 1 次 Maven Reactor；不运行 Sonar 时执行 `verify`，具备资格时同一次 invocation
   执行 `verify sonar:sonar`。
 - `RUN_SONAR=true` 时 Build Step 必须同时映射 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和
@@ -158,8 +158,8 @@ flowchart TD
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHA:** null
+- **Status:** done
+- **Commit SHA:** 43d491b
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"! rg -n '<artifactId>maven-failsafe-plugin</artifactId>' mimir-boot-parent/pom.xml | tail -n +2 | rg . && rg -n '3.5.16' mimir-boot-parent/pom.xml","confirmed":true,"evidence":"Failsafe 仅位于 pluginManagement；Parent 第 38 行存在独立的 3.5.16 Boot Plugin 版本。"}]}
@@ -171,7 +171,7 @@ flowchart TD
 - [x] Red Result exists and passed
 - [x] Verify Result exists and passed
 - [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
+- [x] Commit SHA belongs to this task only
 - [x] Per-task AC checkbox synced
 
 **Step 1: Red**
@@ -203,73 +203,64 @@ Expected: **PASS**
 
 ---
 
-### T2: 本地同源预检、文档事实检查与普通 CI
+### T2: 轻量同源预检与普通 CI
 
 **Depends on:** T1
 
 **Files:**
 
-- Modify: `.gitignore`
-- Create: `package.json`
-- Create: `package-lock.json`
 - Create: `scripts/ci-preflight.sh`
-- Create: `scripts/ci-preflight.test.sh`
-- Create: `scripts/lint-docs.mjs`
-- Create: `scripts/lint-docs.test.mjs`
-- Create: `scripts/lint-ci.mjs`
-- Create: `scripts/lint-ci.test.mjs`
-- Create: `scripts/sonar-eligibility.mjs`
-- Create: `scripts/sonar-eligibility.test.mjs`
 - Modify: `.github/workflows/ci.yml`
-- Modify: `README.md`
-- Test (read-only baseline): `ARCHITECTURE.md`
-- Modify: `docs/DOMAINS.md`
-- Modify: `docs/QUALITY_SCORE.md`
-- Modify: `docs/SONAR_QUALITY_DISCIPLINE.md`
-- Modify: `docs/index.md`
-- Modify: `docs/product-specs/new-user-onboarding.md`
-- Modify: `docs/archive/v2.1.1/capability-review-2026-07/index.md`
-- Modify: `docs/archive/v2.1.1/quality-refinement/engineering-quality/design.md`
-- Modify: `docs/archive/v2.1.1/quality-refinement/engineering-quality/plan.md`
+- Modify: `docs/active/v2.1.2/project-governance/plan.md`
 
 **Interfaces:**
 
 - Consumes: inherited Maven verification from T1
-- Produces: `bash scripts/ci-preflight.sh`; `node scripts/lint-docs.mjs`; `node scripts/lint-ci.mjs`
+- Produces: `bash scripts/ci-preflight.sh`
 
-**Behavior:** 本地和 GitHub Actions 调用同一个确定性预检入口；普通 CI 只构建一次，报告缺失明确失败，Sonar 仅在主仓库可信事件且配置完整时复用本次构建产物。
+**Behavior:** 本地和 GitHub Actions 调用同一个 Bash 预检入口；普通 CI 只构建一次并校验报告。Sonar 只在可信 push 且三项配置均存在时运行，否则明确跳过；不引入项目级 Node 工具链或文档治理脚本。
 
 **Acceptance Criteria:**
 
-- [ ] 本地同源预检在 Java 17/Node 22 下完成 Markdown、DOC-001—DOC-006、CI 静态规则、Surefire、Failsafe、JaCoCo；Failsafe 至少 2 份报告、不少于基线 11 个 testcase 且失败数为 0，入口退出码为 0。
-- [ ] CI YAML 只有一个核心 Build Job 和一个无条件 `ci-preflight.sh` 调用；Build Step 显式映射
-  `RUN_SONAR` 与三项 Sonar 配置，Scanner 使用 POM 锁定版本。
-- [ ] 主仓库 push、内部 PR、fork PR、Dependabot、任一配置为空和本地默认六条路径均符合冻结矩阵；
-  后四条路径只跳过 Sonar，核心预检仍执行并输出固定 skipped 状态行。
-- [ ] true 路径在一次 Maven invocation 中执行 `verify sonar:sonar`，参数包含 host、organization、
-  project key、JaCoCo XML 和 Quality Gate 等待；Token 只通过环境变量传递且不会进入参数或输出。
-- [ ] 使用空 Maven 本地仓库执行固定版本解析时可正常下载缺失构件，命令不含 `-U`。
-- [ ] DOC-005 在首次启用时扫描全仓已跟踪 Markdown，现有 5 个基线断链修复后错误数为 0。
+- [x] 本地预检在 Java 17 下执行一次 Maven `verify`，并校验 Surefire、Failsafe（至少 2 份、至少 11 个 testcase、零失败）和非空 JaCoCo XML。
+- [x] CI YAML 只有一个核心 Build Job 和一个无条件 `ci-preflight.sh` 调用；Build Step 显式映射 `RUN_SONAR` 与三项 Sonar 配置，且不含 `-U`。
+- [x] 非可信事件或任一 Sonar 配置为空时只跳过 Sonar、仍执行核心预检并输出固定 skipped 状态行；可信 push 的 true 路径在一次 Maven invocation 中执行 `verify sonar:sonar`，Token 只通过环境变量传递。
+- [x] 仓库不新增 `package.json`、`package-lock.json` 或项目级 Node 运行时步骤。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHA:** null
-- **Attempts:** 0
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"test ! -f scripts/ci-preflight.sh && rg -n '^  sonar:|./mvnw -B -U verify -Pci' .github/workflows/ci.yml","confirmed":true,"evidence":"同源 Bash 入口不存在；CI 同时存在独立 sonar Job 和带 -U 的 Maven 构建。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"单次 clean verify 完成 15 个 Reactor 模块；输出 Sonar skipped，Surefire、2 份 Failsafe（11 testcase、零失败）与 JaCoCo XML 均已检查。"},{"cmd":"mise exec java@17 -- bash -lc 'RUN_SONAR=true bash scripts/ci-preflight.sh'","status":"pass","evidence":"缺少任一 Sonar 配置时在 Maven 前以明确错误退出。"},{"cmd":"Bash/rg 静态断言","status":"pass","evidence":"仅一个 build Job 与一个 preflight 调用；无 sonar Job、-U、setup-node、package.json 或 package-lock.json；Sonar secrets 仅在 push 时映射。"}]}
+- **AC Result:** {"pass":4,"total":4,"deferred":[],"details":{"AC1":"Java 17 下单次 clean verify 和三类报告检查通过。","AC2":"唯一 build Job、唯一 preflight 调用、无 -U。","AC3":"默认输出 skipped；缺配置 true 路径在 Maven 前失败；push 条件限制 Sonar secret 映射。","AC4":"仓库无 package.json、package-lock.json 或 setup-node。"}}
+
+**Scope Adjustment (2026-08-12):** 用户要求以低维护成本收缩 T2。本节此前关于项目级 Node、Markdown/DOC-001—DOC-006 以及 YAML 规则脚本的步骤和 AC Verification 已废止，以本节 Files、Behavior、Acceptance Criteria 和下列轻量执行步骤为准；文档事实与链接治理留待独立文档任务处理。
+
+**Revised Step 1: Red:** `test ! -f scripts/ci-preflight.sh && rg -n '^  sonar:|./mvnw -B -U verify -Pci' .github/workflows/ci.yml` → 同源 Bash 入口不存在，CI 存在独立 Sonar Job 和 `-U`。
+
+**Revised Step 2: Green:** 新增仅依赖 Bash、Maven 与仓库已有 `rg` 的预检脚本；唯一 Build Job 无条件调用它。`RUN_SONAR` 默认 false，只有可信 push 且三项配置齐全时为 true；true 时以同一次 Maven invocation 执行 `verify sonar:sonar`，Token 始终只经环境变量传递。
+
+**Revised Step 3: Verify:** `mise exec java@17 -- bash scripts/ci-preflight.sh` → 一次 Maven `verify`、Surefire/Failsafe/JaCoCo 报告检查均通过。
+
+**Revised AC Verification:**
+
+- AC1: 上述预检命令退出 0，Failsafe 至少 2 份、至少 11 个 testcase、零失败，JaCoCo XML 非空。
+- AC2: `test "$(rg -c 'ci-preflight\\.sh' .github/workflows/ci.yml)" -eq 1 && ! rg -n '^[[:space:]]+sonar:|\\-U' .github/workflows/ci.yml`。
+- AC3: 未配置 Sonar 时执行 `RUN_SONAR=true bash scripts/ci-preflight.sh` 必须在 Maven 前失败；默认路径输出 `Sonar analysis: skipped (not eligible)`；脚本不包含 token 参数。
+- AC4: `test ! -e package.json && test ! -e package-lock.json && ! rg -n 'setup-node|node@|npm ' .github/workflows/ci.yml scripts/ci-preflight.sh`。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
 - [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Per-task AC checkbox synced
 
-**Step 1: Red**
+**Historical Step 1: Red (superseded by Scope Adjustment)**
 
 Run:
 
@@ -287,47 +278,18 @@ rg -n '\]\(链接\)' docs/archive/v2.1.1/quality-refinement/engineering-quality/
 Expected: **PASS** — 当前没有同源入口、会重复完整构建且强制更新依赖；DOC-005 对应的 5 个已知
 基线断链可重复确认，避免启用门禁后才发现历史文档假红。
 
-**Step 2: Green**
+**Historical Step 2: Green (superseded by Scope Adjustment)**
 
-精确锁定两项 Node 开发依赖并在 `.gitignore` 忽略 `node_modules/`；实现只读文档/Workflow 检查及
-fixture 测试；DOC-001 把 `2.1.2-SNAPSHOT` 与 `v2.1.2` 归一为逻辑版本 `2.1.2`，其他后缀报错。
-先把 README、DOMAINS、QUALITY、SONAR 的客观事实修正为当前 10 个 Starter、15 个 Reactor 模块和
-真实实现名称；修复 DOC-005 已确认的 5 个基线断链，目标必须指向现有权威入口，示例占位链接改为
-代码文本。ARCHITECTURE 只作为正确基线参与 DOC-002/003 校验，不在无 RFC 的情况下修改。
-本 Task 只启用普通 CI、Sonar 资格、外部 Action 固定和 DOC-001—DOC-006；尚未修改的 Release 与
-Dependabot/BOM 最终规则分别由 T3、T4 和对应配置变更在同一提交启用，不允许提前制造中间态假红。
-预检脚本检查 Java/Node 主版本、执行 npm 与 Maven 门禁；`RUN_SONAR` 默认 false 且只接受
-`true|false`。实现带 `BASH_SOURCE` guard 的 `build_maven_args`：false 时目标为 `verify`；true 时先校验
-三项 Sonar 配置，再组装 `verify sonar:sonar`、host、organization、project key、JaCoCo XML 和 300 秒
-Quality Gate 等待参数，Token 只留在环境变量中。`ci-preflight.test.sh` source 脚本并机械验证六路径
-参数和失败条件，不执行真实扫描。随后使用同一个 NUL-safe Failsafe 报告数组和
-`rg -o --no-filename` 断言至少 2 份 XML、不少于基线 11 个 testcase、零失败及非空 JaCoCo XML；
-CI 删除独立 Sonar Job。资格 Step 用纯函数计算五类事件，
-把唯一的 `run=true|false` 追加写入 `GITHUB_OUTPUT`；唯一 Build Step 无条件执行，只把该 output
-映射为 `RUN_SONAR`，并把三项 Sonar Secret 映射为同名环境变量；false 路径输出固定 skipped 状态行；
-报告始终上传。
+已由本节的 Scope Adjustment 废止；轻量实现只采用 Bash 预检、单一 Build Job 和报告校验，不再承担文档事实、链接或通用 YAML 规则治理。
 
-**Step 3: Verify**
+**Historical Step 3: Verify (superseded by Revised Step 3)**
 
-Run: `mise exec java@17 node@22 -- bash scripts/ci-preflight.sh`
+Run: `mise exec java@17 -- bash scripts/ci-preflight.sh`
 Expected: **PASS**
 
-**AC Verification:**
+**Historical AC Verification (superseded):**
 
-- AC1: `npm test && bash scripts/ci-preflight.test.sh && node scripts/lint-docs.mjs && node scripts/lint-ci.mjs` → 截至 T2 启用的普通 CI、
-  Sonar、Action 固定和 DOC-001—DOC-006 规则为 0 error，测试证明 Scanner 版本由 POM 锁定且 Release
-  最终态规则尚未启用。
-- AC2: `test "$(rg -c 'ci-preflight\.sh' .github/workflows/ci.yml)" -eq 1 && ! rg -n './mvnw|\-U|pull_request_target|paths-ignore|^[[:space:]]+paths:' .github/workflows/ci.yml`，再由 `lint-ci.test.mjs` 断言 Build Step 无 `if`、`RUN_SONAR` 只来自 eligibility output、三项 Sonar Secret 映射为同名环境变量、预检脚本只调用一次 `./mvnw` 且目标顺序为 `verify` 后可选 `sonar:sonar` → 单次构建与配置传递成立。
-- AC3: `node --test scripts/sonar-eligibility.test.mjs && bash scripts/ci-preflight.test.sh` → 主仓库 push/内部 PR
-  精确为 `run=true`，fork/Dependabot/空配置/本地默认精确为 false；true 路径参数数组包含全部项目与
-  Quality Gate 参数但不含 token，缺少任一配置时在 Maven 前失败，false 路径输出固定 skipped 状态行。
-- AC4: `node scripts/lint-docs.mjs` → 全仓已跟踪 Markdown 的相对文件、目录和锚点链接错误数为 0；
-  README、ARCHITECTURE、DOMAINS、QUALITY 的 Starter/Reactor 客观事实与 POM 一致。
-- AC5: `rg -n 'sonar:sonar|sonar\.host\.url|sonar\.organization|sonar\.projectKey|sonar\.coverage\.jacoco\.xmlReportPaths|sonar\.qualitygate\.wait=true|sonar\.qualitygate\.timeout=300' scripts/ci-preflight.sh && rg -n 'steps\.sonar-eligibility\.outputs\.run|SONAR_TOKEN|SONAR_ORGANIZATION|SONAR_PROJECT_KEY' .github/workflows/ci.yml` → 完整 Scanner 配置、Quality Gate 等待和环境映射存在；参数顺序与 Token 不泄露由 AC3 的数组测试裁决。
-- AC6: 执行 `empty_m2_dir="$(mktemp -d -t mimir-empty-m2.XXXXXX)"` 并注册
-  `trap 'rm -rf -- "$empty_m2_dir"' EXIT`，再执行
-  `mise exec java@17 -- ./mvnw -B -Pci -Dmaven.repo.local="$empty_m2_dir" -DskipTests -pl :mimir-boot-common -am clean package`
-  → 缺失构件正常解析且退出 0；`git check-ignore node_modules` 退出 0。
+- 本节旧 AC Verification 已由 Revised AC Verification 取代。
 
 **Step 4: Commit**
 
@@ -344,13 +306,11 @@ Expected: **PASS**
 - Modify: `.github/workflows/release.yml`
 - Modify: `.github/actions/checkout-setup/action.yml`
 - Modify: `.github/actions/maven-release-prepare/action.yml`
-- Modify: `scripts/lint-ci.mjs`
-- Modify: `scripts/lint-ci.test.mjs`
 
 **Interfaces:**
 
-- Consumes: `node scripts/lint-ci.mjs` from T2
-- Produces: Release job `release-verify`; CI rules for Release dependency graph
+- Consumes: `bash scripts/ci-preflight.sh` from T2
+- Produces: Release job `release-verify`
 
 **Behavior:** 标签发布和手动补偿只经过一个无外部副作用的前置验证；GPR、Central、GitHub Release 和开发版本回写仍独立，普通 Push CI 不读取这些发布凭据。
 
@@ -387,21 +347,18 @@ Expected: **PASS** — 当前存在两个前置 Job 和多个强制更新命令�
 **Step 2: Green**
 
 合并为 `release-verify`，保留手动选择校验和一次 `spotless:check clean package`；更新所有 needs 与
-复合 Action 描述，移除 `-U`；在同一提交扩展 lint-ci 并启用 Release 最终态规则，解析 Release 图，
-用变更前语义快照与最小 fixture 锁定
-四类补偿路径的 `needs`、`if`、权限、并发和手动选择条件。
+复合 Action 描述，移除 `-U`；使用 Bash/`rg` 的显式结构断言核对四类补偿路径的 `needs`、`if`、权限、
+并发和手动选择条件，不新增通用 YAML 解析器。
 
 **Step 3: Verify**
 
-Run: `npm test && node scripts/lint-ci.mjs`
+Run: `mise exec java@17 -- bash scripts/ci-preflight.sh && ! rg -n -- '(^|[[:space:]])-U([[:space:]]|$)' .github/workflows/release.yml .github/actions/checkout-setup/action.yml .github/actions/maven-release-prepare/action.yml`
 Expected: **PASS**
 
 **AC Verification:**
 
-- AC1: `node --test scripts/lint-ci.test.mjs` → Release 合法 fixture 通过；重复前检、错误 `needs`、
-  `if`、权限、并发或手动选择任一漂移的 fixture 均失败。
-- AC2: `node scripts/lint-ci.mjs` → 解析真实 Workflow 后确认恰好一个 `release-verify`，四类外部 Job
-  都直接或按既有链路依赖它，且变更前语义快照中除前置 Job 名外无差异。
+- AC1: Bash/`rg` 断言 → Release 只有一个 `release-verify`，手动选择校验和四类外部 Job 的既有约束均存在。
+- AC2: 同一组结构断言 → 四类外部 Job 都直接或按既有链路依赖 `release-verify`，且不新增 Node 依赖。
 - AC3: `! rg -n -- '(^|[[:space:]])-U([[:space:]]|$)' .github/workflows/release.yml .github/actions/checkout-setup/action.yml .github/actions/maven-release-prepare/action.yml`
   → 默认命令无 `-U`；此文本检查只负责命令参数，不替代 AC1/AC2 的结构验证。
 
@@ -419,15 +376,11 @@ Expected: **PASS**
 
 - Modify: `.github/dependabot.yml`
 - Modify: `mimir-boot-bom/README.md`
-- Modify: `scripts/lint-docs.mjs`
-- Modify: `scripts/lint-docs.test.mjs`
-- Modify: `scripts/lint-ci.mjs`
-- Modify: `scripts/lint-ci.test.mjs`
 - Modify: `docs/active/tech-debt-tracker.md`
 
 **Interfaces:**
 
-- Consumes: governance linters from T2
+- Consumes: `bash scripts/ci-preflight.sh` from T2
 - Produces: Dependabot group `github-actions-minor-patch`; DOC-007 BOM classification rule
 
 **Behavior:** GitHub Actions minor/patch 更新按周合并，major 保持独立；宽 BOM 继续保留，但每个显式管理项恰好归入“已验证”或“仅管理”。
@@ -462,18 +415,18 @@ Expected: **PASS** — 当前缺少 Actions 分组和 BOM 支持等级。
 
 **Step 2: Green**
 
-新增 Actions minor/patch group；根据 Starter POM 和 Reactor 测试证据分类 BOM；实现 DOC-007 和 Dependabot 结构规则，fixture 覆盖遗漏、重复分类和 major 混组。
+新增 Actions minor/patch group；根据 Starter POM 和 Reactor 测试证据分类 BOM；使用 Bash/`rg` 覆盖遗漏、重复分类和 major 混组，不新增项目级解析器。
 
 **Step 3: Verify**
 
-Run: `npm test && node scripts/lint-docs.mjs && node scripts/lint-ci.mjs`
+Run: `mise exec java@17 -- bash scripts/ci-preflight.sh && rg -n 'github-actions-minor-patch|仅管理|已验证' .github/dependabot.yml mimir-boot-bom/README.md`
 Expected: **PASS**
 
 **AC Verification:**
 
-- AC1: `node scripts/lint-ci.mjs` → YAML 结构断言 weekly 频率和 PR 上限不变、minor/patch 进入
+- AC1: Bash/`rg` 结构断言 weekly 频率和 PR 上限不变、minor/patch 进入
   `github-actions-minor-patch`、major 不进入任何组且不存在自动合并配置。
-- AC2: `node scripts/lint-docs.mjs` → DOC-007 为 0 error。
+- AC2: BOM 支持等级的重复/遗漏由 T4 的 Bash 断言验证为 0 error。
 
 **Step 4: Commit**
 
@@ -959,55 +912,9 @@ Expected: **PASS**
 
 - AC1: NacosEncryptRefreshIT 成功场景 → Environment 与 Bean 均更新。
 - AC2: NacosEncryptRefreshIT 错误密钥场景 → 失败明确、Environment/Bean 保持旧值且三类敏感材料未出现在日志。
-- AC3: 提交前执行下列只读校验；它从 T10 Execution 读取 Red Result，验证结果字段关系，并用
-  `git diff HEAD` 同时覆盖已暂存和未暂存的两个受控 main 文件：
-
-  ```bash
-  node --input-type=module - docs/active/v2.1.2/project-governance/plan.md <<'NODE'
-  import { execFileSync } from "node:child_process";
-  import { readFileSync } from "node:fs";
-
-  const plan = readFileSync(process.argv[2], "utf8");
-  const block = plan.match(/^### T10:[\s\S]*?(?=^---$\n\n### T11:)/m)?.[0];
-  const raw = block?.match(/^- \*\*Red Result:\*\* (.+)$/m)?.[1];
-  if (!raw || raw === "null") throw new Error("T10 Red Result must be JSON");
-  const result = JSON.parse(raw);
-  const allowed = new Set(["refresh-order", "rollback", "log-safety"]);
-  const failed = new Set(result.failedContracts ?? []);
-  const authorized = new Set(result.runtimeChangeAuthorization ?? []);
-  if ([...failed, ...authorized].some((item) => !allowed.has(item))) {
-    throw new Error("unknown contract or authorization");
-  }
-  const sameSet = failed.size === authorized.size
-    && [...failed].every((item) => authorized.has(item));
-  const validNone = result.failureKind === "none" && result.exitCode === 0
-    && result.failsafeTests > 0 && failed.size === 0 && authorized.size === 0;
-  const validContract = result.failureKind === "contract" && result.exitCode !== 0
-    && result.failsafeTests > 0 && failed.size > 0 && sameSet;
-  const validEnvironment = result.failureKind === "environment" && result.exitCode !== 0
-    && authorized.size === 0;
-  if (!(validNone || validContract || validEnvironment)) {
-    throw new Error("Red Result fields are inconsistent");
-  }
-
-  const refresh = "mimir-boot-starters/mimir-boot-starter-nacos/src/main/java/"
-    + "com/yggdrasil/labs/nacos/config/NacosEncryptAutoConfiguration.java";
-  const processor = "mimir-boot-starters/mimir-boot-starter-nacos/src/main/java/"
-    + "com/yggdrasil/labs/nacos/decrypt/ConfigDecryptProcessor.java";
-  const expected = new Set();
-  if (authorized.has("refresh-order")) expected.add(refresh);
-  if (authorized.has("rollback") || authorized.has("log-safety")) expected.add(processor);
-  const output = execFileSync("git", ["diff", "--name-only", "HEAD", "--", refresh, processor],
-    { encoding: "utf8" }).trim();
-  const actual = new Set(output ? output.split("\n") : []);
-  if (actual.size !== expected.size || [...actual].some((item) => !expected.has(item))) {
-    throw new Error(`unauthorized main diff: ${[...actual].join(",")}`);
-  }
-  NODE
-  ```
-
-  T12 AC3 再用最终 T10 Commit SHA 和 `git diff-tree` 复核已提交范围；T10 不依赖尚未创建的
-  `verify-task-commits.mjs` 或尚不存在的自身 Commit SHA。
+- AC3: 提交前以 Bash 读取 T10 的结构化 Red Result，并用 `git diff HEAD --name-only --` 检查两个受控
+  main 文件。`failureKind=none` 时两个文件均不得变化；出现运行时契约失败时，只允许计划中已授权的对应文件变化。
+  T12 AC3 再用最终 T10 Commit SHA 和 `git diff-tree` 复核已提交范围。
 
 **Step 4: Commit**
 
@@ -1110,8 +1017,8 @@ Expected: **PASS**
 - Modify: `docs/active/tech-debt-tracker.md`
 - Modify: `docs/QUALITY_SCORE.md`
 - Modify: `docs/SONAR_QUALITY_DISCIPLINE.md`
-- Create: `scripts/verify-task-commits.mjs`
-- Create: `scripts/verify-task-commits.test.mjs`
+- Create: `scripts/verify-task-commits.sh`
+- Create: `scripts/verify-task-commits.test.sh`
 - Modify: `mimir-boot-bom/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-web/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/README.md`
@@ -1131,7 +1038,7 @@ Expected: **PASS**
 **Acceptance Criteria:**
 
 - [ ] GOV-001—GOV-020 均为已验证、已关闭或按规则延期，未验证 P0/P1 数量为 0。
-- [ ] Java 17/Node 22 同源预检、未暂存与已暂存 diff check、DOC/CI 静态规则全部通过，15 个 Reactor 模块成功。
+- [ ] Java 17 同源预检、未暂存与已暂存 diff check、轻量 CI 结构断言全部通过，15 个 Reactor 模块成功。
 - [ ] Baseline 到 Implementation Head 之间每个提交只属于 T1—T11 的一个 Task，且仅含该 Task 的
   `Create`/`Modify` 允许文件与 `plan.md` 即时执行记录；其后最多一个仅含 T12 Files 的终验提交，T12 记录使用
   `final-record-exception`，最终工作区干净。
@@ -1186,15 +1093,15 @@ P0/P1 不允许延期关闭版本。同步每个 GOV 专题块：`已验证` 写
 
 **Step 3: Verify**
 
-Run: `mise exec java@17 node@22 -- bash scripts/ci-preflight.sh && git diff --check`
+Run: `mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check`
 Expected: **PASS**
 
-Run: `set -o pipefail; node scripts/verify-task-commits.mjs --print-t12-files0 docs/active/v2.1.2/project-governance/plan.md | xargs -0 git add -- && git diff --cached --check`
+Run: `set -o pipefail; bash scripts/verify-task-commits.sh --print-t12-files0 docs/active/v2.1.2/project-governance/plan.md | xargs -0 git add -- && git diff --cached --check`
 `--print-t12-files0` 只输出解析后的 T12 `Create`/`Modify` 路径，以 NUL 分隔；不得使用目录、glob 或
 `git add -A`。
 Expected: **PASS** — 包括新建脚本在内的全部 T12 内容都进入 index 且无 whitespace error。
 
-Run: `node scripts/verify-task-commits.mjs --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
+Run: `bash scripts/verify-task-commits.sh --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
 Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 Files，仓库内无其他未暂存或未跟踪文件。
 
 **AC Verification:**
@@ -1203,7 +1110,7 @@ Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 File
   具体 Task AC 与 T12 AC2，已关闭/延期项分别具备决策证据或 Owner、原因、目标版本。
 - AC2: 同源预检、`git diff --check` 和精确暂存后的 `git diff --cached --check` → 全部退出 0，
   Failsafe/JaCoCo 报告非空，新建 T12 文件未绕过检查。
-- AC3: `node --test scripts/verify-task-commits.test.mjs && node scripts/verify-task-commits.mjs --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
+- AC3: `bash scripts/verify-task-commits.test.sh && bash scripts/verify-task-commits.sh --allow-t12-index docs/active/v2.1.2/project-governance/plan.md`
   → T1—T11 的唯一 SHA 集合恰好覆盖 Baseline..Implementation Head；每 Task 的 `plan.md` 即时执行记录、
   普通允许路径、只读 Test 路径和 T10 条件授权均按规则验证；index 是 T12 Files 子集且无其他工作区文件。
 
@@ -1211,7 +1118,7 @@ Expected: **PASS** — T1—T11 提交数和归属完整，index 仅含 T12 File
 
 提交前先把本 Task 的 Execution Commit SHA 记为 `final-record-exception`，然后提交：
 `docs(governance): 同步 v2.1.2 治理验证结果`。提交后执行
-`node scripts/verify-task-commits.mjs docs/active/v2.1.2/project-governance/plan.md && test -z "$(git status --porcelain)"`：Implementation Head 之后必须恰好一个终验提交且只含 T12 Files，工作区必须为空；不为回填自身 SHA 创建第二个提交。
+`bash scripts/verify-task-commits.sh docs/active/v2.1.2/project-governance/plan.md && test -z "$(git status --porcelain)"`：Implementation Head 之后必须恰好一个终验提交且只含 T12 Files，工作区必须为空；不为回填自身 SHA 创建第二个提交。
 
 ---
 
