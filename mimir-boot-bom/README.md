@@ -72,94 +72,83 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 </dependencies>
 ```
 
-## 📦 管理的依赖版本
+## 📦 支持等级
 
-BOM 管理以下类别的依赖版本：
+`mimir-boot-bom/pom.xml` 是版本与坐标的唯一事实源；本页不复制版本号。下表只枚举其
+`dependencyManagement` 中显式声明的直接条目，不把导入 BOM 的传递管理项当作本 BOM 的直接条目。
 
-### 核心框架
+- **已验证**：该坐标在本 Reactor 的模块 POM 中被直接消费，且 Java 17 的 `clean verify`
+  覆盖了该消费模块。
+- **仅管理**：该坐标仍由 BOM 声明，但当前 Reactor 没有对该坐标的直接消费，或没有对应运行验证。
 
-- **Spring Boot**: 3.3.13
-- **Spring Cloud**: 2023.0.6 (Leyton)
-- **Spring Cloud Alibaba**: 2023.0.3.4
+### 已验证（17 项）
 
-### 数据持久化
+| 类别 | 坐标 | Reactor 直接消费者 |
+|------|------|-------------------|
+| 工具与持久化 | `cn.hutool:hutool-all` | `mimir-boot-starter-nacos` |
+| 工具与持久化 | `com.alibaba.fastjson2:fastjson2` | `mimir-boot-starter-mybatis` |
+| 工具与持久化 | `com.baomidou:mybatis-plus-jsqlparser` | `mimir-boot-starter-mybatis` |
+| 工具与持久化 | `com.squareup:javapoet` | `mimir-boot-starter-mybatis-processor` |
+| 测试 | `com.google.testing.compile:compile-testing` | `mimir-boot-starter-mybatis-processor` |
+| 测试 | `com.google.truth:truth` | `mimir-boot-starter-mybatis-processor` |
+| 测试 | `org.testcontainers:testcontainers` | `mimir-boot-starter-test` |
+| 测试 | `org.testcontainers:junit-jupiter` | `mimir-boot-starter-test` |
+| RPC | `org.apache.dubbo:dubbo-spring-boot-starter` | `mimir-boot-starter-dubbo` |
+| 编译 | `org.projectlombok:lombok` | `mimir-boot-common`、多个 Starter |
+| 日志 | `org.slf4j:jcl-over-slf4j` | `mimir-boot-starter-log` |
+| 日志 | `org.slf4j:jul-to-slf4j` | `mimir-boot-starter-log` |
+| 日志 | `org.slf4j:log4j-over-slf4j` | `mimir-boot-starter-log` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-common` | 多个 Starter |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-exception` | `mimir-boot-starter-web` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-rpc-core` | `mimir-boot-starter-dubbo`、`mimir-boot-starter-feign` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-test` | 所有具测试的 Starter |
 
-- **MyBatis-Plus**: 3.5.16
+### 仅管理（38 项）
 
-### 工具类库
+| 类别 | 坐标 |
+|------|------|
+| 导入 BOM | `org.springframework.boot:spring-boot-dependencies` |
+| 导入 BOM | `org.springframework.cloud:spring-cloud-dependencies` |
+| 导入 BOM | `com.alibaba.cloud:spring-cloud-alibaba-dependencies` |
+| 导入 BOM | `com.baomidou:mybatis-plus-bom` |
+| RPC | `org.apache.dubbo:dubbo` |
+| 工具与持久化 | `org.mapstruct:mapstruct` |
+| 工具与持久化 | `org.mapstruct:mapstruct-processor` |
+| 安全 | `io.jsonwebtoken:jjwt-api` |
+| 安全 | `io.jsonwebtoken:jjwt-impl` |
+| 安全 | `io.jsonwebtoken:jjwt-jackson` |
+| 文档 | `org.springdoc:springdoc-openapi-starter-webmvc-ui` |
+| 文档 | `com.github.xiaoymin:knife4j-openapi3-jakarta-spring-boot-starter` |
+| 缓存与消息 | `org.redisson:redisson-spring-boot-starter` |
+| 缓存与消息 | `org.apache.rocketmq:rocketmq-spring-boot-starter` |
+| 缓存与消息 | `com.alicp.jetcache:jetcache-starter-redis` |
+| 缓存与消息 | `com.alicp.jetcache:jetcache-starter-caffeine` |
+| 任务与搜索 | `com.xuxueli:xxl-job-core` |
+| 任务与搜索 | `org.elasticsearch.client:elasticsearch-java` |
+| 任务与搜索 | `org.mongodb:mongodb-driver-sync` |
+| 工具 | `org.apache.commons:commons-lang3` |
+| 工具 | `org.apache.commons:commons-collections4` |
+| 工具 | `com.google.guava:guava` |
+| 序列化与网络 | `com.esotericsoftware:kryo` |
+| 序列化与网络 | `com.google.protobuf:protobuf-java` |
+| 序列化与网络 | `com.squareup.okhttp3:okhttp` |
+| 序列化与网络 | `com.squareup.retrofit2:retrofit` |
+| 文件与协调 | `org.apache.poi:poi` |
+| 文件与协调 | `com.itextpdf:itext-core` |
+| 文件与协调 | `org.apache.curator:curator-framework` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-log` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-web` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-nacos` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-mybatis` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-mybatis-processor` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-dubbo` |
+| Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-feign` |
+| 测试 | `org.testcontainers:mysql` |
+| 测试 | `org.testcontainers:postgresql` |
 
-- **MapStruct**: 1.6.3 - 对象映射
-- **Lombok**: 1.18.42 - 减少样板代码
-- **Hutool**: 5.8.43 - Java 工具类库
-- **FastJSON2**: 2.0.60 - JSON 处理
-- **JavaPoet**: 1.13.0 - 代码生成
-
-### 日志
-
-- **SLF4J**: 2.0.17 - 日志门面
-
-### 测试
-
-- **Testcontainers**: 1.21.4 - 集成测试容器
-- **Compile Testing**: 0.21.0 - 编译期测试
-- **Truth**: 1.4.2 - 断言库
-
-### 安全
-
-- **JWT (JJWT)**: 0.13.0 - JSON Web Token
-
-### 文档
-
-- **SpringDoc OpenAPI**: 2.8.13 - API 文档
-- **Knife4j**: 4.5.0 - API 文档增强
-
-### 缓存
-
-- **Redisson**: 3.52.0 - Redis 客户端
-
-### 消息队列
-
-- **RocketMQ**: 5.2.0 - 消息队列
-- **Kafka**: 3.7.0 - 消息队列
-
-### 定时任务
-
-- **XXL-Job**: 3.3.2 - 分布式任务调度
-
-### 分布式缓存
-
-- **JetCache**: 2.7.8 - 多级缓存框架
-
-### 搜索引擎和 NoSQL
-
-- **Elasticsearch**: 8.11.0 - 搜索引擎
-- **MongoDB**: 4.11.5 - NoSQL 数据库
-
-### 其他工具
-
-- **Apache Commons Lang3**: 3.20.0
-- **Apache Commons Collections4**: 4.5.0
-- **Guava**: 33.5.0-jre
-- **Kryo**: 5.6.2 - 序列化
-- **Protobuf**: 4.33.4 - 序列化
-- **OkHttp**: 5.3.2 - HTTP 客户端
-- **Retrofit**: 3.0.0 - HTTP 客户端
-- **Apache POI**: 5.5.1 - Office 文档处理
-- **iText**: 8.0.2 - PDF 处理
-- **Apache Curator**: 5.9.0 - 分布式锁
-
-### Mimir Boot 模块
-
-BOM 还管理 Mimir Boot 自身模块的版本：
-
-- `mimir-boot-common`
-- `mimir-boot-starter-log`
-- `mimir-boot-starter-exception`
-- `mimir-boot-starter-web`
-- `mimir-boot-starter-nacos`
-- `mimir-boot-starter-mybatis`
-- `mimir-boot-starter-mybatis-processor`
-- `mimir-boot-starter-test`
+> 重新判定支持等级时，需以所有显式 `dependencyManagement` 条目与实际模块 POM 的直接依赖
+> 做集合比对；完整 Java 17 `clean verify` 仅证明已消费模块的当前验证覆盖，不把未被直接消费的
+> 托管条目提升为“已验证”。
 
 ## 🔧 配置说明
 

@@ -153,3 +153,9 @@ updates:
       include: "scope"
     labels:
       - "🧰 infra"
+    groups:
+      # GitHub Actions 的兼容性更新合并为一条 PR；major 保持独立审查。
+      github-actions-minor-patch:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]

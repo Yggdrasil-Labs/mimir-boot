@@ -15,7 +15,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 **Implementation Head SHA:** [待填充]
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/project-governance-ci
 **Started At:** 2026-08-11T23:48:59+08:00
-**Updated At:** 2026-08-12T22:07:53+08:00
+**Updated At:** 2026-08-12T22:21:30+08:00
 
 **Goal:** 先建立 Push 前可复现的 CI 与文档治理门禁，再完成中高收益的功能代码优化。
 **Architecture:** 主线 B 把本地预检、GitHub Actions、Release、Dependabot 和事实文档收敛为自动校验；主线 A 在该门禁下修复 Web、RPC、异常、Nacos 和测试 Starter。外部发布副作用保持独立，v2.x 公共兼容边界保持不变。
@@ -309,7 +309,7 @@ Expected: **PASS**
 
 **Interfaces:**
 
-- Consumes: `bash scripts/ci-preflight.sh` from T2
+- Consumes: T2 的 Java 17、Bash 与无 `-U` 构建约束；Release 前检保持 `package`，避免 `verify` 阶段的 GPG 签名
 - Produces: Release job `release-verify`
 
 **Behavior:** 标签发布和手动补偿只经过一个无外部副作用的前置验证；GPR、Central、GitHub Release 和开发版本回写仍独立，普通 Push CI 不读取这些发布凭据。
@@ -324,7 +324,7 @@ Expected: **PASS**
 **Execution:**
 
 - **Status:** done
-- **Commit SHA:** null
+- **Commit SHA:** cd63b23
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"rg -n '^  (build-verify|release):|\\-U' .github/workflows/release.yml .github/actions/maven-release-prepare/action.yml","confirmed":true,"evidence":"命中 build-verify（第 44 行）、release（第 86 行）以及 6 处 -U，证明重复前检和强制更新参数均存在。"}]}
@@ -336,7 +336,7 @@ Expected: **PASS**
 - [x] Red Result exists and passed
 - [x] Verify Result exists and passed
 - [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
+- [x] Commit SHA belongs to this task only
 - [x] Per-task AC checkbox synced
 
 **Step 1: Red**
@@ -387,26 +387,26 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] GitHub Actions weekly 频率和 PR 上限不变，minor/patch 进入同一组，major 不进入该组且没有自动合并。
-- [ ] DOC-007 验证 BOM 所有显式管理项恰好属于一个支持等级，两个集合交集为空。
+- [x] GitHub Actions weekly 频率和 PR 上限不变，minor/patch 进入同一组，major 不进入该组且没有自动合并。
+- [x] DOC-007 验证 BOM 所有显式管理项恰好属于一个支持等级，两个集合交集为空。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** done
 - **Commit SHA:** null
-- **Attempts:** 0
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"! rg -n 'github-actions-minor-patch|仅管理|已验证' .github/dependabot.yml mimir-boot-bom/README.md","confirmed":true,"evidence":"命令以 0 退出，确认 Actions 分组与 BOM 支持等级尚未存在。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查通过。"},{"cmd":"Bash BOM 集合断言","status":"pass","evidence":"显式 dependencyManagement 直接条目 55 个；已验证 17、仅管理 38；遗漏、额外、交集均为 0。"},{"cmd":"Bash/rg Dependabot 结构断言 && git diff --check","status":"pass","evidence":"GitHub Actions 保持 weekly/monday/09:00 与 5 PR 限制；group 仅含 minor/patch，无 major 与自动合并，且 diff 无空白错误。"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"Actions 分组 github-actions-minor-patch 匹配 * 且只含 minor、patch；原频率、时间和 PR 上限不变。","AC2":"README 枚举 POM 的全部 55 个显式直接管理坐标，17 个已验证和 38 个仅管理互斥且完备。"}}
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [ ] Commit SHA belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
