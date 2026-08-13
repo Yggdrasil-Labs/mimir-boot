@@ -82,7 +82,7 @@ public interface UserMapper extends BaseMapper<User> {
 // 位置：com/example/service/UserService.java
 package com.example.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import com.example.User;
 
 public interface UserService extends IService<User> {
@@ -95,7 +95,7 @@ public interface UserService extends IService<User> {
 // 位置：com/example/service/impl/UserServiceImpl.java
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.example.mapper.UserMapper;
 import com.example.User;
 import com.example.service.UserService;

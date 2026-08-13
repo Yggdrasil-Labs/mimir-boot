@@ -26,10 +26,10 @@
             <artifactId>javapoet</artifactId>
         </dependency>
 
-        <!-- mybatis-plus: 测试时编译生成代码所需类型 -->
+        <!-- mybatis-plus-spring: 测试时以实际 3.5.17 类型编译生成代码 -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-extension</artifactId>
+            <artifactId>mybatis-plus-spring</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -81,4 +81,3 @@
     </build>
 
 </project>
-

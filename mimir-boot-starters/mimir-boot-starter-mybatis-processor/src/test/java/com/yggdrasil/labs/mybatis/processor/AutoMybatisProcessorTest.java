@@ -31,26 +31,12 @@ class AutoMybatisProcessorTest extends BaseUnitTest {
 
         JavaFileObject entity = JavaFileObjects.forSourceString("demo.entity.User", entitySrc);
 
-        // 提供最小桩类型，避免引入外部 mybatis-plus 依赖
+        // BaseMapper 与 @Mapper 使用最小桩类型；Service 类型由 mybatis-plus-spring 测试依赖提供。
         JavaFileObject baseMapperStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.core.mapper.BaseMapper",
                 """
                         package com.baomidou.mybatisplus.core.mapper;
                         public interface BaseMapper<T> {}
-                        """);
-
-        JavaFileObject iServiceStub = JavaFileObjects.forSourceString(
-                "com.baomidou.mybatisplus.extension.service.IService",
-                """
-                        package com.baomidou.mybatisplus.extension.service;
-                        public interface IService<T> {}
-                        """);
-
-        JavaFileObject serviceImplStub = JavaFileObjects.forSourceString(
-                "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
-                """
-                        package com.baomidou.mybatisplus.extension.service.impl;
-                        public class ServiceImpl<M, T> {}
                         """);
 
         // 提供 @Mapper 注解的桩类型
@@ -64,7 +50,7 @@ class AutoMybatisProcessorTest extends BaseUnitTest {
         Compilation compilation = Compiler.javac()
                 .withClasspathFrom(this.getClass().getClassLoader())
                 .withProcessors(new AutoMybatisProcessor())
-                .compile(entity, baseMapperStub, iServiceStub, serviceImplStub, mapperAnnotationStub);
+                .compile(entity, baseMapperStub, mapperAnnotationStub);
 
         assertThat(compilation).succeeded();
 
@@ -105,26 +91,12 @@ class AutoMybatisProcessorTest extends BaseUnitTest {
 
         JavaFileObject entity = JavaFileObjects.forSourceString("demo.entity.UserDO", entitySrc);
 
-        // 提供最小桩类型，避免引入外部 mybatis-plus 依赖
+        // BaseMapper 与 @Mapper 使用最小桩类型；Service 类型由 mybatis-plus-spring 测试依赖提供。
         JavaFileObject baseMapperStub = JavaFileObjects.forSourceString(
                 "com.baomidou.mybatisplus.core.mapper.BaseMapper",
                 """
                         package com.baomidou.mybatisplus.core.mapper;
                         public interface BaseMapper<T> {}
-                        """);
-
-        JavaFileObject iServiceStub = JavaFileObjects.forSourceString(
-                "com.baomidou.mybatisplus.extension.service.IService",
-                """
-                        package com.baomidou.mybatisplus.extension.service;
-                        public interface IService<T> {}
-                        """);
-
-        JavaFileObject serviceImplStub = JavaFileObjects.forSourceString(
-                "com.baomidou.mybatisplus.extension.service.impl.ServiceImpl",
-                """
-                        package com.baomidou.mybatisplus.extension.service.impl;
-                        public class ServiceImpl<M, T> {}
                         """);
 
         // 提供 @Mapper 注解的桩类型
@@ -138,7 +110,7 @@ class AutoMybatisProcessorTest extends BaseUnitTest {
         Compilation compilation = Compiler.javac()
                 .withClasspathFrom(this.getClass().getClassLoader())
                 .withProcessors(new AutoMybatisProcessor())
-                .compile(entity, baseMapperStub, iServiceStub, serviceImplStub, mapperAnnotationStub);
+                .compile(entity, baseMapperStub, mapperAnnotationStub);
 
         assertThat(compilation).succeeded();
 
@@ -197,5 +169,4 @@ class AutoMybatisProcessorTest extends BaseUnitTest {
                 .contains("UserDO");
     }
 }
-
 

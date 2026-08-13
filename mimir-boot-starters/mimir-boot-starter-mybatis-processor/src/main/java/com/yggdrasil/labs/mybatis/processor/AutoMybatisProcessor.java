@@ -75,7 +75,7 @@ public class AutoMybatisProcessor extends AbstractProcessor {
         writeJavaFile(mapperPkg, mapperType);
 
         // Service: interface XxxService extends IService<Xxx>
-        ClassName iService = ClassName.get("com.baomidou.mybatisplus.extension.service", "IService");
+        ClassName iService = ClassName.get("com.baomidou.mybatisplus.spring.service", "IService");
         TypeSpec serviceType = TypeSpec.interfaceBuilder(serviceName)
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(ParameterizedTypeName.get(iService, entityClass))
@@ -83,7 +83,7 @@ public class AutoMybatisProcessor extends AbstractProcessor {
         writeJavaFile(servicePkg, serviceType);
 
         // ServiceImpl: class XxxServiceImpl extends ServiceImpl<XxxMapper, Xxx> implements XxxService
-        ClassName serviceImpl = ClassName.get("com.baomidou.mybatisplus.extension.service.impl", "ServiceImpl");
+        ClassName serviceImpl = ClassName.get("com.baomidou.mybatisplus.spring.service.impl", "ServiceImpl");
         ClassName mapperClass = ClassName.get(mapperPkg, mapperName);
         ClassName serviceInterface = ClassName.get(servicePkg, serviceName);
 
@@ -133,5 +133,4 @@ public class AutoMybatisProcessor extends AbstractProcessor {
         return className;
     }
 }
-
 
