@@ -30,7 +30,7 @@ updated: 2026-08-13
 | GOV-006 | 用户 `MybatisPlusInterceptor` 完整替换 Starter 默认实例 | 不自动合并双方内部拦截器 |
 | GOV-007 | Spring Boot Maven Plugin 与依赖平台使用同一版本属性 | 不维护跨版本组合矩阵 |
 | GOV-008 | v2.x 保留 `Serializable` 上界 | 只记录为 3.0 候选，不在本版本实施 |
-| GOV-009 | 修正文档并增加客观事实 CI 校验 | 不自动覆盖人工文档 |
+| GOV-009 | 修正当前文档事实；自动事实校验由 GOV-012 单独跟踪 | 不自动覆盖人工文档 |
 | GOV-010 | 保留企业级宽 BOM，区分“已验证”和“仅管理” | 不拆分、不精简，未消费依赖不得宣称已验证 |
 
 以上决策完成了范围讨论，但仍需通过本目录的 Spec/Design 确认门后才能进入实施。
@@ -143,8 +143,9 @@ updated: 2026-08-13
   `docs/QUALITY_SCORE.md`
 - **问题**：Starter 数量、依赖版本、模块路径和实现类名称与当前代码事实不一致。
 - **建议方向**：更新既有权威文档，并评估从 POM 和源码生成或校验模块事实表。
-- **关闭条件**：README、ARCHITECTURE、DOMAINS、QUALITY 中的 10 个 Starter、15 个 Reactor 模块和
-  当前依赖版本一致；现有描述性类名人工修正；DOC-001—DOC-006 与 Markdown lint 通过。
+- **关闭条件**：README、ARCHITECTURE、DOMAINS、QUALITY 中的 10 个 Starter 聚合子模块、15 个 Reactor
+  模块和当前依赖版本一致；现有描述性类名人工修正；Markdown lint 通过。持续自动事实校验由
+  GOV-012 单独跟踪，不作为 GOV-009 的关闭条件。
 - **状态**：已验证
 - **验证证据**：T12 AC1、AC2。
 
@@ -166,7 +167,7 @@ updated: 2026-08-13
 | P1 关闭 | GOV-001 至 GOV-005 全部有回归测试和实现证据，状态为已验证 |
 | Java 门禁 | Java 17 下 15 个 Reactor 模块执行 `./mvnw -B -Pci verify` 全部成功 |
 | 集成测试 | 正常 Maven 生命周期生成非空 Failsafe 报告，已有 11 个 `*IT` 全部通过 |
-| 文档门禁 | 文档健康检查、Markdown lint、未暂存与精确暂存后的 diff check 全部通过，新建文件不可绕过 |
+| 文档门禁 | 文档健康检查、Markdown lint 与 diff check 全部通过；GOV-012 按延期记录保留后续入口 |
 | 发布门禁 | 无 P0/P1 未关闭；P2 均已完成或记录 Owner、延期理由与目标版本 |
 
 ## 基线证据

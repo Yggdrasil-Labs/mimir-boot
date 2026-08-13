@@ -37,7 +37,7 @@ updated: 2026-08-13
 ## 3. 当前观察
 
 评估时间：2026-08-13
-评估方式：基于 v2.1.2 项目治理的 Java 17 同源预检、Surefire/Failsafe、JaCoCo、文档与提交归属验证，以及人工判断。
+评估方式：基于 v2.1.2 项目治理的 Java 17 同源预检、Surefire/Failsafe、JaCoCo、Markdown 与人工文档事实复核，以及人工判断。
 维护责任：进行结构性改动的人应同步校准本表，避免把过期印象保留下来。
 
 | 区域 | 正确性 | 可读性 | 可维护性 | 文档完整性 | 发布成熟度 | 备注 |
@@ -45,7 +45,7 @@ updated: 2026-08-13
 | `mimir-boot-parent` | A | B | A | A- | A | 正常 `verify -Pci` 已执行 Surefire/Failsafe 与覆盖率门禁。 |
 | `mimir-boot-bom` | A | B | A | A- | A | 宽 BOM 保持兼容边界，全部显式管理项已有“已验证”或“仅管理”分类。 |
 | `mimir-boot-common` | A | B | B+ | B+ | A | 公共模型与 IP 信任边界均有定向回归。 |
-| 已落地 starters | A- | B+ | B+ | A- | A | 11 个 Starter 的默认能力、异常、RPC、Nacos 和测试消费者路径已纳入版本级验证。 |
+| Starter 聚合模块 | A- | B+ | B+ | A- | A | 10 个聚合子模块的默认能力、异常、RPC、Nacos 和测试消费者路径已纳入本地验证。 |
 | `docs/` 文档体系 | A- | A | B+ | A- | B+ | 治理状态、README 与活跃索引已同步；事实漂移继续由维护者在变更中复核。 |
 
 ## 4. 使用方式

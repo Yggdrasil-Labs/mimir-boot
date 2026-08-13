@@ -20,14 +20,15 @@ resolved-path: docs/active/v2.1.2/project-governance/
 
 ## 实施验证
 
-GOV-001—GOV-020 已按 T1—T11 的验收结果完成，GOV-008 以 v2.x 保持兼容的决策关闭。
-版本级预检、文档状态与提交归属由 T12 AC1—AC3 复核。
+T1—T11 的实现与本地定向验收已完成；18 个 GOV 项本地已验证，GOV-008 以 v2.x 保持兼容的决策
+关闭，GOV-012 因低维护范围收缩延期。T12 AC1—AC3 复核本地门禁和历史提交，AC4 等待远端 PR CI
+与可信 push Sonar Quality Gate 证据。
 
 ## Workstreams
 
 | 主线 | GOV 范围 | 实施目标 |
 |------|----------|----------|
-| B：CI 与文档治理 | GOV-001、007、009—015 | 建立本地与 CI 同源预检、一次 Reactor 构建、条件化 Sonar、单一发布前检和自动事实校验 |
+| B：CI 与文档治理 | GOV-001、007、009—015 | 建立同源核心预检、一次 Reactor 构建、条件化 Sonar、单一发布前检，并校正当前文档事实；GOV-012 延期 |
 | A：功能代码优化 | GOV-002—006、016—020 | 修复上下文隔离、输入信任边界、RPC 生命周期和 Starter 默认能力 |
 | 兼容性约束 | GOV-008 | v2.x 保持 `Serializable` 公共边界，不修改生产 API；编译回归并入 T1 |
 
@@ -46,11 +47,10 @@ GOV-001—GOV-020 已按 T1—T11 的验收结果完成，GOV-008 以 v2.x 保�
 
 ### Scenario: Push 前执行同源预检
 
-Given 维护者使用 Java 17 和 Node.js 22
+Given 维护者使用 Java 17
 When 在本地执行仓库提供的预检入口
-Then Markdown、项目事实、单元测试、集成测试和覆盖率门禁与 CI 使用相同命令
-And Workflow 静态约束也在本地校验
-And 任一确定性门禁失败时在 Push 前得到非 0 退出码和明确错误位置
+Then 格式、单元测试、集成测试、覆盖率和报告存在性门禁与 CI 使用同一个 Bash/Maven 入口
+And 任一核心门禁失败时在 Push 前得到非 0 退出码
 
 ### Scenario: 普通变更执行完整质量门禁
 
@@ -246,7 +246,11 @@ When 应用上下文启动
 Then 对应 Starter 默认 Bean 回退
 And 每类能力只有一个有效实例
 
-## Behavior: 文档与依赖维护自动化
+## Behavior: 文档与依赖维护
+
+GOV-009 的当前文档事实校正已完成；以下前三个文档事实自动化 Scenario 属于延期的 GOV-012，保留为
+后续独立文档治理需求的验收目标，不计入 v2.1.2 已完成能力。Dependabot 分组与 BOM 支持等级仍在本版本
+完成。
 
 ### Scenario: 项目事实与文档一致
 
@@ -318,11 +322,11 @@ And v2.1.2 不包含该变更的实现任务
 - 逻辑版本固定为 `2.1.2`，目标目录固定为 `docs/active/v2.1.2/project-governance/`。
 - 冻结范围固定为 20 项：GOV-001 至 GOV-020；新增项必须重新确认收益和版本影响。
 - 当前项目事实基线为 Java 17、Spring Boot 3.3.13、10 个 Starter、15 个 Maven Reactor 模块。
-- 本地预检与 CI 固定使用 Java 17、Node.js 22 和 lockfile 锁定的 Markdown 工具链。
+- 本地核心预检与 CI 固定使用 Java 17 和仓库内 Bash/Maven 入口；不新增项目级 Node 工具链。
 - CI 中每次变更的完整 Reactor 构建次数为 1；Failsafe XML 报告和 JaCoCo XML 报告数量都必须大于 0。
 - CI 不使用 `paths`/`paths-ignore` 跳过 required check；核心 Build Job 不读取发布密钥。
-- 文档事实检查、Workflow 静态检查、Markdown lint，以及覆盖已跟踪与新建治理文件的 Git whitespace
-  check，允许错误数均为 0。
+- Markdown lint、核心 CI 静态检查，以及覆盖已跟踪与新建治理文件的 Git whitespace check，允许错误数
+  均为 0；DOC-001—DOC-006 自动事实检查按 GOV-012 延期记录处理。
 - v2.1.2 关闭时未验证 P0/P1 数量必须为 0；P2 必须完成或记录 Owner、理由和目标版本。
 - 每个进入“已验证”的 GOV 项必须记录指向 Task AC 的定向验证证据，并共同引用 T12 AC2
   作为版本级门禁证据；“已关闭”和“延期”分别记录决策证据或 Owner、原因、目标版本。

@@ -24,19 +24,20 @@ updated: 2026-08-13
 
 | 议题 | 范围 | 收益 | 状态 | 入口 |
 |------|------|------|------|------|
-| 整体设计审查问题整改 | GOV-001—GOV-010 | 中—高 | 已验证/已关闭 | [overall-design-review.md](./overall-design-review.md) |
-| 单人维护提效 | GOV-011—GOV-015 | 中—高 | 已验证 | [solo-maintainer-efficiency.md](./solo-maintainer-efficiency.md) |
-| Starter 功能完整性 | GOV-016—GOV-020 | 中—高 | 已验证 | [starter-functional-completeness.md](./starter-functional-completeness.md) |
+| 整体设计审查问题整改 | GOV-001—GOV-010 | 中—高 | 本地已验证/已关闭 | [overall-design-review.md](./overall-design-review.md) |
+| 单人维护提效 | GOV-011—GOV-015 | 中—高 | 本地已验证/延期 | [solo-maintainer-efficiency.md](./solo-maintainer-efficiency.md) |
+| Starter 功能完整性 | GOV-016—GOV-020 | 中—高 | 本地已验证 | [starter-functional-completeness.md](./starter-functional-completeness.md) |
 
 ## 实施主线
 
 | 主线 | GOV 范围 | 目标 | 顺序 |
 |------|----------|------|------|
-| B：CI 与文档治理 | GOV-001、007、009—015 | 先建立本地可复现的质量门禁、单次 CI 构建、可靠发布前检和事实校验 | 先实施 |
+| B：CI 与文档治理 | GOV-001、007、009—015 | 建立本地可复现的质量门禁、单次 CI 构建、可靠发布前检，并校正当前文档事实 | 先实施 |
 | A：功能代码优化 | GOV-002—006、016—020 | 再修复运行时上下文、失败语义和 Starter 默认能力缺口 | 后实施 |
 
 GOV-008 是 v2.x 兼容性边界决策，不修改生产 API；编译回归并入 T1，不形成第三条实施主线。
-其余 GOV-001—GOV-020 的实现与版本级门禁证据见各专题的 `验证证据` 和 T12 AC1—AC3。
+其余 GOV-001—GOV-020 的本地实现与门禁证据见各专题的 `验证证据` 和 T12 AC1—AC3；GOV-012
+按延期记录处理。远端 PR CI 与可信 push Sonar 结果由 T12 AC4 收口。
 
 ## 范围原则
 
@@ -69,10 +70,11 @@ GOV-008 是 v2.x 兼容性边界决策，不修改生产 API；编译回归并�
 | 讨论中 | 正在确认收益、边界或方案 |
 | 已设计 | Spec 与 Design 已确认，可进入实施计划 |
 | 实施中 | 已按确认计划进入代码或文档修改 |
-| 已验证 | 定向验证和版本级门禁均通过 |
+| 已验证 | GOV 定向验证和本地版本级门禁均通过；不等同于版本远端验收完成 |
 | 延期 | 已记录 Owner、理由和目标版本 |
 | 已关闭 | 已验证，或经决策确认本版本无需实施 |
 
-Spec 的 front matter 使用 `shipped` 表示范围与验收已交付；Design 使用 `verified` 表示设计审查已完成；
-Plan 使用 `completed` 表示全部任务与验收已完成，同时保留执行账本。治理入口和三个专题文件使用
-`verified`，表示版本级验证已完成，不表示后续版本不能继续提出新议题。
+Spec 使用 `shipped`，Design、治理入口和三个专题文件使用 `verified`，表示规格已交付且文档内容与本地
+实现证据已完成核对；Plan 使用 `completed`，表示计划中的本地实施已经完成。上述文档状态不等同于版本
+已完成远端验收：T12 AC4 继续等待远端 PR CI 与 `main`/`develop` 可信 push Sonar 证据，版本级完成度
+由活跃版本索引与该 AC 单独裁决。GOV 级状态只表达单项本地验收结果。

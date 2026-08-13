@@ -22,7 +22,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 **Tech Stack:** Java 17、Spring Boot 3.3.13、Maven 3.9.x、Bash、GitHub Actions、JUnit 5、AssertJ
 **Commit Mode:** per-task
 **Effective Execution Mode:** serial，隔离 worktree；`plan.md` 作为每 Task 即时执行账本
-**Final Record Mode:** final-record-exception
+**Remote Acceptance:** pending（PR CI 与可信 push Sonar Quality Gate）
 
 ## Global Constraints
 
@@ -117,10 +117,10 @@ flowchart TD
 | 下游使用 JUnit Suite | T11 | 临时消费者 marker 与唯一 Suite 报告 |
 | 容器依赖清理不改变消费边界 | T11 | 临时消费者依赖树与 BOM 管理断言 |
 | 消费者替换默认自动装配 Bean | T6 | ApplicationContextRunner 单实例断言 |
-| 项目事实与文档一致 | T2 | DOC-001—DOC-006 正向 fixture |
+| 项目事实与文档一致 | T12 | 人工核对版本、Starter 聚合子模块、Reactor 模块、索引和 GOV 状态 |
 | Spring MVC 服务端契约错误 | T9 | 返回值校验与缺少路径变量 500 断言 |
-| 人工文档发生事实漂移 | T2 | 文档漂移反向 fixture |
-| 文档检查发现差异 | T2 | 错误格式、退出码和只读性 fixture |
+| 人工文档发生事实漂移 | 后续 GOV-012 | 延期记录包含 Owner、原因和目标版本 |
+| 文档检查发现差异 | 后续 GOV-012 | DOC-001—DOC-006 未进入本版本 CI，不作为当前通过证据 |
 | 常规依赖更新 | T4 | Dependabot minor/patch 分组 fixture |
 | 重大依赖更新 | T4 | major 不分组且无自动合并断言 |
 | 企业级宽 BOM | T4 | DOC-007 完整且互斥分类断言 |
@@ -1043,32 +1043,38 @@ Expected: **PASS**
 - Consumes: `bash scripts/ci-preflight.sh`; all task verification evidence
 - Produces: project governance status and version-level acceptance record
 
-**Behavior:** 所有 20 项 GOV 的状态、验证证据和延期理由与代码事实一致；完成时已从实施基线提交区间核验 Task 提交归属，并完成与普通 CI 相同的本地预检。该一次性验收工具在版本收尾后清理。
+**Behavior:** 所有 20 项 GOV 的状态、验证证据和延期理由与代码事实一致；从实施基线到当前 HEAD 的
+Task、终验及复审修复提交均按实际历史登记；本地完成与普通 CI 相同的核心预检，远端 PR CI 和可信 push
+Sonar Quality Gate 作为版本关闭前的最终验收。
 
 **Acceptance Criteria:**
 
-- [x] GOV-001—GOV-020 均为已验证、已关闭或按规则延期，未验证 P0/P1 数量为 0。
-- [x] Java 17 同源预检、未暂存与已暂存 diff check、轻量 CI 结构断言全部通过，15 个 Reactor 模块成功。
+- [x] GOV-001—GOV-020 共 18 项已验证、1 项已关闭、1 项按规则延期，未验证 P0/P1 数量为 0。
+- [x] Java 17 同源预检、工作区 diff check、轻量 CI 结构断言全部通过，15 个 Reactor 模块成功。
 - [x] Baseline 到 Implementation Head 之间每个提交只属于 T1—T11 的一个 Task，且仅含该 Task 的
-  `Create`/`Modify` 允许文件与 `plan.md` 即时执行记录；其后最多一个仅含 T12 Files 的终验提交，T12 记录使用
-  `final-record-exception`，最终工作区干净。
+  `Create`/`Modify` 允许文件与 `plan.md` 即时执行记录；Implementation Head 之后的 T12 终验提交
+  `0b22d73` 以及复审修复提交 `fb3dc6e`、`0315b3f` 已按实际历史登记并检查作用域。
+- [ ] 远端 PR CI 核心门禁通过，且 `main`/`develop` 可信 push 的 Sonar Quality Gate 通过；两者均记录
+  可追溯 URL。
 
 **Execution:**
 
-- **Status:** done
-- **Commit SHA:** final-record-exception
-- **Attempts:** 1
+- **Status:** in-progress
+- **Commit SHA:** 0b22d73e3519fb00ded52967e8b1beff10022267
+- **Post-Review Commit SHAs:** fb3dc6e0013a1edd40ef1612ffe4cb0c0c53cf67, 0315b3f4184298dd11f277a320fe583c543c5e0a
+- **Current Documentation Repair:** 本提交
+- **Attempts:** 2
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"一次性验收前提交归属校验器不存在","confirmed":true,"evidence":"确认版本级提交归属终验缺失。"}]}
-- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查、轻量 CI 结构断言与 diff check 通过。"},{"cmd":"一次性提交归属校验 fixture","status":"pass","evidence":"完成时已覆盖正常提交前后、缺失/重复/区间外 SHA、额外提交、越界/只读路径、T10 授权、index 与工作区负例；验收脚本随后按版本收尾策略清理。"},{"cmd":"GOV 状态结构检查与冻结区间解析","status":"pass","evidence":"20 个 GOV 为 19 已验证、1 已关闭；证据结构、GOV-008 决策证据与冻结区间归属均已在完成时核对。"}]}
-- **AC Result:** {"pass":3,"total":3,"deferred":[],"details":{"AC1":"GOV-001—020 状态与验证/决策证据已同步，未验证 P0/P1 为 0。","AC2":"同源预检通过 15 模块，差异检查与 CI 结构断言通过。","AC3":"校验器 fixture 覆盖提交、范围、只读和 T10 条件授权反例；冻结区间主/补充提交双向完整覆盖。"}}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check","status":"pass","evidence":"2026-08-13 新鲜执行通过：15/15 Reactor BUILD SUCCESS；84 份 Surefire 报告共 919 个测试、3 份 Failsafe 报告共 19 个测试，failures/errors/skipped 均为 0；diff check 通过。"},{"cmd":"Markdown 与文档健康检查","status":"pass","evidence":"markdownlint 检查 52 个文件为 0 issue；docs-evolve health check 通过。"},{"cmd":"git log 76c6357..HEAD 与逐提交作用域检查","status":"pass","evidence":"实际历史为 T12 终验 0b22d73、预检/RPC 修复 fb3dc6e、文档/发布坐标修复 0315b3f；不再使用‘最多一个终验提交’的错误不变量。"},{"cmd":"远端 PR CI 与 main/develop 可信 push Sonar Quality Gate","status":"pending","evidence":"origin 无当前分支，gh pr list 与 gh run list 均为空，因此尚无远端或 Sonar 运行 URL。"}]}
+- **AC Result:** {"pass":3,"total":4,"deferred":[],"details":{"AC1":"18 项已验证、GOV-008 已关闭、GOV-012 按规则延期，未验证 P0/P1 为 0。","AC2":"Java 17 同源预检、Markdown、文档健康检查和 diff check 新鲜通过。","AC3":"实施区间与其后三个实际提交均已登记，不改写历史。","AC4":"远端 PR CI 与 main/develop 可信 push Sonar Quality Gate 尚无运行证据。"}}
 
 **Task Completion Gate:**
 
 - [x] Red Result exists and passed
-- [x] Verify Result exists and passed
-- [x] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
-- [x] Commit SHA belongs to this task only or equals `final-record-exception`
+- [x] Local Verify Result exists and passed
+- [ ] AC Result exists and passed (total > 0 AND pass + deferred.length == total, non-deferred AC all verified)
+- [x] Commit SHA and post-review repair SHAs are recorded against actual history
 - [x] Per-task AC checkbox synced
 
 **Step 1: Red**
@@ -1092,34 +1098,38 @@ Expected: **PASS** — 19 个已设计待实施项和 1 个兼容性关闭项构
 
 **Step 2: Green**
 
-T12 开始、修改任何文件前，把当前 `git rev-parse HEAD` 写入 `Implementation Head SHA`。只依据各
-Task 的 commit、测试与门禁结果同步状态；完成时一次性核对 `plan.md` 中的任务账本、允许路径、只读 Test
-路径与 T10 结构化 Red Result 授权。该核对结果作为本版本的历史验收证据保留，脚本不进入长期工具链。
-无法验证的 P2 必须记录 Owner、原因和目标版本，
-P0/P1 不允许延期关闭版本。同步每个 GOV 专题块：`已验证` 写入指向具体 `Tn ACx` 和 `T12 AC2` 的
-`验证证据`；无实现的 `已关闭` 保留 `决策证据`；延期项写入 Owner、原因和目标版本。DOC-006 对这四种
-状态组合做结构校验，不增加独立治理契约文件。
+T12 开始、修改任何文件前，把当时的 `git rev-parse HEAD` 写入 `Implementation Head SHA`。依据各 Task
+的提交、测试与门禁结果同步状态，并核对 `plan.md` 中的任务账本、允许路径、只读 Test 路径与 T10
+结构化 Red Result 授权。Implementation Head 之后发生的终验及复审修复提交按实际历史继续登记，不能用
+固定“最多一个提交”规则否认后续合法修复。无法验证的 P2 必须记录 Owner、原因和目标版本，P0/P1 不允许
+延期关闭版本。同步每个 GOV 专题块：`已验证` 写入具体 Task AC 与 T12 本地证据；无实现的 `已关闭`
+保留决策证据；延期项写入 Owner、原因和目标版本。远端 PR CI 与可信 push Sonar 证据缺失时，版本状态保持
+`in-progress`。
 
 **Step 3: Verify**
 
 Run: `mise exec java@17 -- bash scripts/ci-preflight.sh && git diff --check`
 Expected: **PASS**
 
-提交归属核验仅在本版本完成时执行；后续维护不重复运行，避免固定 `Implementation Head` 对新提交产生错误约束。
+提交归属核验保留历史区间结论，并按实际提交追加终验与复审修复记录；不对 Implementation Head 之后的提交
+数量设置错误上限。
 
 **AC Verification:**
 
-- AC1: GOV 状态脚本与 DOC-006 核对 → 20 项唯一且连续，P0/P1 未关闭数为 0；每个已验证项均引用
-  具体 Task AC 与 T12 AC2，已关闭/延期项分别具备决策证据或 Owner、原因、目标版本。
-- AC2: 同源预检、`git diff --check` 和精确暂存后的 `git diff --cached --check` → 全部退出 0，
-  Failsafe/JaCoCo 报告非空，新建 T12 文件未绕过检查。
-- AC3: 版本完成时的提交归属核验已确认 T1—T11 的唯一 SHA 集合覆盖 Baseline..Implementation Head；
-  每 Task 的 `plan.md` 即时执行记录、普通允许路径、只读 Test 路径和 T10 条件授权均按规则验证。验收脚本已清理。
+- AC1: 人工核对 GOV 状态 → 20 项唯一且连续，18 项已验证、1 项已关闭、1 项延期，P0/P1 未关闭数为 0；
+  已关闭/延期项分别具备决策证据或 Owner、原因、目标版本。
+- AC2: 同源预检与 `git diff --check` → 全部退出 0，Failsafe/JaCoCo 报告非空；当前修复未获提交授权，
+  因此不以暂存区检查冒充完成证据。
+- AC3: 历史提交归属核验确认 T1—T11 的 SHA 集合覆盖 Baseline..Implementation Head；其后的 T12 终验
+  与两次复审修复提交按真实顺序登记并检查，不改写 Git 历史。
+- AC4: 远端 PR CI 核心门禁与 `main`/`develop` 可信 push Sonar Quality Gate 均通过，并在本计划记录
+  运行 URL；执行顺序为先推送功能分支并由 PR 获得核心 CI URL，再于合并或推送 `main`/`develop` 后取得
+  Sonar Quality Gate URL。当前待执行。
 
 **Step 4: Commit**
 
-提交前先把本 Task 的 Execution Commit SHA 记为 `final-record-exception`，然后提交：
-`docs(governance): 同步 v2.1.2 治理验证结果`。提交归属已在当时完成核验；本版本收尾后清理一次性验收脚本，后续提交不再受固定边界约束。
+初始 T12 提交为 `0b22d73`；后续复审修复提交为 `fb3dc6e`、`0315b3f`，本次文档状态与验收口径修复由
+本提交收口。push、合并及后续远端操作仍须单独授权；获得远端证据后再同步 AC4 和版本完成状态。
 
 ---
 
@@ -1128,4 +1138,6 @@ Expected: **PASS**
 - [x] AC1: 普通 Push/PR 的核心质量门禁在本地可用同一入口复现，CI 只进行一次完整 Reactor 构建，Dependabot/fork/缺 Secret 不产生伪失败。
 - [x] AC2: `verify -Pci` 同时执行 Surefire 与 Failsafe，Web/RPC/Nacos/Exception/Test Starter 的新增行为和兼容路径全部通过。
 - [x] AC3: Release 只有一次前置验证且四类外部副作用仍可独立补偿；所有默认 Maven 命令不含 `-U`。
-- [x] AC4: DOC-001—DOC-007、CI 静态规则、Markdown、15 模块构建、未暂存及已暂存 diff check 均为 0 error，GOV-001—GOV-020 状态可追溯。
+- [x] AC4: Markdown、CI 静态规则、DOC-007 一次性 BOM 分类、15 模块构建与 diff check 均为 0 error；
+  GOV-001—GOV-020 状态可追溯，DOC-001—DOC-006 自动事实检查按 GOV-012 延期。
+- [ ] AC5: 远端 PR CI 核心门禁与 `main`/`develop` 可信 push Sonar Quality Gate 均通过，并记录可追溯 URL。

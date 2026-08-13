@@ -15,7 +15,7 @@ updated: 2026-08-13
 
 | 需求 | 路径 | 状态 | 简述 |
 |------|------|------|------|
-| 项目治理 | [`project-governance/`](./project-governance/) | 治理验证完成 | 20 项中高收益治理需求已完成 CI/文档治理与功能代码优化两条主线验证 |
+| 项目治理 | [`project-governance/`](./project-governance/) | 本地验证完成，待远端验收 | 核心实现和本地门禁已通过；GOV-012 延期，远端 CI/Sonar 尚待验证 |
 
 ## 版本边界
 

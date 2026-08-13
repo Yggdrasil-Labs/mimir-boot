@@ -27,13 +27,15 @@ Starter 修改。GOV-008 是兼容性约束，不形成独立实施流。
 - 正常 Java 17 `verify -Pci` 执行单元测试和集成测试，Failsafe 报告非空。
 - 每次 CI 只进行 1 次完整 Reactor 构建，Sonar 复用该构建产物。
 - 完成主线 A 的 10 个 GOV 条目，同时保持现有公开替换点和 v2.x 公共边界可用。
-- 将版本、10 个 Starter、15 个 Reactor 模块和内部链接纳入 0-error 文档事实门禁。
+- 校正版本、10 个 Starter 聚合子模块、15 个 Reactor 模块和内部链接的当前文档事实；持续自动校验
+  作为 GOV-012 延期项处理。
 - v2.1.2 关闭时 GOV-001 至 GOV-020 均已验证、关闭或按规则延期，P0/P1 未关闭数为 0。
 
 ## 实施验证
 
-本设计的运行时与构建契约已由 T1—T11 的定向 AC 验证。T12 使用 Java 17 同源预检、
-文档状态核对和提交归属校验器复核版本级结果；GOV-008 保持既有公共边界并记录为 3.0 候选。
+本设计的运行时与构建契约已由 T1—T11 的本地定向 AC 验证。T12 使用 Java 17 同源预检、Markdown、
+文档状态核对和历史提交审计复核本地结果；远端 PR CI 与可信 push Sonar Quality Gate 尚待 T12 AC4
+验证。GOV-008 保持既有公共边界并记录为 3.0 候选，GOV-012 按延期记录处理。
 
 ## Non-Goal
 
@@ -52,8 +54,8 @@ flowchart LR
     subgraph B["B：CI 与文档治理"]
     Change["代码或文档变更"] --> Local["本地同源预检"]
     Local --> CI["单一 CI Build Job"]
-    CI --> Docs["Markdown + 客观事实检查"]
-    Docs --> Sonar{"可信事件且凭据完整?"}
+    CI --> Markdown["Markdown lint"]
+    Markdown --> Sonar{"可信事件且凭据完整?"}
     Sonar -->|否| Maven["一次 verify -Pci"]
     Sonar -->|是| MavenSonar["一次 verify -Pci sonar:sonar"]
     Maven --> Unit["Surefire 单元测试"]
@@ -79,7 +81,7 @@ flowchart LR
     Runtime --> Override["用户 Bean 优先"]
     end
 
-    Docs --> Evidence["治理验证证据"]
+    Markdown --> Evidence["本地治理验证证据"]
     IT --> Evidence
     Analyze --> Evidence
     Skip --> Evidence
@@ -155,6 +157,7 @@ XML、至少 11 个 testcase 且零 failures/errors/skipped；并存在非空 Ja
 齐全时运行；所有 PR、fork、Dependabot、缺配置和本地默认路径继续执行核心预检并输出
 `Sonar analysis: skipped (not eligible)`。三个 Sonar 环境变量也仅在 push 映射真实 Secret，避免 PR 代码接触
 凭据。
+
 - Job 权限保持 `contents: read`；核心预检不读取发布 Secret，不使用 `pull_request_target`。
 - Artifact 上传保持 `if: always()`，但报告缺失由预检脚本在上传前明确失败，不依赖 artifact action 的默认行为判断。
 - 保留普通 CI 的同分支取消策略；Release 保留 `cancel-in-progress: false` 与 `queue: max`，不得改成
@@ -183,34 +186,15 @@ XML、至少 11 个 testcase 且零 failures/errors/skipped；并存在非空 Ja
 
 上述路径是普通 CI 的冻结验收矩阵；终审不得再用新的路径分类扩张本版本范围。
 
-检查规则固定为：
+#### 延期的文档事实自动化
 
-| 规则 ID | 事实来源 | 校验对象 |
-|---------|----------|----------|
-| DOC-001 | 根 POM `revision` | 活跃版本号与版本索引 |
-| DOC-002 | Starter 聚合 POM `modules` | README、DOMAINS、QUALITY 中的 Starter 数量和名称 |
-| DOC-003 | 递归 POM `modules` | README、ARCHITECTURE、DOMAINS、QUALITY 中的 Reactor 模块数量 |
-| DOC-004 | `docs/active/` 版本目录 | `docs/active/index.md` 入口 |
-| DOC-005 | Markdown 相对链接目标 | 全仓已跟踪 Markdown 的仓库内链接存在性 |
-| DOC-006 | GOV 专题块 | GOV-001—GOV-020 唯一连续，状态与证据字段组合有效 |
-| DOC-007 | BOM POM 显式依赖管理 | “已验证”与“仅管理”集合完整、互斥 |
+DOC-001—DOC-006 原计划覆盖版本、Starter 聚合子模块、Reactor 模块、活跃索引、内部链接和 GOV 状态。
+2026-08-12 的 T2 范围收缩明确不引入项目级 Node、YAML 解析器或长期文档事实脚本，因此这些规则没有
+进入当前 CI，不能作为已交付接口或 T12 通过证据。GOV-012 记录 Owner、延期理由和目标版本；后续独立
+文档治理需求如重新实施，仍须满足“只读、失败定位、不自动覆盖 Markdown”的原始边界。
 
-DOC-001 的比较先做确定性归一化：根 POM `revision` 必须匹配
-`MAJOR.MINOR.PATCH` 或 `MAJOR.MINOR.PATCH-SNAPSHOT`，移除可选 `-SNAPSHOT` 得到逻辑版本；活跃目录名
-必须为 `v<逻辑版本>`，版本索引展示值也先移除可选前缀 `v` 再比较。其他预发布后缀和无法解析的
-版本一律报错，错误同时输出原始值和归一化值。
-
-DOC-005 扫描全仓已跟踪 Markdown；排除 `target/`、`.git/`、`.cursor/` 和 `CHANGELOG.md` 中外部生成的
-历史片段。归档文档仍属于可导航文档，不排除。合法 Markdown 链接必须指向存在的文件、目录或锚点；
-示例中的占位链接必须改成代码文本，不能用假目标绕过检查。T2 在启用 DOC-005 的同一提交先修复现有
-5 个基线断链，因此门禁从首次启用起就是绿色。
-
-DOC-006 只做轻量状态约束：`讨论中` 和 `已设计` 不要求验证证据；`已验证` 必须有引用 `Tn ACx` 和
-`T12 AC2` 的 `验证证据`；无实现的 `已关闭` 必须有 `决策证据`；`延期` 必须有 Owner、原因和目标版本。脚本解析
-`plan.md` 的 T1—T12 及各 Task `AC Verification`，拒绝不存在的 Task、AC 编号或缺失的 `T12 AC2`；
-它不生成治理契约，也不解析自然语言结论。
-
-脚本不得写文件，不读取网络，不把描述性文案纳入判断。
+DOC-007 仅用于 T4 的 BOM 支持等级一次性核对：`mimir-boot-bom/README.md` 中“已验证”和“仅管理”集合
+必须覆盖全部显式管理坐标且互斥。它不依赖项目级 Node 工具链，也不代表 DOC-001—DOC-006 已实现。
 
 ### 3. Release 前置验证
 
@@ -523,9 +507,10 @@ public Object handleNoResourceFoundException(
 
 ### 12. 任务提交归属验收记录
 
-服务版本级终验，不改变运行时行为。T12 已在完成时一次性核对 Baseline、Implementation Head、T1—T11
-Execution SHA、任务允许文件和 T10 结构化授权，并确认终验提交范围及工作区状态。该校验工具只服务于
-v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本或日常开发门禁。
+服务版本级终验，不改变运行时行为。T12 已对 Baseline、Implementation Head、T1—T11 Execution SHA、
+任务允许文件和 T10 结构化授权完成一次性历史核对；随后发生的 T12 终验及复审修复提交按实际历史追加
+登记。该校验工具已清理，不作为后续版本或日常开发门禁；远端 PR CI 和 `main`/`develop` 可信 push
+Sonar Quality Gate 证据仍是 T12 未完成部分。
 
 ### 13. JUnit Suite 下游依赖
 
@@ -571,14 +556,14 @@ v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本�
 
 ### 15. BOM 支持等级与 Serializable 决策
 
-服务 Behavior“文档与依赖维护自动化”和“2.x 公共兼容性保持”。
+服务 Behavior“依赖维护”和“2.x 公共兼容性保持”。
 
 文件：`mimir-boot-bom/README.md`、相关产品/架构文档和治理专题。
 
 - BOM 继续管理当前企业生态依赖。
 - “已验证”只包含被当前 Starter 直接消费并进入 Reactor 测试的依赖。
 - “仅管理”包含提供统一版本但没有当前 Starter 运行验证的依赖。
-- 文档事实检查核对两个集合无重复、BOM 中每个显式管理项至少属于一个集合。
+- T4 的一次性只读核对确认两个集合无重复、BOM 中每个显式管理项至少属于一个集合。
 - GOV-008 不修改生产 API，但必须增加编译回归：Serializable 类型继续编译且 JSON 语义不变，
   非 Serializable 类型继续编译失败；3.0 评估入口保留在治理文档。
 
@@ -591,10 +576,9 @@ v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本�
 | RPC 传播载体 | `X-Trace-Id: String`、`X-Request-Id: String` | ASCII 白名单，长度 1—64 |
 | RPC Trace Scope | `close(): void` | 幂等，只恢复本 Bridge 拥有的两个 MDC 键 |
 | RPC Hook Invocation | `context: RpcCallContext`、`entered: List<RpcHook>`、`state: AtomicReference<State>` | `OPEN -> COMPLETING -> CLOSED`，每次调用独享，唯一终态路径完成 after/onError 与逆序 cleanup |
-| 文档检查错误 | `rule/path/actual/expected: String` | 每个错误单行输出，退出码 1 |
 | BOM 支持等级 | `verified/managedOnly: Set<MavenCoordinate>` | 每个显式管理项恰好属于一类，无持久化关系 |
 | GOV 标识 | `id: String`，GOV-001—GOV-020 | 本目录唯一、连续，不复用 |
-| 实施提交边界 | `baseline/implementationHead/taskShas` | T1—T11 覆盖实施区间；其后最多一个 T12 终验提交 |
+| 实施提交边界 | `baseline/implementationHead/taskShas` | T1—T11 覆盖实施区间；其后的终验及复审修复提交按实际历史登记，不限制提交数量 |
 
 ## Error Handling
 
@@ -603,7 +587,7 @@ v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本�
 | Failsafe 报告缺失或集成测试失败 | Maven 与 CI 失败，不允许以 Surefire 通过替代 |
 | Sonar 密钥不可用 | 仅跳过分析；构建、测试和报告照常完成 |
 | Sonar 分析自身失败 | 有密钥且进入分析时 CI 失败，不重复构建来掩盖失败 |
-| 文档事实漂移 | 输出规则、文件、实际值和期望值后失败，不修改文件 |
+| Markdown 格式错误 | 本地与 CI 的 Markdown lint 失败并定位文件，不修改文件 |
 | Maven 缓存缺失 | 正常下载缺失构件；只有明确故障排查才使用 `-U` |
 | npm/Maven/Action 下载暂时失败 | 保留失败 Step 与缓存证据，不把网络错误改写为测试失败；确认平台恢复后只重跑原 Job |
 | 发布前置验证失败 | 所有外部发布 Job 不启动，补偿选择保持可重试 |
@@ -624,7 +608,7 @@ v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本�
 | 安全 | 未配置可信代理时，转发头影响审计 IP 的请求数 = 0 |
 | 上下文隔离 | 每次 Web/RPC 调用结束后非本组件 MDC 键丢失数 = 0 |
 | 日志安全 | Nacos 密钥、密文、解密明文写入日志的数量 = 0 |
-| 治理一致性 | DOC-001—DOC-007 与 CI 静态规则错误数 = 0 |
+| 治理一致性 | Markdown、CI 静态规则、BOM 一次性分类核对错误数 = 0；DOC-001—DOC-006 按 GOV-012 延期 |
 | 发布恢复 | GPR 与 Central 可独立补偿，已发布坐标覆盖次数 = 0 |
 | 兼容性 | v2.x 主动移除的公共类型、方法和配置项数量 = 0 |
 
@@ -653,8 +637,9 @@ v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本�
 | GOV-006 | ApplicationContextRunner | 提供用户 MyBatis Bean | 默认实例回退且只有一个实例 |
 | GOV-007 | Maven 模型 | effective/flattened POM 检查 | 依赖平台和插件版本均为 3.3.13 |
 | GOV-008 | 编译回归 | 现有公共响应测试 | 2.x 泛型边界无变化 |
-| GOV-009/012 | 脚本/CI | 执行同源预检并注入文档/Workflow 漂移 | 正常 0；漂移时非 0 且不写文件 |
-| GOV-010 | 文档事实 | 核对 BOM 项目分类 | 所有项恰好属于一类 |
+| GOV-009 | 文档/Markdown | 人工核对当前项目事实并执行 Markdown lint | 当前事实一致且 Markdown 0 error |
+| GOV-012 | 延期记录 | 核对 Owner、原因和目标版本 | 不以未实现的自动漂移检查宣称通过 |
+| GOV-010 | 一次性核对 | 核对 BOM 项目分类 | 所有项恰好属于一类 |
 | GOV-011 | Actions 结构/运行 | 本地预检、Actions 结构和可信/不可信事件条件测试 | 完整构建命令只有一次，Sonar 条件路径均通过 |
 | GOV-013 | Dependabot 配置 | 配置校验与后续 PR 观察 | Actions minor/patch 分组，major 独立 |
 | GOV-014 | 静态/空缓存构建 | 搜索 `-U` 并从空缓存构建 | 工作流无 `-U`，构建成功 |
@@ -673,7 +658,7 @@ v2.1.2 的固定提交账本；验收完成后已清理，不作为后续版本�
 | G1 规格与设计确认 | 冻结 Spec、Design、三个专题清单 | 已完成范围讨论 |
 | G2 主线 B：CI 与文档治理 | GOV-001、007、009—015 | G1 |
 | G3 主线 A：功能代码优化 | GOV-002—006、016—020 | G2 提供同源预检和集成门禁 |
-| G4 版本级验证 | 20 项状态、全量构建、文档事实和遗留债务 | G2—G3 |
+| G4 版本级验证 | 20 项状态、全量构建、本地文档核对、远端 CI/Sonar 证据和遗留债务 | G2—G3 |
 
 ## 官方依据
 
