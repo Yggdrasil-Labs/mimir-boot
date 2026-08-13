@@ -45,14 +45,14 @@ verify_reports() {
 
   mapfile -d '' surefire_reports < <(find . -path '*/target/surefire-reports/TEST-*.xml' -type f -size +0c -print0)
   test "${#surefire_reports[@]}" -gt 0
-  ! rg 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${surefire_reports[@]}"
-  ! rg 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${surefire_reports[@]}"
+  ! grep -E 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${surefire_reports[@]}"
+  ! grep -E 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${surefire_reports[@]}"
   mapfile -d '' failsafe_reports < <(find . -path '*/target/failsafe-reports/TEST-*.xml' -type f -print0)
   test "${#failsafe_reports[@]}" -ge 2
-  test "$(rg -o --no-filename '<testcase ' "${failsafe_reports[@]}" | wc -l)" -ge 11
-  ! rg 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${failsafe_reports[@]}"
-  ! rg 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${failsafe_reports[@]}"
-  find . -path '*/target/site/jacoco/jacoco.xml' -type f -size +0c -print -quit | rg .
+  test "$(grep -Eoh '<testcase ' "${failsafe_reports[@]}" | wc -l)" -ge 11
+  ! grep -E 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${failsafe_reports[@]}"
+  ! grep -E 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${failsafe_reports[@]}"
+  find . -path '*/target/site/jacoco/jacoco.xml' -type f -size +0c -print -quit | grep .
 }
 
 main() {
