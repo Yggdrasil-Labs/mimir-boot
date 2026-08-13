@@ -2,10 +2,6 @@
 
 基于 Logback 的企业级日志启动器，提供统一的日志配置和最佳实践。
 
-## v2.1.2 治理验证
-
-访问日志只恢复自身 MDC 键并使用容器提供的连接地址；用户按约定替换访问日志组件时默认 Bean 回退，见 T5、T6 与 T12 AC2。
-
 ## 用途
 
 提供开箱即用的日志解决方案：
@@ -25,9 +21,9 @@
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-starter-log</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </dependency>
 ```
 

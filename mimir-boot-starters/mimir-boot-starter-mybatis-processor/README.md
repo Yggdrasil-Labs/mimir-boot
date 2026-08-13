@@ -18,9 +18,9 @@
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-starter-mybatis-processor</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -391,8 +391,9 @@ public interface UserMapperCustom {
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-starter-mybatis-processor</artifactId>
+    <version>YOUR_RELEASE_VERSION</version>
     <scope>provided</scope>  <!-- 必须使用 provided -->
 </dependency>
 ```

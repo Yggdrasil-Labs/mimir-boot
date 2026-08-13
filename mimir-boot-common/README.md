@@ -210,9 +210,9 @@ public class UserVO extends BaseVO {
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-common</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </dependency>
 ```
 

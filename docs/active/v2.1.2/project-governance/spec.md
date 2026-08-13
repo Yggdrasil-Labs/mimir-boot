@@ -1,6 +1,6 @@
 ---
 id: project-governance
-status: verified
+status: shipped
 owner: Yggdrasil Labs
 created: 2026-07-30
 updated: 2026-08-13
@@ -62,7 +62,7 @@ And 任一测试失败或集成测试报告缺失时门禁失败
 ### Scenario: 具备代码分析凭据
 
 Given 一次质量门禁已经完成编译、测试和覆盖率收集
-And 当前事件来自主仓库且允许读取完整代码分析凭据
+And 当前事件为可信 push 且允许读取完整代码分析凭据
 When 执行代码分析
 Then 分析复用本次构建产物
 And 同一工作流中的完整项目构建次数等于 1

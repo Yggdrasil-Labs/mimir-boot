@@ -19,9 +19,9 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
 
 ```xml
 <parent>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>1.0.0</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </parent>
 ```
 
@@ -33,9 +33,9 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>com.yggdrasil.labs</groupId>
+            <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>${project.version}</version>
+            <version>YOUR_RELEASE_VERSION</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -225,9 +225,9 @@ mvn clean verify -Pprecheck
 
 ```xml
 <parent>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </parent>
 ```
 

@@ -1,6 +1,6 @@
 ---
 id: project-governance
-status: in-progress
+status: completed
 owner: Yggdrasil Labs
 created: 2026-07-30
 updated: 2026-08-13
@@ -93,7 +93,7 @@ flowchart TD
 |---------------|------|--------------|
 | Push 前执行同源预检 | T2 | `ci-preflight.sh` 本地执行与 CI 唯一调用断言 |
 | 普通变更执行完整质量门禁 | T1、T2 | Reactor `verify -Pci`、报告存在性和单次构建规则 |
-| 具备代码分析凭据 | T2 | 主仓库 push/internal PR 的完整参数数组、环境映射与 Quality Gate 断言 |
+| 可信 push 且具备代码分析凭据 | T2 | 完整参数数组、环境映射与 Quality Gate 断言 |
 | 不具备代码分析凭据 | T2 | fork/Dependabot/空配置/本地默认 fixture，核心预检和 skipped 状态行断言 |
 | 标签发布进入前置验证 | T3 | Release DAG fixture 与单一 `release-verify` 断言 |
 | 固定依赖正常解析 | T2 | 空 Maven 本地仓库解析测试 |
@@ -401,8 +401,8 @@ Expected: **PASS**
 - **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** {"commands":[{"cmd":"! rg -n 'github-actions-minor-patch|仅管理|已验证' .github/dependabot.yml mimir-boot-bom/README.md","confirmed":true,"evidence":"命令以 0 退出，确认 Actions 分组与 BOM 支持等级尚未存在。"}]}
-- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查通过。"},{"cmd":"Bash BOM 集合断言","status":"pass","evidence":"显式 dependencyManagement 直接条目 55 个；已验证 17、仅管理 38；遗漏、额外、交集均为 0。"},{"cmd":"Bash/rg Dependabot 结构断言 && git diff --check","status":"pass","evidence":"GitHub Actions 保持 weekly/monday/09:00 与 5 PR 限制；group 仅含 minor/patch，无 major 与自动合并，且 diff 无空白错误。"}]}
-- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"Actions 分组 github-actions-minor-patch 匹配 * 且只含 minor、patch；原频率、时间和 PR 上限不变。","AC2":"README 枚举 POM 的全部 55 个显式直接管理坐标，17 个已验证和 38 个仅管理互斥且完备。"}}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"15 个 Reactor 模块 BUILD SUCCESS；预检报告检查通过。"},{"cmd":"Bash BOM 集合断言","status":"pass","evidence":"复核后，显式 dependencyManagement 直接条目 55 个；已验证 15、仅管理 40；遗漏、额外、交集均为 0。两个 Testcontainers 基础坐标仅由 BOM 管理，不是测试 Starter 的直接依赖。"},{"cmd":"Bash/rg Dependabot 结构断言 && git diff --check","status":"pass","evidence":"GitHub Actions 保持 weekly/monday/09:00 与 5 PR 限制；group 仅含 minor/patch，无 major 与自动合并，且 diff 无空白错误。"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"details":{"AC1":"Actions 分组 github-actions-minor-patch 匹配 * 且只含 minor、patch；原频率、时间和 PR 上限不变。","AC2":"README 枚举 POM 的全部 55 个显式直接管理坐标，15 个已验证和 40 个仅管理互斥且完备；Testcontainers 基础坐标保留为仅管理。"}}
 
 **Task Completion Gate:**
 

@@ -18,9 +18,9 @@
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-starter-nacos</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </dependency>
 ```
 

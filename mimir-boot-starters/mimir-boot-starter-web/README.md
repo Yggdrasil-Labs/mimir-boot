@@ -2,10 +2,6 @@
 
 Web 层增强启动器，提供统一的 Web 层配置和最佳实践。
 
-## v2.1.2 治理验证
-
-Trace/requestId 的合法性与请求级恢复、直连 IP 信任边界、Jackson 追加注册和用户 Bean 回退已由 T5、T6、T8 及 T12 AC2 验证。
-
 ## 概述
 
 Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
@@ -24,9 +20,9 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-starter-web</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </dependency>
 ```
 

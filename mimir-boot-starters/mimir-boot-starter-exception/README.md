@@ -2,10 +2,6 @@
 
 全局异常处理启动器，提供统一的异常处理机制和最佳实践。
 
-## v2.1.2 治理验证
-
-Spring 6 常见客户端异常会映射为 400、404、406、413 或 415；返回值校验和缺少路径变量保持 500，业务异常继续 HTTP 200，见 T9 与 T12 AC2。
-
 ## 概述
 
 Mimir Boot Starter Exception 提供了开箱即用的全局异常处理功能：
@@ -25,9 +21,9 @@ Mimir Boot Starter Exception 提供了开箱即用的全局异常处理功能：
 
 ```xml
 <dependency>
-    <groupId>com.yggdrasil.labs</groupId>
+    <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-starter-exception</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>YOUR_RELEASE_VERSION</version>
 </dependency>
 ```
 

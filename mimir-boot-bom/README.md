@@ -2,10 +2,6 @@
 
 Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理所有第三方依赖版本，确保依赖兼容性和版本一致性。
 
-## v2.1.2 治理验证
-
-宽 BOM 保持兼容边界。每个显式管理依赖均标注为“已验证”或“仅管理”，分类由 T4 AC2 与 T12 AC1、AC2 复核。
-
 ## 📋 概述
 
 `mimir-boot-bom` 是 Maven BOM（Bill of Materials）模块，通过 `dependencyManagement` 统一管理项目中所有第三方依赖的版本。使用 BOM 可以：
@@ -85,7 +81,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
   覆盖了该消费模块。
 - **仅管理**：该坐标仍由 BOM 声明，但当前 Reactor 没有对该坐标的直接消费，或没有对应运行验证。
 
-### 已验证（17 项）
+### 已验证（15 项）
 
 | 类别 | 坐标 | Reactor 直接消费者 |
 |------|------|-------------------|
@@ -95,8 +91,6 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 | 工具与持久化 | `com.squareup:javapoet` | `mimir-boot-starter-mybatis-processor` |
 | 测试 | `com.google.testing.compile:compile-testing` | `mimir-boot-starter-mybatis-processor` |
 | 测试 | `com.google.truth:truth` | `mimir-boot-starter-mybatis-processor` |
-| 测试 | `org.testcontainers:testcontainers` | `mimir-boot-starter-test` |
-| 测试 | `org.testcontainers:junit-jupiter` | `mimir-boot-starter-test` |
 | RPC | `org.apache.dubbo:dubbo-spring-boot-starter` | `mimir-boot-starter-dubbo` |
 | 编译 | `org.projectlombok:lombok` | `mimir-boot-common`、多个 Starter |
 | 日志 | `org.slf4j:jcl-over-slf4j` | `mimir-boot-starter-log` |
@@ -107,7 +101,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-rpc-core` | `mimir-boot-starter-dubbo`、`mimir-boot-starter-feign` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-test` | 所有具测试的 Starter |
 
-### 仅管理（38 项）
+### 仅管理（40 项）
 
 | 类别 | 坐标 |
 |------|------|
@@ -147,6 +141,8 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-mybatis-processor` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-dubbo` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-feign` |
+| 测试 | `org.testcontainers:testcontainers` |
+| 测试 | `org.testcontainers:junit-jupiter` |
 | 测试 | `org.testcontainers:mysql` |
 | 测试 | `org.testcontainers:postgresql` |
 

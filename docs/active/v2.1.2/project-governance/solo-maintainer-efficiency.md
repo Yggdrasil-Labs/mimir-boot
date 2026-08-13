@@ -21,7 +21,7 @@ updated: 2026-08-13
 - **证据位置**：`.github/workflows/ci.yml`
 - **问题**：普通非 Dependabot 变更先执行一次 `verify -Pci`，Sonar Job 随后再次执行
   `clean verify sonar:sonar -Pci`，同一 Reactor 被完整构建两次。
-- **确认方向**：合并为一个 Build Job；完整构建始终执行一次，具备密钥时 Sonar 复用现有编译、
+- **确认方向**：合并为一个 Build Job；完整构建始终执行一次，仅可信 push 且三项配置齐全时 Sonar 复用现有编译、
   测试和 JaCoCo 产物，仅执行分析目标。
 - **边界**：Dependabot、fork PR 或密钥缺失只跳过 Sonar，不得跳过完整构建和报告上传；资格脚本只
   通过 `GITHUB_OUTPUT` 输出布尔结果，不打印密钥或配置值。
