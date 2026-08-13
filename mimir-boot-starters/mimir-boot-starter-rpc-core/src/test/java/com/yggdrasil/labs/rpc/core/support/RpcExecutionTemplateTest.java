@@ -213,7 +213,9 @@ class RpcExecutionTemplateTest {
             }
 
             @Override
-            public void extract(RpcCallContext context, Map<String, String> carrier) {}
+            public void extract(RpcCallContext context, Map<String, String> carrier) {
+                // 该场景只验证调用侧注入失败，服务端提取路径不会执行。
+            }
         };
         RpcExecutionTemplate template = new RpcExecutionTemplate(
                 new RpcHookChain(List.of(first, second)), failingTracer, true);
@@ -266,7 +268,9 @@ class RpcExecutionTemplateTest {
             }
 
             @Override
-            public void extract(RpcCallContext context, Map<String, String> carrier) {}
+            public void extract(RpcCallContext context, Map<String, String> carrier) {
+                // 此默认测试替身不维护服务端上下文，提取路径按设计无操作。
+            }
         };
     }
 

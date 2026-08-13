@@ -105,8 +105,13 @@ public class RpcDubboFilter implements Filter {
             traceScope.close();
             traceScope = RpcTraceScope.noop();
             if (result instanceof AsyncRpcResult) {
-                result.whenCompleteWithContext((completedResult, throwable) ->
-                        completeCall(hookInvocation, metadata, start, completedResult, throwable));
+                result.whenCompleteWithContext((completedResult, throwable) -> {
+                    try {
+                        completeCall(hookInvocation, metadata, start, completedResult, throwable);
+                    } finally {
+                        hookInvocation.close();
+                    }
+                });
                 asyncInvocation = true;
             } else {
                 completeCall(hookInvocation, metadata, start, result, null);

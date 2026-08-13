@@ -126,21 +126,23 @@ public final class RpcHookInvocation implements AutoCloseable {
     }
 
     private void waitForBeforeToFinish() {
-        boolean interrupted = false;
-        try {
-            while (state.get() == State.BEFORE_RUNNING) {
-                if (beforeThread == Thread.currentThread()) {
-                    throw new IllegalStateException("RPC Hook invocation cannot complete from its before phase");
+        synchronized (lifecycleMonitor) {
+            boolean interrupted = false;
+            try {
+                while (state.get() == State.BEFORE_RUNNING) {
+                    if (beforeThread == Thread.currentThread()) {
+                        throw new IllegalStateException("RPC Hook invocation cannot complete from its before phase");
+                    }
+                    try {
+                        lifecycleMonitor.wait();
+                    } catch (InterruptedException exception) {
+                        interrupted = true;
+                    }
                 }
-                try {
-                    lifecycleMonitor.wait();
-                } catch (InterruptedException exception) {
-                    interrupted = true;
+            } finally {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
                 }
-            }
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
             }
         }
     }
