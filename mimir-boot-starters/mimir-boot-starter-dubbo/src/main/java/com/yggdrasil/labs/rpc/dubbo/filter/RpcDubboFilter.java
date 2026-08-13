@@ -3,8 +3,8 @@ package com.yggdrasil.labs.rpc.dubbo.filter;
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
+import com.yggdrasil.labs.rpc.core.hook.RpcAsyncHookInvocation;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
-import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
@@ -83,7 +83,7 @@ public class RpcDubboFilter implements Filter {
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
         try {
-            RpcHookInvocation hookInvocation = hookChain.open(context);
+            RpcAsyncHookInvocation hookInvocation = hookChain.openAsync(context);
             boolean asyncInvocation = false;
             try {
                 if (properties.isContextPropagationEnabled() && providerSide) {
@@ -111,7 +111,7 @@ public class RpcDubboFilter implements Filter {
                         try {
                             completeCall(hookInvocation, metadata, start, completedResult, throwable);
                         } finally {
-                            hookInvocation.close();
+                            hookInvocation.completeWithoutResult();
                         }
                     });
                     asyncInvocation = true;
@@ -124,7 +124,7 @@ public class RpcDubboFilter implements Filter {
                 throw propagate(throwable);
             } finally {
                 if (!asyncInvocation) {
-                    hookInvocation.close();
+                    hookInvocation.completeWithoutResult();
                 }
             }
         } finally {
@@ -133,11 +133,11 @@ public class RpcDubboFilter implements Filter {
     }
 
     private void completeCall(
-            RpcHookInvocation hookInvocation,
+            RpcAsyncHookInvocation hookInvocation,
             RpcCallMetadata metadata,
             Instant start,
-        Result result,
-        Throwable throwable) {
+            Result result,
+            Throwable throwable) {
         Duration duration = Duration.between(start, Instant.now());
         Throwable error = throwable != null ? throwable : result != null && result.hasException()
                 ? result.getException()

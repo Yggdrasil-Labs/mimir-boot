@@ -305,38 +305,45 @@ builder.modules(javaTimeModule)
 文件：`RpcHookChain.java`、`RpcExecutionTemplate.java`、`RpcFeignClient.java`、
 `RpcDubboFilter.java` 及相关测试。
 
-新增每次调用独享的 Handle，`RpcHookChain` 单例只保存不可变 Hook 列表，不保存调用状态：
+新增每次调用独享的同步/异步 Handle，`RpcHookChain` 单例只保存不可变 Hook 列表，不保存调用状态：
 
 ```text
 public RpcHookInvocation open(RpcCallContext context)
+public RpcAsyncHookInvocation openAsync(RpcCallContext context)
 
 public final class RpcHookInvocation implements AutoCloseable {
-    private enum State { OPEN, COMPLETING, CLOSED }
-    private final AtomicReference<State> state = new AtomicReference<>(State.OPEN);
-
     public void before();
     public void completeSuccess(RpcCallResult result);
     public void completeFailure(RpcCallResult result, Throwable primaryError);
     @Override public void close();
 }
+
+public final class RpcAsyncHookInvocation {
+    public void before();
+    public void completeSuccess(RpcCallResult result);
+    public void completeFailure(RpcCallResult result, Throwable primaryError);
+    public void completeWithoutResult();
+}
 ```
 
-Invocation 使用 `AtomicReference<State>`，状态只能按 `OPEN -> COMPLETING -> CLOSED` 前进。
-`completeSuccess`、`completeFailure` 和 `close` 都先以 CAS 争夺唯一终态执行权；只有赢家执行对应的
-after/onError 和 cleanup，其他并发或重复完成调用直接 no-op。`close()` 只用于尚未完成且无主异常的
-兜底清理；存在业务主异常时，调用方必须调用 `completeFailure`。适配器不得仅依赖 try-with-resources
-处理有主异常路径，以免 Java 自动 suppressed 规则改变本设计的异常优先级。
+两个公共 Handle 委托给包内 `RpcHookLifecycle` 状态机，状态按
+`NEW -> BEFORE_RUNNING -> READY -> COMPLETING -> CLOSED` 前进。`completeSuccess`、`completeFailure`
+与兜底终态方法争夺唯一终态执行权；只有赢家执行对应的 after/onError 和 cleanup，其他并发或重复完成
+调用直接 no-op。同步 Handle 保留 `AutoCloseable` 兼容现有调用方；异步 Handle 不实现
+`AutoCloseable`，明确允许把终态所有权移交完成回调，避免静态分析把异步所有权转移误判为资源泄漏。
+存在业务主异常时，调用方必须调用 `completeFailure`。适配器不得仅依赖 try-with-resources 处理有主异常
+路径，以免 Java 自动 suppressed 规则改变本设计的异常优先级。
 
-- `open` 为当前调用快照化有序 Hook 列表并返回独立 Invocation；同步调用持有到 finally，异步调用
-  把同一 Invocation 移交完成回调。
+- `open` 返回同步 Invocation，由调用线程持有到 finally；`openAsync` 返回异步 Invocation，由调用线程在
+  完成回调注册成功后移交终态所有权。
 - `before` 在调用某个 Hook 前先把它记入 entered 列表，因此 `before` 自身抛错的 Hook 也必须 cleanup；
   尚未开始的后续 Hook 不进入任何后置或清理阶段。
 - `completeSuccess` 内部依次执行 after 和 cleanup；`completeFailure` 内部依次执行 onError 和 cleanup。
   after/onError 只遍历 entered Hook，cleanup 逆序遍历 entered Hook；三个阶段不再作为可独立重复调用的公共方法。
-- Invocation 内只保存当前调用的 context、entered 列表和原子状态，不使用 `ThreadLocal` 或
+- Lifecycle 内只保存当前调用的 context、entered 列表和原子状态，不使用 `ThreadLocal` 或
   `RpcHookChain` 可变字段，因此并发和异步完成不会串扰。
 - 现有 `RpcHookChain.before/after/onError/cleanup` 公共方法保留并标记弃用，维持二进制与源码兼容；
-  内部适配器全部迁移到 `open`，旧方法不参与新的 entered 生命周期保证。
+  同步适配器使用 `open`，Dubbo 异步适配器使用 `openAsync`，旧方法不参与新的 entered 生命周期保证。
 
 统一阶段语义：
 
@@ -349,8 +356,9 @@ after/onError 和 cleanup，其他并发或重复完成调用直接 no-op。`clo
 | `onError` | 所有 entered Hook best-effort | 不覆盖业务异常 |
 | `cleanup` | 逆序执行全部 entered Hook，best-effort | 不覆盖主结果或主异常 |
 
-- 调用方必须先 `open`，再把 `before` 和 tracer 移入能保证 `completeFailure(result, primaryError)` 或
-  `completeSuccess(result)` 的边界；finally 中的 `close()` 仅作兜底并因终态 CAS 保持 no-op。
+- 调用方必须先 `open` 或 `openAsync`，再把 `before` 和 tracer 移入能保证
+  `completeFailure(result, primaryError)` 或 `completeSuccess(result)` 的边界；同步 finally 中的
+  `close()` 与异步未移交路径的 `completeWithoutResult()` 仅作兜底，并因终态竞争保持 no-op。
 - `after`/`onError`/`cleanup` 内部捕获并记录扩展异常；存在 primaryError 时作为 suppressed exception
   附加，调用方仍收到 primaryError。
 - 不存在主异常时，after/cleanup 异常不把成功业务调用改为失败。

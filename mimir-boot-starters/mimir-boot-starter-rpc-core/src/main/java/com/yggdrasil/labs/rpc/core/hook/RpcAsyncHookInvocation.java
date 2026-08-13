@@ -5,45 +5,44 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import java.util.List;
 
 /**
- * 同步 RPC 调用的 Hook 生命周期。
+ * 异步 RPC 调用的 Hook 生命周期。
  *
- * <p>该对象不能跨调用复用。每次终态竞争仅允许一个获胜者执行后置阶段和清理。同步调用方应使用 try-with-resources 或在
- * finally 中关闭。</p>
+ * <p>该句柄不实现 {@link AutoCloseable}，因为生命周期所有权可转移给异步完成回调。调用方必须在成功、失败或未完成异步注册时调用一个终态方法；
+ * 重复调用终态方法是安全的，清理只会执行一次。</p>
  */
-public final class RpcHookInvocation implements AutoCloseable {
+public final class RpcAsyncHookInvocation {
 
     private final RpcHookLifecycle lifecycle;
 
-    RpcHookInvocation(RpcCallContext context, List<RpcHook> hooks) {
+    RpcAsyncHookInvocation(RpcCallContext context, List<RpcHook> hooks) {
         this.lifecycle = new RpcHookLifecycle(context, hooks);
     }
 
     /**
-     * 依序执行前置阶段。Hook 会在调用前登记，以便其前置阶段抛错时仍可获得清理。
+     * 依序执行前置阶段。
      */
     public void before() {
         lifecycle.before();
     }
 
     /**
-     * 完成成功调用；后置扩展失败只记录，不得改写业务结果。
+     * 完成成功调用并执行后置阶段和清理。
      */
     public void completeSuccess(RpcCallResult result) {
         lifecycle.completeSuccess(result);
     }
 
     /**
-     * 完成失败调用；后置及清理异常按发生顺序附加到业务主异常。
+     * 完成失败调用，并把后置及清理异常附加到业务主异常。
      */
     public void completeFailure(RpcCallResult result, Throwable primaryError) {
         lifecycle.completeFailure(result, primaryError);
     }
 
     /**
-     * 无主异常的兜底关闭，只执行清理。
+     * 未产生调用结果时的兜底终态，只执行清理。
      */
-    @Override
-    public void close() {
+    public void completeWithoutResult() {
         lifecycle.completeWithoutResult();
     }
 

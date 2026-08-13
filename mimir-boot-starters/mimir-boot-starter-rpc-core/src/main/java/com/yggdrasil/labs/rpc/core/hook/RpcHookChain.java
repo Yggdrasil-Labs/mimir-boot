@@ -39,6 +39,13 @@ public class RpcHookChain {
     }
 
     /**
+     * 创建可把终态所有权转移给完成回调的异步调用级生命周期。
+     */
+    public RpcAsyncHookInvocation openAsync(RpcCallContext context) {
+        return new RpcAsyncHookInvocation(context, hooks);
+    }
+
+    /**
      * @deprecated 请改用 {@link #open(RpcCallContext)} 获取调用级 Invocation。
      */
     @Deprecated(forRemoval = false)

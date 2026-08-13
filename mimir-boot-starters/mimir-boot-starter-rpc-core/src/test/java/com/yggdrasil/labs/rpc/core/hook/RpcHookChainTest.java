@@ -63,6 +63,34 @@ class RpcHookChainTest {
     }
 
     @Test
+    void shouldProvideAsyncLifecycleWithoutAutoCloseableAndCleanupOnlyOnce() {
+        AtomicInteger afterCalls = new AtomicInteger();
+        AtomicInteger cleanupCalls = new AtomicInteger();
+        RpcHook hook = new RpcHook() {
+            @Override
+            public void after(RpcCallContext context, RpcCallResult result) {
+                afterCalls.incrementAndGet();
+            }
+
+            @Override
+            public void cleanup(RpcCallContext context) {
+                cleanupCalls.incrementAndGet();
+            }
+        };
+
+        RpcAsyncHookInvocation invocation = new RpcHookChain(List.of(hook)).openAsync(context());
+
+        Assertions.assertFalse(AutoCloseable.class.isAssignableFrom(invocation.getClass()));
+        invocation.before();
+        invocation.completeSuccess(RpcCallResult.success(Duration.ZERO));
+        invocation.completeWithoutResult();
+
+        Assertions.assertEquals(1, afterCalls.get());
+        Assertions.assertEquals(1, cleanupCalls.get());
+        Assertions.assertTrue(invocation.isClosed());
+    }
+
+    @Test
     void shouldCleanEnteredHooksInReverseOrderWhenBeforeFails() {
         List<String> events = new ArrayList<>();
         RuntimeException primary = new RuntimeException("before failure");

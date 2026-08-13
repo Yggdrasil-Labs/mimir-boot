@@ -593,6 +593,8 @@ Expected: **PASS**
 
 - Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/hook/RpcHookChain.java`
 - Create: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/hook/RpcHookInvocation.java`
+- Create: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/hook/RpcAsyncHookInvocation.java`
+- Create: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/hook/RpcHookLifecycle.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/support/RpcExecutionTemplate.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/test/java/com/yggdrasil/labs/rpc/core/hook/RpcHookChainTest.java`
 - Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/src/test/java/com/yggdrasil/labs/rpc/core/support/RpcExecutionTemplateTest.java`
@@ -604,10 +606,12 @@ Expected: **PASS**
 **Interfaces:**
 
 - Produces: `RpcHookChain.open(RpcCallContext context): RpcHookInvocation`
+- Produces: `RpcHookChain.openAsync(RpcCallContext context): RpcAsyncHookInvocation`
 - Produces: `RpcHookInvocation.before(): void`
 - Produces: `RpcHookInvocation.completeSuccess(RpcCallResult result): void`
 - Produces: `RpcHookInvocation.completeFailure(RpcCallResult result, Throwable primaryError): void`
 - Produces: `RpcHookInvocation.close(): void`
+- Produces: `RpcAsyncHookInvocation.completeWithoutResult(): void`
 
 **Behavior:** RPC 前置失败阻止业务调用但清理已进入阶段；业务结果或业务异常始终是主结果，after/onError/cleanup 全部尝试且只执行一次。
 
@@ -647,12 +651,12 @@ Expected: **FAIL** — 当前前置边界和后置异常语义不满足全部断
 
 **Step 2: Green**
 
-`RpcHookChain.open` 创建调用级 Invocation，不在单例 Chain 或 ThreadLocal 保存状态。Invocation 在调用
-`hook.before` 前记录该 Hook，失败即停止；内部状态只允许 `OPEN -> COMPLETING -> CLOSED`。
-`completeSuccess`、`completeFailure` 与 `close` 通过 CAS 争夺唯一终态执行权，赢家执行一次
-after/onError 和逆序 cleanup，其余完成调用 no-op。旧四个 Chain 方法保留并弃用；模板、Feign、Dubbo
-都持有并移交 Invocation，保护主结果并防止异步重复完成。存在主异常时显式调用
-`completeFailure(result, primaryError)`；`close()` 只作无主异常兜底，不依赖 try-with-resources 决定
+`RpcHookChain.open` 创建同步 Invocation，`openAsync` 创建不实现 `AutoCloseable` 的异步 Invocation；二者
+共享调用级 `RpcHookLifecycle`，不在单例 Chain 或 ThreadLocal 保存状态。Lifecycle 在调用 `hook.before`
+前记录该 Hook，失败即停止；终态竞争的赢家执行一次 after/onError 和逆序 cleanup，其余完成调用
+no-op。旧四个 Chain 方法保留并弃用；模板和 Feign 使用同步 Handle，Dubbo 使用异步 Handle 并在完成
+回调注册成功后移交终态所有权。存在主异常时显式调用 `completeFailure(result, primaryError)`；同步
+`close()` 与异步 `completeWithoutResult()` 只作无主异常兜底，不依赖 try-with-resources 决定
 suppressed 语义。
 
 **Step 3: Verify**
