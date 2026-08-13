@@ -1,5 +1,64 @@
 # Changelog
 
+## [2.2.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.1...v2.2.0) (2026-08-13)
+
+
+### ✨ Features
+
+* **exception:** 补齐 Spring 6 客户端异常映射 ([85ab48d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/85ab48d8e3bd8327fb8621ce90acbf059db925da))
+* **rpc:** 提供默认 MDC 上下文传播 ([6e0b5e0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6e0b5e081d64fd735aaa8c518f1e7c4521d58811))
+
+
+### 🐛 Bug Fixes
+
+* **bom:** 修正使用示例的发布坐标 ([5ae63fa](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5ae63fa969f7a37878287c26561ac5dfa1a4e0d2))
+* **build:** 纳入 Maven Wrapper 启动包 ([44f764e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/44f764e2db176c2e001aa3b6f1cc39ed195675cf))
+* **ci:** 拒绝被跳过的集成测试 ([7d270ef](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7d270eff9002798d9dae5de2e39132bc51935be1))
+* **ci:** 移除预检对 rg 的依赖 ([a08f2f0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a08f2f02b81634dac1beaca80cdbd7698a143296))
+* **governance:** 收紧预检并清理一次性验收脚本 ([fb3dc6e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fb3dc6e0013a1edd40ef1612ffe4cb0c0c53cf67))
+* **mybatis-processor:** 修复 MyBatis-Plus 服务代码生成 ([c760846](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c7608464c14c9b7cee1a5f7556ec6c68b7fbae41))
+* **nacos:** 确保密文刷新先于配置重绑定 ([347b179](https://github.com/Yggdrasil-Labs/mimir-boot/commit/347b17931a07e0531ab94639857035c06c20bbcb))
+* **release:** 修复 GitHub Packages 发布生命周期 ([2a74b31](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2a74b315632ec88af0f843a3d49601f4e8078ada))
+* **release:** 修复发布补偿前置条件 ([d031e42](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d031e42fdc290ec731d465fd87623a97ef7fa0d3))
+* **release:** 恢复 GPR 同会话发布 ([349d30f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/349d30f5ab8884e0572adab8802d03ecaefb1cd2))
+* **rpc:** 修复 Sonar 可靠性告警 ([f28a6e0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f28a6e0562c99e6ce66f5dd9c157698f23edbe37))
+* **rpc:** 区分同步与异步 Hook 生命周期 ([f99f3f0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f99f3f0dcb980830248d9d01faeec02533b1a94e))
+* **rpc:** 统一失败关闭与最佳努力清理语义 ([1449d95](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1449d95863a84753eae448ac41ba5ee8b2f9c829))
+* **rpc:** 补齐生命周期异常与并发验证 ([3ff1d16](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3ff1d168ebfd1a8b90050481f6d1cdc36e7d5fb8))
+* **sonar:** 修复资源生命周期与命名告警 ([2644c22](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2644c225fa5e5df152c0d238091672291c686055))
+* **starter:** 保留 Jackson 扩展并让用户 Bean 优先 ([6b7d7ec](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6b7d7ec736ab4d548b2dfb0dc85aa29ad65f4d57))
+* **test:** 下游开放 JUnit Suite 并移除容器强依赖 ([76c6357](https://github.com/Yggdrasil-Labs/mimir-boot/commit/76c6357d080bb2d9843b09e26c2d1d697b7461d7))
+* **web:** 收紧客户端 IP 信任并恢复 MDC 所有权 ([04beb2e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/04beb2ec0876fc9486847ed872721eea8b9266ce))
+
+
+### 📝 Documentation
+
+* **archive:** 归档 v2.1.0 和 v2.1.1 版本文档 ([f8f87a0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f8f87a079741f58a2a95444f3feefed5555a8f3c))
+* **governance:** 修正治理完成度与验收边界 ([2195eda](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2195edab814b392d3a3f87fe0c2217a95f3b6211))
+* **governance:** 同步 v2.1.2 治理验证结果 ([0b22d73](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0b22d73e3519fb00ded52967e8b1beff10022267))
+* **governance:** 固化 v2.1.2 项目治理方案 ([766ae3b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/766ae3b35ef7de8127f1aeb26a1719b9cf97a23b))
+* **governance:** 收口治理文档状态与发布坐标 ([0315b3f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0315b3f4184298dd11f277a320fe583c543c5e0a))
+* **governance:** 更新 v2.1.2 版本文档和治理清单 ([c2551e6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c2551e6cb89afce635b833ce2d9935486ca2f605))
+* **web:** 补充受控代理迁移边界 ([6302090](https://github.com/Yggdrasil-Labs/mimir-boot/commit/630209048350ec025e7d2291b09d674c90715212))
+
+
+### 🔨 Build System
+
+* **parent:** 启用集成测试门禁并统一 Boot 版本 ([43d491b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/43d491b614c2372665c30df526c7440e5aefab51))
+
+
+### 👷 Continuous Integration
+
+* **core:** 建立轻量同源预检并复用单次构建 ([c3949c5](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c3949c596cc66e4ae64d83525a2a925a4472eeb4))
+* **release:** 合并发布前检并保留独立补偿 ([6c85cdc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6c85cdc8775ae19d21c6de791a0cc2e30279188e))
+* **release:** 完善自动发布与失败补偿 ([5e6793a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5e6793a300d8416c2285d731f0f2e8743d1de503))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.1.2-SNAPSHOT for next development cycle ([06ea0e8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/06ea0e8d2cd81803906e0490dbbf373184e451c8))
+* **governance:** 分组 Actions 更新并标注 BOM 支持等级 ([2c86334](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2c8633439523cd38181e28f6e47a706047a796b7))
+
 ## [2.1.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.0...v2.1.1) (2026-07-26)
 
 
