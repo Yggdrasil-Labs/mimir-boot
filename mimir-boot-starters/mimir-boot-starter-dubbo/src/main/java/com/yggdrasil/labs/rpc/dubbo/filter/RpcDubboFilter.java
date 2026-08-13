@@ -78,53 +78,57 @@ public class RpcDubboFilter implements Filter {
         }
 
         Instant start = Instant.now();
-        RpcHookInvocation hookInvocation = hookChain.open(context);
-        boolean asyncInvocation = false;
         RpcTraceScope traceScope = RpcTraceScope.noop();
         boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
         try {
-            if (properties.isContextPropagationEnabled() && providerSide) {
-                RpcTraceScope extractedScope = tracerBridge.extractScope(context, attachments == null ? Map.of() : attachments);
-                traceScope = extractedScope == null ? RpcTraceScope.noop() : extractedScope;
-            }
-            hookInvocation.before();
+            RpcHookInvocation hookInvocation = hookChain.open(context);
+            boolean asyncInvocation = false;
+            try {
+                if (properties.isContextPropagationEnabled() && providerSide) {
+                    RpcTraceScope extractedScope = tracerBridge.extractScope(
+                            context, attachments == null ? Map.of() : attachments);
+                    traceScope = extractedScope == null ? RpcTraceScope.noop() : extractedScope;
+                }
+                hookInvocation.before();
 
-            if (properties.isContextPropagationEnabled() && !providerSide) {
-                Map<String, String> injected = tracerBridge.inject(context);
-                if (injected != null && !injected.isEmpty()) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("RpcDubboFilter: Injecting context propagation headers: {}", injected.keySet());
+                if (properties.isContextPropagationEnabled() && !providerSide) {
+                    Map<String, String> injected = tracerBridge.inject(context);
+                    if (injected != null && !injected.isEmpty()) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("RpcDubboFilter: Injecting context propagation headers: {}", injected.keySet());
+                        }
+                        injected.forEach(invocation::setAttachment);
                     }
-                    injected.forEach(invocation::setAttachment);
+                }
+
+                Result result = invoker.invoke(invocation);
+                traceScope.close();
+                traceScope = RpcTraceScope.noop();
+                if (result instanceof AsyncRpcResult) {
+                    result.whenCompleteWithContext((completedResult, throwable) -> {
+                        try {
+                            completeCall(hookInvocation, metadata, start, completedResult, throwable);
+                        } finally {
+                            hookInvocation.close();
+                        }
+                    });
+                    asyncInvocation = true;
+                } else {
+                    completeCall(hookInvocation, metadata, start, result, null);
+                }
+                return result;
+            } catch (Throwable throwable) {
+                completeCall(hookInvocation, metadata, start, null, throwable);
+                throw propagate(throwable);
+            } finally {
+                if (!asyncInvocation) {
+                    hookInvocation.close();
                 }
             }
-
-            Result result = invoker.invoke(invocation);
-            traceScope.close();
-            traceScope = RpcTraceScope.noop();
-            if (result instanceof AsyncRpcResult) {
-                result.whenCompleteWithContext((completedResult, throwable) -> {
-                    try {
-                        completeCall(hookInvocation, metadata, start, completedResult, throwable);
-                    } finally {
-                        hookInvocation.close();
-                    }
-                });
-                asyncInvocation = true;
-            } else {
-                completeCall(hookInvocation, metadata, start, result, null);
-            }
-            return result;
-        } catch (Throwable throwable) {
-            completeCall(hookInvocation, metadata, start, null, throwable);
-            throw propagate(throwable);
         } finally {
             traceScope.close();
-            if (!asyncInvocation) {
-                hookInvocation.close();
-            }
         }
     }
 

@@ -36,7 +36,7 @@ public class NacosEncryptProperties {
     private String algorithm = "AES/GCM/NoPadding";
 
     /** ENC() 标记前缀，默认 ENC */
-    private String prefix = "ENC";
+    private String encryptedValuePrefix = "ENC";
 
     public Boolean getEnabled() {
         return enabled;
@@ -63,10 +63,10 @@ public class NacosEncryptProperties {
     }
 
     public String getPrefix() {
-        return prefix;
+        return encryptedValuePrefix;
     }
 
     public void setPrefix(String prefix) {
-        this.prefix = prefix;
+        this.encryptedValuePrefix = prefix;
     }
 }
