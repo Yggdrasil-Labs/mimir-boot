@@ -5,7 +5,7 @@ owner: Yggdrasil Labs
 created: 2026-07-30
 updated: 2026-08-13
 version: 2.1.2
-resolved-path: docs/active/v2.1.2/project-governance/
+resolved-path: docs/active/v2.2.0/project-governance/
 ---
 
 # Project Governance
@@ -17,7 +17,7 @@ Mimir Boot 的 Parent、BOM、Common 和 Starter 分层保持不变。本轮治�
 不完整，以及单人维护流程存在重复构建和人工事实同步。
 
 范围讨论已逐项完成。设计只承接 GOV-001 至 GOV-020，不把低收益整洁性调整、消费者契约工程、
-新 Starter 或发布体系重构带入 v2.1.2。
+新 Starter 或发布体系重构带入 v2.2.0。
 
 实施按两条主线组织：B“CI 与文档治理”先建立可信门禁，A“功能代码优化”再进入运行时和
 Starter 修改。GOV-008 是兼容性约束，不形成独立实施流。
@@ -29,7 +29,7 @@ Starter 修改。GOV-008 是兼容性约束，不形成独立实施流。
 - 完成主线 A 的 10 个 GOV 条目，同时保持现有公开替换点和 v2.x 公共边界可用。
 - 校正版本、10 个 Starter 聚合子模块、15 个 Reactor 模块和内部链接的当前文档事实；持续自动校验
   作为 GOV-012 延期项处理。
-- v2.1.2 关闭时 GOV-001 至 GOV-020 均已验证、关闭或按规则延期，P0/P1 未关闭数为 0。
+- v2.2.0 关闭时 GOV-001 至 GOV-020 均已验证、关闭或按规则延期，P0/P1 未关闭数为 0。
 
 ## 实施验证
 

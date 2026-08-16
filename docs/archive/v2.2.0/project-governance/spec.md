@@ -5,7 +5,7 @@ owner: Yggdrasil Labs
 created: 2026-07-30
 updated: 2026-08-13
 version: 2.1.2
-resolved-path: docs/active/v2.1.2/project-governance/
+resolved-path: docs/active/v2.2.0/project-governance/
 ---
 
 # Project Governance
@@ -249,7 +249,7 @@ And 每类能力只有一个有效实例
 ## Behavior: 文档与依赖维护
 
 GOV-009 的当前文档事实校正已完成；以下前三个文档事实自动化 Scenario 属于延期的 GOV-012，保留为
-后续独立文档治理需求的验收目标，不计入 v2.1.2 已完成能力。Dependabot 分组与 BOM 支持等级仍在本版本
+后续独立文档治理需求的验收目标，不计入 v2.2.0 已完成能力。Dependabot 分组与 BOM 支持等级仍在本版本
 完成。
 
 ### Scenario: 项目事实与文档一致
@@ -299,14 +299,14 @@ And 依赖继续保留在 BOM 中
 ### Scenario: Serializable 数据继续使用公共响应
 
 Given 现有消费者的响应数据实现 `Serializable`
-When 消费者升级到 v2.1.2
+When 消费者升级到 v2.2.0
 Then 现有源码无需修改即可编译
 And JSON 响应语义保持不变
 
 ### Scenario: 非 Serializable 数据尝试使用公共响应
 
 Given 消费者的数据类型没有实现 `Serializable`
-When 消费者在 v2.1.2 使用现有公共响应泛型
+When 消费者在 v2.2.0 使用现有公共响应泛型
 Then 编译边界与 v2.1.1 保持一致
 And 本版本不引入静默适配或数据丢弃的新路径
 
@@ -315,11 +315,11 @@ And 本版本不引入静默适配或数据丢弃的新路径
 Given 后续 3.0 版本重新评估公共响应泛型
 When 设计者查阅本治理结论
 Then 可以识别 `Serializable` 上界为候选破坏性变更
-And v2.1.2 不包含该变更的实现任务
+And v2.2.0 不包含该变更的实现任务
 
 ## Constraints
 
-- 逻辑版本固定为 `2.1.2`，目标目录固定为 `docs/active/v2.1.2/project-governance/`。
+- 逻辑版本固定为 `2.1.2`，目标目录固定为 `docs/active/v2.2.0/project-governance/`。
 - 冻结范围固定为 20 项：GOV-001 至 GOV-020；新增项必须重新确认收益和版本影响。
 - 当前项目事实基线为 Java 17、Spring Boot 3.3.13、10 个 Starter、15 个 Maven Reactor 模块。
 - 本地核心预检与 CI 固定使用 Java 17 和仓库内 Bash/Maven 入口；不新增项目级 Node 工具链。
@@ -327,6 +327,6 @@ And v2.1.2 不包含该变更的实现任务
 - CI 不使用 `paths`/`paths-ignore` 跳过 required check；核心 Build Job 不读取发布密钥。
 - Markdown lint、核心 CI 静态检查，以及覆盖已跟踪与新建治理文件的 Git whitespace check，允许错误数
   均为 0；DOC-001—DOC-006 自动事实检查按 GOV-012 延期记录处理。
-- v2.1.2 关闭时未验证 P0/P1 数量必须为 0；P2 必须完成或记录 Owner、理由和目标版本。
+- v2.2.0 关闭时未验证 P0/P1 数量必须为 0；P2 必须完成或记录 Owner、理由和目标版本。
 - 每个进入“已验证”的 GOV 项必须记录指向 Task AC 的定向验证证据，并共同引用 T12 AC2
   作为版本级门禁证据；“已关闭”和“延期”分别记录决策证据或 Owner、原因、目标版本。

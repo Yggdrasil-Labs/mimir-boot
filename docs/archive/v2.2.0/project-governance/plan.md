@@ -5,7 +5,7 @@ owner: Yggdrasil Labs
 created: 2026-07-30
 updated: 2026-08-13
 version: 2.1.2
-resolved-path: docs/active/v2.1.2/project-governance/
+resolved-path: docs/active/v2.2.0/project-governance/
 ---
 
 # Project Governance Implementation Plan
@@ -26,7 +26,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 
 ## Global Constraints
 
-- 逻辑版本固定为 `2.1.2`，治理目录固定为 `docs/active/v2.1.2/project-governance/`。
+- 逻辑版本固定为 `2.1.2`，治理目录固定为 `docs/active/v2.2.0/project-governance/`。
 - Java 固定为 17，Spring Boot 依赖平台和 Maven Plugin 固定为同一 `3.3.13` 属性源。
 - 不引入项目级 Node 工具链或治理依赖；治理脚本仅在有明确低维护收益时使用 Bash。
 - 普通 CI 每次只启动 1 次 Maven Reactor；不运行 Sonar 时执行 `verify`，具备资格时同一次 invocation
@@ -41,7 +41,7 @@ resolved-path: docs/active/v2.1.2/project-governance/
 - 每个 Task 有且只有一个主提交，提交信息使用中文 Conventional Commits；独立审查产生的同一 Task
   修复提交必须紧随主提交、只含该 Task 允许文件，并登记为 `Supplemental Commit SHAs`。主提交和补充
   提交共同构成该 Task 的完整提交集合，只提交该 Task 声明的文件及
-  `docs/active/v2.1.2/project-governance/plan.md` 的即时执行记录。
+  `docs/active/v2.2.0/project-governance/plan.md` 的即时执行记录。
 - `Files` 中只有 `Create`、`Modify` 和满足结构化 Red 授权的 `Modify only if authorized` 是提交允许范围；
   `plan.md` 的执行元数据、Execution、Task Completion Gate 和对应 Acceptance Criteria 状态为每个 Task 的
   显式例外；`Test (read-only baseline)` 只能执行不得修改，`External fixture` 位于动态临时目录且不得进入 Git。
@@ -213,7 +213,7 @@ Expected: **PASS**
 
 - Create: `scripts/ci-preflight.sh`
 - Modify: `.github/workflows/ci.yml`
-- Modify: `docs/active/v2.1.2/project-governance/plan.md`
+- Modify: `docs/active/v2.2.0/project-governance/plan.md`
 
 **Interfaces:**
 
@@ -1021,14 +1021,14 @@ Expected: **PASS**
 
 **Files:**
 
-- Modify: `docs/active/v2.1.2/project-governance/index.md`
-- Modify: `docs/active/v2.1.2/project-governance/overall-design-review.md`
-- Modify: `docs/active/v2.1.2/project-governance/solo-maintainer-efficiency.md`
-- Modify: `docs/active/v2.1.2/project-governance/starter-functional-completeness.md`
-- Modify: `docs/active/v2.1.2/project-governance/spec.md`
-- Modify: `docs/active/v2.1.2/project-governance/design.md`
-- Modify: `docs/active/v2.1.2/project-governance/plan.md`
-- Modify: `docs/active/v2.1.2/index.md`
+- Modify: `docs/active/v2.2.0/project-governance/index.md`
+- Modify: `docs/active/v2.2.0/project-governance/overall-design-review.md`
+- Modify: `docs/active/v2.2.0/project-governance/solo-maintainer-efficiency.md`
+- Modify: `docs/active/v2.2.0/project-governance/starter-functional-completeness.md`
+- Modify: `docs/active/v2.2.0/project-governance/spec.md`
+- Modify: `docs/active/v2.2.0/project-governance/design.md`
+- Modify: `docs/active/v2.2.0/project-governance/plan.md`
+- Modify: `docs/active/v2.2.0/index.md`
 - Modify: `docs/active/index.md`
 - Modify: `docs/active/tech-debt-tracker.md`
 - Modify: `docs/QUALITY_SCORE.md`
@@ -1087,9 +1087,9 @@ Run:
 
 ```bash
 topic_files=(
-  docs/active/v2.1.2/project-governance/overall-design-review.md
-  docs/active/v2.1.2/project-governance/solo-maintainer-efficiency.md
-  docs/active/v2.1.2/project-governance/starter-functional-completeness.md
+  docs/active/v2.2.0/project-governance/overall-design-review.md
+  docs/active/v2.2.0/project-governance/solo-maintainer-efficiency.md
+  docs/active/v2.2.0/project-governance/starter-functional-completeness.md
 )
 test "$(rg --no-filename '^- \*\*状态\*\*：' "${topic_files[@]}" | wc -l)" -eq 20
 test "$(rg --no-filename '^- \*\*状态\*\*：已设计' "${topic_files[@]}" | wc -l)" -eq 19
