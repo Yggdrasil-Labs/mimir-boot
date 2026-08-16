@@ -134,6 +134,11 @@ updates:
           - "com.github.spotbugs:spotbugs-maven-plugin"
           - "org.codehaus.mojo:flatten-maven-plugin"
           - "org.sonarsource.scanner.maven:sonar-maven-plugin"
+          # 构建工具链：spotless 与 Maven 发行版 / Wrapper 同组更新，
+          # 避免 wrapper 与 apache-maven 各自成 PR 后改同一组 wrapper 文件互相冲突
+          - "com.diffplug.spotless:*"
+          - "org.apache.maven.wrapper:*"
+          - "org.apache.maven:apache-maven"
         update-types: ["minor", "patch"]
 
   # GitHub Actions 更新
