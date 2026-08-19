@@ -4,7 +4,7 @@ version: v2.2.1
 status: draft
 owner: YoungerYang-Y
 created: 2026-08-16
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 # 技术债修复
@@ -22,7 +22,7 @@ When 框架生成 400 响应
 Then 响应 data 包含“用户名不能为空”
 And 日志输出不改变原有安全清洗策略
 
-### Scenario: 绑定错误维持既有响应形状
+### Scenario: 绑定错误维持既有错误项格式
 
 Given 对象绑定校验失败
 When 框架生成 400 响应
@@ -114,9 +114,9 @@ And 非敏感多值头按原有迭代顺序用逗号拼接保存
 
 ## Behavior: 安全能力只在明确边界内生效
 
-### Scenario: 非 Nacos 应用包含普通 ENC 文本
+### Scenario: 未配置解密前缀的应用包含普通 ENC 文本
 
-Given 应用未包含 Nacos 配置能力且普通配置含 ENC( 文本
+Given 应用引入 Nacos starter，但未配置 `mimir.boot.nacos.encrypt` 或 `mimir.nacos.encrypt` 前缀，且普通配置含 ENC( 文本
 When 应用启动
 Then 文本保持原值
 And 不要求配置解密密钥

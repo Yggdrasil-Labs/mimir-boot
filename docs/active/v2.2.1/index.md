@@ -1,7 +1,7 @@
 ---
 version: v2.2.1
 status: in-progress
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 # v2.2.1 活跃需求

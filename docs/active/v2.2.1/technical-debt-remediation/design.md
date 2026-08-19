@@ -4,14 +4,14 @@ version: v2.2.1
 status: draft
 owner: YoungerYang-Y
 created: 2026-08-16
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 # 技术债修复 — Design（完整型）
 
 ## Context
 
-技术债核对确认了参数响应、日志与密文安全、RPC 生命周期、构建默认值和文档可信度的系统性缺口。修复需跨 common、exception、log、rpc、dubbo、feign、nacos、mybatis、test、parent、bom 与文档模块，同时保持 v2.2.1 的兼容承诺。原敏感信息保护专项的 TD-002、TD-005、TD-006、TD-015、TD-016 与 TD-025 在此统一实现和验收，不另设实施计划。
+技术债核对确认了参数响应、日志与密文安全、RPC 生命周期、构建默认值和文档可信度的系统性缺口。修复需跨 common、exception、log、rpc、dubbo、feign、nacos、mybatis、test、parent、bom 与文档模块，同时保持 v2.2.1 的兼容承诺。原敏感信息保护专项的 TD-002、TD-005、TD-006、TD-015、TD-016，以及 TD-025 中已由代码证实的 Nacos 部分在此统一实现和验收，不另设实施计划。
 
 ## Goal
 
@@ -54,7 +54,7 @@ flowchart LR
 | IC-6 | RPC SPI 与 Feign | `extract` 标注弃用，框架调用 `extractScope`；`RpcExecutionTemplate` 文档化为手工扩展点；Feign host 回退，非敏感多值头拼接，修正 lifecycle logger 类名。 | 旧 SPI 和 Bean 仍可用。 |
 | IC-7 | MyBatis 密文 | `CryptoUtils.encrypt/decrypt` 新增 AAD 重载；仅非空白的应用级 `cryptoContext` 写入 `v2:` 密文，旧格式仍按旧路径解密。应用级绑定不承诺字段或记录级完整性。 | 只增 API，旧密文可读。 |
 | IC-8 | MyBatis 清理 | `getFinalMapperPackages` 弃用并新增与实际扫描一致的查询方法；修正 README 包名；审计人异常降级为 system 并 WARN；SQL 文本和参数都脱敏。 | 旧方法保留。 |
-| IC-9 | Nacos 安全 | 环境后处理器先检查 Nacos 类；遗留 ECB API 每次 WARN，文档明确仅用于迁移。 | Nacos 使用方默认行为不变。 |
+| IC-9 | Nacos 安全 | 环境后处理器仅在 `mimir.boot.nacos.encrypt` 或旧前缀已绑定时处理配置；未配置任一前缀时直接返回。遗留 ECB API 每次 WARN，文档明确仅用于迁移。 | 仅配置解密密钥的既有使用方仍按默认 enabled=true 解密；无解密配置的应用不再误触发。 |
 | IC-10 | 测试 starter | 删除类路径 `application-test.yml` 中的数据库、副作用和固定应用名；合并日志断言工具；随机用户 ID 使用碰撞安全随机源；`TestAutoConfiguration` 弃用。 | 下游显式测试配置继续有效。 |
 | IC-11 | 构建与发布 | 默认 verify 跳过签名，发布/显式 profile 签名；统一 formatter 版本，删除 BOM 孤儿属性，更新消费脚本版本与无效坐标。 | 发布签名仍保留。 |
 | IC-12 | 仓库文档 | 添加 Apache-2.0 LICENSE，更新架构解析版本、README Maven 与示例版本，修复 generated/exec-plans 索引链接及技术债记录。 | 仅文档与元数据修正。 |
@@ -78,12 +78,12 @@ flowchart LR
 
 | Spec Behavior | IC | 技术债 | 验收证据 |
 |---------------|----|--------|----------|
-| 校验与分页输入保持可诊断 | IC-1、IC-2 | TD-001、TD-021 | exception/common 单元测试：中文、形状、PageResult 拒绝、setter 默认/上限/offset。 |
+| 校验与分页输入保持可诊断 | IC-1、IC-2 | TD-001、TD-021 | exception/common 单元测试：中文、错误项格式、PageResult 拒绝、setter 默认/上限/offset。 |
 | 未知状态不伪装为已知业务状态 | IC-2 | TD-022 | common 枚举单元测试。 |
 | RPC 调用在异常输入与异步完成时保持可观测 | IC-5、IC-6 | TD-003、004、010、012、013、023 | rpc-core、dubbo、feign 单元与 injvm 集成测试。 |
-| 结构化日志与专用日志不泄露敏感值 | IC-3、IC-4 | TD-002、005、006、007、008、009、025 | log 资源、单元与手工性能基准。 |
+| 结构化日志与专用日志不泄露敏感值 | IC-3、IC-4 | TD-002、005、006、007、008、009 | log 资源、单元与手工性能基准。 |
 | 安全能力只在明确边界内生效 | IC-4、IC-9 | TD-009、015、025 | 非 Logback 与 Nacos 环境、迁移 API 单元测试。 |
-| 字段密文可以选择绑定应用上下文 | IC-7、IC-8 | TD-016（部分缓解）、024、025 | mybatis 单元测试：v1/v2、AAD、SQL、审计与 Mapper API；字段/记录级完整性保留在技术债。 |
+| 字段密文可以选择绑定应用上下文 | IC-7、IC-8 | TD-016（部分缓解）、024 | mybatis 单元测试：v1/v2、AAD、SQL、审计与 Mapper API；字段/记录级完整性保留在技术债。 |
 | 日志上下文工具维持明确的替换语义 | IC-13 | TD-022 | MdcUtil 单元测试和 Javadoc 文本校验。 |
 | MyBatis 与测试扩展提供准确的默认边界 | IC-8、IC-10 | TD-011、014、024、026 | mybatis/starter-test 单元与资源测试。 |
 | 构建、测试与文档给出一致的可执行信息 | IC-11、IC-12 | TD-017、018、019、020、027、028、029 | POM、BOM、README、链接与 CI 命令校验。 |
@@ -95,7 +95,7 @@ flowchart LR
 | HTTP 校验 | Exception handler → response factory | 400 data | 日志清洗仅用于日志参数 | IC-1 |
 | Dubbo Provider | attachments → trace scope → invocation → async callback scope | Hook 与日志 | null 附件不失败，回调 finally 关闭 scope | IC-5 |
 | Feign Client | URI/headers → metadata → Hook | 可观测 metadata | host 三级回退，敏感头排除 | IC-6 |
-| Nacos 环境 | 类路径门控 → ENC 检测 → 解密 | 覆盖属性源 | 非 Nacos 不处理，Nacos 密钥错误失败 | IC-9 |
+| Nacos 环境 | 解密配置前缀门控 → ENC 检测 → 解密 | 覆盖属性源 | 无解密配置不处理，已配置场景的密钥错误明确失败 | IC-9 |
 | MyBatis 字段 | properties（启动时读取稳定 context）→ crypto configuration → TypeHandler（final context）→ CryptoUtils | v1 或 v2 密文 | AAD 不匹配、缺失、损坏或无效 v2 包均拒绝明文，不回退 v1 | IC-7 |
 | SQL/访问日志 | 参数/字面量掩码 → appender `%mask` | 专用日志 | 非 Logback WARN 降级 | IC-3、IC-4 |
 
@@ -115,7 +115,7 @@ flowchart LR
 |------|------|
 | 性能 | 脱敏新增处理不进行全消息解码；JDK 17、1 KiB/3 敏感字段消息、10 万次预热后 100 万次测量的平均增量不超过 20µs。 |
 | 安全 | v2 密文跨应用 context 解密成功率为 0；遗留 ECB 每次调用均产生 WARN；同 context 的字段/记录完整性不在本次声明范围。 |
-| 可用性 | 非 Logback 与非 Nacos 应用启动不得因对应 starter 失败。 |
+| 可用性 | 非 Logback 应用和未配置 Nacos 解密前缀的应用启动不得因对应 starter 失败。 |
 | 可观测性 | 异步 RPC 完成 Hook、审计降级和遗留加密均能在对应单元测试捕获到指定 WARN；非 Logback 每 ApplicationContext 最多一条 WARN。 |
 
 ## Error Handling
@@ -123,7 +123,7 @@ flowchart LR
 - v2 密文缺少 context、AAD 验证失败、Base64 无效或长度不足：抛出 `IllegalStateException("Decryption failed", cause)`，经 TypeHandler 包装为 `SystemException`，绝不返回明文；不区分密钥错误、密文损坏和 AAD 不匹配。
 - RPC 附件为 null：保留 null 或安全转换，不中止调用。
 - 日志框架不支持 `%mask`：WARN 后降级，不影响业务日志输出。
-- Nacos 环境存在密文而密钥错误：在 Nacos 场景明确失败；非 Nacos 场景完全不处理。
+- 已配置 Nacos 解密前缀且存在密文，但密钥缺失或错误：明确失败；未配置当前或旧解密前缀时完全不处理。
 - 审计人提供者异常：写 WARN 并以 `system` 继续写入。
 - Feign URL 无 host：按 host、authority、原始 URL 回退；不拒绝实际请求。非敏感多值头按迭代顺序逗号连接。
 - 发布签名：普通 verify 使用 `gpg.skip=true`；Maven Central deploy 强制 `gpg.skip=false`，签名命令的非零退出码直接失败。
@@ -151,7 +151,7 @@ flowchart LR
 | IC-6 | 单元 | MdcRpcTracerBridgeTest、RpcExecutionTemplateTest、RpcFeignClientTest | scope 恢复 MDC；弃用 API 编译；模板/ logger；host 回退与头值 `a,b`。 |
 | IC-7 | 单元 | `CryptoUtilsTest`、三类 TypeHandler 测试、`MybatisPlusCryptoConfigurationTest` | v2 同应用 context 往返；异/空白 context、损坏 `v2:` 前缀/载荷均拒绝且不回退；自动配置与手工单/双参 Handler 分别写 v1/v2。 |
 | IC-8 | 单元 | MybatisPropertiesTest、SQL/审计测试 | 有效 Mapper 集；旧 API 弃用；SQL 无 secret；system 与 WARN。 |
-| IC-9 | 单元 | Nacos 环境后处理器与 ConfigCryptoUtils 测试 | 非 Nacos ENC 原样；Nacos 缺密钥失败；legacy encrypt/decrypt 各一条 WARN，固定旧密文样本可读。 |
+| IC-9 | 单元 | Nacos 环境后处理器与 ConfigCryptoUtils 测试 | 未绑定当前/旧解密前缀时 ENC 原样；已显式启用但缺密钥时失败；仅配置 key 时保持默认解密；legacy encrypt/decrypt 各一条 WARN，固定旧密文样本可读。 |
 | IC-10 | 单元/资源 | starter-test 资源与工具测试 | 无危险资源项；10000 ID 唯一；弃用类型可 Import。 |
 | IC-11 | 构建 | 本地 verify、CI verify、Maven Central 发布配置测试 | 本地无 GPG 成功；CI 测试零跳过；发布 `gpg.skip=false` 签名失败可见。 |
 | IC-12 | 文档/依赖 | 链接检查、Maven 解析、README 示例校验 | LICENSE、坐标、版本和目录链接均有效。 |
