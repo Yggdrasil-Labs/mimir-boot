@@ -80,7 +80,7 @@
         <protobuf.version>4.35.1</protobuf.version>
 
         <!-- 网络相关 -->
-        <okhttp.version>5.4.0</okhttp.version>
+        <okhttp.version>5.5.0</okhttp.version>
         <retrofit.version>3.0.0</retrofit.version>
 
         <!-- 文件处理 -->
