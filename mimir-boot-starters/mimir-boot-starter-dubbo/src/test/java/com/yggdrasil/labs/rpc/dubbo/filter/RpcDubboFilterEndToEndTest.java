@@ -65,8 +65,9 @@ class RpcDubboFilterEndToEndTest {
 
         assertEquals("echo:hello", reference.get().echo("hello"));
         assertEquals(List.of(Map.of("x-trace-id", "consumer-trace")), tracerBridge.injectedCarriers());
-        assertEquals(1, tracerBridge.extractedCarriers().size());
+        assertEquals(2, tracerBridge.extractedCarriers().size());
         assertEquals("consumer-trace", tracerBridge.extractedCarriers().get(0).get("x-trace-id"));
+        assertEquals("consumer-trace", tracerBridge.extractedCarriers().get(1).get("x-trace-id"));
     }
 
     @Test

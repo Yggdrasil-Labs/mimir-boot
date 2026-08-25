@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -56,7 +57,7 @@ public class RpcFeignClient implements Client {
 
         URI uri = URI.create(request.url());
         RpcCallMetadata metadata = RpcCallMetadata.builder()
-                .service(uri.getHost())
+                .service(resolveService(uri, request.url()))
                 .method(request.httpMethod().name())
                 .protocol(uri.getScheme())
                 .target(uri.getAuthority())
@@ -148,13 +149,23 @@ public class RpcFeignClient implements Client {
         if (headers == null) {
             return null;
         }
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new LinkedHashMap<>();
         headers.forEach((k, v) -> {
             if (!isSensitiveAttachmentHeader(k) && v != null && !v.isEmpty()) {
-                map.put(k, v.iterator().next());
+                map.put(k, String.join(",", v));
             }
         });
         return map;
+    }
+
+    private String resolveService(URI uri, String rawUrl) {
+        if (uri.getHost() != null) {
+            return uri.getHost();
+        }
+        if (uri.getAuthority() != null) {
+            return uri.getAuthority();
+        }
+        return rawUrl;
     }
 
     private static boolean isSensitiveAttachmentHeader(String name) {

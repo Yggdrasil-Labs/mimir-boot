@@ -11,6 +11,7 @@ import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
@@ -30,10 +31,10 @@ public class RpcDubboFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        RpcDubboSupportHolder holder = RpcDubboSupportHolder.getInstance();
-        DubboProperties properties = holder.getProperties();
-        RpcHookChain hookChain = holder.getHookChain();
-        RpcTracerBridge tracerBridge = holder.getTracerBridge();
+        RpcDubboSupportHolder.Snapshot support = RpcDubboSupportHolder.current();
+        DubboProperties properties = support.properties();
+        RpcHookChain hookChain = support.hookChain();
+        RpcTracerBridge tracerBridge = support.tracerBridge();
 
         if (properties == null || hookChain == null || tracerBridge == null) {
             // Spring 未初始化，降级为直通
@@ -53,12 +54,7 @@ public class RpcDubboFilter implements Filter {
             return invoker.invoke(invocation);
         }
 
-        Map<String, String> attachments = invocation.getObjectAttachments() == null
-                ? null
-                : invocation.getObjectAttachments().entrySet().stream()
-                        .collect(java.util.stream.Collectors.toMap(
-                                Map.Entry::getKey,
-                                e -> e.getValue() == null ? null : String.valueOf(e.getValue())));
+        Map<String, String> attachments = copyAttachments(invocation.getObjectAttachments());
 
         RpcCallMetadata metadata = RpcCallMetadata.builder()
                 .service(invoker.getInterface().getName())
@@ -79,6 +75,7 @@ public class RpcDubboFilter implements Filter {
 
         Instant start = Instant.now();
         RpcTraceScope traceScope = RpcTraceScope.noop();
+        Throwable primaryFailure = null;
         boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
                 invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
@@ -104,22 +101,31 @@ public class RpcDubboFilter implements Filter {
                 }
 
                 Result result = invoker.invoke(invocation);
-                traceScope.close();
-                traceScope = RpcTraceScope.noop();
                 if (result instanceof AsyncRpcResult) {
+                    closeScope(traceScope, null);
+                    traceScope = RpcTraceScope.noop();
                     result.whenCompleteWithContext((completedResult, throwable) -> {
+                        RpcTraceScope completionScope = RpcTraceScope.noop();
                         try {
+                            if (properties.isContextPropagationEnabled() && providerSide) {
+                                RpcTraceScope extractedScope = tracerBridge.extractScope(
+                                        context, attachments == null ? Map.of() : attachments);
+                                completionScope = extractedScope == null ? RpcTraceScope.noop() : extractedScope;
+                            }
                             completeCall(hookInvocation, metadata, start, completedResult, throwable);
                         } finally {
+                            closeScope(completionScope, resolveFailure(completedResult, throwable));
                             hookInvocation.completeWithoutResult();
                         }
                     });
                     asyncInvocation = true;
                 } else {
+                    primaryFailure = resolveFailure(result, null);
                     completeCall(hookInvocation, metadata, start, result, null);
                 }
                 return result;
             } catch (Throwable throwable) {
+                primaryFailure = throwable;
                 completeCall(hookInvocation, metadata, start, null, throwable);
                 throw propagate(throwable);
             } finally {
@@ -128,7 +134,7 @@ public class RpcDubboFilter implements Filter {
                 }
             }
         } finally {
-            traceScope.close();
+            closeScope(traceScope, primaryFailure);
         }
     }
 
@@ -179,5 +185,32 @@ public class RpcDubboFilter implements Filter {
                     error.getClass().getSimpleName(),
                     error);
         }
+    }
+
+    private Throwable resolveFailure(Result result, Throwable throwable) {
+        if (throwable != null) {
+            return throwable;
+        }
+        return result != null && result.hasException() ? result.getException() : null;
+    }
+
+    private void closeScope(RpcTraceScope scope, Throwable primaryFailure) {
+        try {
+            scope.close();
+        } catch (Throwable closeFailure) {
+            if (primaryFailure != null && closeFailure != primaryFailure) {
+                primaryFailure.addSuppressed(closeFailure);
+            }
+            log.warn("RPC trace scope close failed", closeFailure);
+        }
+    }
+
+    private Map<String, String> copyAttachments(Map<String, Object> source) {
+        if (source == null) {
+            return null;
+        }
+        Map<String, String> copied = new LinkedHashMap<>();
+        source.forEach((key, value) -> copied.put(key, value == null ? null : String.valueOf(value)));
+        return copied;
     }
 }

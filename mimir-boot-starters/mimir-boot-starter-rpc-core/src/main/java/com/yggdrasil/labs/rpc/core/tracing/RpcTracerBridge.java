@@ -15,7 +15,11 @@ public interface RpcTracerBridge {
 
     /**
      * 从载体提取上下文。
+     *
+     * @deprecated 请实现 {@link #extractScope(RpcCallContext, Map)} 以获得可关闭的调用级上下文作用域；旧实现仍可加载，
+     *     但默认 noop scope 不保证恢复其未知上下文。
      */
+    @Deprecated(since = "2.2.1", forRemoval = false)
     void extract(RpcCallContext context, Map<String, String> carrier);
 
     /**

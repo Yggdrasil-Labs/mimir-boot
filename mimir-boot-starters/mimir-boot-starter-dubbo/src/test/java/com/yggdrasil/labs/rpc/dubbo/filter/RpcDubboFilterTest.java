@@ -162,6 +162,31 @@ class RpcDubboFilterTest {
     }
 
     @Test
+    void shouldPreserveNullAttachmentValuesAndCompleteLifecycleOnce() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker();
+        Result result = mock(Result.class);
+        Map<String, Object> attachments = new HashMap<>();
+        attachments.put("nullable", null);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("nullableAttachment");
+        when(invocation.getObjectAttachments()).thenReturn(attachments);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        assertSame(result, filter.invoke(invoker, invocation));
+
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        verify(hook, times(1)).after(any(), any(RpcCallResult.class));
+        verify(hook, never()).onError(any(), any());
+        verify(hook, times(1)).cleanup(any());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                contextCaptor.getValue().getMetadata().getAttachments().containsKey("nullable"));
+        org.junit.jupiter.api.Assertions.assertNull(
+                contextCaptor.getValue().getMetadata().getAttachments().get("nullable"));
+    }
+
+    @Test
     void shouldCompleteFailureLifecycleWhenInvokerThrowsError() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker();
@@ -272,10 +297,48 @@ class RpcDubboFilterTest {
 
         responseFuture.complete(new AppResponse("ok"));
 
-        verify(scope, times(1)).close();
+        verify(tracerBridge, times(2)).extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        verify(scope, times(2)).close();
         verify(hook, times(1)).after(any(), any(RpcCallResult.class));
         verify(hook, never()).onError(any(), any());
         verify(hook, times(1)).cleanup(any());
+    }
+
+    @Test
+    void shouldKeepSynchronousResultWhenProviderScopeCloseFails() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        Result result = mock(Result.class);
+        RpcTraceScope scope = mock(RpcTraceScope.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("scopeCloseFailure");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
+        when(tracerBridge.extractScope(any(), any())).thenReturn(scope);
+        doThrow(new IllegalStateException("scope close failure")).when(scope).close();
+
+        assertSame(result, filter.invoke(invoker, invocation));
+
+        verify(hook, times(1)).after(any(), any(RpcCallResult.class));
+        verify(hook, times(1)).cleanup(any());
+    }
+
+    @Test
+    void shouldAttachScopeCloseFailureToSynchronousResultBusinessFailure() {
+        Invocation invocation = mock(Invocation.class);
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RuntimeException primary = new RuntimeException("business failure");
+        Result result = new AppResponse(primary);
+        RpcTraceScope scope = mock(RpcTraceScope.class);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(invocation.getMethodName()).thenReturn("resultBusinessFailure");
+        when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
+        when(tracerBridge.extractScope(any(), any())).thenReturn(scope);
+        doThrow(new IllegalStateException("scope close failure")).when(scope).close();
+
+        assertSame(result, filter.invoke(invoker, invocation));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, primary.getSuppressed().length);
+        org.junit.jupiter.api.Assertions.assertEquals("scope close failure", primary.getSuppressed()[0].getMessage());
     }
 
     @Test

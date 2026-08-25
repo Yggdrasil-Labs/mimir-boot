@@ -46,9 +46,9 @@ public class RpcHookChain {
     }
 
     /**
-     * @deprecated 请改用 {@link #open(RpcCallContext)} 获取调用级 Invocation。
+     * @deprecated 请改用 {@link #open(RpcCallContext)} 获取调用级 Invocation。此兼容入口不提供调用级状态或异常隔离保证。
      */
-    @Deprecated(forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = false)
     public void before(RpcCallContext context) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing before hooks for service={}, method={}, hooks={}",
@@ -62,9 +62,9 @@ public class RpcHookChain {
     }
 
     /**
-     * @deprecated 请改用 {@link RpcHookInvocation#completeSuccess(RpcCallResult)}。
+     * @deprecated 请改用 {@link RpcHookInvocation#completeSuccess(RpcCallResult)}。此兼容入口不提供调用级状态或异常隔离保证。
      */
-    @Deprecated(forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = false)
     public void after(RpcCallContext context, RpcCallResult result) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing after hooks for service={}, method={}, duration={}ms, hooks={}",
@@ -79,9 +79,9 @@ public class RpcHookChain {
     }
 
     /**
-     * @deprecated 请改用 {@link RpcHookInvocation#completeFailure(RpcCallResult, Throwable)}。
+     * @deprecated 请改用 {@link RpcHookInvocation#completeFailure(RpcCallResult, Throwable)}。此兼容入口不提供调用级状态或异常隔离保证。
      */
-    @Deprecated(forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = false)
     public void onError(RpcCallContext context, RpcCallResult result) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing onError hooks for service={}, method={}, duration={}ms, error={}, hooks={}",
@@ -97,9 +97,9 @@ public class RpcHookChain {
     }
 
     /**
-     * @deprecated 请改用 {@link RpcHookInvocation#close()}。
+     * @deprecated 请改用 {@link RpcHookInvocation#close()}。此兼容入口不提供调用级状态或异常隔离保证。
      */
-    @Deprecated(forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = false)
     public void cleanup(RpcCallContext context) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug("Executing cleanup hooks for service={}, method={}, hooks={}",

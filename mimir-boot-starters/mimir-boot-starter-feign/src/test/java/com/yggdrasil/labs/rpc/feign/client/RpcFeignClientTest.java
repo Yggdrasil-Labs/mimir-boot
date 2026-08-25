@@ -310,6 +310,72 @@ class RpcFeignClientTest {
     }
 
     @Test
+    void shouldKeepAllNonSensitiveHeaderValuesInIterationOrder() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET,
+                "http://example.com/api",
+                Map.of("x-tag", List.of("a", "b"), "Authorization", List.of("secret")),
+                null,
+                StandardCharsets.UTF_8,
+                null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        client.execute(request, new Request.Options());
+
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        Assertions.assertEquals("a,b", contextCaptor.getValue().getMetadata().getAttachments().get("x-tag"));
+        Assertions.assertFalse(contextCaptor.getValue().getMetadata().getAttachments().containsKey("Authorization"));
+    }
+
+    @Test
+    void shouldFallBackToAuthorityWhenUriHostIsUnavailable() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://:8080/api", Map.of(), null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        client.execute(request, new Request.Options());
+
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        Assertions.assertEquals(":8080", contextCaptor.getValue().getMetadata().getService());
+    }
+
+    @Test
+    void shouldFallBackToRawUrlWhenHostAndAuthorityAreUnavailable() throws Exception {
+        Request request = Request.create(
+                Request.HttpMethod.GET, "/api/fallback", Map.of(), null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        client.execute(request, new Request.Options());
+
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        Assertions.assertEquals("/api/fallback", contextCaptor.getValue().getMetadata().getService());
+    }
+
+    @Test
     void shouldPreserveOriginalHeadersWhenInjecting() throws Exception {
         Map<String, Collection<String>> headers = Map.of("original", List.of("value"));
         Request request = Request.create(
