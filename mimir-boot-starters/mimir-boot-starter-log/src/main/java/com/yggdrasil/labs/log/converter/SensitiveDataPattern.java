@@ -11,13 +11,13 @@ package com.yggdrasil.labs.log.converter;
 public enum SensitiveDataPattern {
 
     /** 密码相关字段 */
-    PASSWORD("password", "(?i)(password|pwd|passwd|密码)\\s*[=:]\\s*['\"]?[^'\"\\s]+"),
+    PASSWORD("password", "(?i)(password|pwd|passwd|%70assword|密码)\\\"?\\s*[=:]\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
     
     /** Token 相关字段 */
-    TOKEN("token", "(?i)(token|access_token|refresh_token)\\s*[=:]\\s*['\"]?[^'\"\\s]+"),
+    TOKEN("token", "(?i)(token|access_token|refresh_token)\\\"?\\s*[=:]\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
     
     /** 密钥相关字段 */
-    SECRET("secret", "(?i)(secret|private_key|公钥)\\s*[=:]\\s*['\"]?[^'\"\\s]+"),
+    SECRET("secret", "(?i)(secret|private_key|privateKey|secret_key|secretKey|access_key|accessKey|%73ecretKey|私钥)\\\"?\\s*[=:]\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
     
     /** API Key 相关字段 */
     API_KEY("api_key", "(?i)(apikey|api_key|app_key)\\s*[=:]\\s*['\"]?[^'\"\\s]+"),
@@ -83,4 +83,3 @@ public enum SensitiveDataPattern {
         return null;
     }
 }
-

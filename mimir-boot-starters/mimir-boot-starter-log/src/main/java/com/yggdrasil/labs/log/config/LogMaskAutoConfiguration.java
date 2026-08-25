@@ -3,6 +3,9 @@ package com.yggdrasil.labs.log.config;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.pattern.ClassicConverter;
 import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
+import org.slf4j.ILoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -27,7 +30,10 @@ import org.springframework.context.event.EventListener;
 @EnableConfigurationProperties(LogMaskProperties.class)
 public class LogMaskAutoConfiguration {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogMaskAutoConfiguration.class);
+
     private final LogMaskProperties properties;
+    private boolean nonLogbackWarningRecorded;
 
     public LogMaskAutoConfiguration(LogMaskProperties properties) {
         this.properties = properties;
@@ -41,8 +47,11 @@ public class LogMaskAutoConfiguration {
      */
     @EventListener(ContextRefreshedEvent.class)
     public void transferConfig(ContextRefreshedEvent event) {
-        // 将配置传递给 Logback context
-        LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+        ILoggerFactory loggerFactory = LoggerFactory.getILoggerFactory();
+        if (!(loggerFactory instanceof LoggerContext loggerContext)) {
+            warnNonLogbackOnce(event);
+            return;
+        }
 
         if (properties.getEnabledPatterns() != null && !properties.getEnabledPatterns().isEmpty()) {
             loggerContext.putProperty(
@@ -64,6 +73,15 @@ public class LogMaskAutoConfiguration {
                     properties.getReplacement()
             );
         }
+        SensitiveDataConverter.publishConfiguration(
+                properties.getEnabledPatterns(), properties.getCustomPatterns(), properties.getReplacement());
+    }
+
+    private synchronized void warnNonLogbackOnce(ContextRefreshedEvent event) {
+        if (!nonLogbackWarningRecorded) {
+            nonLogbackWarningRecorded = true;
+            LOGGER.warn("ApplicationContext [{}] 未使用 Logback，跳过日志脱敏转换器注册",
+                    event.getApplicationContext().getId());
+        }
     }
 }
-

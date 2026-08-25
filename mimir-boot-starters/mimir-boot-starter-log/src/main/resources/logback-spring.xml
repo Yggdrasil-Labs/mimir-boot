@@ -107,7 +107,7 @@
         <file>${LOG_DIR}/access.log</file>
         <encoder>
             <!-- 访问日志格式：时间 [线程] 级别 [Trace/Span]（存在时才输出）- 消息 -->
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }- %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }- %mask%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
         
@@ -149,7 +149,7 @@
     <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/sql.log</file>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level - %mask%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -298,4 +298,3 @@
     <logger name="org.springframework.boot.web.servlet" level="INFO"/>
     <logger name="org.springframework.context" level="INFO"/>
 </configuration>
-

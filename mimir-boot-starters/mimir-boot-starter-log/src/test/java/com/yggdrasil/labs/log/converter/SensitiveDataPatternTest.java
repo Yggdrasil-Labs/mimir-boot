@@ -3,6 +3,8 @@ package com.yggdrasil.labs.log.converter;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.regex.Pattern;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -35,6 +37,16 @@ class SensitiveDataPatternTest extends BaseUnitTest {
         assertEquals("secret", pattern.getName());
         assertNotNull(pattern.getPattern());
         assertTrue(pattern.getPattern().contains("secret"));
+    }
+
+    @Test
+    void secretPatternCoversJsonAndPercentEncodedSensitiveKeysWithoutMatchingPublicKey() {
+        Pattern pattern = Pattern.compile(SensitiveDataPattern.SECRET.getPattern());
+
+        assertTrue(pattern.matcher("{\"privateKey\":\"sample-private-value\"}").find());
+        assertTrue(pattern.matcher("%73ecretKey=sample-secret-value").find());
+        assertTrue(pattern.matcher("accessKey: sample-access-value").find());
+        assertFalse(pattern.matcher("publicKey=public-information").find());
     }
 
     @Test
@@ -179,4 +191,3 @@ class SensitiveDataPatternTest extends BaseUnitTest {
         assertTrue(values.length >= 10, "至少应该有10个预置模式");
     }
 }
-

@@ -30,7 +30,7 @@ public class LogMaskProperties {
     private List<String> customPatterns = new ArrayList<>();
 
     /**
-     * 替换字符（默认：******）
+     * 替换字符（默认：****）
      */
     private String replacement = CommonConstants.MASKED;
 
@@ -58,4 +58,3 @@ public class LogMaskProperties {
         this.replacement = replacement;
     }
 }
-

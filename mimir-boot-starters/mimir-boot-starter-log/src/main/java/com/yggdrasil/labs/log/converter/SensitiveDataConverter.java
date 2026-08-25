@@ -2,321 +2,86 @@ package com.yggdrasil.labs.log.converter;
 
 import ch.qos.logback.classic.pattern.ClassicConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Context;
 import com.yggdrasil.labs.common.constant.CommonConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * 敏感信息脱敏转换器
+ * 敏感信息脱敏转换器。
  *
- * <p>功能说明：</p>
- * <ul>
- * <li>在日志输出时自动隐藏敏感信息（密码、账号、身份证号等）</li>
- * <li>支持通过配置自定义敏感信息匹配规则</li>
- * <li>可通过开关控制是否启用脱敏功能</li>
- * </ul>
- *
- * <p>配置方式：</p>
- * <pre>{@code
- * # application.yml
- * mimir:
- *   boot:
- *     log:
- *       mask:
- *         enabled: true                    # 是否启用脱敏
- *         patterns:                        # 脱敏规则（正则表达式）
- *           - password|pwd
- *           - account|accountId
- *           - idcard|idCard|身份证
- *           - phone|mobile|手机号
- *         replacement: "******"           # 替换字符
- * }</pre>
+ * <p>配置以不可变快照整体发布，因此一次转换只会使用同一代规则和替换字符。</p>
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
 public class SensitiveDataConverter extends ClassicConverter {
 
-    private static final Logger logger = LoggerFactory.getLogger(SensitiveDataConverter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SensitiveDataConverter.class);
 
-    // 配置属性名称常量
     public static final String MASK_ENABLED_PATTERNS_PROPERTY = "mimir.boot.log.mask.enabledPatterns";
     public static final String MASK_CUSTOM_PATTERNS_PROPERTY = "mimir.boot.log.mask.customPatterns";
     public static final String MASK_REPLACEMENT_PROPERTY = "mimir.boot.log.mask.replacement";
 
     private static final String DEFAULT_REPLACEMENT = CommonConstants.MASKED;
+    private static final Object CONFIGURATION_LOCK = new Object();
+    private static final List<String> PROGRAMMATIC_PATTERNS = new ArrayList<>();
+    private static final AtomicReference<Context> CONFIGURATION_CONTEXT = new AtomicReference<>();
+    private static final AtomicReference<MaskConfigurationSnapshot> configuration = new AtomicReference<>();
 
-    private static final AtomicReference<List<Pattern>> patterns = new AtomicReference<>();
-    private String replacement;
-    private static final List<String> customPatterns = new ArrayList<>();
-    private static final Object LOCK = new Object();
-    private final Object replacementLock = new Object();
+    private record MaskConfigurationSnapshot(List<Pattern> patterns, String replacement) {
+    }
+
+    @Override
+    public void start() {
+        CONFIGURATION_CONTEXT.compareAndSet(null, getContext());
+        super.start();
+    }
 
     @Override
     public String convert(ILoggingEvent event) {
         String message = event.getFormattedMessage();
-        if (message == null || message.isEmpty()) {
-            return message;
-        }
-
-        return maskSensitiveData(message);
+        return message == null || message.isEmpty()
+                ? message
+                : maskSensitiveData(message, currentConfiguration());
     }
 
     /**
-     * 获取脱敏规则
-     * 使用 AtomicReference 保证线程安全
+     * 原子发布完整配置。规则编译完成前不会影响正在输出的日志。
      */
-    private List<Pattern> getPatterns() {
-        List<Pattern> result = patterns.get();
-        if (result == null) {
-            synchronized (LOCK) {
-                result = patterns.get();
-                if (result == null) {
-                    result = loadPatterns();
-                    patterns.set(result);
-                }
-            }
-        }
-        return result;
+    public static void publishConfiguration(List<String> enabledPatternNames,
+                                            List<String> customPatternExpressions,
+                                            String replacement) {
+        configuration.set(buildConfiguration(enabledPatternNames, customPatternExpressions, replacement));
     }
 
     /**
-     * 加载脱敏规则
-     */
-    private List<Pattern> loadPatterns() {
-        List<Pattern> result = new ArrayList<>();
-
-        // 1. 加载启用的预置规则
-        List<String> enabledNames = getEnabledPatternNames();
-        if (!enabledNames.isEmpty()) {
-            result.addAll(getPresetPatterns(enabledNames));
-        }
-
-        // 2. 加载配置中的自定义规则
-        List<String> customPatternsList = getCustomPatterns();
-        if (!customPatternsList.isEmpty()) {
-            compilePatterns(result, customPatternsList, "Invalid custom mask pattern: ");
-        }
-
-        // 3. 加载编程式添加的自定义规则（需要同步复制以确保线程安全）
-        List<String> programmaticPatterns;
-        synchronized (LOCK) {
-            programmaticPatterns = new ArrayList<>(customPatterns);
-        }
-        if (!programmaticPatterns.isEmpty()) {
-            compilePatterns(result, programmaticPatterns, "Invalid programmatic mask pattern: ");
-        }
-
-        return new CopyOnWriteArrayList<>(result);
-    }
-
-    /**
-     * 获取启用的预置规则名称
-     */
-    private List<String> getEnabledPatternNames() {
-        return getConfigAsList(MASK_ENABLED_PATTERNS_PROPERTY);
-    }
-
-    /**
-     * 获取自定义规则列表
-     */
-    private List<String> getCustomPatterns() {
-        return getConfigAsList(MASK_CUSTOM_PATTERNS_PROPERTY);
-    }
-
-    /**
-     * 通用方法：从配置获取列表值
-     *
-     * @param key 配置键
-     * @return 配置值列表（逗号分隔）
-     */
-    private List<String> getConfigAsList(String key) {
-        List<String> result = new ArrayList<>();
-
-        // 从 Logback context 读取
-        String value = getContextProperty(key);
-        if (value == null || value.isEmpty()) {
-            value = System.getProperty(key);
-        }
-
-        if (value != null && !value.isEmpty()) {
-            result.addAll(List.of(value.split(",")));
-        }
-
-        return result;
-    }
-
-    /**
-     * 通用方法：编译正则表达式模式
-     *
-     * @param targetPatterns 目标列表
-     * @param patternStrings 正则表达式字符串列表
-     * @param errorPrefix    错误信息前缀
-     */
-    private void compilePatterns(List<Pattern> targetPatterns, List<String> patternStrings, String errorPrefix) {
-        if (patternStrings == null || patternStrings.isEmpty()) {
-            return;
-        }
-
-        for (String patternStr : patternStrings) {
-            try {
-                targetPatterns.add(Pattern.compile(patternStr.trim()));
-            } catch (Exception e) {
-                logger.warn("{}{}", errorPrefix, patternStr, e);
-            }
-        }
-    }
-
-    /**
-     * 获取启用的预置规则
-     */
-    private List<Pattern> getPresetPatterns(List<String> enabledNames) {
-        List<Pattern> result = new ArrayList<>();
-
-        for (String name : enabledNames) {
-            SensitiveDataPattern patternEnum = SensitiveDataPattern.fromName(name.trim());
-            if (patternEnum != null) {
-                try {
-                    result.add(Pattern.compile(patternEnum.getPattern()));
-                } catch (Exception e) {
-                    logger.warn("Invalid preset pattern: {}", name, e);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * 添加自定义规则（编程式扩展）
-     *
-     * @param pattern 正则表达式
-     */
-    public static void addCustomPattern(String pattern) {
-        synchronized (LOCK) {
-            customPatterns.add(pattern);
-            patterns.set(null); // 清空缓存，重新加载
-        }
-    }
-
-    /**
-     * 清空自定义规则
-     */
-    public static void clearCustomPatterns() {
-        synchronized (LOCK) {
-            customPatterns.clear();
-            patterns.set(null); // 清空缓存，重新加载
-        }
-    }
-
-    /**
-     * 获取替换字符
-     * 使用双重检查锁定保证线程安全
-     */
-    private String getReplacement() {
-        String result = replacement;
-        if (result == null) {
-            synchronized (replacementLock) {
-                result = replacement;
-                if (result == null) {
-                    String value = getContextProperty(MASK_REPLACEMENT_PROPERTY);
-                    if (value == null || value.isEmpty()) {
-                        value = System.getProperty(MASK_REPLACEMENT_PROPERTY, DEFAULT_REPLACEMENT);
-                    }
-                    replacement = value;
-                    result = replacement;
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 从 Logback context 获取属性
-     */
-    private String getContextProperty(String key) {
-        if (getContext() != null) {
-            return getContext().getProperty(key);
-        }
-        return null;
-    }
-
-    /**
-     * 对敏感信息进行脱敏
-     *
-     * @param message 原始消息
-     * @return 脱敏后的消息
-     */
-    public String maskSensitiveData(String message) {
-        if (message == null) {
-            return null;
-        }
-        if (message.isEmpty()) {
-            return message;
-        }
-
-        String result = message;
-
-        for (Pattern pattern : getPatterns()) {
-            result = pattern.matcher(result).replaceAll(match -> {
-                String matched = match.group();
-                return maskValue(matched);
-            });
-        }
-
-        return result;
-    }
-
-    /**
-     * 对匹配到的值进行脱敏处理
-     */
-    private String maskValue(String matched) {
-        String replacementText = getReplacement();
-
-        // 提取等号/冒号后的值进行替换
-        int separatorIndex = -1;
-        
-        // 优先检查等号，再检查冒号
-        if (matched.contains("=")) {
-            separatorIndex = matched.indexOf("=");
-        } else if (matched.contains(":")) {
-            separatorIndex = matched.indexOf(":");
-        }
-        
-        if (separatorIndex >= 0) {
-            String prefix = matched.substring(0, separatorIndex + 1);  // 包含分隔符的前缀
-
-            // 保留原始值中的引号格式
-            String suffix = matched.substring(separatorIndex + 1);
-            boolean hasQuote = suffix.startsWith("\"") || suffix.startsWith("'");
-            String quote = hasQuote ? suffix.substring(0, 1) : "";
-
-            // 返回: 前缀 + 引号(如果有) + 替换字符 + 引号(如果有)
-            return prefix + quote + replacementText + quote;
-        } else {
-            // 纯数字或其他格式，直接替换整个匹配项
-            return replacementText;
-        }
-    }
-
-    /**
-     * 重新加载配置（用于配置动态更新）
+     * 重新从 Logback 或系统属性加载配置，保留既有动态刷新入口。
      */
     public static void reloadConfig() {
-        patterns.set(null);
+        configuration.set(null);
     }
 
-    /**
-     * 获取所有可用的预置规则
-     *
-     * @return 所有预置规则的名称列表
-     */
+    public static void addCustomPattern(String pattern) {
+        synchronized (CONFIGURATION_LOCK) {
+            PROGRAMMATIC_PATTERNS.add(pattern);
+        }
+        reloadConfig();
+    }
+
+    public static void clearCustomPatterns() {
+        synchronized (CONFIGURATION_LOCK) {
+            PROGRAMMATIC_PATTERNS.clear();
+        }
+        reloadConfig();
+    }
+
     public static List<String> getAllPresetPatternNames() {
         List<String> names = new ArrayList<>();
         for (SensitiveDataPattern pattern : SensitiveDataPattern.values()) {
@@ -324,5 +89,118 @@ public class SensitiveDataConverter extends ClassicConverter {
         }
         return names;
     }
-}
 
+    /**
+     * 对敏感信息进行脱敏。
+     */
+    public String maskSensitiveData(String message) {
+        return message == null || message.isEmpty()
+                ? message
+                : maskSensitiveData(message, currentConfiguration());
+    }
+
+    private static MaskConfigurationSnapshot currentConfiguration() {
+        MaskConfigurationSnapshot current = configuration.get();
+        if (current != null) {
+            return current;
+        }
+        synchronized (CONFIGURATION_LOCK) {
+            current = configuration.get();
+            if (current == null) {
+                current = buildConfiguration(
+                        readConfigurationAsList(MASK_ENABLED_PATTERNS_PROPERTY),
+                        readConfigurationAsList(MASK_CUSTOM_PATTERNS_PROPERTY),
+                        readConfiguration(MASK_REPLACEMENT_PROPERTY));
+                configuration.set(current);
+            }
+            return current;
+        }
+    }
+
+    private static MaskConfigurationSnapshot buildConfiguration(List<String> enabledPatternNames,
+                                                                  List<String> customPatternExpressions,
+                                                                  String replacement) {
+        List<Pattern> patterns = new ArrayList<>();
+        compilePresetPatterns(patterns, enabledPatternNames);
+        compilePatterns(patterns, customPatternExpressions, "Invalid custom mask pattern: ");
+        synchronized (CONFIGURATION_LOCK) {
+            compilePatterns(patterns, PROGRAMMATIC_PATTERNS, "Invalid programmatic mask pattern: ");
+        }
+        String resolvedReplacement = replacement == null || replacement.isEmpty()
+                ? DEFAULT_REPLACEMENT
+                : replacement;
+        return new MaskConfigurationSnapshot(List.copyOf(patterns), resolvedReplacement);
+    }
+
+    private static void compilePresetPatterns(List<Pattern> target, List<String> names) {
+        if (names == null) {
+            return;
+        }
+        for (String name : names) {
+            if (name == null) {
+                continue;
+            }
+            SensitiveDataPattern pattern = SensitiveDataPattern.fromName(name.trim());
+            if (pattern != null) {
+                compilePatterns(target, List.of(pattern.getPattern()), "Invalid preset mask pattern: ");
+            }
+        }
+    }
+
+    private static void compilePatterns(List<Pattern> target, List<String> expressions, String errorPrefix) {
+        if (expressions == null) {
+            return;
+        }
+        for (String expression : expressions) {
+            if (expression == null || expression.isBlank()) {
+                continue;
+            }
+            try {
+                target.add(Pattern.compile(expression.trim()));
+            } catch (RuntimeException exception) {
+                LOGGER.warn("{}{}", errorPrefix, expression, exception);
+            }
+        }
+    }
+
+    private static List<String> readConfigurationAsList(String key) {
+        String value = readConfiguration(key);
+        return value == null || value.isEmpty() ? List.of() : List.of(value.split(","));
+    }
+
+    private static String readConfiguration(String key) {
+        Context context = CONFIGURATION_CONTEXT.get();
+        String value = context == null ? null : context.getProperty(key);
+        return value == null || value.isEmpty() ? System.getProperty(key) : value;
+    }
+
+    private static String maskSensitiveData(String message, MaskConfigurationSnapshot snapshot) {
+        String result = message;
+        for (Pattern pattern : snapshot.patterns()) {
+            Matcher matcher = pattern.matcher(result);
+            StringBuffer buffer = new StringBuffer();
+            while (matcher.find()) {
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement(maskValue(matcher.group(), snapshot.replacement())));
+            }
+            if (buffer.length() > 0) {
+                matcher.appendTail(buffer);
+                result = buffer.toString();
+            }
+        }
+        return result;
+    }
+
+    private static String maskValue(String matched, String replacement) {
+        int separatorIndex = matched.indexOf('=');
+        if (separatorIndex < 0) {
+            separatorIndex = matched.indexOf(':');
+        }
+        if (separatorIndex < 0) {
+            return replacement;
+        }
+        String prefix = matched.substring(0, separatorIndex + 1);
+        String suffix = matched.substring(separatorIndex + 1);
+        String quote = suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
+        return prefix + quote + replacement + quote;
+    }
+}

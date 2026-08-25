@@ -12,6 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -704,5 +705,57 @@ class SensitiveDataConverterTest extends BaseUnitTest {
 
         assertTrue(result.contains("****"));
     }
-}
 
+    @Test
+    void masksJsonAndPercentEncodedPasswordValues() {
+        SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "****");
+
+        String json = converter.maskSensitiveData("{\"password\":\"sample-json-value\"}");
+        String encoded = converter.maskSensitiveData("%70assword=sample-encoded-value");
+
+        assertEquals("{\"password\":\"****\"}", json);
+        assertEquals("%70assword=****", encoded);
+    }
+
+    @Test
+    void masksPrivateSecretAndAccessKeysButLeavesPublicKeyVisible() {
+        SensitiveDataConverter.publishConfiguration(List.of("secret"), List.of(), "****");
+
+        String result = converter.maskSensitiveData(
+                "privateKey=sample-private-value secretKey=sample-secret-value "
+                        + "accessKey=sample-access-value publicKey=public-information");
+
+        assertFalse(result.contains("sample-private-value"));
+        assertFalse(result.contains("sample-secret-value"));
+        assertFalse(result.contains("sample-access-value"));
+        assertTrue(result.contains("publicKey=public-information"));
+    }
+
+    @Test
+    void publishesWholeSnapshotToExistingConvertersDuringConcurrentRefresh() throws Exception {
+        SensitiveDataConverter first = new SensitiveDataConverter();
+        first.setContext(context);
+        first.start();
+        SensitiveDataConverter second = new SensitiveDataConverter();
+        second.setContext(context);
+        second.start();
+        SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "[old]");
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<String> firstResult = executor.submit(
+                    () -> first.maskSensitiveData("password=sample-password token=sample-token"));
+            SensitiveDataConverter.publishConfiguration(List.of("token"), List.of(), "[new]");
+            Future<String> secondResult = executor.submit(
+                    () -> second.maskSensitiveData("password=sample-password token=sample-token"));
+
+            assertTrue(List.of(
+                            "password=[old] token=sample-token",
+                            "password=sample-password token=[new]")
+                    .contains(firstResult.get(5, TimeUnit.SECONDS)));
+            assertEquals("password=sample-password token=[new]", secondResult.get(5, TimeUnit.SECONDS));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+}

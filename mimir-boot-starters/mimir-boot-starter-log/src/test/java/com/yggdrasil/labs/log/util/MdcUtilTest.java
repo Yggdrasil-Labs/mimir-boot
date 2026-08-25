@@ -101,6 +101,18 @@ class MdcUtilTest extends BaseUnitTest {
     }
 
     @Test
+    void putAllReplacesExistingContextWhileNullAndEmptyMapsPreserveIt() {
+        MdcUtil.put("previous", "value");
+        MdcUtil.putAll(Map.of("replacement", "value"));
+        assertNull(MdcUtil.get("previous"));
+        assertEquals("value", MdcUtil.get("replacement"));
+
+        MdcUtil.putAll(null);
+        MdcUtil.putAll(Map.of());
+        assertEquals("value", MdcUtil.get("replacement"));
+    }
+
+    @Test
     void testGetAll() {
         MdcUtil.put("key1", "value1");
         MdcUtil.put("key2", "value2");

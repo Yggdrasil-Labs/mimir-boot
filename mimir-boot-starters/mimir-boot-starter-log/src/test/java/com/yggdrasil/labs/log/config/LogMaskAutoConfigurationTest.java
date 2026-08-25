@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.slf4j.ILoggerFactory;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.support.GenericApplicationContext;
 
@@ -14,6 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 /**
  * 日志脱敏自动配置测试
@@ -230,5 +233,19 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
 
         assertNotNull(configuration);
     }
-}
 
+    @Test
+    void skipsNonLogbackFactoryWithoutPreventingApplicationContextRefresh() {
+        LogMaskProperties properties = new LogMaskProperties();
+        configuration = new LogMaskAutoConfiguration(properties);
+        ILoggerFactory nonLogbackFactory = mock(ILoggerFactory.class);
+
+        try (org.mockito.MockedStatic<LoggerFactory> loggerFactory = mockStatic(LoggerFactory.class)) {
+            loggerFactory.when(LoggerFactory::getILoggerFactory).thenReturn(nonLogbackFactory);
+            ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
+
+            assertDoesNotThrow(() -> configuration.transferConfig(event));
+            assertDoesNotThrow(() -> configuration.transferConfig(event));
+        }
+    }
+}
