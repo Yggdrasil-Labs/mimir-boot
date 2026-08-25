@@ -18,11 +18,21 @@ class PageResultTest {
     }
 
     @Test
-    void totalPages_zero_when_pageSize_zero() {
-        PageResult<String> pr = PageResult.of(List.of("a"), 10L, 1L, 0L);
-        assertEquals(0L, pr.getTotalPages());
-        assertFalse(pr.getHasNext());
-        assertFalse(pr.getHasPrevious());
+    void validated_constructor_and_factories_reject_invalid_numeric_values() {
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new PageResult<>(List.of("a"), null, 1L, 10L)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> PageResult.of(List.of("a"), 1L, null, 10L)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> PageResult.of(List.of("a"), 1L, 1L, null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new PageResult<>(List.of("a"), -1L, 1L, 10L)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> PageResult.of(List.of("a"), 1L, 0L, 10L)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> PageResult.empty(1L, 0L))
+        );
     }
 
     @Test
@@ -44,5 +54,4 @@ class PageResultTest {
         assertEquals(5L, pr.getPageSize());
     }
 }
-
 

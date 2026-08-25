@@ -105,4 +105,22 @@ public enum ErrorCode {
         }
         return SYSTEM_ERROR;
     }
+
+    /**
+     * 根据错误码获取枚举，未知错误码返回 null
+     *
+     * @param code 错误码
+     * @return 错误码枚举或 null
+     */
+    public static ErrorCode fromCodeOrNull(String code) {
+        if (code == null) {
+            return null;
+        }
+        for (ErrorCode errorCode : values()) {
+            if (errorCode.getCode().equals(code)) {
+                return errorCode;
+            }
+        }
+        return null;
+    }
 }

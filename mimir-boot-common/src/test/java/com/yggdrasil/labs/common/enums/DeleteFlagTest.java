@@ -20,7 +20,16 @@ class DeleteFlagTest {
         assertFalse(DeleteFlag.isDeleted(0));
         assertTrue(DeleteFlag.isNotDeleted(0));
         assertFalse(DeleteFlag.isNotDeleted(1));
+        assertFalse(DeleteFlag.isDeleted(999));
+        assertFalse(DeleteFlag.isNotDeleted(999));
+    }
+
+    @Test
+    void fromCodeOrNull_returns_only_known_flags() {
+        assertEquals(DeleteFlag.NOT_DELETED, DeleteFlag.fromCodeOrNull(0));
+        assertEquals(DeleteFlag.DELETED, DeleteFlag.fromCodeOrNull(1));
+        assertNull(DeleteFlag.fromCodeOrNull(999));
+        assertNull(DeleteFlag.fromCodeOrNull(null));
     }
 }
-
 

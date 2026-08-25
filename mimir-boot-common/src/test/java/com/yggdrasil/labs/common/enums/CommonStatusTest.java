@@ -20,7 +20,16 @@ class CommonStatusTest {
         assertFalse(CommonStatus.isEnabled(0));
         assertTrue(CommonStatus.isDisabled(0));
         assertFalse(CommonStatus.isDisabled(1));
+        assertFalse(CommonStatus.isEnabled(999));
+        assertFalse(CommonStatus.isDisabled(999));
+    }
+
+    @Test
+    void fromCodeOrNull_returns_only_known_statuses() {
+        assertEquals(CommonStatus.ENABLED, CommonStatus.fromCodeOrNull(1));
+        assertEquals(CommonStatus.DISABLED, CommonStatus.fromCodeOrNull(0));
+        assertNull(CommonStatus.fromCodeOrNull(999));
+        assertNull(CommonStatus.fromCodeOrNull(null));
     }
 }
-
 

@@ -13,6 +13,13 @@ class ErrorCodeTest {
         assertEquals(ErrorCode.SYSTEM_ERROR, ErrorCode.fromCode("not-exist"));
         assertEquals(ErrorCode.SYSTEM_ERROR, ErrorCode.fromCode(null));
     }
-}
 
+    @Test
+    void fromCodeOrNull_returns_only_known_error_codes() {
+        assertEquals(ErrorCode.SUCCESS, ErrorCode.fromCodeOrNull("00000"));
+        assertEquals(ErrorCode.SYSTEM_ERROR, ErrorCode.fromCodeOrNull("10000"));
+        assertNull(ErrorCode.fromCodeOrNull("not-exist"));
+        assertNull(ErrorCode.fromCodeOrNull(null));
+    }
+}
 

@@ -41,6 +41,26 @@ class PageRequestTest {
         assertEquals(CommonConstants.MAX_PAGE_SIZE, pr.getPageSize());
         assertEquals(OrderDirection.DESC.getCode(), pr.getOrderDirection());
     }
+
+    @Test
+    void getOffset_corrects_values_assigned_after_construction() {
+        PageRequest pr = new PageRequest();
+        pr.setPageIndex(null);
+        pr.setPageSize(CommonConstants.MAX_PAGE_SIZE + 1);
+        pr.setOrderDirection("WRONG");
+
+        assertEquals(0L, pr.getOffset());
+        assertEquals(CommonConstants.DEFAULT_PAGE_NUMBER, pr.getPageIndex());
+        assertEquals(CommonConstants.MAX_PAGE_SIZE, pr.getPageSize());
+        assertEquals(OrderDirection.ASC.getCode(), pr.getOrderDirection());
+
+        pr.setPageIndex(0L);
+        pr.setPageSize(-1L);
+        pr.setOrderDirection(null);
+
+        assertEquals(0L, pr.getOffset());
+        assertEquals(CommonConstants.DEFAULT_PAGE_NUMBER, pr.getPageIndex());
+        assertEquals(CommonConstants.DEFAULT_PAGE_SIZE, pr.getPageSize());
+        assertEquals(OrderDirection.ASC.getCode(), pr.getOrderDirection());
+    }
 }
-
-

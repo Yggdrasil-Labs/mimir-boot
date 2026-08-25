@@ -50,6 +50,24 @@ public enum CommonStatus {
         }
         return DISABLED;
     }
+
+    /**
+     * 根据状态码获取枚举，未知状态码返回 null
+     *
+     * @param code 状态码
+     * @return 状态枚举或 null
+     */
+    public static CommonStatus fromCodeOrNull(Integer code) {
+        if (code == null) {
+            return null;
+        }
+        for (CommonStatus status : values()) {
+            if (status.getCode().equals(code)) {
+                return status;
+            }
+        }
+        return null;
+    }
     
     /**
      * 判断是否为启用状态

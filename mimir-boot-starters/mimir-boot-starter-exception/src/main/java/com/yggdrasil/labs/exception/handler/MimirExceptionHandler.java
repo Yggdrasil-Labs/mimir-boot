@@ -112,16 +112,19 @@ public class MimirExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
-        ArrayList<String> errors = e.getBindingResult().getFieldErrors().stream()
+        ArrayList<String> responseErrors = e.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> logErrors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> sanitizeForLog(error.getField()) + ": " + sanitizeForLog(error.getDefaultMessage()))
                 .collect(Collectors.toCollection(ArrayList::new));
         log.warn("参数校验异常: errors={}, uri={}",
-                errors,
+                logErrors,
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
         try {
-            return responseFactory.createResponse(code, message, errors);
+            return responseFactory.createResponse(code, message, responseErrors);
         } catch (Exception ex) {
             log.error("responseFactory 异常，降级返回 R", ex);
             return R.fail(code, message);
@@ -131,16 +134,19 @@ public class MimirExceptionHandler {
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleBindException(BindException e, HttpServletRequest request) {
-        ArrayList<String> errors = e.getBindingResult().getFieldErrors().stream()
+        ArrayList<String> responseErrors = e.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getDefaultMessage())
+                .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> logErrors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> sanitizeForLog(error.getDefaultMessage()))
                 .collect(Collectors.toCollection(ArrayList::new));
         log.warn("参数绑定异常: errors={}, uri={}",
-                errors,
+                logErrors,
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
         try {
-            return responseFactory.createResponse(code, message, errors);
+            return responseFactory.createResponse(code, message, responseErrors);
         } catch (Exception ex) {
             log.error("responseFactory 异常，降级返回 R", ex);
             return R.fail(code, message);

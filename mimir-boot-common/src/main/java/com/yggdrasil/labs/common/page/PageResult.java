@@ -70,6 +70,7 @@ public class PageResult<T extends Serializable> implements Serializable {
      * @param pageSize   页大小
      */
     public PageResult(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
+        validatePageParameters(totalCount, pageIndex, pageSize);
         this.data = data;
         this.totalCount = totalCount;
         this.pageIndex = pageIndex;
@@ -77,6 +78,13 @@ public class PageResult<T extends Serializable> implements Serializable {
         this.totalPages = pageSize == 0 ? 0 : (totalCount + pageSize - 1) / pageSize;
         this.hasNext = pageIndex < totalPages;
         this.hasPrevious = pageIndex > 1;
+    }
+
+    private static void validatePageParameters(Long totalCount, Long pageIndex, Long pageSize) {
+        if (totalCount == null || pageIndex == null || pageSize == null
+                || totalCount < 0 || pageIndex < 1 || pageSize < 1) {
+            throw new IllegalArgumentException("分页参数无效");
+        }
     }
 
     /**

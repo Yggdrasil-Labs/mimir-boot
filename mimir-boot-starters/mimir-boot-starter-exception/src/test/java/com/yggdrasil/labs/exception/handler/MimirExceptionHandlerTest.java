@@ -1,5 +1,8 @@
 package com.yggdrasil.labs.exception.handler;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
@@ -36,6 +39,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.slf4j.LoggerFactory;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -143,7 +147,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getMessage(), r.getMessage());
         assertNotNull(r.getData());
         assertInstanceOf(ArrayList.class, r.getData());
-        assertFalse(((ArrayList<?>) r.getData()).isEmpty());
+        assertEquals(List.of("username: 用户名不能为空", "email: 邮箱格式不正确"), r.getData());
     }
 
     @Test
@@ -157,6 +161,31 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getMessage(), r.getMessage());
         assertNotNull(r.getData());
+        assertEquals(List.of("用户名不能为空"), r.getData());
+    }
+
+    @Test
+    void method_argument_validation_keeps_raw_response_data_but_sanitizes_logs() {
+        String maliciousField = "user\nname";
+        String maliciousMessage = "用户名不能为空\n<script>alert('xss')</script>";
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of(new FieldError("test", maliciousField, maliciousMessage)));
+        MethodArgumentNotValidException exception = new MethodArgumentNotValidException(mock(MethodParameter.class), bindingResult);
+        Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            R<?> response = (R<?>) handler.handleMethodArgumentNotValidException(exception, request);
+
+            assertEquals(List.of(maliciousField + ": " + maliciousMessage), response.getData());
+            assertTrue(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .noneMatch(message -> message.contains(maliciousField) || message.contains(maliciousMessage)));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test

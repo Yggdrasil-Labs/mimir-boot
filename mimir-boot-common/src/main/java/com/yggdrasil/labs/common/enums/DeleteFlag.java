@@ -47,6 +47,24 @@ public enum DeleteFlag {
         }
         return NOT_DELETED;
     }
+
+    /**
+     * 根据删除标志码获取枚举，未知标志码返回 null
+     *
+     * @param code 删除标志码
+     * @return 删除标志枚举或 null
+     */
+    public static DeleteFlag fromCodeOrNull(Integer code) {
+        if (code == null) {
+            return null;
+        }
+        for (DeleteFlag flag : values()) {
+            if (flag.getCode().equals(code)) {
+                return flag;
+            }
+        }
+        return null;
+    }
     
     /**
      * 判断是否已删除

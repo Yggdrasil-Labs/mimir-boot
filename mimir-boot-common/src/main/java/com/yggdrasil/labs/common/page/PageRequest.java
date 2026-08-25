@@ -80,6 +80,7 @@ public class PageRequest implements Serializable {
      * @return 偏移量
      */
     public Long getOffset() {
+        validateAndCorrect();
         return (pageIndex - 1) * pageSize;
     }
 
