@@ -147,5 +147,26 @@ class StringCryptoTypeHandlerTest extends BaseUnitTest {
         String result = handler.fromString("test");
         assertEquals("test", result);
     }
-}
 
+    @Test
+    void contextConstructor_readsV2ButWritesV1_and_threeArgumentConstructorWritesV2() throws Exception {
+        CryptoKeyProvider keyProvider = () -> testKey;
+        StringCryptoTypeHandler v1Writer = new StringCryptoTypeHandler(keyProvider, "orders");
+        StringCryptoTypeHandler v2Writer = new StringCryptoTypeHandler(keyProvider, "orders", true);
+        PreparedStatement statement = mock(PreparedStatement.class);
+
+        v1Writer.setNonNullParameter(statement, 1, "value", null);
+        org.mockito.ArgumentCaptor<String> v1 = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(statement).setString(eq(1), v1.capture());
+        assertFalse(v1.getValue().startsWith("v2:"));
+
+        ResultSet resultSet = mock(ResultSet.class);
+        when(resultSet.getString("value")).thenReturn(CryptoUtils.encrypt("value", testKey, "orders"));
+        assertEquals("value", v1Writer.getNullableResult(resultSet, "value"));
+
+        v2Writer.setNonNullParameter(statement, 2, "value", null);
+        org.mockito.ArgumentCaptor<String> v2 = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(statement).setString(eq(2), v2.capture());
+        assertTrue(v2.getValue().startsWith("v2:"));
+    }
+}

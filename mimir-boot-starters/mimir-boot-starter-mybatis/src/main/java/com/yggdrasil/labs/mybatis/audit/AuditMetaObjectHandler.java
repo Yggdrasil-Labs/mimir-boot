@@ -2,6 +2,8 @@ package com.yggdrasil.labs.mybatis.audit;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import org.apache.ibatis.reflection.MetaObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 
@@ -11,6 +13,8 @@ import java.time.LocalDateTime;
  * <p>支持字段：createBy、createTime、updateBy、updateTime。</p>
  */
 public class AuditMetaObjectHandler implements MetaObjectHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuditMetaObjectHandler.class);
 
     private final AuditorProvider auditorProvider;
 
@@ -41,9 +45,8 @@ public class AuditMetaObjectHandler implements MetaObjectHandler {
             String v = auditorProvider.currentAuditor();
             return v == null || v.isBlank() ? "system" : v;
         } catch (Exception e) {
+            LOGGER.warn("获取审计人失败，使用 system 作为审计人");
             return "system";
         }
     }
 }
-
-

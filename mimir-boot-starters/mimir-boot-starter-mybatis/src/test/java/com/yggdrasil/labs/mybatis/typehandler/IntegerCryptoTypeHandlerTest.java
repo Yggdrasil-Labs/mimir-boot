@@ -120,5 +120,20 @@ class IntegerCryptoTypeHandlerTest extends BaseUnitTest {
 
         assertEquals(12345, result);
     }
-}
 
+    @Test
+    void constructorPaths_preserveV1ByDefaultAndAllowExplicitV2Write() throws Exception {
+        CryptoKeyProvider provider = () -> testKey;
+        IntegerCryptoTypeHandler v1Writer = new IntegerCryptoTypeHandler(provider, "orders");
+        IntegerCryptoTypeHandler v2Writer = new IntegerCryptoTypeHandler(provider, "orders", true);
+        java.sql.PreparedStatement statement = mock(java.sql.PreparedStatement.class);
+        v1Writer.setNonNullParameter(statement, 1, 42, null);
+        v2Writer.setNonNullParameter(statement, 2, 42, null);
+        org.mockito.ArgumentCaptor<String> v1 = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.ArgumentCaptor<String> v2 = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(statement).setString(eq(1), v1.capture());
+        verify(statement).setString(eq(2), v2.capture());
+        assertFalse(v1.getValue().startsWith("v2:"));
+        assertTrue(v2.getValue().startsWith("v2:"));
+    }
+}

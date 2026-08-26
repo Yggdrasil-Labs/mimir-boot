@@ -5,6 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -230,5 +236,53 @@ class CryptoUtilsTest extends BaseUnitTest {
         // 验证可以正常解密
         String decrypted = CryptoUtils.decrypt(minimalCiphertext, key);
         assertEquals(minimalPlaintext, decrypted);
+    }
+
+    @Test
+    void decrypt_v1_fixture_and_v2_context_ciphertext_follow_the_compatibility_contract() throws Exception {
+        String key = "MDEyMzQ1Njc4OWFiY2RlZg==";
+        String v1Fixture = fixedV1Ciphertext("legacy-value", key);
+
+        assertEquals("legacy-value", CryptoUtils.decrypt(v1Fixture, key, "application-a"));
+
+        String v2 = CryptoUtils.encrypt("v2-value", key, "application-a");
+        assertTrue(v2.startsWith("v2:"));
+        assertEquals("v2-value", CryptoUtils.decrypt(v2, key, "application-a"));
+        IllegalStateException wrongContext = assertThrows(IllegalStateException.class,
+                () -> CryptoUtils.decrypt(v2, key, "application-b"));
+        assertEquals("Decryption failed", wrongContext.getMessage());
+    }
+
+    @Test
+    void decrypt_v2_never_falls_back_to_v1_when_prefix_or_payload_is_invalid() {
+        String key = CryptoUtils.generateKey();
+        for (String ciphertext : new String[] {"v2:", "v2:not-base64", "v2:YWJjZA=="}) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> CryptoUtils.decrypt(ciphertext, key, "application-a"));
+            assertEquals("Decryption failed", exception.getMessage());
+        }
+        assertThrows(IllegalStateException.class, () -> CryptoUtils.decrypt("v2:YWJjZA==", key, " "));
+    }
+
+    @Test
+    void v2_application_aad_does_not_claim_field_or_record_binding() {
+        String key = CryptoUtils.generateKey();
+        String first = CryptoUtils.encrypt("first", key, "same-application");
+        String second = CryptoUtils.encrypt("second", key, "same-application");
+
+        assertEquals("second", CryptoUtils.decrypt(second, key, "same-application"));
+        assertEquals("first", CryptoUtils.decrypt(first, key, "same-application"));
+    }
+
+    private static String fixedV1Ciphertext(String plaintext, String key) throws Exception {
+        byte[] iv = "fixed-v1-iv!".getBytes(StandardCharsets.UTF_8);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Base64.getDecoder().decode(key), "AES"),
+                new GCMParameterSpec(128, iv));
+        byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+        byte[] payload = new byte[iv.length + ciphertext.length];
+        System.arraycopy(iv, 0, payload, 0, iv.length);
+        System.arraycopy(ciphertext, 0, payload, iv.length, ciphertext.length);
+        return Base64.getEncoder().encodeToString(payload);
     }
 }

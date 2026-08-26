@@ -14,6 +14,14 @@ public class IntegerCryptoTypeHandler extends AbstractCryptoTypeHandler<Integer>
         super(keyProvider);
     }
 
+    public IntegerCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext) {
+        super(keyProvider, cryptoContext);
+    }
+
+    public IntegerCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
+        super(keyProvider, cryptoContext, cryptoV2WriteEnabled);
+    }
+
     @Override
     protected String toString(Integer value) {
         return value == null ? "" : String.valueOf(value);
@@ -24,4 +32,3 @@ public class IntegerCryptoTypeHandler extends AbstractCryptoTypeHandler<Integer>
         return value == null || value.isEmpty() ? null : Integer.parseInt(value);
     }
 }
-

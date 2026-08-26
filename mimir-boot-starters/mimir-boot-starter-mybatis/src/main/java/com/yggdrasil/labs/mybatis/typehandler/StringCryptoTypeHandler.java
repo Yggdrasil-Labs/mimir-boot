@@ -14,6 +14,14 @@ public class StringCryptoTypeHandler extends AbstractCryptoTypeHandler<String> {
         super(keyProvider);
     }
 
+    public StringCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext) {
+        super(keyProvider, cryptoContext);
+    }
+
+    public StringCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
+        super(keyProvider, cryptoContext, cryptoV2WriteEnabled);
+    }
+
     @Override
     protected String toString(String value) {
         return value == null ? "" : value;
@@ -24,4 +32,3 @@ public class StringCryptoTypeHandler extends AbstractCryptoTypeHandler<String> {
         return value;
     }
 }
-

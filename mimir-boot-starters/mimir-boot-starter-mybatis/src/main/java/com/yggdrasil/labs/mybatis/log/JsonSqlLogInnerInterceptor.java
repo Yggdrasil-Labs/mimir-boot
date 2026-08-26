@@ -33,7 +33,7 @@ public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
         try {
             BoundSql boundSql = sh.getBoundSql();
             Map<String, Object> payload = new HashMap<>();
-            payload.put("sql", boundSql.getSql());
+            payload.put("sql", SqlLogMaskUtils.maskSql(boundSql.getSql()));
             Object params = boundSql.getParameterObject();
             payload.put("params", SqlLogMaskUtils.maskParams(params));
             String jsonLog = JSON.toJSONString(payload);
@@ -46,4 +46,3 @@ public class JsonSqlLogInnerInterceptor implements InnerInterceptor {
         }
     }
 }
-

@@ -34,6 +34,32 @@ class MybatisPropertiesTest extends BaseUnitTest {
         assertTrue(properties.getMapperPackages().isEmpty());
         assertNull(properties.getEnableJsonSqlLog());
         assertNull(properties.getCryptoKey());
+        assertFalse(properties.isCryptoV2WriteEnabled());
+    }
+
+    @Test
+    void effectiveMapperPackages_are_deduplicated_and_legacy_query_is_deprecated() throws Exception {
+        properties.setMapperPackages(Arrays.asList("com.example.mapper", "com.example.mapper"));
+
+        String effective = properties.getEffectiveMapperPackages();
+
+        assertTrue(effective.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        assertTrue(effective.contains("com.example.mapper"));
+        assertEquals(effective, properties.getFinalMapperPackages());
+        Deprecated deprecated = MybatisProperties.class.getMethod("getFinalMapperPackages")
+                .getAnnotation(Deprecated.class);
+        assertNotNull(deprecated);
+        assertEquals("2.2.1", deprecated.since());
+        assertFalse(deprecated.forRemoval());
+    }
+
+    @Test
+    void cryptoContext_and_v2WriteSwitch_are_exposed_with_safe_default() {
+        properties.setCryptoContext("orders-service");
+        properties.setCryptoV2WriteEnabled(true);
+
+        assertEquals("orders-service", properties.getCryptoContext());
+        assertTrue(properties.isCryptoV2WriteEnabled());
     }
 
     @Test
@@ -159,4 +185,3 @@ class MybatisPropertiesTest extends BaseUnitTest {
         AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
     }
 }
-

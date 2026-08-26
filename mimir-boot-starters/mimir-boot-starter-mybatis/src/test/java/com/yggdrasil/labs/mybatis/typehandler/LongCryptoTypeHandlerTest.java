@@ -108,5 +108,20 @@ class LongCryptoTypeHandlerTest extends BaseUnitTest {
         Long decrypted = handler.getNullableResult(rs, "column_name");
         assertEquals(originalValue, decrypted);
     }
-}
 
+    @Test
+    void constructorPaths_preserveV1ByDefaultAndAllowExplicitV2Write() throws Exception {
+        CryptoKeyProvider provider = () -> testKey;
+        LongCryptoTypeHandler v1Writer = new LongCryptoTypeHandler(provider, "orders");
+        LongCryptoTypeHandler v2Writer = new LongCryptoTypeHandler(provider, "orders", true);
+        java.sql.PreparedStatement statement = mock(java.sql.PreparedStatement.class);
+        v1Writer.setNonNullParameter(statement, 1, 42L, null);
+        v2Writer.setNonNullParameter(statement, 2, 42L, null);
+        org.mockito.ArgumentCaptor<String> v1 = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.ArgumentCaptor<String> v2 = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(statement).setString(eq(1), v1.capture());
+        verify(statement).setString(eq(2), v2.capture());
+        assertFalse(v1.getValue().startsWith("v2:"));
+        assertTrue(v2.getValue().startsWith("v2:"));
+    }
+}

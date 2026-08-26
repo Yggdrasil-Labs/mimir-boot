@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.mybatis.config;
 
+import com.yggdrasil.labs.mybatis.util.MapperPackageDetector;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.CollectionUtils;
 
@@ -39,6 +40,12 @@ public class MybatisProperties {
      */
     private String cryptoKey;
 
+    /** 应用级 v2 密文上下文。 */
+    private String cryptoContext;
+
+    /** 是否将新写入切换为 v2，默认关闭以支持滚动升级。 */
+    private boolean cryptoV2WriteEnabled;
+
     public List<String> getMapperPackages() {
         return mapperPackages;
     }
@@ -53,14 +60,21 @@ public class MybatisProperties {
      *
      * @return 最终的扫描包列表，用逗号分隔的字符串
      */
+    @Deprecated(since = "2.2.1", forRemoval = false)
     public String getFinalMapperPackages() {
+        return getEffectiveMapperPackages();
+    }
+
+    /**
+     * 获取实际交给 MapperScannerConfigurer 的去重扫描包集合。
+     */
+    public String getEffectiveMapperPackages() {
         Set<String> packages = new LinkedHashSet<>();
-        // 始终包含默认包
         packages.add(DEFAULT_MAPPER_PACKAGE);
-        // 添加用户配置的包
         if (!CollectionUtils.isEmpty(mapperPackages)) {
             packages.addAll(mapperPackages);
         }
+        packages.addAll(MapperPackageDetector.detectMapperPackages());
         return String.join(",", packages);
     }
 
@@ -87,5 +101,20 @@ public class MybatisProperties {
     public void setCryptoKey(String cryptoKey) {
         this.cryptoKey = cryptoKey;
     }
-}
 
+    public String getCryptoContext() {
+        return cryptoContext;
+    }
+
+    public void setCryptoContext(String cryptoContext) {
+        this.cryptoContext = cryptoContext;
+    }
+
+    public boolean isCryptoV2WriteEnabled() {
+        return cryptoV2WriteEnabled;
+    }
+
+    public void setCryptoV2WriteEnabled(boolean cryptoV2WriteEnabled) {
+        this.cryptoV2WriteEnabled = cryptoV2WriteEnabled;
+    }
+}

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * SQL 参数脱敏工具。
@@ -30,6 +31,10 @@ public class SqlLogMaskUtils {
             "password", "passwd", "pwd", "token", "accesstoken", "refreshtoken", "idtoken",
             "secret", "clientsecret", "authorization", "apikey");
 
+    private static final Pattern SENSITIVE_SQL_ASSIGNMENT = Pattern.compile(
+            "(?i)\\b(password|passwd|pwd|token|access[_-]?token|refresh[_-]?token|id[_-]?token|secret|client[_-]?secret|authorization|api[_-]?key)"
+                    + "\\b(\\s*=\\s*)(?:'[^']*'|\\\"[^\\\"]*\\\"|[^\\s,;)]+)");
+
     private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
     }
@@ -38,6 +43,17 @@ public class SqlLogMaskUtils {
         // 使用 IdentityHashMap 来避免调用对象的 hashCode() 方法
         // IdentityHashMap 使用对象引用（==）而不是 equals() 和 hashCode() 来比较键
         return maskParams(params, 0, new IdentityHashMap<>());
+    }
+
+    /**
+     * 对 SQL 文本中的敏感赋值进行脱敏，避免常量值绕过参数对象的脱敏路径。
+     */
+    public static String maskSql(String sql) {
+        if (sql == null || sql.isEmpty()) {
+            return sql;
+        }
+        return SENSITIVE_SQL_ASSIGNMENT.matcher(sql)
+                .replaceAll("$1$2" + CommonConstants.MASKED);
     }
 
     private static Object maskParams(Object params, int depth, IdentityHashMap<Object, Boolean> visited) {

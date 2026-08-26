@@ -10,6 +10,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.stream.Stream;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -97,5 +103,25 @@ class AuditMetaObjectHandlerTest extends BaseUnitTest {
         assertNotNull(handler1);
         assertNotNull(handler2);
         assertNotSame(handler1, handler2);
+    }
+
+    @Test
+    void auditorProviderFailure_fallsBackToSystemAndWritesWarn() throws Exception {
+        AuditorProvider provider = () -> { throw new IllegalStateException("provider-secret"); };
+        AuditMetaObjectHandler handler = new AuditMetaObjectHandler(provider);
+        Logger logger = (Logger) LoggerFactory.getLogger(AuditMetaObjectHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        logger.setLevel(Level.WARN);
+        try {
+            java.lang.reflect.Method method = AuditMetaObjectHandler.class.getDeclaredMethod("safeAuditor");
+            method.setAccessible(true);
+            assertEquals("system", method.invoke(handler));
+            assertTrue(appender.list.stream().anyMatch(event -> event.getLevel() == Level.WARN));
+            assertFalse(appender.list.stream().anyMatch(event -> event.getFormattedMessage().contains("provider-secret")));
+        } finally {
+            logger.detachAppender(appender);
+        }
     }
 }

@@ -12,6 +12,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import org.springframework.util.StringUtils;
+
 /**
  * 通用加解密 TypeHandler 基类。
  *
@@ -21,9 +23,25 @@ import java.sql.SQLException;
 public abstract class AbstractCryptoTypeHandler<T> extends BaseTypeHandler<T> {
 
     private final CryptoKeyProvider keyProvider;
+    private final String cryptoContext;
+    private final boolean cryptoV2WriteEnabled;
 
     protected AbstractCryptoTypeHandler(CryptoKeyProvider keyProvider) {
+        this(keyProvider, null, false);
+    }
+
+    protected AbstractCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext) {
+        this(keyProvider, cryptoContext, false);
+    }
+
+    protected AbstractCryptoTypeHandler(
+            CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
+        if (cryptoV2WriteEnabled && !StringUtils.hasText(cryptoContext)) {
+            throw new IllegalStateException("启用 MyBatis v2 密文写入时必须配置 mimir.boot.mybatis.crypto-context");
+        }
         this.keyProvider = keyProvider;
+        this.cryptoContext = cryptoContext;
+        this.cryptoV2WriteEnabled = cryptoV2WriteEnabled;
     }
 
     protected abstract String toString(T value);
@@ -33,7 +51,9 @@ public abstract class AbstractCryptoTypeHandler<T> extends BaseTypeHandler<T> {
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, T parameter, JdbcType jdbcType) throws SQLException {
         String plaintext = toString(parameter);
-        String encrypted = CryptoUtils.encrypt(plaintext, keyProvider.getKey());
+        String encrypted = cryptoV2WriteEnabled
+                ? CryptoUtils.encrypt(plaintext, keyProvider.getKey(), cryptoContext)
+                : CryptoUtils.encrypt(plaintext, keyProvider.getKey());
         ps.setString(i, encrypted);
     }
 
@@ -60,11 +80,12 @@ public abstract class AbstractCryptoTypeHandler<T> extends BaseTypeHandler<T> {
             return null;
         }
         try {
-            String decrypted = CryptoUtils.decrypt(encrypted, keyProvider.getKey());
+            String decrypted = encrypted.startsWith("v2:")
+                    ? CryptoUtils.decrypt(encrypted, keyProvider.getKey(), cryptoContext)
+                    : CryptoUtils.decrypt(encrypted, keyProvider.getKey());
             return fromString(decrypted);
         } catch (Exception e) {
             throw new SystemException(ErrorCode.SYSTEM_ERROR, e);
         }
     }
 }
-

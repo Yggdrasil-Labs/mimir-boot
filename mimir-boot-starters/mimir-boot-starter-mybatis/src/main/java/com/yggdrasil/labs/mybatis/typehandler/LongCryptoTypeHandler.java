@@ -14,6 +14,14 @@ public class LongCryptoTypeHandler extends AbstractCryptoTypeHandler<Long> {
         super(keyProvider);
     }
 
+    public LongCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext) {
+        super(keyProvider, cryptoContext);
+    }
+
+    public LongCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
+        super(keyProvider, cryptoContext, cryptoV2WriteEnabled);
+    }
+
     @Override
     protected String toString(Long value) {
         return value == null ? "" : String.valueOf(value);
@@ -24,4 +32,3 @@ public class LongCryptoTypeHandler extends AbstractCryptoTypeHandler<Long> {
         return value == null || value.isEmpty() ? null : Long.parseLong(value);
     }
 }
-

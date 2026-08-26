@@ -49,21 +49,39 @@ public class MybatisPlusCryptoConfiguration {
         }
     }
 
-    @Bean
     public com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler stringCryptoTypeHandler(
             CryptoKeyProvider keyProvider) {
         return new com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler(keyProvider);
     }
 
-    @Bean
     public com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler longCryptoTypeHandler(
             CryptoKeyProvider keyProvider) {
         return new com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler(keyProvider);
     }
 
-    @Bean
     public com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler integerCryptoTypeHandler(
             CryptoKeyProvider keyProvider) {
         return new com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler(keyProvider);
+    }
+
+    @Bean("stringCryptoTypeHandler")
+    public com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler configuredStringCryptoTypeHandler(
+            CryptoKeyProvider keyProvider, MybatisProperties properties) {
+        return new com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler(keyProvider,
+                properties.getCryptoContext(), properties.isCryptoV2WriteEnabled());
+    }
+
+    @Bean("longCryptoTypeHandler")
+    public com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler configuredLongCryptoTypeHandler(
+            CryptoKeyProvider keyProvider, MybatisProperties properties) {
+        return new com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler(keyProvider,
+                properties.getCryptoContext(), properties.isCryptoV2WriteEnabled());
+    }
+
+    @Bean("integerCryptoTypeHandler")
+    public com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler configuredIntegerCryptoTypeHandler(
+            CryptoKeyProvider keyProvider, MybatisProperties properties) {
+        return new com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler(keyProvider,
+                properties.getCryptoContext(), properties.isCryptoV2WriteEnabled());
     }
 }

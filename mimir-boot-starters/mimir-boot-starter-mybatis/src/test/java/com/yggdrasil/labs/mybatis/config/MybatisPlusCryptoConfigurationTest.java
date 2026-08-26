@@ -183,6 +183,36 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
         assertInstanceOf(IntegerCryptoTypeHandler.class, handler);
     }
 
+    @Test
+    void configuredBeans_keepLegacyNames_and_onlyWriteV2_when_context_and_switch_are_enabled() throws Exception {
+        String key = CryptoUtils.generateKey();
+        runner.withPropertyValues(
+                        "mimir.boot.mybatis.crypto-enabled=true",
+                        "mimir.boot.mybatis.crypto-key=" + key,
+                        "mimir.boot.mybatis.crypto-context=orders",
+                        "mimir.boot.mybatis.crypto-v2-write-enabled=true")
+                .run(context -> {
+                    assertInstanceOf(StringCryptoTypeHandler.class, context.getBean("stringCryptoTypeHandler"));
+                    assertInstanceOf(LongCryptoTypeHandler.class, context.getBean("longCryptoTypeHandler"));
+                    assertInstanceOf(IntegerCryptoTypeHandler.class, context.getBean("integerCryptoTypeHandler"));
+                    PreparedStatement statement = mock(PreparedStatement.class);
+                    StringCryptoTypeHandler handler = context.getBean(StringCryptoTypeHandler.class);
+                    handler.setNonNullParameter(statement, 1, "secret", null);
+                    org.mockito.ArgumentCaptor<String> ciphertext = org.mockito.ArgumentCaptor.forClass(String.class);
+                    verify(statement).setString(eq(1), ciphertext.capture());
+                    assertTrue(ciphertext.getValue().startsWith("v2:"));
+                });
+    }
+
+    @Test
+    void v2WriteSwitch_withoutContext_failsAtStartup() {
+        runner.withPropertyValues(
+                        "mimir.boot.mybatis.crypto-enabled=true",
+                        "mimir.boot.mybatis.crypto-key=" + CryptoUtils.generateKey(),
+                        "mimir.boot.mybatis.crypto-v2-write-enabled=true")
+                .run(context -> org.assertj.core.api.Assertions.assertThat(context).hasFailed());
+    }
+
     @Configuration(proxyBeanMethods = false)
     static class CustomCryptoKeyProviderConfiguration {
 

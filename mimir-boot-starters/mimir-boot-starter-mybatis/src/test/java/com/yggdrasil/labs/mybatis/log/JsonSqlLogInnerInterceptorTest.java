@@ -148,6 +148,25 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldMaskSensitiveValuesInBothSqlTextAndParameters() {
+        StatementHandler statementHandler = mock(StatementHandler.class);
+        BoundSql boundSql = mock(BoundSql.class);
+        Connection connection = mock(Connection.class);
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("secret", "parameter-secret");
+
+        when(statementHandler.getBoundSql()).thenReturn(boundSql);
+        when(boundSql.getSql()).thenReturn("SELECT * FROM account WHERE password = 'sql-secret'");
+        when(boundSql.getParameterObject()).thenReturn(params);
+
+        interceptor.beforePrepare(statementHandler, connection, null);
+
+        String message = listAppender.list.get(0).getMessage();
+        assertFalse(message.contains("sql-secret"));
+        assertFalse(message.contains("parameter-secret"));
+    }
+
+    @Test
     void testBeforePrepareWithException() {
         StatementHandler statementHandler = mock(StatementHandler.class);
         Connection connection = mock(Connection.class);
