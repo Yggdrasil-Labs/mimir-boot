@@ -71,5 +71,10 @@ class BaseWebTestTest extends BaseWebTest {
         // 验证 test profile 已激活
         assertNotNull(this, "测试实例不应为 null");
     }
-}
 
+    @Test
+    void testBaseWebTest_ReusesIntegrationLifecycle() {
+        assertEquals(BaseIntegrationTest.class, BaseWebTest.class.getSuperclass(),
+                "Web 测试基类应复用统一的 setup/teardown 生命周期");
+    }
+}

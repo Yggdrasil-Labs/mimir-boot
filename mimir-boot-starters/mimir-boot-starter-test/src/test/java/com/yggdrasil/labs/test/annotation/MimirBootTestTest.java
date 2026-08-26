@@ -36,6 +36,8 @@ class MimirBootTestTest {
     @MimirBootTest(
             classes = {String.class},
             properties = {"test.property=value"},
+            useDefaultFilters = false,
+            excludeAutoConfiguration = {Integer.class},
             webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
     )
     static class TestClassWithCustomProperties {
@@ -85,6 +87,9 @@ class MimirBootTestTest {
         assertEquals(String.class, annotation.classes()[0], "classes 应包含 String.class");
         assertEquals(1, annotation.properties().length, "properties 应包含 1 个属性");
         assertEquals("test.property=value", annotation.properties()[0], "properties 应包含指定值");
+        assertFalse(annotation.useDefaultFilters(), "保留的兼容属性应继续接受旧调用方赋值");
+        assertArrayEquals(new Class<?>[]{Integer.class}, annotation.excludeAutoConfiguration(),
+                "保留的兼容属性应继续接受旧调用方赋值");
         assertEquals(SpringBootTest.WebEnvironment.RANDOM_PORT, annotation.webEnvironment(),
                 "webEnvironment 应为 RANDOM_PORT");
     }

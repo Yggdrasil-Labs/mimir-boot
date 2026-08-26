@@ -19,8 +19,8 @@ import org.springframework.context.annotation.Profile;
  */
 @AutoConfiguration
 @Profile("test")
+@Deprecated(since = "2.2.1", forRemoval = false)
 public class TestAutoConfiguration {
     // 测试环境的自动配置
     // 可以根据需要添加测试专用的 Bean 配置
 }
-

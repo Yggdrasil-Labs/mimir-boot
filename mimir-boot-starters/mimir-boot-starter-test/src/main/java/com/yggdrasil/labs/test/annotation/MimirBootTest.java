@@ -60,7 +60,7 @@ public @interface MimirBootTest {
      * 已弃用的兼容属性，此属性从未影响 Spring Boot 测试过滤行为。
      *
      * @return 始终仅作为注解元数据保留
-     * @deprecated 无有效语义，仅为保持 2.x 源兼容而保留
+     * @deprecated 无有效语义，仅为保持 2.x 二进制与源码兼容而保留
      */
     @Deprecated(since = "2.1.1", forRemoval = false)
     boolean useDefaultFilters() default true;
@@ -77,7 +77,7 @@ public @interface MimirBootTest {
      * 已弃用的兼容属性，此属性从未排除 Spring Boot 自动配置。
      *
      * @return 始终仅作为注解元数据保留
-     * @deprecated 无有效语义，仅为保持 2.x 源兼容而保留
+     * @deprecated 无有效语义，仅为保持 2.x 二进制与源码兼容而保留
      */
     @Deprecated(since = "2.1.1", forRemoval = false)
     Class<?>[] excludeAutoConfiguration() default {};

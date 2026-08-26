@@ -115,13 +115,7 @@ public final class LogTestUtils {
      * @throws AssertionError 如果日志级别不匹配
      */
     public static void assertLogLevel(ListAppender<ILoggingEvent> appender, int index, Level expectedLevel) {
-        ILoggingEvent event = validateAndGetEvent(appender, index);
-        Level actualLevel = event.getLevel();
-        if (!expectedLevel.equals(actualLevel)) {
-            throw new AssertionError(
-                    String.format("日志级别不匹配: 期望 %s，实际 %s，消息: %s",
-                            expectedLevel, actualLevel, event.getFormattedMessage()));
-        }
+        AssertUtils.assertLogLevel(validateAndGetEvent(appender, index), expectedLevel);
     }
 
     /**
@@ -133,13 +127,7 @@ public final class LogTestUtils {
      * @throws AssertionError 如果日志不包含指定文本
      */
     public static void assertLogContains(ListAppender<ILoggingEvent> appender, int index, String expectedText) {
-        ILoggingEvent event = validateAndGetEvent(appender, index);
-        String message = event.getFormattedMessage();
-        if (!message.contains(expectedText)) {
-            throw new AssertionError(
-                    String.format("日志不包含期望文本: 期望包含 '%s'，实际消息: %s",
-                            expectedText, message));
-        }
+        AssertUtils.assertLogContains(validateAndGetEvent(appender, index), expectedText);
     }
 
     /**
@@ -165,5 +153,19 @@ public final class LogTestUtils {
     public static ILoggingEvent getLogEvent(ListAppender<ILoggingEvent> appender, int index) {
         return validateAndGetEvent(appender, index);
     }
-}
 
+    /**
+     * 获取已捕获的日志数量。
+     *
+     * <p>ListAppender 的事件列表访问集中在此 Logback 适配边界，通用断言工具不依赖其内部字段。</p>
+     *
+     * @param appender ListAppender 实例
+     * @return 已捕获的日志数量
+     */
+    public static int getLogSize(ListAppender<ILoggingEvent> appender) {
+        if (appender == null || appender.list == null) {
+            throw new AssertionError("ListAppender 或日志列表为 null");
+        }
+        return appender.list.size();
+    }
+}

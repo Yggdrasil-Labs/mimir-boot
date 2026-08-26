@@ -64,5 +64,10 @@ class BaseIntegrationTestTest extends BaseIntegrationTest {
         // 这通过 @ActiveProfiles("test") 实现
         assertNotNull(this, "测试实例不应为 null");
     }
-}
 
+    @Test
+    void testBaseIntegrationTest_ReusesUnitLifecycle() {
+        assertEquals(BaseUnitTest.class, BaseIntegrationTest.class.getSuperclass(),
+                "集成测试基类应复用统一的 setup/teardown 生命周期");
+    }
+}

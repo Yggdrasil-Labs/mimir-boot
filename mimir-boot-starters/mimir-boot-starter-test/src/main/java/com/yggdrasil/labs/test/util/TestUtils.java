@@ -60,7 +60,7 @@ public final class TestUtils {
      * @return userId
      */
     public static String randomUserId() {
-        return "user-" + System.currentTimeMillis();
+        return "user-" + randomUuid();
     }
 
     /**

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,20 +73,15 @@ class TestUtilsTest {
 
     @Test
     void testRandomUserId() {
-        String userId1 = TestUtils.randomUserId();
-        // 等待一小段时间确保时间戳不同
-        try {
-            Thread.sleep(1); // NOSONAR - 测试需要确保时间戳不同
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        Set<String> userIds = new HashSet<>();
+        for (int index = 0; index < 10_000; index++) {
+            String userId = TestUtils.randomUserId();
+            assertNotNull(userId, "userId 不应为 null");
+            assertTrue(userId.startsWith("user-"), "userId 应以 'user-' 开头");
+            userIds.add(userId);
         }
-        String userId2 = TestUtils.randomUserId();
 
-        assertNotNull(userId1, "userId 不应为 null");
-        assertNotNull(userId2, "userId 不应为 null");
-        assertTrue(userId1.startsWith("user-"), "userId 应以 'user-' 开头");
-        assertTrue(userId2.startsWith("user-"), "userId 应以 'user-' 开头");
-        assertNotEquals(userId1, userId2, "两次生成的 userId 应该不同（基于时间戳）");
+        assertEquals(10_000, userIds.size(), "连续生成 10000 个 userId 必须全部唯一");
     }
 
     @Test
@@ -326,4 +323,3 @@ class TestUtilsTest {
         assertNull(MDC.get("ip"), "清理后 ip 应为 null");
     }
 }
-

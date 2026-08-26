@@ -192,9 +192,7 @@ public final class AssertUtils {
      * @param message       错误消息
      */
     public static void assertLogSize(ListAppender<ILoggingEvent> appender, int expectedSize, String message) {
-        Assertions.assertNotNull(appender, message + ": ListAppender 不能为 null");
-        Assertions.assertNotNull(appender.list, message + ": 日志列表不能为 null");
-        int actualSize = appender.list.size();
+        int actualSize = LogTestUtils.getLogSize(appender);
         Assertions.assertEquals(expectedSize, actualSize,
                 message + ": 日志数量不匹配，期望 " + expectedSize + "，实际 " + actualSize);
     }
@@ -209,4 +207,3 @@ public final class AssertUtils {
         assertLogSize(appender, expectedSize, "日志数量断言失败");
     }
 }
-

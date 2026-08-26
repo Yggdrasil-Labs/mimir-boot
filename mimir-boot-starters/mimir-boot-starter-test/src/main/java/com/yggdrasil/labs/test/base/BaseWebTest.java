@@ -1,8 +1,5 @@
 package com.yggdrasil.labs.test.base;
 
-import com.yggdrasil.labs.test.util.TestUtils;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -38,42 +35,5 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-public abstract class BaseWebTest {
-
-    /**
-     * 测试前准备
-     */
-    @BeforeEach
-    void setUpBase() {
-        // 清理测试环境
-        TestUtils.cleanupTestEnvironment();
-        // 子类可以重写此方法添加额外的准备逻辑
-        setUp();
-    }
-
-    /**
-     * 测试后清理
-     */
-    @AfterEach
-    void tearDownBase() {
-        // 清理测试环境
-        TestUtils.cleanupTestEnvironment();
-        // 子类可以重写此方法添加额外的清理逻辑
-        tearDown();
-    }
-
-    /**
-     * 子类可以重写此方法添加测试前的准备逻辑
-     */
-    protected void setUp() {
-        // 默认空实现，子类可重写
-    }
-
-    /**
-     * 子类可以重写此方法添加测试后的清理逻辑
-     */
-    protected void tearDown() {
-        // 默认空实现，子类可重写
-    }
+public abstract class BaseWebTest extends BaseIntegrationTest {
 }
-
