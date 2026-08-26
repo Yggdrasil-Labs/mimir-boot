@@ -14,6 +14,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
@@ -23,8 +24,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Nacos 配置加密自动配置测试
@@ -250,18 +249,31 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     @Test
     void shouldRefreshDecryptedPropertyAfterEnvironmentChange() {
         Map<String, Object> props = new HashMap<>();
+        props.put("mimir.boot.nacos.encrypt.enabled", true);
+        props.put("mimir.boot.nacos.encrypt.key", testKey);
         props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("first-secret", testKey) + ")");
         environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
         configuration.processDecrypt(environment);
 
         props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("refreshed-secret", testKey) + ")");
-        ApplicationContext context = mock(ApplicationContext.class);
-        when(context.getEnvironment()).thenReturn(environment);
+        ApplicationContext context = applicationContext(environment);
         configuration.setApplicationContext(context);
 
         configuration.onEnvironmentChange(new EnvironmentChangeEvent(Set.of("app.secret")));
 
         assertEquals("refreshed-secret", environment.getProperty("app.secret"));
+    }
+
+    @Test
+    void shouldNotDecryptOnEnvironmentChangeWhenNoEncryptPrefixIsBound() {
+        String encrypted = "ENC(" + ConfigCryptoUtils.encrypt("refresh-secret", testKey) + ")";
+        environment.getPropertySources().addFirst(new MapPropertySource("nacos", Map.of("app.secret", encrypted)));
+        ApplicationContext context = applicationContext(environment);
+        configuration.setApplicationContext(context);
+
+        configuration.onEnvironmentChange(new EnvironmentChangeEvent(Set.of("app.secret")));
+
+        assertEquals(encrypted, environment.getProperty("app.secret"));
     }
 
     @Test
@@ -309,6 +321,12 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
 
         assertInstanceOf(Ordered.class, listener);
         assertEquals(Ordered.HIGHEST_PRECEDENCE, ((Ordered) listener).getOrder());
+    }
+
+    private static ApplicationContext applicationContext(StandardEnvironment environment) {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.setEnvironment(environment);
+        return context;
     }
 
     @Configuration(proxyBeanMethods = false)

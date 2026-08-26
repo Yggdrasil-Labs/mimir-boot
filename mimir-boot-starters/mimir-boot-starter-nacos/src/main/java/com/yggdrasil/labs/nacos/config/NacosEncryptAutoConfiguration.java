@@ -54,6 +54,10 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
      */
     void onEnvironmentChange(EnvironmentChangeEvent event) {
         if (applicationContext != null && applicationContext.getEnvironment() instanceof ConfigurableEnvironment environment) {
+            if (!NacosEncryptPropertiesResolver.isAnyPrefixBound(environment)) {
+                log.debug("检测到配置变更但未配置 Nacos 加密前缀，跳过配置解密，变更的配置键: {}", event.getKeys());
+                return;
+            }
             log.debug("检测到配置变更，重新处理配置解密，变更的配置键: {}", event.getKeys());
             processDecrypt(environment);
         }

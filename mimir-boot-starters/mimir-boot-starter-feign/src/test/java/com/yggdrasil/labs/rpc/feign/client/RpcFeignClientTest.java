@@ -310,11 +310,47 @@ class RpcFeignClientTest {
     }
 
     @Test
-    void shouldKeepAllNonSensitiveHeaderValuesInIterationOrder() throws Exception {
+    void shouldExposeOnlySafeHeadersInMetadataRegardlessOfCaseOrValueCount() throws Exception {
+        Map<String, Collection<String>> headers = Map.of(
+                "pRoXy-AuThOrIzAtIoN", List.of("Basic proxy-secret"),
+                "X-Api-Key", List.of("key-1", "key-2"),
+                "x-AuTh-ToKeN", List.of("token-1", "token-2"),
+                "x-unknown-header", List.of("must-not-be-exposed"),
+                "X-Request-Id", List.of("request-1", "request-2"),
+                "Content-Type", List.of("application/json"));
+        Request request = Request.create(
+                Request.HttpMethod.GET, "http://example.com/api", headers, null, StandardCharsets.UTF_8, null);
+        Response response = Response.builder()
+                .request(request)
+                .status(200)
+                .reason("OK")
+                .headers(Map.of())
+                .build();
+        when(delegate.execute(any(), any())).thenReturn(response);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+
+        client.execute(request, new Request.Options());
+
+        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        Map<String, String> attachments = contextCaptor.getValue().getMetadata().getAttachments();
+        Assertions.assertEquals("request-1,request-2", attachments.get("X-Request-Id"));
+        Assertions.assertEquals("application/json", attachments.get("Content-Type"));
+        Assertions.assertFalse(attachments.containsKey("pRoXy-AuThOrIzAtIoN"));
+        Assertions.assertFalse(attachments.containsKey("X-Api-Key"));
+        Assertions.assertFalse(attachments.containsKey("x-AuTh-ToKeN"));
+        Assertions.assertFalse(attachments.containsKey("x-unknown-header"));
+        Assertions.assertFalse(attachments.containsValue("Basic proxy-secret"));
+        Assertions.assertFalse(attachments.containsValue("key-1,key-2"));
+        Assertions.assertFalse(attachments.containsValue("token-1,token-2"));
+    }
+
+    @Test
+    void shouldKeepAllSafeHeaderValuesInIterationOrder() throws Exception {
         Request request = Request.create(
                 Request.HttpMethod.GET,
                 "http://example.com/api",
-                Map.of("x-tag", List.of("a", "b"), "Authorization", List.of("secret")),
+                Map.of("Content-Type", List.of("a", "b"), "Authorization", List.of("secret")),
                 null,
                 StandardCharsets.UTF_8,
                 null);
@@ -331,7 +367,7 @@ class RpcFeignClientTest {
 
         ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
         verify(hook).before(contextCaptor.capture());
-        Assertions.assertEquals("a,b", contextCaptor.getValue().getMetadata().getAttachments().get("x-tag"));
+        Assertions.assertEquals("a,b", contextCaptor.getValue().getMetadata().getAttachments().get("Content-Type"));
         Assertions.assertFalse(contextCaptor.getValue().getMetadata().getAttachments().containsKey("Authorization"));
     }
 

@@ -29,7 +29,26 @@ import org.slf4j.LoggerFactory;
 public class RpcFeignClient implements Client {
 
     private static final Logger log = LoggerFactory.getLogger(RpcFeignClient.class);
-    private static final Set<String> SENSITIVE_ATTACHMENT_HEADERS = Set.of("authorization", "cookie");
+    /**
+     * 仅允许进入 Hook 元数据的请求头，避免任意扩展凭据头经 Hook 或日志泄露。
+     */
+    private static final Set<String> SAFE_ATTACHMENT_HEADERS = Set.of(
+            "accept",
+            "accept-encoding",
+            "accept-language",
+            "content-type",
+            "user-agent",
+            "x-request-id",
+            "x-correlation-id",
+            "x-trace-id",
+            "traceparent",
+            "tracestate",
+            "b3",
+            "x-b3-traceid",
+            "x-b3-spanid",
+            "x-b3-parentspanid",
+            "x-b3-sampled",
+            "x-b3-flags");
 
     private final Client delegate;
     private final RpcHookChain hookChain;
@@ -151,7 +170,7 @@ public class RpcFeignClient implements Client {
         }
         Map<String, String> map = new LinkedHashMap<>();
         headers.forEach((k, v) -> {
-            if (!isSensitiveAttachmentHeader(k) && v != null && !v.isEmpty()) {
+            if (isSafeAttachmentHeader(k) && v != null && !v.isEmpty()) {
                 map.put(k, String.join(",", v));
             }
         });
@@ -168,7 +187,7 @@ public class RpcFeignClient implements Client {
         return rawUrl;
     }
 
-    private static boolean isSensitiveAttachmentHeader(String name) {
-        return name != null && SENSITIVE_ATTACHMENT_HEADERS.contains(name.toLowerCase(Locale.ROOT));
+    private static boolean isSafeAttachmentHeader(String name) {
+        return name != null && SAFE_ATTACHMENT_HEADERS.contains(name.toLowerCase(Locale.ROOT));
     }
 }
