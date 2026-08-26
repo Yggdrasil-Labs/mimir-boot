@@ -2,6 +2,8 @@ package com.yggdrasil.labs.nacos.crypto;
 
 import com.yggdrasil.labs.common.exception.ErrorCode;
 import com.yggdrasil.labs.common.exception.SystemException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -26,6 +28,7 @@ import java.util.Base64;
 public class ConfigCryptoUtils {
 
     public static final String DEFAULT_ALGORITHM = "AES/GCM/NoPadding";
+    private static final Logger log = LoggerFactory.getLogger(ConfigCryptoUtils.class);
     private static final String LEGACY_ALGORITHM = "AES";
     private static final String VERSION = "v1";
     private static final int KEY_SIZE = 256;
@@ -100,6 +103,7 @@ public class ConfigCryptoUtils {
         if (!LEGACY_ALGORITHM.equals(algorithm)) {
             throw new IllegalArgumentException("仅支持生成 AES-GCM 新密文，AES 仅用于旧密文迁移");
         }
+        warnLegacyEcbMigration();
         return encryptLegacy(plaintext, key, algorithm);
     }
 
@@ -141,6 +145,7 @@ public class ConfigCryptoUtils {
         if (!LEGACY_ALGORITHM.equals(algorithm)) {
             throw new IllegalArgumentException("仅支持 AES-GCM 新密文和 AES 旧密文迁移");
         }
+        warnLegacyEcbMigration();
         try {
             return decryptLegacy(ciphertext, key, algorithm);
         } catch (Exception e) {
@@ -214,6 +219,10 @@ public class ConfigCryptoUtils {
             throw new IllegalArgumentException("AES 密钥长度必须为 128、192 或 256 位");
         }
         return new SecretKeySpec(decoded, LEGACY_ALGORITHM);
+    }
+
+    private static void warnLegacyEcbMigration() {
+        log.warn("legacy ECB migration API 已调用；该接口不提供篡改检测，请完成 AES-GCM 密文迁移");
     }
 
     private static String normalizeKeyAlgorithm(String algorithm) {

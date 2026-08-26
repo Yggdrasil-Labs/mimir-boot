@@ -18,6 +18,9 @@ public class NacosEncryptEnvironmentPostProcessor implements EnvironmentPostProc
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        if (!NacosEncryptPropertiesResolver.isAnyPrefixBound(environment)) {
+            return;
+        }
         NacosEncryptProperties properties = NacosEncryptPropertiesResolver.resolve(
                 environment, new NacosEncryptProperties());
         new ConfigDecryptProcessor(properties).process(environment);

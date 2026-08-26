@@ -94,6 +94,19 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldKeepEncTextWhenNoEncryptPrefixIsBound() {
+        SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
+        application.setDefaultProperties(Map.of(
+                "app.secret", "ENC(ordinary-text)",
+                "spring.cloud.nacos.config.import-check.enabled", "false"
+        ));
+
+        try (ConfigurableApplicationContext context = application.run()) {
+            assertEquals("ENC(ordinary-text)", context.getBean("startupSecret", String.class));
+        }
+    }
+
+    @Test
     void shouldDecryptPropertyWithLegacyPrefixDuringMigration() {
         String plaintext = "legacy-startup-secret";
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, testKey);

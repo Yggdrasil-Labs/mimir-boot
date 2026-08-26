@@ -1,9 +1,14 @@
 package com.yggdrasil.labs.nacos.crypto;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 import com.yggdrasil.labs.test.util.TestUtils;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -179,6 +184,35 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldWarnExactlyOnceForEachDirectLegacyEcbOperation() {
+        String key = "MDEyMzQ1Njc4OWFiY2RlZg==";
+        Logger logger = (Logger) LoggerFactory.getLogger(ConfigCryptoUtils.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.WARN);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            String ciphertext = ConfigCryptoUtils.encrypt("legacy-secret", key, "AES");
+            assertEquals(1, countLegacyMigrationWarnings(appender));
+
+            appender.list.clear();
+            assertEquals("legacy-secret", ConfigCryptoUtils.decrypt(ciphertext, key, "AES"));
+            assertEquals(1, countLegacyMigrationWarnings(appender));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void shouldDecryptFixedLegacyAesEcbCiphertext() {
+        assertEquals("legacy-secret", ConfigCryptoUtils.decrypt(
+                "TU0hsTeAvom99Aj157kgoA==", "MDEyMzQ1Njc4OWFiY2RlZg==", "AES"));
+    }
+
+    @Test
     void shouldRejectNonAesAlgorithmForLegacyEncryption() {
         String key = ConfigCryptoUtils.generateKey();
 
@@ -204,5 +238,13 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
         assertThrows(RuntimeException.class, () -> {
             ConfigCryptoUtils.decrypt("invalid-ciphertext", key);
         });
+    }
+
+    private long countLegacyMigrationWarnings(ListAppender<ILoggingEvent> appender) {
+        return appender.list.stream()
+                .filter(event -> event.getLevel() == Level.WARN)
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(message -> message.contains("legacy ECB migration API"))
+                .count();
     }
 }

@@ -19,6 +19,12 @@ final class NacosEncryptPropertiesResolver {
     private NacosEncryptPropertiesResolver() {
     }
 
+    static boolean isAnyPrefixBound(ConfigurableEnvironment environment) {
+        Binder binder = Binder.get(environment);
+        return binder.bind(NacosEncryptProperties.PREFIX, NacosEncryptProperties.class).isBound()
+                || binder.bind(NacosEncryptProperties.LEGACY_PREFIX, NacosEncryptProperties.class).isBound();
+    }
+
     static NacosEncryptProperties resolve(
             ConfigurableEnvironment environment,
             NacosEncryptProperties fallbackProperties) {

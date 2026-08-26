@@ -1,9 +1,15 @@
 package com.yggdrasil.labs.nacos.util;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 import com.yggdrasil.labs.test.util.TestUtils;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -77,6 +83,29 @@ class NacosEncryptUtilTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldWarnExactlyOnceForEachDelegatedLegacyEcbOperation() {
+        String key = "MDEyMzQ1Njc4OWFiY2RlZg==";
+        Logger logger = (Logger) LoggerFactory.getLogger(ConfigCryptoUtils.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.WARN);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            String ciphertext = NacosEncryptUtil.encrypt("legacy-secret", key, "AES");
+            assertEquals(1, countLegacyMigrationWarnings(appender));
+
+            appender.list.clear();
+            assertEquals("legacy-secret", NacosEncryptUtil.decrypt(ciphertext, key, "AES"));
+            assertEquals(1, countLegacyMigrationWarnings(appender));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    @Test
     void testWrapWithEnc() {
         String encrypted = "encrypted-value-123";
 
@@ -131,5 +160,13 @@ class NacosEncryptUtilTest extends BaseUnitTest {
         String decrypted = NacosEncryptUtil.decrypt(extracted, key);
 
         AssertUtils.assertEquals(plaintext, decrypted);
+    }
+
+    private long countLegacyMigrationWarnings(ListAppender<ILoggingEvent> appender) {
+        return appender.list.stream()
+                .filter(event -> event.getLevel() == Level.WARN)
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(message -> message.contains("legacy ECB migration API"))
+                .count();
     }
 }
