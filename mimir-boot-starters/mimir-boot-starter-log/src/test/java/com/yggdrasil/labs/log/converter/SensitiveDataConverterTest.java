@@ -585,7 +585,7 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     }
 
     @Test
-    void testThreadSafety() throws InterruptedException {
+    void testThreadSafety() throws Exception {
         // 测试线程安全
         context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password");
         SensitiveDataConverter.reloadConfig();
@@ -594,36 +594,41 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         int iterations = 100;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount);
+        List<Future<?>> futures = new java.util.ArrayList<>();
 
         for (int i = 0; i < threadCount; i++) {
-            executor.submit(() -> {
+            futures.add(executor.submit(() -> {
                 try {
                     for (int j = 0; j < iterations; j++) {
                         String message = "password=123456" + j;
                         String result = converter.maskSensitiveData(message);
                         assertNotNull(result);
-                        assertTrue(result.contains("******"));
+                        assertTrue(result.contains("****"));
                     }
                 } finally {
                     latch.countDown();
                 }
-            });
+            }));
         }
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+        for (Future<?> future : futures) {
+            future.get(10, TimeUnit.SECONDS);
+        }
         executor.shutdown();
     }
 
     @Test
-    void testConcurrentPatternUpdate() throws InterruptedException {
+    void testConcurrentPatternUpdate() throws Exception {
         // 测试并发更新模式
         int threadCount = 5;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount);
+        List<Future<?>> futures = new java.util.ArrayList<>();
 
         for (int i = 0; i < threadCount; i++) {
             final int patternId = i;
-            executor.submit(() -> {
+            futures.add(executor.submit(() -> {
                 try {
                     SensitiveDataConverter.addCustomPattern("pattern" + patternId + "\\d+");
                     SensitiveDataConverter.reloadConfig();
@@ -633,10 +638,13 @@ class SensitiveDataConverterTest extends BaseUnitTest {
                 } finally {
                     latch.countDown();
                 }
-            });
+            }));
         }
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+        for (Future<?> future : futures) {
+            future.get(10, TimeUnit.SECONDS);
+        }
         executor.shutdown();
     }
 
@@ -710,7 +718,7 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     void masksJsonAndPercentEncodedPasswordValues() {
         SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "****");
 
-        String json = converter.maskSensitiveData("{\"password\":\"sample-json-value\"}");
+        String json = converter.maskSensitiveData("{\"password\":\"sample=json=value\"}");
         String encoded = converter.maskSensitiveData("%70assword=sample-encoded-value");
 
         assertEquals("{\"password\":\"****\"}", json);

@@ -53,28 +53,17 @@ public class LogMaskAutoConfiguration {
             return;
         }
 
-        if (properties.getEnabledPatterns() != null && !properties.getEnabledPatterns().isEmpty()) {
-            loggerContext.putProperty(
-                    SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY,
-                    String.join(",", properties.getEnabledPatterns())
-            );
-        }
-
-        if (properties.getCustomPatterns() != null && !properties.getCustomPatterns().isEmpty()) {
-            loggerContext.putProperty(
-                    SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY,
-                    String.join(",", properties.getCustomPatterns())
-            );
-        }
-
-        if (properties.getReplacement() != null) {
-            loggerContext.putProperty(
-                    SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY,
-                    properties.getReplacement()
-            );
-        }
+        putListProperty(loggerContext, SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY,
+                properties.getEnabledPatterns());
+        putListProperty(loggerContext, SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY,
+                properties.getCustomPatterns());
+        loggerContext.putProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, properties.getReplacement());
         SensitiveDataConverter.publishConfiguration(
                 properties.getEnabledPatterns(), properties.getCustomPatterns(), properties.getReplacement());
+    }
+
+    private static void putListProperty(LoggerContext loggerContext, String key, java.util.List<String> values) {
+        loggerContext.putProperty(key, values == null || values.isEmpty() ? null : String.join(",", values));
     }
 
     private synchronized void warnNonLogbackOnce(ContextRefreshedEvent event) {

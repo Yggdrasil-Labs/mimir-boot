@@ -1,5 +1,10 @@
 package com.yggdrasil.labs.log.converter;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+
 /**
  * 预置敏感信息脱敏规则枚举
  * 
@@ -11,13 +16,13 @@ package com.yggdrasil.labs.log.converter;
 public enum SensitiveDataPattern {
 
     /** 密码相关字段 */
-    PASSWORD("password", "(?i)(password|pwd|passwd|%70assword|密码)\\\"?\\s*[=:]\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
+    PASSWORD("password", "(?i)((?:password|pwd|passwd|%70assword|密码)\\\"?\\s*[=:])\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
     
     /** Token 相关字段 */
-    TOKEN("token", "(?i)(token|access_token|refresh_token)\\\"?\\s*[=:]\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
+    TOKEN("token", "(?i)((?:token|access_token|refresh_token)\\\"?\\s*[=:])\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
     
     /** 密钥相关字段 */
-    SECRET("secret", "(?i)(secret|private_key|privateKey|secret_key|secretKey|access_key|accessKey|%73ecretKey|私钥)\\\"?\\s*[=:]\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
+    SECRET("secret", "(?i)((?:secret|private_key|privateKey|secret_key|secretKey|access_key|accessKey|%73ecretKey|私钥)\\\"?\\s*[=:])\\s*(?:\\\"[^\\\"]*\\\"|'[^']*'|[^,}\\]\\s]+)"),
     
     /** API Key 相关字段 */
     API_KEY("api_key", "(?i)(apikey|api_key|app_key)\\s*[=:]\\s*['\"]?[^'\"\\s]+"),
@@ -52,6 +57,11 @@ public enum SensitiveDataPattern {
     /** 纯邮箱地址 */
     EMAIL_ADDRESS("email_address", "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
 
+    private static final List<String> PASSWORD_KEYS = List.of("password", "pwd", "passwd", "%70assword", "密码");
+    private static final List<String> TOKEN_KEYS = List.of("token", "access_token", "refresh_token");
+    private static final List<String> SECRET_KEYS = List.of(
+            "secret", "private_key", "privateKey", "secret_key", "secretKey", "access_key", "accessKey", "%73ecretKey", "私钥");
+
     /** 规则名称 */
     private final String name;
     
@@ -69,6 +79,21 @@ public enum SensitiveDataPattern {
 
     public String getPattern() {
         return pattern;
+    }
+
+    static List<String> keyValueFieldNames(Collection<SensitiveDataPattern> patterns) {
+        List<String> keys = new ArrayList<>();
+        for (SensitiveDataPattern pattern : patterns) {
+            List<String> fieldNames = switch (pattern) {
+                case PASSWORD -> PASSWORD_KEYS;
+                case TOKEN -> TOKEN_KEYS;
+                case SECRET -> SECRET_KEYS;
+                default -> List.of();
+            };
+            keys.addAll(fieldNames);
+        }
+        keys.sort(Comparator.comparingInt(String::length).reversed());
+        return List.copyOf(keys);
     }
 
     /**

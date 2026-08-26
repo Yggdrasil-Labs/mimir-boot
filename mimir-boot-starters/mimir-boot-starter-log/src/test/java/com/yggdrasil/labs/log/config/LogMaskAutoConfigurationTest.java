@@ -207,6 +207,27 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
                 loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
     }
 
+    @Test
+    void clearsLogbackPropertiesWhenRefreshRemovesAllMaskRules() {
+        LogMaskProperties properties = new LogMaskProperties();
+        properties.setEnabledPatterns(List.of("password"));
+        configuration = new LogMaskAutoConfiguration(properties);
+        ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
+        SensitiveDataConverter converter = new SensitiveDataConverter();
+
+        configuration.transferConfig(event);
+        assertEquals("password=****", converter.maskSensitiveData("password=sample-password"));
+
+        properties.setEnabledPatterns(List.of());
+        properties.setCustomPatterns(List.of());
+        properties.setReplacement(null);
+        configuration.transferConfig(event);
+        SensitiveDataConverter.reloadConfig();
+
+        assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
+        assertEquals("password=sample-password", converter.maskSensitiveData("password=sample-password"));
+    }
+
     /**
      * 测试单个模式
      */

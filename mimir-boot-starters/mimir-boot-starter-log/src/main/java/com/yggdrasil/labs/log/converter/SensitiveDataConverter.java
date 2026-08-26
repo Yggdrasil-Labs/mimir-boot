@@ -35,7 +35,9 @@ public class SensitiveDataConverter extends ClassicConverter {
     private static final AtomicReference<Context> CONFIGURATION_CONTEXT = new AtomicReference<>();
     private static final AtomicReference<MaskConfigurationSnapshot> configuration = new AtomicReference<>();
 
-    private record MaskConfigurationSnapshot(List<Pattern> patterns, String replacement) {
+    private record MaskConfigurationSnapshot(List<Pattern> patterns,
+                                             List<String> keyValueFieldNames,
+                                             String replacement) {
     }
 
     @Override
@@ -121,7 +123,7 @@ public class SensitiveDataConverter extends ClassicConverter {
                                                                   List<String> customPatternExpressions,
                                                                   String replacement) {
         List<Pattern> patterns = new ArrayList<>();
-        compilePresetPatterns(patterns, enabledPatternNames);
+        List<String> keyValueFieldNames = compilePresetPatterns(patterns, enabledPatternNames);
         compilePatterns(patterns, customPatternExpressions, "Invalid custom mask pattern: ");
         synchronized (CONFIGURATION_LOCK) {
             compilePatterns(patterns, PROGRAMMATIC_PATTERNS, "Invalid programmatic mask pattern: ");
@@ -129,22 +131,31 @@ public class SensitiveDataConverter extends ClassicConverter {
         String resolvedReplacement = replacement == null || replacement.isEmpty()
                 ? DEFAULT_REPLACEMENT
                 : replacement;
-        return new MaskConfigurationSnapshot(List.copyOf(patterns), resolvedReplacement);
+        return new MaskConfigurationSnapshot(List.copyOf(patterns), keyValueFieldNames, resolvedReplacement);
     }
 
-    private static void compilePresetPatterns(List<Pattern> target, List<String> names) {
+    private static List<String> compilePresetPatterns(List<Pattern> target, List<String> names) {
         if (names == null) {
-            return;
+            return List.of();
         }
+        List<SensitiveDataPattern> selectedPatterns = new ArrayList<>();
         for (String name : names) {
             if (name == null) {
                 continue;
             }
             SensitiveDataPattern pattern = SensitiveDataPattern.fromName(name.trim());
             if (pattern != null) {
+                selectedPatterns.add(pattern);
+            }
+        }
+        for (SensitiveDataPattern pattern : selectedPatterns) {
+            if (pattern != SensitiveDataPattern.PASSWORD
+                    && pattern != SensitiveDataPattern.TOKEN
+                    && pattern != SensitiveDataPattern.SECRET) {
                 compilePatterns(target, List.of(pattern.getPattern()), "Invalid preset mask pattern: ");
             }
         }
+        return SensitiveDataPattern.keyValueFieldNames(selectedPatterns);
     }
 
     private static void compilePatterns(List<Pattern> target, List<String> expressions, String errorPrefix) {
@@ -175,26 +186,132 @@ public class SensitiveDataConverter extends ClassicConverter {
     }
 
     private static String maskSensitiveData(String message, MaskConfigurationSnapshot snapshot) {
-        String result = message;
+        String result = maskKeyValueFields(message, snapshot.keyValueFieldNames(), snapshot.replacement());
         for (Pattern pattern : snapshot.patterns()) {
             Matcher matcher = pattern.matcher(result);
-            StringBuffer buffer = new StringBuffer();
-            while (matcher.find()) {
-                matcher.appendReplacement(buffer, Matcher.quoteReplacement(maskValue(matcher.group(), snapshot.replacement())));
+            if (!matcher.find()) {
+                continue;
             }
-            if (buffer.length() > 0) {
-                matcher.appendTail(buffer);
-                result = buffer.toString();
-            }
+            StringBuilder masked = new StringBuilder(result.length());
+            int lastMatchEnd = 0;
+            do {
+                masked.append(result, lastMatchEnd, matcher.start());
+                masked.append(maskValue(matcher, snapshot.replacement()));
+                lastMatchEnd = matcher.end();
+            } while (matcher.find());
+            result = masked.append(result, lastMatchEnd, result.length()).toString();
         }
         return result;
     }
 
-    private static String maskValue(String matched, String replacement) {
-        int separatorIndex = matched.indexOf('=');
-        if (separatorIndex < 0) {
-            separatorIndex = matched.indexOf(':');
+    private static String maskKeyValueFields(String message, List<String> fieldNames, String replacement) {
+        if (fieldNames.isEmpty()) {
+            return message;
         }
+        StringBuilder masked = null;
+        int copiedUntil = 0;
+        for (int index = 0; index < message.length(); index++) {
+            if (!isPotentialFieldInitial(message.charAt(index))) {
+                continue;
+            }
+            String fieldName = matchingFieldName(message, index, fieldNames);
+            if (fieldName == null) {
+                continue;
+            }
+            int cursor = index + fieldName.length();
+            if (cursor < message.length() && isQuote(message.charAt(cursor))) {
+                cursor++;
+            }
+            while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
+                cursor++;
+            }
+            if (cursor >= message.length() || (message.charAt(cursor) != '=' && message.charAt(cursor) != ':')) {
+                continue;
+            }
+            cursor++;
+            while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
+                cursor++;
+            }
+            int valueStart = cursor;
+            int valueEnd = valueEnd(message, valueStart);
+            if (valueEnd == valueStart) {
+                continue;
+            }
+            if (masked == null) {
+                masked = new StringBuilder(message.length());
+            }
+            masked.append(message, copiedUntil, valueStart);
+            if (isQuote(message.charAt(valueStart))) {
+                masked.append(message.charAt(valueStart)).append(replacement).append(message.charAt(valueStart));
+            } else {
+                masked.append(replacement);
+            }
+            copiedUntil = valueEnd;
+            index = valueEnd - 1;
+        }
+        return masked == null ? message : masked.append(message, copiedUntil, message.length()).toString();
+    }
+
+    private static String matchingFieldName(String message, int index, List<String> fieldNames) {
+        char initial = message.charAt(index);
+        for (String fieldName : fieldNames) {
+            if (sameAsciiCase(initial, fieldName.charAt(0))
+                    && message.regionMatches(true, index, fieldName, 0, fieldName.length())) {
+                return fieldName;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isPotentialFieldInitial(char value) {
+        return switch (value) {
+            case 'a', 'A', 'p', 'P', 's', 'S', 't', 'T', '%', '密', '私' -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean sameAsciiCase(char left, char right) {
+        return left == right || ((left ^ 32) == right && isAsciiLetter(left));
+    }
+
+    private static boolean isAsciiLetter(char value) {
+        return value >= 'A' && value <= 'Z' || value >= 'a' && value <= 'z';
+    }
+
+    private static int valueEnd(String message, int valueStart) {
+        if (valueStart >= message.length()) {
+            return valueStart;
+        }
+        char firstCharacter = message.charAt(valueStart);
+        if (isQuote(firstCharacter)) {
+            int closingQuote = message.indexOf(firstCharacter, valueStart + 1);
+            return closingQuote < 0 ? message.length() : closingQuote + 1;
+        }
+        int cursor = valueStart;
+        while (cursor < message.length()
+                && message.charAt(cursor) != ','
+                && message.charAt(cursor) != '}'
+                && message.charAt(cursor) != ']'
+                && !Character.isWhitespace(message.charAt(cursor))) {
+            cursor++;
+        }
+        return cursor;
+    }
+
+    private static boolean isQuote(char value) {
+        return value == '\"' || value == '\'';
+    }
+
+    private static String maskValue(Matcher matcher, String replacement) {
+        String matched = matcher.group();
+        String capturedPrefix = matcher.groupCount() > 0 ? matcher.group(1) : null;
+        if (capturedPrefix != null && endsWithKeyValueSeparator(capturedPrefix)) {
+            String suffix = matched.substring(capturedPrefix.length()).stripLeading();
+            String quote = suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
+            return capturedPrefix + quote + replacement + quote;
+        }
+        int equalsIndex = matched.indexOf('=');
+        int separatorIndex = equalsIndex < 0 ? matched.indexOf(':') : equalsIndex;
         if (separatorIndex < 0) {
             return replacement;
         }
@@ -202,5 +319,10 @@ public class SensitiveDataConverter extends ClassicConverter {
         String suffix = matched.substring(separatorIndex + 1);
         String quote = suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
         return prefix + quote + replacement + quote;
+    }
+
+    private static boolean endsWithKeyValueSeparator(String value) {
+        String trimmed = value.stripTrailing();
+        return trimmed.endsWith("=") || trimmed.endsWith(":");
     }
 }
