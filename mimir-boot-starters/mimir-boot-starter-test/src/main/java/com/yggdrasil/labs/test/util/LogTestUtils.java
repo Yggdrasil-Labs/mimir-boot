@@ -5,6 +5,9 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -30,6 +33,9 @@ import org.slf4j.LoggerFactory;
  */
 public final class LogTestUtils {
 
+    private static final Map<ListAppender<ILoggingEvent>, LoggerState> LOGGER_STATES =
+            Collections.synchronizedMap(new IdentityHashMap<>());
+
     private LogTestUtils() {
         // 工具类，禁止实例化
     }
@@ -45,6 +51,7 @@ public final class LogTestUtils {
         Logger logger = context.getLogger(loggerName);
 
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        LOGGER_STATES.put(appender, new LoggerState(logger, logger.getLevel(), logger.isAdditive()));
         appender.setContext(context);
         appender.start();
         logger.addAppender(appender);
@@ -79,12 +86,16 @@ public final class LogTestUtils {
         if (appender == null) {
             return;
         }
+        LoggerState state = LOGGER_STATES.remove(appender);
         if (logger != null) {
             logger.detachAppender(appender);
         }
         appender.stop();
         if (appender.list != null) {
             appender.list.clear();
+        }
+        if (state != null) {
+            state.restore();
         }
     }
 
@@ -167,5 +178,13 @@ public final class LogTestUtils {
             throw new AssertionError("ListAppender 或日志列表为 null");
         }
         return appender.list.size();
+    }
+
+    private record LoggerState(Logger logger, Level level, boolean additive) {
+
+        private void restore() {
+            logger.setLevel(level);
+            logger.setAdditive(additive);
+        }
     }
 }

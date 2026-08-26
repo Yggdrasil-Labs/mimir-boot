@@ -1,6 +1,8 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
+import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
@@ -20,8 +22,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RpcDubboFilterEndToEndTest {
 
@@ -111,9 +120,107 @@ class RpcDubboFilterEndToEndTest {
         }
     }
 
+    @Test
+    void defaultMdcBridgeRestoresTraceContextForAsyncProviderCompletion() throws Exception {
+        DubboProperties properties = new DubboProperties();
+        properties.setEnabled(true);
+        properties.setContextPropagationEnabled(true);
+        AsyncCompletionHook hook = new AsyncCompletionHook();
+        RpcDubboSupportHolder.set(new RpcHookChain(List.of(hook)), new MdcRpcTracerBridge(), properties);
+        ExecutorService completionWorker = Executors.newSingleThreadExecutor();
+        AtomicReference<CompletableFuture<String>> responseFuture = new AtomicReference<>();
+        AsyncEchoService serviceImplementation = value -> {
+            CompletableFuture<String> future = new CompletableFuture<>();
+            responseFuture.set(future);
+            return future;
+        };
+
+        ProtocolConfig protocol = new ProtocolConfig("injvm");
+        ServiceConfig<AsyncEchoService> service = new ServiceConfig<>();
+        service.setInterface(AsyncEchoService.class);
+        service.setRef(serviceImplementation);
+        service.setProtocol(protocol);
+        service.setFilter("rpcDubboFilter");
+
+        ReferenceConfig<AsyncEchoService> reference = new ReferenceConfig<>();
+        reference.setInterface(AsyncEchoService.class);
+        reference.setInjvm(true);
+        reference.setCheck(true);
+        reference.setFilter("rpcDubboFilter");
+
+        bootstrap = DubboBootstrap.newInstance();
+        bootstrap.application(new ApplicationConfig("rpc-dubbo-mdc-async-integration-test"))
+                .protocol(protocol)
+                .service(service)
+                .reference(reference)
+                .start();
+
+        try {
+            completionWorker.submit(() -> {
+                MDC.put(CommonConstants.TRACE_ID, "worker-trace-id");
+                MDC.put(CommonConstants.REQUEST_ID, "worker-request-id");
+            }).get(5, TimeUnit.SECONDS);
+            MDC.put(CommonConstants.TRACE_ID, "consumer-async-trace-id");
+            MDC.put(CommonConstants.REQUEST_ID, "consumer-async-request-id");
+
+            CompletableFuture<String> rpcResponse = reference.get().echoAsync("hello");
+            completionWorker.submit(() -> responseFuture.get().complete("echo:hello")).get(5, TimeUnit.SECONDS);
+
+            assertEquals("echo:hello", rpcResponse.get(5, TimeUnit.SECONDS));
+            assertTrue(hook.awaitProviderCompletion(), "未在异步完成回调中观察到 Provider Trace 上下文");
+            assertEquals("consumer-async-trace-id", hook.traceId());
+            assertEquals("consumer-async-request-id", hook.requestId());
+            assertEquals("consumer-async-trace-id", MDC.get(CommonConstants.TRACE_ID));
+            assertEquals("consumer-async-request-id", MDC.get(CommonConstants.REQUEST_ID));
+            assertEquals("worker-trace-id", completionWorker
+                    .submit(() -> MDC.get(CommonConstants.TRACE_ID))
+                    .get(5, TimeUnit.SECONDS));
+            assertEquals("worker-request-id", completionWorker
+                    .submit(() -> MDC.get(CommonConstants.REQUEST_ID))
+                    .get(5, TimeUnit.SECONDS));
+        } finally {
+            MDC.clear();
+            completionWorker.shutdownNow();
+        }
+    }
+
     interface EchoService {
 
         String echo(String value);
+    }
+
+    interface AsyncEchoService {
+
+        CompletableFuture<String> echoAsync(String value);
+    }
+
+    private static final class AsyncCompletionHook implements RpcHook {
+
+        private final CountDownLatch providerCompletion = new CountDownLatch(1);
+        private final AtomicReference<String> traceId = new AtomicReference<>();
+        private final AtomicReference<String> requestId = new AtomicReference<>();
+
+        @Override
+        public void after(RpcCallContext context, RpcCallResult result) {
+            String currentTraceId = MDC.get(CommonConstants.TRACE_ID);
+            if ("consumer-async-trace-id".equals(currentTraceId)) {
+                traceId.set(currentTraceId);
+                requestId.set(MDC.get(CommonConstants.REQUEST_ID));
+                providerCompletion.countDown();
+            }
+        }
+
+        boolean awaitProviderCompletion() throws InterruptedException {
+            return providerCompletion.await(5, TimeUnit.SECONDS);
+        }
+
+        String traceId() {
+            return traceId.get();
+        }
+
+        String requestId() {
+            return requestId.get();
+        }
     }
 
     private static final class MdcRecordingEchoService implements EchoService {

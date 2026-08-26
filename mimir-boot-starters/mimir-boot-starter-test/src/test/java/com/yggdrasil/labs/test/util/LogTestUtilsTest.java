@@ -58,6 +58,28 @@ class LogTestUtilsTest {
     }
 
     @Test
+    void cleanupLogger_restoresLoggerLevelAndAdditivity() {
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        Logger restoreLogger = context.getLogger("test.restore");
+        Level originalLevel = restoreLogger.getLevel();
+        boolean originalAdditivity = restoreLogger.isAdditive();
+        try {
+            restoreLogger.setLevel(Level.WARN);
+            restoreLogger.setAdditive(true);
+
+            ListAppender<ILoggingEvent> restoreAppender = LogTestUtils.setupLogger("test.restore");
+
+            LogTestUtils.cleanupLogger(restoreLogger, restoreAppender);
+
+            assertEquals(Level.WARN, restoreLogger.getLevel());
+            assertTrue(restoreLogger.isAdditive());
+        } finally {
+            restoreLogger.setLevel(originalLevel);
+            restoreLogger.setAdditive(originalAdditivity);
+        }
+    }
+
+    @Test
     void testCleanupLogger_WithNullAppender() {
         // 不应抛出异常
         assertDoesNotThrow(() -> {
@@ -233,4 +255,3 @@ class LogTestUtilsTest {
         LogTestUtils.assertLogContains(appender, 2, "Third");
     }
 }
-
