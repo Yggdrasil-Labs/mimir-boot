@@ -53,12 +53,10 @@
         <knife4j.version>4.5.0</knife4j.version>
 
         <!-- 缓存相关 -->
-        <redis.version>4.4.6</redis.version>
         <redisson.version>3.52.0</redisson.version>
 
         <!-- 消息队列 -->
-        <kafka.version>3.7.0</kafka.version>
-        <rocketmq.version>5.2.0</rocketmq.version>
+        <rocketmq.version>2.3.6</rocketmq.version>
 
         <!-- 定时任务 -->
         <xxl.job.version>3.4.2</xxl.job.version>
@@ -278,7 +276,7 @@
 
             <!-- 搜索引擎和NoSQL -->
             <dependency>
-                <groupId>org.elasticsearch.client</groupId>
+                <groupId>co.elastic.clients</groupId>
                 <artifactId>elasticsearch-java</artifactId>
                 <version>${elasticsearch.version}</version>
             </dependency>

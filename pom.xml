@@ -51,6 +51,8 @@
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
         <gpg-maven-plugin.version>3.2.8</gpg-maven-plugin.version>
+        <!-- 普通构建不要求本机私钥；maven-central profile 显式覆盖为 false。 -->
+        <gpg.skip>true</gpg.skip>
         <maven.deploy.plugin.version>3.1.4</maven.deploy.plugin.version>
         <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
         <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
@@ -171,7 +173,7 @@
                              - 工具稳定、CI 友好
                         -->
                         <googleJavaFormat>
-                            <version>1.22.0</version>
+                            <version>1.23.0</version>
                             <style>AOSP</style>
                         </googleJavaFormat>
                     </java>
@@ -202,8 +204,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <configuration>
-                    <!-- 默认跳过签名，避免开发时每次构建都签名 -->
-                    <skip>true</skip>
+                    <!-- 默认跳过签名，避免开发时每次构建都签名。 -->
+                    <skip>${gpg.skip}</skip>
                     <!-- CI 环境必需：非交互模式，允许通过命令行传递 passphrase -->
                     <gpgArguments>
                         <arg>--batch</arg>
@@ -219,9 +221,8 @@
                             <goal>sign</goal>
                         </goals>
                         <configuration>
-                            <!-- 在 verify 阶段自动启用签名（deploy 会执行 verify 阶段，所以 deploy 时也会自动签名） -->
-                            <!-- 如果不想在 verify 时签名，可以通过 -Dgpg.skip=true 来跳过 -->
-                            <skip>false</skip>
+                            <!-- 发布 profile 与命令行可通过同一属性显式开启签名。 -->
+                            <skip>${gpg.skip}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -243,6 +244,9 @@
              本仓库发布命令见 mimir-boot-parent/README.md「发布到 Maven Central」。 -->
         <profile>
             <id>maven-central</id>
+            <properties>
+                <gpg.skip>false</gpg.skip>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -268,8 +272,8 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
                         <configuration>
-                            <!-- CI 环境中跳过 GPG 签名（签名应在发布时进行） -->
-                            <skip>true</skip>
+                            <!-- CI 环境中沿用全局签名开关。 -->
+                            <skip>${gpg.skip}</skip>
                         </configuration>
                         <executions>
                             <!-- 覆盖默认的 sign-artifacts execution，确保在 CI 环境中跳过签名 -->
@@ -280,7 +284,7 @@
                                     <goal>sign</goal>
                                 </goals>
                                 <configuration>
-                                    <skip>true</skip>
+                                    <skip>${gpg.skip}</skip>
                                 </configuration>
                             </execution>
                         </executions>

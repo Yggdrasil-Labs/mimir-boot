@@ -571,7 +571,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
                         <configuration>
-                            <skip>true</skip>
+                            <skip>${gpg.skip}</skip>
                         </configuration>
                         <executions>
                             <!-- 覆盖任何子项目中的 sign-artifacts execution，确保在 CI 环境中跳过签名 -->
@@ -582,7 +582,7 @@
                                     <goal>sign</goal>
                                 </goals>
                                 <configuration>
-                                    <skip>true</skip>
+                                    <skip>${gpg.skip}</skip>
                                 </configuration>
                             </execution>
                         </executions>
