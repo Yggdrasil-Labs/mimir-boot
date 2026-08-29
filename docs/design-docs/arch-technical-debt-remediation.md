@@ -1,10 +1,10 @@
 ---
 id: arch-technical-debt-remediation
-status: draft
+status: verified
 owner: YoungerYang-Y
 tags: [architecture, technical-debt, governance]
 created: 2026-08-28
-verified: null
+verified: 2026-08-29
 ---
 
 # 技术债修复长期约束同步 RFC

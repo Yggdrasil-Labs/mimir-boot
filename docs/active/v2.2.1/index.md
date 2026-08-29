@@ -8,4 +8,4 @@ updated: 2026-08-25
 
 | 需求 | 状态 | 说明 |
 |------|------|------|
-| [技术债修复](./technical-debt-remediation/) | 已规划 | DG-1、DG-2、DG-3 已选择 A；9 个 TDD/RFC 任务待执行 |
+| [技术债修复](./technical-debt-remediation/) | 已完成 | DG-1、DG-2、DG-3 已选择 A；T1-T9 已完成验证，残余风险继续在技术债台账跟踪 |

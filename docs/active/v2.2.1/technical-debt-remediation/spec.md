@@ -1,10 +1,10 @@
 ---
 id: technical-debt-remediation
 version: v2.2.1
-status: draft
+status: shipped
 owner: YoungerYang-Y
 created: 2026-08-16
-updated: 2026-08-25
+updated: 2026-08-29
 ---
 
 # 技术债修复

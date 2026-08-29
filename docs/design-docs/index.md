@@ -7,7 +7,7 @@
 | design-core-beliefs | 核心信条 | verified | — | 全仓库 | [`core-beliefs.md`](./core-beliefs.md) |
 | design-module-boundaries | 模块边界 | verified | — | 全仓库 | [`module-boundaries.md`](./module-boundaries.md) |
 | design-doc-governance | 文档治理 | verified | — | docs/ | [`documentation-governance.md`](./documentation-governance.md) |
-| arch-technical-debt-remediation | 技术债修复长期约束同步 RFC | draft | YoungerYang-Y | T1–T7 已验证事实的长期文档同步边界 | [`arch-technical-debt-remediation.md`](./arch-technical-debt-remediation.md) |
+| arch-technical-debt-remediation | 技术债修复长期约束同步 RFC | verified | YoungerYang-Y | T1–T7 已验证事实的长期文档同步边界 | [`arch-technical-debt-remediation.md`](./arch-technical-debt-remediation.md) |
 
 ## status 含义
 
