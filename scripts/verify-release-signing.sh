@@ -26,11 +26,10 @@ repository_dir="$work_dir/repository"
 failed_repository_dir="$work_dir/failed-repository"
 blocked_repository_dir="$work_dir/blocked-remote"
 cache_dir="$work_dir/m2"
-seed_cache_dir="${MIMIR_RELEASE_SIGNING_SEED_M2:-$HOME/.m2/repository}"
+seed_cache_dir="${MIMIR_RELEASE_SIGNING_SEED_M2:-}"
 fixture="$work_dir/gpg-failure-fixture.sh"
 settings_file="$work_dir/settings.xml"
 preheat_settings_file="$work_dir/preheat-settings.xml"
-preheat_pom="$work_dir/preheat-pom.xml"
 
 cleanup() {
   rm -rf "$work_dir"
@@ -63,16 +62,17 @@ if [[ -n "$proxy_url" ]]; then
   fi
 fi
 
-if [[ "$preheat" == true && -z "$proxy_xml" ]]; then
-  echo "--preheat 需要 MIMIR_MAVEN_PROXY 或 HTTPS_PROXY 中的无凭据 HTTP 代理。" >&2
+umask 077
+mkdir -p "$gnupg_home" "$verify_home" "$repository_dir" "$failed_repository_dir" "$blocked_repository_dir" "$cache_dir"
+chmod 700 "$gnupg_home" "$verify_home"
+
+if [[ -n "$seed_cache_dir" ]]; then
+  test -d "$seed_cache_dir"
+  cp -a "$seed_cache_dir/." "$cache_dir/"
+elif [[ "$preheat" != true ]]; then
+  echo "空缓存验证请使用 --preheat；离线验证请显式设置 MIMIR_RELEASE_SIGNING_SEED_M2。" >&2
   exit 2
 fi
-
-umask 077
-test -d "$seed_cache_dir"
-mkdir -p "$gnupg_home" "$verify_home" "$repository_dir" "$failed_repository_dir" "$blocked_repository_dir" "$cache_dir"
-cp -a "$seed_cache_dir/." "$cache_dir/"
-chmod 700 "$gnupg_home" "$verify_home"
 
 if [[ "$preheat" == true ]]; then
   cat >"$preheat_settings_file" <<EOF
@@ -88,19 +88,13 @@ if [[ "$preheat" == true ]]; then
   </mirrors>
 </settings>
 EOF
-  cat >"$preheat_pom" <<'EOF'
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>io.github.yggdrasil-labs.fixture</groupId>
-  <artifactId>release-signing-preheat</artifactId>
-  <version>1.0.0</version>
-</project>
-EOF
-  "$project_dir/mvnw" -B -s "$preheat_settings_file" -f "$preheat_pom" \
-    org.apache.maven.plugins:maven-dependency-plugin:3.6.1:get \
-    -Dartifact=org.apache.maven.plugins:maven-gpg-plugin:3.2.8 \
-    -Dtransitive=true \
+  "$project_dir/mvnw" -B -s "$preheat_settings_file" -f "$project_dir/pom.xml" clean \
     -Dmaven.repo.local="$cache_dir"
+  "$project_dir/mvnw" -B -s "$preheat_settings_file" -f "$project_dir/pom.xml" deploy \
+    -Dmaven.test.skip=true \
+    -Dmaven.repo.local="$cache_dir" \
+    -Dmaven.deploy.skip=true \
+    -Dgpg.skip=true
 fi
 
 cat >"$settings_file" <<EOF

@@ -6,7 +6,8 @@ work_dir="$(mktemp -d -t mimir-suite-consumer.XXXXXX)"
 consumer_dir="$work_dir/consumer"
 repository_dir="$work_dir/repository"
 blocked_repository_dir="$work_dir/blocked-remote"
-cache_dir="$work_dir/m2"
+producer_cache_dir="$work_dir/producer-m2"
+consumer_cache_dir="$work_dir/consumer-m2"
 settings_file="$work_dir/settings.xml"
 blocked_settings_file="$work_dir/blocked-settings.xml"
 logs_dir="$work_dir/logs"
@@ -25,6 +26,21 @@ run_maven_stage() {
   local stage="$1"
   shift
   "$@" 2>&1 | tee "$logs_dir/$stage.log"
+}
+
+read_pom_property() {
+  local pom="$1"
+  local property="$2"
+  local -a values=()
+
+  mapfile -t values < <(
+    sed -n "s|^[[:space:]]*<${property}>\\([^<]*\\)</${property}>[[:space:]]*$|\\1|p" "$pom"
+  )
+  if [[ "${#values[@]}" -ne 1 || -z "${values[0]}" ]]; then
+    echo "$pom 中的 $property 必须恰好定义一次且非空。" >&2
+    return 1
+  fi
+  printf '%s\n' "${values[0]}"
 }
 
 proxy_url="${MIMIR_MAVEN_PROXY:-${HTTPS_PROXY:-}}"
@@ -60,13 +76,20 @@ cat >"$settings_file" <<EOF
 </settings>
 EOF
 
-revision="$("$project_dir/mvnw" -q -s "$settings_file" -f "$project_dir/pom.xml" help:evaluate -Dexpression=revision -DforceStdout -Dmaven.repo.local="$cache_dir")"
-test -n "$revision"
+revision="$(read_pom_property "$project_dir/pom.xml" revision)"
+rocketmq_version="$(read_pom_property "$project_dir/mimir-boot-bom/pom.xml" rocketmq.version)"
+elasticsearch_version="$(read_pom_property "$project_dir/mimir-boot-bom/pom.xml" elasticsearch.version)"
 
-online_maven=("$project_dir/mvnw" -B -s "$settings_file" -f "$project_dir/pom.xml" "-Dmaven.repo.local=$cache_dir")
-run_maven_stage root-go-offline "${online_maven[@]}" dependency:go-offline
-run_maven_stage root-online-deploy "${online_maven[@]}" deploy \
+producer_projects=(
+  -pl
+  :mimir-boot-bom,:mimir-boot-starter-exception,:mimir-boot-starter-log,:mimir-boot-starter-rpc-core,:mimir-boot-starter-dubbo,:mimir-boot-starter-feign,:mimir-boot-starter-nacos,:mimir-boot-starter-mybatis,:mimir-boot-starter-test
+  -am
+)
+online_maven=("$project_dir/mvnw" -B -s "$settings_file" -f "$project_dir/pom.xml" "-Dmaven.repo.local=$producer_cache_dir" "${producer_projects[@]}")
+run_maven_stage root-online-clean-deploy "${online_maven[@]}" clean deploy \
   -Dmaven.test.skip=true \
+  -Dmaven.source.skip=true \
+  -Dmaven.javadoc.skip=true \
   -Dmaven.deploy.skip=true \
   -Dgpg.skip=true
 
@@ -85,14 +108,80 @@ cat >"$blocked_settings_file" <<EOF
 </settings>
 EOF
 
-isolated_maven=("$project_dir/mvnw" -B -o -s "$blocked_settings_file" -f "$project_dir/pom.xml" "-Dmaven.repo.local=$cache_dir")
+isolated_maven=("$project_dir/mvnw" -B -o -s "$blocked_settings_file" -f "$project_dir/pom.xml" "-Dmaven.repo.local=$producer_cache_dir" "${producer_projects[@]}")
 run_maven_stage root-isolated-clean "${isolated_maven[@]}" clean
-deploy_maven=("$project_dir/mvnw" -B -s "$blocked_settings_file" -f "$project_dir/pom.xml" "-Dmaven.repo.local=$cache_dir")
+deploy_maven=("$project_dir/mvnw" -B -s "$blocked_settings_file" -f "$project_dir/pom.xml" "-Dmaven.repo.local=$producer_cache_dir" "${producer_projects[@]}")
 run_maven_stage root-fixture-deploy "${deploy_maven[@]}" deploy \
   -Dmaven.test.skip=true \
+  -Dmaven.source.skip=true \
+  -Dmaven.javadoc.skip=true \
   -Dgpg.skip=true \
   -Dmaven.deploy.skip=false \
   "-DaltDeploymentRepository=fixture::default::file://$repository_dir"
+
+# 根聚合 POM 将 deploy 的 skip 硬编码为 true，BOM 因而无法随 reactor 部署。
+# consumer 解析 BOM 时仍需要根 POM 与 BOM POM；使用无父 POM 的部署器显式投放它们。
+fixture_deployer_pom="$work_dir/fixture-deployer-pom.xml"
+cat >"$fixture_deployer_pom" <<'EOF'
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.github.yggdrasil-labs.fixture</groupId>
+  <artifactId>fixture-pom-deployer</artifactId>
+  <version>1.0.0</version>
+</project>
+EOF
+
+deploy_fixture_pom() {
+  local stage="$1"
+  local artifact="$2"
+  local pom="$3"
+  run_maven_stage "$stage" "$project_dir/mvnw" -B -s "$blocked_settings_file" -f "$fixture_deployer_pom" \
+    "-Dmaven.repo.local=$producer_cache_dir" \
+    org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
+    "-Dfile=$pom" \
+    "-DpomFile=$pom" \
+    -DgroupId=io.github.yggdrasil-labs \
+    "-DartifactId=$artifact" \
+    "-Dversion=$revision" \
+    -Dpackaging=pom \
+    -DgeneratePom=false \
+    "-Durl=file://$repository_dir" \
+    -DrepositoryId=fixture
+}
+
+fixture_root_pom="$producer_cache_dir/io/github/yggdrasil-labs/mimir-boot/$revision/mimir-boot-$revision.pom"
+fixture_bom_pom="$producer_cache_dir/io/github/yggdrasil-labs/mimir-boot-bom/$revision/mimir-boot-bom-$revision.pom"
+test -s "$fixture_root_pom"
+test -s "$fixture_bom_pom"
+fixture_root_deploy_pom="$work_dir/mimir-boot-$revision.pom"
+fixture_bom_deploy_pom="$work_dir/mimir-boot-bom-$revision.pom"
+cp "$fixture_root_pom" "$fixture_root_deploy_pom"
+cp "$fixture_bom_pom" "$fixture_bom_deploy_pom"
+deploy_fixture_pom fixture-deploy-root-pom mimir-boot "$fixture_root_deploy_pom"
+deploy_fixture_pom fixture-deploy-bom-pom mimir-boot-bom "$fixture_bom_deploy_pom"
+
+fixture_required_artifacts=(
+  mimir-boot
+  mimir-boot-parent
+  mimir-boot-bom
+  mimir-boot-common
+  mimir-boot-starter-exception
+  mimir-boot-starter-log
+  mimir-boot-starter-rpc-core
+  mimir-boot-starter-dubbo
+  mimir-boot-starter-feign
+  mimir-boot-starter-nacos
+  mimir-boot-starter-mybatis
+  mimir-boot-starter-test
+)
+for artifact in "${fixture_required_artifacts[@]}"; do
+  fixture_artifact_dir="$repository_dir/io/github/yggdrasil-labs/$artifact/$revision"
+  if [[ ! -s "$fixture_artifact_dir/maven-metadata.xml" ]] \
+    || ! find "$fixture_artifact_dir" -maxdepth 1 -type f -name '*.pom' -size +0c -print -quit | grep -q .; then
+    echo "fixture repository 缺少 $artifact 的已发布 POM：$fixture_artifact_dir" >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$consumer_dir/src/test/java/io/github/yggdrasil/labs/fixture"
 cat >"$consumer_dir/pom.xml" <<EOF
@@ -178,15 +267,20 @@ class IsolatedConsumerTest {
 }
 EOF
 
-online_consumer_maven=("$project_dir/mvnw" -B -s "$settings_file" -f "$consumer_dir/pom.xml" "-Dmaven.repo.local=$cache_dir")
-run_maven_stage consumer-online-go-offline "${online_consumer_maven[@]}" dependency:go-offline
+test ! -e "$consumer_cache_dir/io/github/yggdrasil-labs"
+online_consumer_maven=("$project_dir/mvnw" -B -s "$settings_file" -f "$consumer_dir/pom.xml" "-Dmaven.repo.local=$consumer_cache_dir")
 run_maven_stage consumer-online-resolve "${online_consumer_maven[@]}" dependency:resolve -DoutputFile="$consumer_dir/target/online-dependency-resolve.txt"
+run_maven_stage consumer-online-tree "${online_consumer_maven[@]}" dependency:tree -DoutputFile="$consumer_dir/target/online-dependency-tree.txt"
 run_maven_stage consumer-online-clean-test "${online_consumer_maven[@]}" clean test
 
-consumer_maven=("$project_dir/mvnw" -B -o -s "$blocked_settings_file" -f "$consumer_dir/pom.xml" "-Dmaven.repo.local=$cache_dir")
+mapfile -d '' mimir_repository_markers < <(find "$consumer_cache_dir/io/github/yggdrasil-labs" -name _remote.repositories -type f -print0)
+test "${#mimir_repository_markers[@]}" -gt 0
+! grep -hEv '^(#|$)|>fixture=$' "${mimir_repository_markers[@]}"
+
+consumer_maven=("$project_dir/mvnw" -B -o -s "$blocked_settings_file" -f "$consumer_dir/pom.xml" "-Dmaven.repo.local=$consumer_cache_dir")
 run_maven_stage consumer-isolated-resolve "${consumer_maven[@]}" dependency:resolve -DoutputFile="$consumer_dir/target/dependency-resolve.txt"
 run_maven_stage consumer-isolated-tree "${consumer_maven[@]}" dependency:tree -DoutputFile="$consumer_dir/target/dependency-tree.txt"
-rg -q 'org\.apache\.rocketmq:rocketmq-spring-boot-starter:jar:2\.3\.6' "$consumer_dir/target/dependency-tree.txt"
-rg -q 'co\.elastic\.clients:elasticsearch-java:jar:8\.11\.0' "$consumer_dir/target/dependency-tree.txt"
+grep -Fq "org.apache.rocketmq:rocketmq-spring-boot-starter:jar:$rocketmq_version" "$consumer_dir/target/dependency-tree.txt"
+grep -Fq "co.elastic.clients:elasticsearch-java:jar:$elasticsearch_version" "$consumer_dir/target/dependency-tree.txt"
 run_maven_stage consumer-isolated-clean-test "${consumer_maven[@]}" clean test
-echo "隔离 BOM consumer 验证通过：版本 $revision，八个 Starter 与受管依赖均只从 file repository 消费。"
+echo "隔离 BOM consumer 验证通过：版本 $revision，八个 Starter 与受管依赖均从独立 file repository 消费。"

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 也不会读取生产数据库元数据。因此通过本测试不构成生产发布验证，生产环境仍须在发布流程中
  * 收集全实例清单与列容量预检结果。</p>
  */
-class MybatisCryptoRolloutFixtureTest extends BaseUnitTest {
+class MybatisCryptoRolloutContractTest extends BaseUnitTest {
 
     private static final int V2_SAMPLE_LENGTH = CryptoUtils.encrypt(
             "column-capacity-sample", "MDEyMzQ1Njc4OWFiY2RlZg==", "orders").length();

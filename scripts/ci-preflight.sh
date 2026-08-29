@@ -39,22 +39,33 @@ build_maven_args() {
   esac
 }
 
+find_report_files() {
+  local report_pattern="$1"
+
+  find . \
+    \( -path './.git' -o -path './.worktrees' \) -prune -o \
+    -path "$report_pattern" -type f -size +0c -print0
+}
+
 verify_test_reports() {
   local -a surefire_reports=()
   local -a failsafe_reports=()
 
-  mapfile -d '' surefire_reports < <(find . -path '*/target/surefire-reports/TEST-*.xml' -type f -size +0c -print0)
+  mapfile -d '' surefire_reports < <(find_report_files '*/target/surefire-reports/TEST-*.xml')
   test "${#surefire_reports[@]}" -gt 0
   ! grep -E 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${surefire_reports[@]}"
   ! grep -E 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${surefire_reports[@]}"
-  mapfile -d '' failsafe_reports < <(find . -path '*/target/failsafe-reports/TEST-*.xml' -type f -size +0c -print0)
+  mapfile -d '' failsafe_reports < <(find_report_files '*/target/failsafe-reports/TEST-*.xml')
   test "${#failsafe_reports[@]}" -gt 0
   ! grep -E 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${failsafe_reports[@]}"
   ! grep -E 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${failsafe_reports[@]}"
 }
 
 verify_jacoco_reports() {
-  find . -path '*/target/site/jacoco/jacoco.xml' -type f -size +0c -print -quit | grep .
+  local -a jacoco_reports=()
+
+  mapfile -d '' jacoco_reports < <(find_report_files '*/target/site/jacoco/jacoco.xml')
+  test "${#jacoco_reports[@]}" -gt 0
 }
 
 main() {

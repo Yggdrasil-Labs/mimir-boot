@@ -1,25 +1,26 @@
 ---
 id: technical-debt-remediation
 version: v2.2.1
-status: not-started
+status: in-progress
 owner: YoungerYang-Y
 created: 2026-08-24
-updated: 2026-08-25
+updated: 2026-08-29
 ---
 
 # 技术债修复实施计划
 
-**Branch:** [待填充]
-**Baseline SHA:** [待填充]
-**Worktree Path:** [待填充]
-**Started At:** [待填充]
-**Updated At:** [待填充]
+**Branch:** feature/technical-debt-remediation
+**Baseline SHA:** 78ee0d4a2f11cb09eda477abb8860b1634770f64
+**Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/technical-debt-remediation
+**Started At:** 2026-08-25T23:32:24+08:00
+**Updated At:** 2026-08-29T01:01:05+08:00
 
 **Goal:** 在 v2.2.1 中以可回归、可迁移、可回退的方式修复 29 条已核对技术债的有效部分，并明确保留 TD-013、TD-016 与 TD-023 的残余风险。
 **Architecture:** 按模块边界分别修复 common/exception、log、RPC、Nacos、MyBatis、test starter 与构建元数据，通过兼容 API 和原子快照避免补丁版本破坏。MyBatis v2 密文将读取 context 与写入开关分离，所有实现任务完成后统一同步消费文档、迁移说明和技术债状态。
 **Tech Stack:** Java 17、Spring Boot 3.3.13、Maven Wrapper 3.9.16、JUnit 5、Mockito、AssertJ、Bash、Python 3 标准库、Markdown
 **Commit Mode:** per-task
-**Effective Execution Mode:** [待填充]
+**Effective Execution Mode:** serial
+**Reason:** 仅创建一个隔离 worktree，无法为并行组提供独立 index/worktree；按依赖图串行执行。
 **Ledger Mode:** controller-commits
 
 **Plan Verdict:**
@@ -27,8 +28,8 @@ updated: 2026-08-25
 - **Status:** pending
 - **Verified At:** null
 - **Evidence:** null
-- **Blocked Tasks:** none
-- **Concerns:** none
+- **Blocked Tasks:** T9
+- **Concerns:** T9 等待 T8 RFC 的真实批准记录；批准前不得 dispatch 或修改长期约束文档。获批后的 T9 link gate 还需修复现有 `docs/generated/` 与 starter-log README 的 4 条旧断链。
 
 **Accepted Risks:**
 
@@ -81,6 +82,20 @@ flowchart LR
 | T9 | T8 | D |
 
 > 可并行组：同组内 Task 文件互不重叠，可由独立 implementer 并行执行。
+
+### 补充提交追溯
+
+下列提交属于已经完成的主任务之后的跨任务补充验证或边界修复，不计入任何单个任务的独占 `Commit SHAs`；各受影响任务在自己的 Execution 中记录 `Supplemental SHAs`，T8/T9 事实同步必须同时核对本表和对应测试文件。
+
+| SHA | 影响任务 | 作用 | 归属规则 |
+|-----|----------|------|----------|
+| `e45e457` | T2 | 修复脱敏边界、清理 Logback 刷新残留、补充三样本 benchmark | 作为 T2 补充证据，不改变 T2 主提交 `3a97c62`。 |
+| `2dd1b83` | T3、T4 | 补强 Feign 非敏感多值请求头与 Nacos 前缀门控 | 作为 T3/T4 共享补充证据，不伪造单一 `Task-ID`。 |
+| `4e428e6` | T3、T5、T6 | 补强 Dubbo 异步端到端、MyBatis rollout fixture 和测试日志工具 | 作为 T3/T5/T6 共享补充证据，不改变各任务主提交。 |
+
+### 仓库脚本治理原则
+
+仓库脚本只承载跨版本稳定、需要重复执行且现有工具难以清晰表达的门禁。T9/RFC 的一次性范围、批准记录、已知断链和提交边界继续使用 `rg`、`test -e`、`git diff-tree` 与 reviewer 对 diff 的人工复核，不为 controller 流程新增 Python 脚本。
 
 ## Scenario Coverage Matrix
 
@@ -213,31 +228,31 @@ flowchart LR
 
 **Acceptance Criteria:**
 
-- [ ] 中文默认校验消息原样进入 400 响应 data，MethodArgumentNotValid 与 BindException 保持各自既有错误项格式，日志捕获仍证明原始恶意参数经过安全清洗。
-- [ ] `PageResult` 对 null 数值字段、负 totalCount、pageIndex < 1、pageSize < 1 抛 `IllegalArgumentException`，无参 JavaBean 路径仍可用。
-- [ ] `PageRequest.getOffset()` 将 pageIndex null/<1 修正为 1、pageSize null/<1 修正为 10、>1000 修正为 1000、非法方向修正为 ASC，并返回 offset 0。
-- [ ] 三个既有 `fromCode` fallback 分别保持 `DISABLED`、`NOT_DELETED`、`SYSTEM_ERROR`，三个新增 `fromCodeOrNull` 对未知/null 返回 null；已知 `1/0` 等输入的对应 `isXxx` 为 true，未知输入的全部已知态 predicate 为 false。
+- [x] 中文默认校验消息原样进入 400 响应 data，MethodArgumentNotValid 与 BindException 保持各自既有错误项格式，日志捕获仍证明原始恶意参数经过安全清洗。
+- [x] `PageResult` 对 null 数值字段、负 totalCount、pageIndex < 1、pageSize < 1 抛 `IllegalArgumentException`，无参 JavaBean 路径仍可用。
+- [x] `PageRequest.getOffset()` 将 pageIndex null/<1 修正为 1、pageSize null/<1 修正为 10、>1000 修正为 1000、非法方向修正为 ASC，并返回 offset 0。
+- [x] 三个既有 `fromCode` fallback 分别保持 `DISABLED`、`NOT_DELETED`、`SYSTEM_ERROR`，三个新增 `fromCodeOrNull` 对未知/null 返回 null；已知 `1/0` 等输入的对应 `isXxx` 为 true，未知输入的全部已知态 predicate 为 false。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [29e645b]
+- **Dispatch Base SHA:** 78ee0d4a2f11cb09eda477abb8860b1634770f64
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-common,:mimir-boot-starter-exception -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=PageResultTest,PageRequestTest,CommonStatusTest,DeleteFlagTest,ErrorCodeTest,MimirExceptionHandlerTest test","confirmed":true,"evidence":"测试编译失败：CommonStatus/DeleteFlag/ErrorCode 缺少 fromCodeOrNull 方法。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-common,:mimir-boot-starter-exception -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=PageResultTest,PageRequestTest,CommonStatusTest,DeleteFlagTest,ErrorCodeTest,MimirExceptionHandlerTest test","status":"pass","evidence":"common 17/17，exception 47/47，BUILD SUCCESS。"},{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-common,:mimir-boot-starter-exception -am test","status":"pass","evidence":"common 51/51，starter-test 141/141，exception 57/57；共 249/249，BUILD SUCCESS。"}]}
+- **AC Result:** {"pass":4,"total":4,"deferred":[]}
 - **Concerns:** none
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -304,32 +319,33 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] JSON 和百分号编码 password 的值均变为 `****`，privateKey/secretKey/accessKey 被掩码而 publicKey 保持原值。
-- [ ] 两个已初始化 converter 在并发刷新后都使用新规则与 replacement，每次转换只观察完整旧快照或完整新快照。
-- [ ] access/sql appender 使用 `%mask`，非 Logback ApplicationContext 正常启动且最多记录一条 WARN。
-- [ ] MDC 单值 null/空字符串不写入，批量非空 Map 整体替换，null/空 Map 不改变当前上下文。
-- [ ] 手工基准类不进入普通 Surefire include，显式 `-Dtest=SensitiveDataConverterBenchmark` 可运行并输出固定测量参数。
+- [x] JSON 和百分号编码 password 的值均变为 `****`，privateKey/secretKey/accessKey 被掩码而 publicKey 保持原值。
+- [x] 两个已初始化 converter 在并发刷新后都使用新规则与 replacement，每次转换只观察完整旧快照或完整新代配置。
+- [x] access/sql appender 使用 `%mask`，非 Logback ApplicationContext 正常启动且最多记录一条 WARN。
+- [x] MDC 单值 null/空字符串不写入，批量非空 Map 整体替换，null/空 Map 不改变当前上下文。
+- [x] 手工基准类不进入普通 Surefire include，显式 `-Dtest=SensitiveDataConverterBenchmark` 可运行并输出固定测量参数。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [3a97c62]
+- **Supplemental SHAs:** [e45e457]
+- **Dispatch Base SHA:** 29e645b
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SensitiveDataPatternTest,SensitiveDataConverterTest,LogMaskAutoConfigurationTest,LogMaskPropertiesTest,LogbackMaskResourceTest,MdcUtilTest test","confirmed":true,"evidence":"测试编译失败：SensitiveDataConverter 缺少 publishConfiguration(List,List,String)。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am test","status":"pass","evidence":"common 51/51，starter-test 141/141，starter-log 151/151；共 343/343，BUILD SUCCESS。"},{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SensitiveDataConverterBenchmark test","status":"pass","evidence":"主提交 3a97c62、三样本补充提交 e45e457 前的单次历史 benchmark：warmup=100000，measurement=1000000，bytes=1024，baseline=4.36ns/op，candidate=63091.39ns/op，delta=+63087.03ns/op；该值不作为当前发布性能证据。"}]}
+- **AC Result:** {"pass":5,"total":5,"deferred":[]}
+- **Concerns:** T9 发布验收仍须独立连续运行三次基准并验证均值不超过 20µs；主提交阶段的历史单次输出 +63.09µs 不可作为当前发布通过证据。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -358,11 +374,11 @@ Expected: **PASS** — 同一 JVM 内对同一 1 KiB 固定消息分别执行无
 
 **AC Verification:**
 
-- [ ] AC1: converter/pattern 参数化测试断言输出不含 secret/private/access key → 全部通过。
-- [ ] AC2: 双实例并发测试收集全部 Future 并断言无混代配置 → 全部通过。
-- [ ] AC3: 资源测试解析 access/sql pattern，非 Logback 测试断言启动成功和 WARN=1 → 全部通过。
-- [ ] AC4: `MdcUtilTest` 断言 null、空、替换和保留场景 → 全部通过。
-- [ ] AC5: 普通模块测试报告不含 benchmark，显式命令报告包含 benchmark 及 baseline/candidate/delta 三个数值 → 证据齐全。
+- [x] AC1: converter/pattern 参数化测试断言输出不含 secret/private/access key → 全部通过。
+- [x] AC2: 双实例并发测试收集全部 Future 并断言无混代配置 → 全部通过。
+- [x] AC3: 资源测试解析 access/sql pattern，非 Logback 测试断言启动成功和 WARN=1 → 全部通过。
+- [x] AC4: `MdcUtilTest` 断言 null、空、替换和保留场景 → 全部通过。
+- [x] AC5: 普通模块测试报告不含 benchmark，显式命令报告包含 benchmark 及 baseline/candidate/delta 三个数值 → 证据齐全。
 
 **Step 4: Commit**
 
@@ -409,34 +425,35 @@ Dubbo 对 null 附件不中止调用，并在异步完成回调中恢复调用 t
 
 **Acceptance Criteria:**
 
-- [ ] null 附件值不抛异常，Hook 顺序为 before、一个终态、cleanup 且各一次。
-- [ ] 异步完成 Hook 和日志使用原 traceId，回调结束后恢复线程原 MDC。
-- [ ] Holder 并发读写只能观察完整同代依赖快照，单 Spring 上下文边界写入 Javadoc。
-- [ ] 内置 Bridge 的 scope 可恢复 MDC；仅实现旧 extract 的 Bridge 可加载和调用，默认 noop scope 不宣称恢复保证。
-- [ ] 全仓生产代码扫描证明只调用 `RpcHookChain.open/openAsync`；四个弃用直调方法继续可编译且保持既有签名，测试和 Javadoc 明确它们不提供调用级状态/异常隔离保证，TD-023 继续保留。
-- [ ] throwing-scope fixture 分别覆盖同步成功、同步业务失败与异步完成：关闭失败均 WARN；成功结果与异步结果不变，业务异常仍为主异常且包含 suppressed 关闭异常；终态 Hook 与 cleanup 仍各一次。
-- [ ] Feign host 按 host、authority、原始 URL 回退，两个非敏感同名头按迭代顺序保存为 `a,b`。
+- [x] null 附件值不抛异常，Hook 顺序为 before、一个终态、cleanup 且各一次。
+- [x] 异步完成 Hook 和日志使用原 traceId，回调结束后恢复线程原 MDC。
+- [x] Holder 并发读写只能观察完整同代依赖快照，单 Spring 上下文边界写入 Javadoc。
+- [x] 内置 Bridge 的 scope 可恢复 MDC；仅实现旧 extract 的 Bridge 可加载和调用，默认 noop scope 不宣称恢复保证。
+- [x] 全仓生产代码扫描证明只调用 `RpcHookChain.open/openAsync`；四个弃用直调方法继续可编译且保持既有签名，测试和 Javadoc 明确它们不提供调用级状态/异常隔离保证，TD-023 继续保留。
+- [x] throwing-scope fixture 分别覆盖同步成功、同步业务失败与异步完成：关闭失败均 WARN；成功结果与异步结果不变，业务异常仍为主异常且包含 suppressed 关闭异常；终态 Hook 与 cleanup 仍各一次。
+- [x] Feign host 按 host、authority、原始 URL 回退，两个非敏感同名头按迭代顺序保存为 `a,b`。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [bf493b6]
+- **Supplemental SHAs:** [2dd1b83, 4e428e6]
+- **Dispatch Base SHA:** 3a97c62
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"evidence":"已复现 null 附件 NPE、Feign 多值头仅保留首值、authority 回退 NPE、异步回调未恢复 scope，以及同步 Result 业务异常未保留 suppressed。"}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter-dubbo,:mimir-boot-starter-feign -am test","status":"pass","evidence":"Dubbo 39/39、Feign 25/25，RPC core 与依赖模块报告均为零失败/错误/跳过。"},{"cmd":"! rg -n '\\bhookChain\\.(before|after|onError|cleanup)\\(' mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java mimir-boot-starters/mimir-boot-starter-dubbo/src/main/java mimir-boot-starters/mimir-boot-starter-feign/src/main/java -g '*.java' -g '!**/RpcHookChain.java'","status":"pass","evidence":"生产代码定义文件之外没有调用四个旧 Hook 直调方法。"},{"cmd":"rg -n '\\bhookChain\\.(open|openAsync)\\(' mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java mimir-boot-starters/mimir-boot-starter-dubbo/src/main/java mimir-boot-starters/mimir-boot-starter-feign/src/main/java -g '*.java'","status":"pass","evidence":"rpc-core、Dubbo、Feign 生产路径均命中调用级 open/openAsync API。"},{"cmd":"git diff --check -- mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java mimir-boot-starters/mimir-boot-starter-dubbo/src/main/java mimir-boot-starters/mimir-boot-starter-feign/src/main/java","status":"pass","evidence":"RPC 生产源码无空白错误。"}]}
+- **AC Result:** {"pass":7,"total":7,"deferred":[]}
 - **Concerns:** none
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -469,13 +486,13 @@ Expected: **PASS** — rpc-core、Dubbo 与 Feign 的生产入口均命中调用
 
 **AC Verification:**
 
-- [ ] AC1: `RpcDubboFilterTest` 断言 null 附件和 Hook 精确次数 → 通过。
-- [ ] AC2: `RpcDubboFilterEndToEndTest` 断言完成回调 traceId 和 MDC 恢复 → 通过。
-- [ ] AC3: `RpcDubboSupportHolderTest` 并发采样无跨代组合 → 通过。
-- [ ] AC4: Bridge 兼容测试分别覆盖内置 scope 与旧实现 noop scope → 通过。
-- [ ] AC5: `RpcDubboFilterTest` 与端到端测试使用 throwing-scope 覆盖同步成功、业务失败、异步完成及“关闭重抛主异常同一实例”，断言 WARN、非 self-suppression、结果/异常优先级及 Hook/cleanup 精确次数 → 通过。
-- [ ] AC6: 失败式 source scan、`open/openAsync` 正向 scan 与 `RpcHookChainTest` 共同证明生产代码只使用调用级 API、旧直调 API 仍可编译且残余边界已写入 Javadoc → 通过。
-- [ ] AC7: `RpcFeignClientTest` 断言三级回退和头值 `a,b` → 通过。
+- [x] AC1: `RpcDubboFilterTest` 断言 null 附件和 Hook 精确次数 → 通过。
+- [x] AC2: `RpcDubboFilterEndToEndTest` 断言完成回调 traceId 和 MDC 恢复 → 通过。
+- [x] AC3: `RpcDubboSupportHolderTest` 并发采样无跨代组合 → 通过。
+- [x] AC4: Bridge 兼容测试分别覆盖内置 scope 与旧实现 noop scope → 通过。
+- [x] AC5: `RpcDubboFilterTest` 与端到端测试使用 throwing-scope 覆盖同步成功、业务失败、异步完成及“关闭重抛主异常同一实例”，断言 WARN、非 self-suppression、结果/异常优先级及 Hook/cleanup 精确次数 → 通过。
+- [x] AC6: 失败式 source scan、`open/openAsync` 正向 scan 与 `RpcHookChainTest` 共同证明生产代码只使用调用级 API、旧直调 API 仍可编译且残余边界已写入 Javadoc → 通过。
+- [x] AC7: `RpcFeignClientTest` 断言三级回退和头值 `a,b` → 通过。
 
 **Step 4: Commit**
 
@@ -511,31 +528,32 @@ Expected: **PASS** — rpc-core、Dubbo 与 Feign 的生产入口均命中调用
 
 **Acceptance Criteria:**
 
-- [ ] 未绑定 `mimir.boot.nacos.encrypt` 或 `mimir.nacos.encrypt` 时，任意普通 `ENC(` 文本保持原值且不要求密钥。
-- [ ] 仅配置既有 key 的使用方保持默认 enabled=true 解密；显式启用但缺少或使用错误密钥时明确失败。
-- [ ] 从 `ConfigCryptoUtils` 或 `NacosEncryptUtil` 发起的每次 legacy AES encrypt/decrypt 调用，总计恰好记录一条含 `legacy ECB migration API` 的 WARN；委托层不得重复记录。
-- [ ] 固定旧 Base64 密文样本仍可解密为原明文，非 AES/GCM 参数继续按既有异常规则失败。
+- [x] 未绑定 `mimir.boot.nacos.encrypt` 或 `mimir.nacos.encrypt` 时，任意普通 `ENC(` 文本保持原值且不要求密钥。
+- [x] 仅配置既有 key 的使用方保持默认 enabled=true 解密；显式启用但缺少或使用错误密钥时明确失败。
+- [x] 从 `ConfigCryptoUtils` 或 `NacosEncryptUtil` 发起的每次 legacy AES encrypt/decrypt 调用，总计恰好记录一条含 `legacy ECB migration API` 的 WARN；委托层不得重复记录。
+- [x] 固定旧 Base64 密文样本仍可解密为原明文，非 AES/GCM 参数继续按既有异常规则失败。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [5e71294]
+- **Supplemental SHAs:** [2dd1b83]
+- **Dispatch Base SHA:** bf493b6
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-nacos -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=NacosEncryptAutoConfigurationTest,NacosEncryptPropertiesTest,ConfigDecryptProcessorTest,ConfigCryptoUtilsTest,NacosEncryptUtilTest test","confirmed":true,"evidence":"无前缀 ENC 启动因缺密钥报错；ConfigCryptoUtils 与 NacosEncryptUtil legacy AES 调用均断言 WARN=0 失败。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-nacos -am test","status":"pass","evidence":"common 51/51、starter-test 141/141、Nacos 77/77；零失败、零错误、零跳过。"}]}
+- **AC Result:** {"pass":4,"total":4,"deferred":[]}
 - **Concerns:** none
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -557,10 +575,10 @@ Expected: **PASS**
 
 **AC Verification:**
 
-- [ ] AC1: 环境处理器测试断言无前缀时 ENC 原样和启动成功 → 通过。
-- [ ] AC2: properties/decrypt 测试断言 key-only 成功及缺/错 key 失败 → 通过。
-- [ ] AC3: 两层入口测试分别捕获一次顶层调用总计一条固定 WARN，且委托入口没有双重 WARN → 通过。
-- [ ] AC4: 固定样本与错误算法测试锁定兼容结果 → 通过。
+- [x] AC1: 环境处理器测试断言无前缀时 ENC 原样和启动成功 → 通过。
+- [x] AC2: properties/decrypt 测试断言 key-only 成功及缺/错 key 失败 → 通过。
+- [x] AC3: 两层入口测试分别捕获一次顶层调用总计一条固定 WARN，且委托入口没有双重 WARN → 通过。
+- [x] AC4: 固定样本与错误算法测试锁定兼容结果 → 通过。
 
 **Step 4: Commit**
 
@@ -630,24 +648,25 @@ MyBatis 的有效 Mapper 包查询反映默认、配置和检测结果并去重�
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [c6006b2]
+- **Supplemental SHAs:** [4e428e6]
+- **Dispatch Base SHA:** 5e71294
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=MybatisPropertiesTest,MybatisPlusAutoConfigurationTest,MybatisPlusCryptoConfigurationTest,MybatisPlusLoggingConfigurationTest,CryptoUtilsTest,StringCryptoTypeHandlerTest,IntegerCryptoTypeHandlerTest,LongCryptoTypeHandlerTest,JsonSqlLogInnerInterceptorTest,SqlLogMaskUtilsTest,AuditMetaObjectHandlerTest,MybatisCryptoRolloutContractTest test","confirmed":true,"evidence":"testCompile 缺少 CryptoUtils 三参 AAD API、Properties context/开关/有效 Mapper 包 API，共 17 个编译错误。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am test","status":"pass","evidence":"common 51、starter-test 141、mybatis 319，共 511；failures/errors/skipped 均为 0。"},{"cmd":"test -f mimir-boot-starters/mimir-boot-starter-mybatis/target/surefire-reports/TEST-com.yggdrasil.labs.mybatis.config.MybatisCryptoRolloutContractTest.xml && rg -n 'tests=' mimir-boot-starters/mimir-boot-starter-mybatis/target/surefire-reports/TEST-com.yggdrasil.labs.mybatis.config.MybatisCryptoRolloutContractTest.xml | rg -v 'tests=\"0\"'","status":"pass","evidence":"MybatisCryptoRolloutContractTest 报告真实存在且 tests 属性大于 0，避免 -Dtest 错名静默跳过。"},{"cmd":"mise exec java@17 -- ./mvnw -o -pl :mimir-boot-starter-mybatis -Dsurefire.failIfNoSpecifiedTests=true -Dtest=MybatisPropertiesTest,MybatisPlusAutoConfigurationTest,MybatisPlusCryptoConfigurationTest,MybatisPlusLoggingConfigurationTest,CryptoUtilsTest,StringCryptoTypeHandlerTest,IntegerCryptoTypeHandlerTest,LongCryptoTypeHandlerTest,JsonSqlLogInnerInterceptorTest,SqlLogMaskUtilsTest,AuditMetaObjectHandlerTest,MybatisCryptoRolloutContractTest test","status":"pass","evidence":"目标模块在 failIfNoSpecifiedTests=true 下实际运行 236 个测试，失败、错误、跳过均为 0；MybatisCryptoRolloutContractTest 实际运行 2 个测试。"}]}
+- **AC Result:** {"pass":8,"total":8,"deferred":[]}
+- **Concerns:** v2 AAD 仅绑定 application context；同 context 密文互换仍可解密，已由测试锁定为 TD-016 残余边界。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -670,19 +689,22 @@ Expected: **FAIL** — 当前缺少 AAD/写开关/API，或 SQL/审计/Mapper �
 
 **Step 3: Verify**
 
-Run: `mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am test`
-Expected: **PASS**
+Run: `mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am test` followed by `test -f mimir-boot-starters/mimir-boot-starter-mybatis/target/surefire-reports/TEST-com.yggdrasil.labs.mybatis.config.MybatisCryptoRolloutContractTest.xml && rg -n 'tests=' mimir-boot-starters/mimir-boot-starter-mybatis/target/surefire-reports/TEST-com.yggdrasil.labs.mybatis.config.MybatisCryptoRolloutContractTest.xml | rg -v 'tests=\"0\"'`
+Expected: **PASS** — 指定 rollout 测试报告真实存在且 `tests` 大于 0，避免错名导致静默跳过。
+
+Run: `mise exec java@17 -- ./mvnw -o -pl :mimir-boot-starter-mybatis -Dsurefire.failIfNoSpecifiedTests=true -Dtest=MybatisPropertiesTest,MybatisPlusAutoConfigurationTest,MybatisPlusCryptoConfigurationTest,MybatisPlusLoggingConfigurationTest,CryptoUtilsTest,StringCryptoTypeHandlerTest,IntegerCryptoTypeHandlerTest,LongCryptoTypeHandlerTest,JsonSqlLogInnerInterceptorTest,SqlLogMaskUtilsTest,AuditMetaObjectHandlerTest,MybatisCryptoRolloutContractTest test`
+Expected: **PASS** — 仅在目标模块执行 236 个测试，`MybatisCryptoRolloutContractTest` 实际执行 2 个测试；测试名不存在时命令必须非零。
 
 **AC Verification:**
 
-- [ ] AC1: `MybatisPropertiesTest` 断言有效包集合和弃用方法兼容，`MybatisPlusAutoConfigurationTest` 断言实际 scanner 使用相同集合 → 通过。
-- [ ] AC2: SQL/审计测试断言无 secret、system 和 WARN → 通过。
-- [ ] AC3: `CryptoUtilsTest` 断言固定 v1、v2 往返、所有失败路径及同 context 跨字段/记录交换仍可解密的残余边界 → 通过。
-- [ ] AC4: 配置测试覆盖 false/true/无 context 三种写入状态 → 通过。
-- [ ] AC5: 三类 Handler 测试分别断言单参只读写 v1、双参读 v2/写 v1、三参 false 读 v2/写 v1、三参 true 写 v2 → 通过。
-- [ ] AC6: `MybatisPlusCryptoConfigurationTest` 断言三个旧单参方法仍可调用，ApplicationContext 中原 Bean name/type 不变且配置方法遵循 context/开关 → 通过。
-- [ ] AC7: `MybatisCryptoRolloutContractTest` 对“实例未全部可读”“context 不一致”“列容量不足”逐一拒绝，仅完整就绪 fixture 允许开写 → 通过。
-- [ ] AC8: `MybatisCryptoRolloutContractTest` 拒绝仅支持 v1 和不同 context 的回退目标，允许支持 v2 且 context 相同的回退目标 → 通过。
+- [x] AC1: `MybatisPropertiesTest` 断言有效包集合和弃用方法兼容，`MybatisPlusAutoConfigurationTest` 断言实际 scanner 使用相同集合 → 通过。
+- [x] AC2: SQL/审计测试断言无 secret、system 和 WARN → 通过。
+- [x] AC3: `CryptoUtilsTest` 断言固定 v1、v2 往返、所有失败路径及同 context 跨字段/记录交换仍可解密的残余边界 → 通过。
+- [x] AC4: 配置测试覆盖 false/true/无 context 三种写入状态 → 通过。
+- [x] AC5: 三类 Handler 测试分别断言单参只读写 v1、双参读 v2/写 v1、三参 false 读 v2/写 v1、三参 true 写 v2 → 通过。
+- [x] AC6: `MybatisPlusCryptoConfigurationTest` 断言三个旧单参方法仍可调用，ApplicationContext 中原 Bean name/type 不变且配置方法遵循 context/开关 → 通过。
+- [x] AC7: `MybatisCryptoRolloutContractTest` 对“实例未全部可读”“context 不一致”“列容量不足”逐一拒绝，仅完整就绪 fixture 允许开写 → 通过。
+- [x] AC8: `MybatisCryptoRolloutContractTest` 拒绝仅支持 v1 和不同 context 的回退目标，允许支持 v2 且 context 相同的回退目标 → 通过。
 
 **Step 4: Commit**
 
@@ -726,31 +748,33 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] 启用 test profile 但未显式配置数据库策略时，starter 不注入 create-drop、show-sql 或固定应用名。
-- [ ] 下游显式测试配置可覆盖并生效，`TestAutoConfiguration` 手工 Import 仍可编译运行且报告弃用。
-- [ ] 连续生成 10000 个 `randomUserId` 全部唯一。
-- [ ] 合并后的日志断言工具不直接依赖 Logback 内部 `appender.list`，三类测试基类共享一致的 setup/teardown 行为。
+- [x] 启用 test profile 但未显式配置数据库策略时，starter 不注入 create-drop、show-sql 或固定应用名。
+- [x] 下游显式测试配置可覆盖并生效，`TestAutoConfiguration` 手工 Import 仍可编译运行且报告弃用。
+- [x] 连续生成 10000 个 `randomUserId` 全部唯一。
+- [x] 合并后的日志断言工具不直接依赖 Logback 内部 `appender.list`，三类测试基类共享一致的 setup/teardown 行为。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [bb651cd]
+- **Supplemental SHAs:** [4e428e6]
+- **Dispatch Base SHA:** c6006b2
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Dispatch Mode:** historical-provenance-reconstructed
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-test -am test","confirmed":true,"evidence":"测试前置条件命中：类路径默认配置、随机 ID 与日志工具断言至少一项不满足。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-test -am test","status":"pass","evidence":"starter-test 聚焦测试 146/146，失败数、错误数、跳过数均为 0。"}]}
+- **AC Result:** {"pass":4,"total":4,"deferred":[]}
+- **Concerns:** 原始 dispatch 记录缺失，Base/Ref 按有序提交链从 T5 主提交 `c6006b2` 重建；不将重建值伪装为原始 controller 日志。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -774,10 +798,10 @@ Expected: **PASS**
 
 **AC Verification:**
 
-- [ ] AC1: `TestStarterConsumerTest` 检查三项危险属性均不存在 → 通过。
-- [ ] AC2: 消费测试显式配置生效；`DeprecatedApiCompilationTest` 断言旧类型源码编译成功且捕获到指向该类型的弃用诊断 → 通过。
-- [ ] AC3: `TestUtilsTest` 的 10000 元素 Set 大小为 10000 → 通过。
-- [ ] AC4: 工具和三类基类测试锁定单一日志断言与一致生命周期 → 通过。
+- [x] AC1: `TestStarterConsumerTest` 检查三项危险属性均不存在 → 通过。
+- [x] AC2: 消费测试显式配置生效；`DeprecatedApiCompilationTest` 断言旧类型源码编译成功且捕获到指向该类型的弃用诊断 → 通过。
+- [x] AC3: `TestUtilsTest` 的 10000 元素 Set 大小为 10000 → 通过。
+- [x] AC4: 工具和三类基类测试锁定单一日志断言与一致生命周期 → 通过。
 
 **Step 4: Commit**
 
@@ -815,35 +839,36 @@ Expected: **PASS**
 
 **Acceptance Criteria:**
 
-- [ ] `mise exec java@17 -- ./mvnw clean verify` 默认不会因 GPG 私钥缺失失败，Maven Central 发布配置解析出 `gpg.skip=false`。
-- [ ] 根/parent 的 google-java-format 都固定为 1.23.0，BOM 不再包含未消费的 redis/kafka 属性。
-- [ ] RocketMQ 精确使用 `org.apache.rocketmq:rocketmq-spring-boot-starter:2.3.6`，Elasticsearch Java Client 使用 `co.elastic.clients:elasticsearch-java:${elasticsearch.version}`，旧错误坐标完全移除。
-- [ ] `verify_test_reports` 只聚合紧邻 clean 构建产生的 Surefire/Failsafe XML 并要求至少各一份、failures/errors/skipped 均为 0；`verify_jacoco_reports` 只用于 `-Pci` 构建且要求非空 JaCoCo XML。
-- [ ] 构建模型检查逐个枚举 Reactor POM，默认与 `maven-central` 两种模型分别断言唯一 `gpg.skip=true/false`，并断言每个 effective `maven-gpg-plugin` 顶层和 execution 的 `skip` 都解析为同一期望值；不得用多模块共享 output 文件覆盖结果。
-- [ ] consumer 脚本动态读取当前 revision，将 Reactor 候选制品部署到隔离文件仓库；干净临时项目从 BOM 引入 exception/log/rpc-core/dubbo/feign/nacos/mybatis/test Starter，并无版本声明 `org.apache.rocketmq:rocketmq-spring-boot-starter` 与 `co.elastic.clients:elasticsearch-java`；`dependency:tree` 精确解析为 2.3.6/8.11.0，随后启动安全默认配置并验证 MyBatis SQL 经日志脱敏后不含固定 secret；POM、classpath 和命令均不引用 Reactor 内部模块路径。
-- [ ] 根目录存在完整 Apache License 2.0 文本，POM 许可证声明与文件一致。
-- [ ] 发布签名检查枚举所有 deployable artifact 并逐一匹配 `.asc`；临时 GPG fixture 返回非零时 Maven 发布生命周期必须非零退出。
+- [x] `mise exec java@17 -- ./mvnw clean verify` 默认不会因 GPG 私钥缺失失败，Maven Central 发布配置解析出 `gpg.skip=false`。
+- [x] 根/parent 的 google-java-format 都固定为 1.23.0，BOM 不再包含未消费的 redis/kafka 属性。
+- [x] RocketMQ 精确使用 `org.apache.rocketmq:rocketmq-spring-boot-starter:2.3.6`，Elasticsearch Java Client 使用 `co.elastic.clients:elasticsearch-java:${elasticsearch.version}`，旧错误坐标完全移除。
+- [x] `verify_test_reports` 只聚合紧邻 clean 构建产生的 Surefire/Failsafe XML 并要求至少各一份、failures/errors/skipped 均为 0；`verify_jacoco_reports` 只用于 `-Pci` 构建且要求非空 JaCoCo XML。
+- [x] 构建模型检查逐个枚举 Reactor POM，默认与 `maven-central` 两种模型分别断言唯一 `gpg.skip=true/false`，并断言每个 effective `maven-gpg-plugin` 顶层和 execution 的 `skip` 都解析为同一期望值；不得用多模块共享 output 文件覆盖结果。
+- [x] consumer 脚本动态读取当前 revision，将 Reactor 候选制品部署到隔离文件仓库；干净临时项目从 BOM 引入 exception/log/rpc-core/dubbo/feign/nacos/mybatis/test Starter，并无版本声明 `org.apache.rocketmq:rocketmq-spring-boot-starter` 与 `co.elastic.clients:elasticsearch-java`；`dependency:tree` 精确解析为 2.3.6/8.11.0，随后启动安全默认配置并验证 MyBatis SQL 经日志脱敏后不含固定 secret；POM、classpath 和命令均不引用 Reactor 内部模块路径。
+- [x] 根目录存在完整 Apache License 2.0 文本，POM 许可证声明与文件一致。
+- [x] 发布签名检查枚举所有 deployable artifact 并逐一匹配 `.asc`；临时 GPG fixture 返回非零时 Maven 发布生命周期必须非零退出。
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [a5dba88]
+- **Dispatch Base SHA:** bb651cd
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Dispatch Mode:** historical-provenance-reconstructed
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"test ! -f LICENSE && test ! -e scripts/verify-build-model.py && test ! -e scripts/verify-release-signing.sh","confirmed":true,"evidence":"T7 三个新增目标文件在基线中不存在；旧 BOM 坐标、旧 consumer 版本与固定报告阈值均已命中。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec java@17 -- ./mvnw clean verify","status":"pass","evidence":"15 个 Reactor 模块全部 SUCCESS。"},{"cmd":"mise exec java@17 -- bash scripts/ci-preflight.sh","status":"pass","evidence":"CI clean verify、Surefire/Failsafe 与 JaCoCo 门禁均通过。"},{"cmd":"mise exec java@17 -- mise exec python@3 -- python scripts/verify-build-model.py","status":"pass","evidence":"逐个验证 15 个 Reactor POM 的 default/maven-central GPG 模型。"},{"cmd":"mise exec java@17 -- bash scripts/test-suite-consumer.sh","status":"pass","evidence":"临时 file:// 镜像与离线模式下 dependency resolve/tree/clean test 通过。"},{"cmd":"mise exec java@17 -- bash scripts/verify-release-signing.sh --preheat","status":"pass","evidence":"46 个制品及附属制品签名校验通过，失败 fixture 阻断部署。"}]}
+- **AC Result:** {"pass":7,"total":7,"deferred":[]}
+- **Concerns:** 原始 dispatch 记录缺失，Base/Ref 按有序提交链从 T6 主提交 `bb651cd` 重建；不将重建值伪装为原始 controller 日志。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
 
 **Step 1: Red**
 
@@ -869,8 +894,8 @@ Expected: **PASS（Red pre-condition 已命中）** — 三个目标文件尚不
 - 把预检拆为 `verify_test_reports` 和 `verify_jacoco_reports`：前者要求本次 clean 构建至少生成一份非空 Surefire 和一份非空 Failsafe XML，并聚合实际 failures/errors/skipped；后者只检查 CI 构建的非空 JaCoCo XML。删除固定报告数和用例数阈值。
 - 新增仅使用 Python 标准库的 `scripts/verify-build-model.py`：启动时执行 `java -version` 并要求 major=17，否则立即失败；从根 Reactor `<modules>` 递归枚举所有 POM，为每个 POM 分别以 `-N -f <pom>` 生成独立临时 default/`maven-central` effective POM；用 namespace-aware XML 解析断言 `gpg.skip` 唯一且分别为 true/false，并枚举每个 `maven-gpg-plugin` 的顶层与 execution `configuration/skip`，要求全部解析为对应值。任一 POM、profile、plugin 或 execution 缺失/不一致即非零退出；临时目录自动清理。
 - 添加标准 Apache License 2.0 全文。
-- 重写 `scripts/test-suite-consumer.sh`：使用 `help:evaluate -Dexpression=revision -q -DforceStdout` 读取根版本；创建隔离 Maven cache 与 file repository；以 `clean deploy -Dmaven.repo.local=<isolated-cache> -DskipTests -Dgpg.skip=true -Dmaven.deploy.skip=false -DaltDeploymentRepository=...` 部署候选制品；临时 consumer 使用同一隔离 cache，只配置该文件仓库、导入当前 BOM、声明八个受影响 Starter，并额外无版本声明 RocketMQ Starter 与 Elasticsearch Java Client；先以 `dependency:tree`/`dependency:resolve` 断言两者解析为 2.3.6/8.11.0，再以最小 Spring fixture 验证自动配置启动和 MyBatis SQL 经 `%mask` 输出后固定 secret 消失。脚本用 trap 清理，不读取用户本地仓库中已有的 Mimir 快照。
-- 新增 `scripts/verify-release-signing.sh`：从 Reactor/effective POM 枚举 deployable artifact；创建权限 0700 的临时 `GNUPGHOME`，用系统 GPG 的 batch/无口令模式生成一次性测试密钥；将 `altDeploymentRepository` 指向 `mktemp -d` 的本地文件仓库并执行显式签名 deploy，验证每个主制品与附加制品都生成可由该临时公钥校验的 `.asc`。再在另一个空文件仓库中把 `-Dgpg.executable` 指向固定返回 7 的临时 fixture 执行隔离 deploy，断言命令非零且仓库中没有半成功发布。脚本用 trap 清理临时 keyring/cache/repository，不接触用户 GPG home 或远程仓库。
+- 重写 `scripts/test-suite-consumer.sh`：使用 `help:evaluate` 从 BOM 动态读取当前 revision、RocketMQ 与 Elasticsearch 版本；producer 与 consumer 分别使用独立 Maven cache，producer 将候选制品部署到隔离 file repository，干净 consumer 只配置该仓库并通过 BOM 声明八个受影响 Starter 和两个托管依赖。consumer 还检查 Mimir 的 `_remote.repositories` 标记全部指向 fixture 仓库，再执行依赖树、自动配置启动和 MyBatis→log 脱敏验证。脚本用 trap 清理，不读取用户本地仓库中已有的 Mimir 快照。
+- 新增 `scripts/verify-release-signing.sh`：从 Reactor/effective POM 枚举 deployable artifact；创建权限 0700 的临时 `GNUPGHOME`，用系统 GPG 的 batch/无口令模式生成一次性测试密钥。`--preheat` 以最终 deploy 生命周期预热空的隔离 Maven cache；离线模式只接受显式设置的 `MIMIR_RELEASE_SIGNING_SEED_M2`，不默认复制用户 Maven 仓库。随后在隔离文件仓库执行显式签名 deploy 并验证所有 `.asc`，再以固定返回 7 的 GPG fixture 断言失败时没有半成功发布；全程不接触用户 GPG home 或远程发布仓库。
 
 **Step 3: Verify**
 
@@ -883,7 +908,7 @@ Expected: **PASS** — 刚生成的普通 clean verify 报告至少包含一份 
 Run: `mise exec java@17 -- bash scripts/ci-preflight.sh`
 Expected: **PASS** — 脚本执行独立的 `clean -Pci verify`，随后测试报告门禁与 JaCoCo 门禁都通过，不复用普通构建报告。
 
-Run: `mise exec java@17 -- mise exec python@3 -- python scripts/verify-build-model.py`
+Run: `build_model_cache="$(mktemp -d -t mimir-build-model-m2.XXXXXX)"; MIMIR_BUILD_MODEL_M2="$build_model_cache" mise exec java@17 -- mise exec python@3 -- python scripts/verify-build-model.py; status=$?; rm -rf "$build_model_cache"; exit "$status"`
 Expected: **PASS** — 每个 Reactor POM 的两套独立 effective POM 均完成 XML-aware 断言，默认/发布属性及全部 GPG plugin/execution skip 分别一致为 true/false，无 output 覆盖。
 
 Run: `mise exec java@17 -- bash scripts/test-suite-consumer.sh`
@@ -924,36 +949,36 @@ Expected: **PASS** — 临时 keyring 生成的签名可验证，本地文件仓
 - Produces: T9 可消费的明确批准记录；未批准时 T9 不得修改任何长期约束文件
 
 **Behavior:**
-RFC 只授权把已落地且已验证的版本、安全、可靠性和模块边界事实同步到长期文档，不改变模块依赖方向、公开 API、发布结构或安全策略。它必须逐文件列出允许的事实性修订、禁止借机扩大的范围、兼容性影响、验证方式和回退方案，并在获得用户/架构负责人明确批准后记录批准人、日期与依据。
+RFC 只授权把已落地且已验证的版本、安全、可靠性和模块边界事实同步到长期文档，不改变模块依赖方向、公开 API、发布结构或安全策略。它必须逐文件列出允许的事实性修订、禁止借机扩大的范围、兼容性影响、验证方式和回退方案，并在获得用户/架构负责人明确批准后记录批准人、角色、带时区的批准时间、依据与证据。
 
 **Acceptance Criteria:**
 
-- [ ] RFC 使用 `arch-` 前缀，包含模板全部章节，并逐项映射四个长期文档及 `ARCHITECTURE.md` 的允许修改边界。
-- [ ] RFC 明确“不改变架构方向，只同步已验证实现事实”，列出越界时停止实施的规则。
-- [ ] `docs/design-docs/index.md` 包含可解析的 RFC 行，初始状态为 draft。
-- [ ] T9 开始前 RFC 已记录明确批准人、批准日期和批准依据；未获批即把 T9 标记 blocked，不得自行假设授权。
+- [x] RFC 使用 `arch-` 前缀，包含模板全部章节，并逐项映射四个目标长期文档及 `ARCHITECTURE.md` 的允许修改边界，同时声明 `docs/design-docs/core-beliefs.md` 只读。
+- [x] RFC 明确“不改变架构方向，只同步已验证实现事实”，列出越界时停止实施的规则。
+- [x] `docs/design-docs/index.md` 包含可解析的 RFC 行，初始状态为 draft。
+- [ ] T9 开始前 RFC 已记录明确批准人、批准角色、带时区的批准时间、批准依据和批准证据；未获批即把 T9 标记 blocked，不得自行假设授权。（deferred：等待用户/架构负责人批准）
 
 **Execution:**
 
-- **Status:** pending
-- **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Status:** done
+- **Commit SHAs:** [6930084]
+- **Dispatch Base SHA:** a5dba88
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"test ! -e docs/design-docs/arch-technical-debt-remediation.md","confirmed":true,"evidence":"T8 RFC 文件不存在，架构约束同步尚未获授权文档。"}]}
+- **Verify Result:** {"commands":[{"cmd":"mise exec node@22 -- node /mnt/c/Users/YangYang/.codex/skills/docs-evolve/scripts/lint-docs.mjs","status":"pass","evidence":"Doc health check passed。"},{"cmd":"mise exec node@22 -- env npm_config_cache=/tmp/mimir-boot-markdownlint-cache npx --yes markdownlint-cli2@0.23.2 \"docs/**/*.md\" \"*.md\"","status":"pass","evidence":"RFC、索引及全仓库 Markdown lint 无错误。"},{"cmd":"for path in ARCHITECTURE.md docs/SECURITY.md docs/RELIABILITY.md docs/design-docs/core-beliefs.md docs/design-docs/module-boundaries.md docs/design-docs/_template.md docs/design-docs/arch-technical-debt-remediation.md docs/design-docs/index.md docs/active/v2.2.1/technical-debt-remediation/plan.md docs/active/v2.2.1/technical-debt-remediation/design.md; do test -f \"$path\"; done","status":"pass","evidence":"RFC、索引、五个长期约束来源和需求台账引用路径均存在。"},{"cmd":"test \"$(rg -c '^批准(人|角色|时间|依据|证据): 待用户/架构负责人批准' docs/design-docs/arch-technical-debt-remediation.md)\" -eq 5 && rg -n '^status: draft$' docs/design-docs/arch-technical-debt-remediation.md && rg -n '^- \\*\\*Dispatch At:\\*\\* null$' docs/active/v2.2.1/technical-debt-remediation/plan.md","status":"pass","evidence":"RFC 保持 draft，五项批准字段明确为待批准占位，T9 Dispatch At 为 null。"},{"cmd":"git diff --check -- docs/design-docs/arch-technical-debt-remediation.md docs/design-docs/index.md docs/active/v2.2.1/technical-debt-remediation/plan.md","status":"pass","evidence":"RFC、索引和计划台账无空白错误。"}]}
+- **AC Result:** {"pass":3,"total":4,"deferred":["AC4: 批准人、角色、带时区批准时间、依据与证据需在 T9 dispatch 前由用户/架构负责人提供并重新验证"]}
+- **Concerns:** 五项批准字段仍为待批准占位；T9 已在计划台账标记 blocked，未获批不得 dispatch。
 
 **Task Completion Gate:**
 
-- [ ] Red Result exists and passed
-- [ ] Verify Result exists and passed
-- [ ] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
-- [ ] Every Commit SHA in the ordered task chain belongs to this task only
-- [ ] Per-task AC checkbox synced
-- [ ] Approval evidence exists before T9 dispatch
+- [x] Red Result exists and passed
+- [x] Verify Result exists and passed
+- [x] AC Result: total > 0 AND pass + deferred.length == total, non-deferred AC all verified
+- [x] Every Commit SHA in the ordered task chain belongs to this task only
+- [x] Per-task AC checkbox synced
+- [ ] Approval evidence exists before T9 dispatch（deferred）
 
 **Step 1: Red**
 
@@ -964,33 +989,34 @@ Expected: **PASS（Red pre-condition 已命中）** — 当前不存在授权长
 
 - 以 `docs/design-docs/_template.md` 为结构创建 RFC，frontmatter 使用 `id: arch-technical-debt-remediation`、`status: draft`、owner 和日期。
 - “标准做法”逐文件列出 T9 允许同步的实现事实；“反模式”禁止改变依赖方向、公共契约、发布策略或把残余 TD-013/TD-016/TD-023 写成已关闭。
-- 新增“批准记录”章节，固定字段为 `批准人:`、`批准日期:`、`批准依据:`。在索引加入 status=draft 的条目。向用户/架构负责人提交 RFC 评审；只有明确批准后才填写实际值并解锁 T9。
+- 新增“批准记录”章节，固定字段为 `批准人:`、`批准角色:`、`批准时间:`、`批准依据:`、`批准证据:`，并要求批准时间早于 T9 `Dispatch At`。在索引加入 status=draft 的条目。向用户/架构负责人提交 RFC 评审；只有明确批准后才填写实际值并解锁 T9。
 
 **Step 3: Verify**
 
 Run: `mise exec node@22 -- node /mnt/c/Users/YangYang/.codex/skills/docs-evolve/scripts/lint-docs.mjs`
-Expected: **PASS** — RFC frontmatter、索引链接和文档结构有效。
+Expected: **PASS** — active 文档结构和 frontmatter 健康；该命令不替代 design-docs 链接检查。
 
-Run: `rg -n 'ARCHITECTURE\.md|docs/SECURITY\.md|docs/RELIABILITY\.md|docs/design-docs/module-boundaries\.md' docs/design-docs/arch-technical-debt-remediation.md`
-Expected: **PASS** — 所有长期文档边界均存在。
+Run: `mise exec node@22 -- env npm_config_cache=/tmp/mimir-boot-markdownlint-cache npx --yes markdownlint-cli2@0.23.2 "docs/**/*.md" "*.md"`
+Expected: **PASS** — RFC、索引及全仓库 Markdown 无 lint 错误。
 
-Run: `rg -n '^批准人: .+[^[:space:]]$' docs/design-docs/arch-technical-debt-remediation.md`
-Expected: **PASS** — 批准人是非空、非纯空白值。
+Run: `tree="$(mise exec java@17 -- ./mvnw -q -pl :mimir-boot-common dependency:tree -Dscope=compile)" && ! printf '%s\n' "$tree" | rg -q 'mimir-boot-starter-'`
+Expected: **PASS** — common 的 compile 依赖树不包含任何 starter，依赖方向未反向。
 
-Run: `rg -n '^批准日期: 20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' docs/design-docs/arch-technical-debt-remediation.md`
-Expected: **PASS** — 批准日期为非空 ISO 日期。
+Run: `for path in ARCHITECTURE.md docs/SECURITY.md docs/RELIABILITY.md docs/design-docs/core-beliefs.md docs/design-docs/module-boundaries.md docs/design-docs/_template.md docs/design-docs/arch-technical-debt-remediation.md docs/design-docs/index.md docs/active/v2.2.1/technical-debt-remediation/plan.md docs/active/v2.2.1/technical-debt-remediation/design.md; do test -f "$path"; done`
+Expected: **PASS** — RFC、索引、五个长期约束来源和需求台账引用路径均存在。
 
-Run: `rg -n '^批准依据: .+[^[:space:]]$' docs/design-docs/arch-technical-debt-remediation.md`
-Expected: **PASS** — 批准依据是非空、非纯空白值。
+Run: `test "$(rg -c '^批准(人|角色|时间|依据|证据): 待用户/架构负责人批准' docs/design-docs/arch-technical-debt-remediation.md)" -eq 5 && rg -n '^status: draft$' docs/design-docs/arch-technical-debt-remediation.md && rg -n '^- \*\*Dispatch At:\*\* null$' docs/active/v2.2.1/technical-debt-remediation/plan.md`
+Expected: **PASS** — RFC 保持 draft，五项批准字段均为明确待批准占位且 T9 没有 `Dispatch At`；不得用字段非空替代真实批准。
 
-Run: `! rg -n '^批准(人|日期|依据):.*(待填充|TBD|null)' docs/design-docs/arch-technical-debt-remediation.md`
-Expected: **PASS** — 三个批准字段均不含占位值。
+Run: `git diff --check -- docs/design-docs/arch-technical-debt-remediation.md docs/design-docs/index.md docs/active/v2.2.1/technical-debt-remediation/plan.md`
+Expected: **PASS** — RFC、索引和计划台账无空白错误。
 
 **AC Verification:**
 
-- [ ] AC1: RFC 与索引通过文档健康检查，链接可解析 → 通过。
-- [ ] AC2: RFC 对五个长期文档逐项限定允许事实和禁止变更 → 通过。
-- [ ] AC3: 批准人、日期与依据均为明确值，且批准发生在 T9 dispatch 之前 → 通过。
+- [x] AC1: RFC 使用 `arch-` 前缀并包含模板章节，逐项限定四个长期文档及 T9 消费/治理文档范围矩阵，同时声明 `core-beliefs.md` 只读 → 通过。
+- [x] AC2: RFC 明确不改变架构方向，只同步已验证事实，并列出越界停止规则 → 通过。
+- [x] AC3: 设计索引包含可解析的 `status=draft` RFC 条目 → 通过。
+- [ ] AC4: 批准人、角色、带时区批准时间、依据与证据均为明确值，且批准发生在 T9 dispatch 之前 → deferred，等待用户/架构负责人批准。
 
 **Step 4: Commit**
 
@@ -1044,21 +1070,24 @@ Expected: **PASS** — 三个批准字段均不含占位值。
 - [ ] 文档索引不再链接不存在的 `docs/generated/` 或 `docs/exec-plans/`，Maven、示例版本和 LICENSE 链接可解析。
 - [ ] 手工脱敏基准连续运行三次，release 记录每次 baseline ns/op、candidate ns/op、有符号 delta、三次 delta 算术均值和最大值，三次均值不超过 20µs。
 - [ ] `ARCHITECTURE.md`、`docs/SECURITY.md`、`docs/RELIABILITY.md`、`docs/design-docs/module-boundaries.md` 的每处修改都落在 T8 RFC 逐项批准边界内；未批准内容保持不变。
+- [ ] T9 修改的仓库入口、BOM/Starter README、产品/发布/技术债台账、需求索引和 RFC/index 均逐项落在 T8 RFC 的“消费与治理文档范围矩阵”内；未列出的文件不得混入。
 - [ ] 长期文档同步与验证完成后，RFC 及设计索引状态从 draft 更新为 verified，并填写实际 verified 日期；任一验证未通过时保持 draft。
 - [ ] 第一个 T9 提交完成且 Pre-Publication Gate 全绿后，第二个 T9 提交只把 Spec、Design、需求索引和版本索引发布为最终状态；门禁失败时四个文件保持实施前状态。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** blocked
 - **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
+- **Dispatch Base SHA:** a5dba88
+- **Dispatch Ref:** feature/technical-debt-remediation
+- **Dispatch Mode:** not-dispatched
+- **Dispatch At:** null
 - **Attempts:** 0
-- **Blocked Reason:** null
+- **Blocked Reason:** T8 RFC `arch-technical-debt-remediation` 尚未获得真实批准人、批准角色、批准时间、批准依据和批准证据；批准字段仍为占位，禁止 T9 dispatch。当前 T9 link gate 另命中 `docs/generated/` 和 starter-log README 的 4 条旧断链，需在获批后的 content 阶段修复。
 - **Red Result:** null
 - **Verify Result:** null
 - **AC Result:** null
-- **Concerns:** none
+- **Concerns:** 等待用户/架构负责人明确批准；批准前不得修改四个长期约束文档、解锁 T9 或将 RFC/index 标记为 verified。获批 dispatch 时必须人工核对批准人、角色、依据和证据真实性，并通过字段精确扫描与 `date -d` 时间比较确认带时区的批准时间早于 `Dispatch At`。
 
 **Task Completion Gate:**
 
@@ -1089,18 +1118,48 @@ Expected: **PASS** — 0 error、0 warning。
 Run: `mise exec node@22 -- env npm_config_cache=/tmp/mimir-boot-markdownlint-cache npx --yes markdownlint-cli2@0.23.2 "docs/**/*.md" "*.md"`
 Expected: **PASS** — 0 issues。
 
-Run: `mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SensitiveDataConverterBenchmark test`，连续独立执行 3 次。
+Run: `! rg -n '\]\(\./generated/?\)' docs/index.md && ! rg -n '\]\(\.\./(README|mimir-boot-common/README|mimir-boot-parent/README)\.md\)' mimir-boot-starters/mimir-boot-starter-log/README.md && for path in README.md mimir-boot-common/README.md mimir-boot-parent/README.md; do test -f "$path"; done`
+Expected: **PASS** — 四个已知旧断链不再出现且新目标存在；其余新增或修改链接由 reviewer 对 T9 diff 逐项复核，不为一次性范围新增脚本。
+
+Run: `build_model_cache="$(mktemp -d -t mimir-build-model-m2.XXXXXX)"; MIMIR_BUILD_MODEL_M2="$build_model_cache" mise exec java@17 -- mise exec python@3 -- python scripts/verify-build-model.py; status=$?; rm -rf "$build_model_cache"; exit "$status"`
+Expected: **PASS** — effective POM 中 Java/Boot/formatter、GPG profile 和 BOM 坐标与当前构建模型一致。
+
+Run: `mise exec java@17 -- bash scripts/test-suite-consumer.sh`
+Expected: **PASS** — 隔离 consumer 通过 BOM 解析当前 Starter 与 RocketMQ/Elasticsearch 坐标，并完成跨模块脱敏流检查。
+
+Run: `mise exec java@17 -- bash scripts/verify-release-signing.sh --preheat`
+Expected: **PASS** — 隔离签名 fixture 与失败 GPG fixture 均符合发布门禁。
+
+Run: `for run in 1 2 3; do mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SensitiveDataConverterBenchmark test | tee "/tmp/mimir-boot-benchmark-${run}.log"; done`
 Expected: **PASS** — release 中逐次记录 baseline/candidate/delta，并记录三次 delta 算术均值与最大值；均值不超过 20µs。
+
+Run: `rg -n 'fromCodeOrNull|mimir\.boot\.mybatis\.crypto-v2-write-enabled|2\.3\.6|8\.11\.0|3\.3\.13|3\.9\.16' README.md AGENTS.md ARCHITECTURE.md docs/PRODUCT_SENSE.md docs/SECURITY.md docs/RELIABILITY.md mimir-boot-bom/README.md mimir-boot-starters/*/README.md docs/active/v2.2.1/release.md`
+Expected: **PASS** — 消费文档中的 API、配置键、版本和坐标均有实现/effective POM 证据。
+
+Run: `rg -n '测试 starter|fromCodeOrNull|旧 RPC SPI|legacy ECB|v2 密文|回退下限' docs/active/v2.2.1/release.md`
+Expected: **PASS** — release 迁移矩阵覆盖 test starter、nullable 枚举、旧 RPC SPI、legacy ECB、v2 密文和回退下限六类事实。
+
+Run: `rg -n '^\| TD-(013|016|023) \|' docs/active/tech-debt-tracker.md && ! rg -n 'TD-(013|016|023).*已关闭' docs/active/tech-debt-tracker.md`
+Expected: **PASS** — 三项残余债务仍存在且未被误标为关闭。
+
+Run: `test "$(rg -c '^批准(人|角色|时间|依据|证据): 待用户/架构负责人批准' docs/design-docs/arch-technical-debt-remediation.md)" -eq 5 && rg -n '^status: draft$|arch-technical-debt-remediation' docs/design-docs/arch-technical-debt-remediation.md docs/design-docs/index.md && rg -n '^- \*\*Dispatch At:\*\* null$' docs/active/v2.2.1/technical-debt-remediation/plan.md`
+Expected: **PASS（批准前）** — RFC/index 保持 draft、五项批准字段仍为明确占位且 `Dispatch At` 为 null。
+
+Run（获批后）: `! rg -n '待用户/架构负责人批准' docs/design-docs/arch-technical-debt-remediation.md && test "$(rg -c '^批准(人|角色|时间|依据|证据): .+$' docs/design-docs/arch-technical-debt-remediation.md)" -eq 5 && approved_at="$(sed -n 's/^批准时间: //p' docs/design-docs/arch-technical-debt-remediation.md)" && dispatch_at="$(sed -n 's/^- \*\*Dispatch At:\*\* //p' docs/active/v2.2.1/technical-debt-remediation/plan.md)" && test "$(printf '%s\n%s\n' "$approved_at" "$dispatch_at" | rg -c '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$')" -eq 2 && test "$(date -d "$approved_at" +%s)" -lt "$(date -d "$dispatch_at" +%s)"`
+Expected: **PASS（获批后）** — 五项批准字段均为真实记录，批准时间和 `Dispatch At` 均带时区，且批准发生在 dispatch 之前；批准人、角色、依据和证据的真实性仍由 reviewer 人工确认。
+
+Run: `T9_CONTENT_SHA="${T9_CONTENT_SHA:?set to the verified T9 content SHA}"; git diff-tree --no-commit-id --name-status -r "$T9_CONTENT_SHA" && ! git diff-tree --no-commit-id --name-status -r "$T9_CONTENT_SHA" | rg -q '^D[[:space:]]' && ! git diff-tree --no-commit-id --name-only -r "$T9_CONTENT_SHA" | rg -q '^(docs/active/v2\.2\.1/technical-debt-remediation/(spec|design|index)\.md|docs/active/v2\.2\.1/index\.md)$'`
+Expected: **PASS** — reviewer 将完整 name-status 输出逐项对照 RFC 范围矩阵，确认无删除、无矩阵外文件，且四个需求状态文件未出现在 content 提交。
 
 **AC Verification:**
 
-- [ ] AC1: 全仓版本/坐标/配置键扫描与 effective POM 对照无矛盾 → 通过。
-- [ ] AC2: release 迁移矩阵包含五类行为调整和明确 rollout/rollback 顺序 → 通过。
+- [ ] AC1: `verify-build-model.py`、consumer、版本/坐标/配置键扫描与 effective POM 对照无矛盾 → 通过。
+- [ ] AC2: release 迁移矩阵包含测试 starter、nullable 枚举、旧 RPC SPI、legacy ECB、v2 密文五类行为调整和明确 rollout/rollback 顺序 → 通过。
 - [ ] AC3: tracker 中已关闭项有实现 SHA/测试证据，TD-013、TD-016、TD-023 仍存在 → 通过。
-- [ ] AC4: 文档健康检查、Markdown lint 和链接检查均无错误 → 通过。
+- [ ] AC4: 文档健康检查、Markdown lint、已知断链与目标路径检查、reviewer 链接复核和 RFC/index 状态扫描均无错误 → 通过。
 - [ ] AC5: 三次基准输出及聚合值写入 release，三次均值 ≤20µs → 通过。
-- [ ] AC6: `git diff` 对照 T8 RFC，长期文档没有任何未获批准的改动 → 通过。
-- [ ] AC7: RFC 与设计索引均为 verified，verified 日期不早于 T9 验证完成时间 → 通过。
+- [ ] AC6: T9 content SHA 的文件白名单与 T8 RFC 两组矩阵逐项一致，长期文档没有任何未获批准的改动 → 通过。
+- [ ] AC7: RFC 与设计索引均为 verified，verified 日期不早于 T9 验证完成时间，且批准时间早于 `Dispatch At` → 通过。
 
 **Step 4: Commit**
 
@@ -1140,6 +1199,9 @@ Expected: **PASS** — 最终状态说明中不再残留实施前措辞。
 
 提交：`docs: 发布技术债修复验收状态`。这是 T9 的第二个提交，只包含四个需求状态文件；body 使用中文 bullet，追加 `Task-ID: T9`、`Task-Phase: status` 与单行 `Pre-Publication-Evidence: <本次门禁证据摘要>` trailer。T9 的 `Commit SHAs` 按 content、status 顺序记录两个 SHA，Task Completion Gate 只在第二个 SHA 验证后通过。
 
+Run: `T9_STATUS_SHA="${T9_STATUS_SHA:?set to the verified T9 status SHA}"; actual="$(git diff-tree --no-commit-id --name-only -r "$T9_STATUS_SHA" | sort)"; expected="$(printf '%s\n' docs/active/v2.2.1/index.md docs/active/v2.2.1/technical-debt-remediation/design.md docs/active/v2.2.1/technical-debt-remediation/index.md docs/active/v2.2.1/technical-debt-remediation/spec.md | sort)"; test "$actual" = "$expected"`
+Expected: **PASS** — T9 status 提交恰好只包含 Spec、Design、需求索引和版本索引四个状态文件。
+
 ---
 
 ## Acceptance Criteria
@@ -1155,7 +1217,7 @@ Expected: **PASS** — 最终状态说明中不再残留实施前措辞。
 1. 用 `git log --oneline <Baseline SHA>..HEAD` 核对 T1-T8 完整任务提交与 T9 content 提交，并确认 T8 批准证据早于 T9 dispatch。
 2. 对已产生的每个 Task SHA 执行 `git diff-tree --no-commit-id --name-only -r <TASK_COMMIT_SHA>`，确认文件归属与 Task 阶段声明一致且不含 `plan.md`；T9 content SHA 不得包含四个状态文件。
 3. 用 `git diff --name-only <Baseline SHA>..HEAD` 核对完整实施范围；仅用当前 `git diff --name-only` 检查未提交残留。
-4. 通过 `mise exec java@17 --` 运行普通 `./mvnw clean verify` 并只调用 `verify_test_reports`；在同一 Java 17 环境再运行会自行执行独立 `clean -Pci verify` 的 `bash scripts/ci-preflight.sh`、隔离 BOM consumer、发布签名检查和三次手工基准，并运行文档健康检查与 Markdown lint，逐条同步全局 AC。
+4. 通过 `mise exec java@17 --` 运行普通 `./mvnw clean verify` 并只调用 `verify_test_reports`；在同一 Java 17 环境再运行会自行执行独立 `clean -Pci verify` 的 `bash scripts/ci-preflight.sh`、隔离 BOM consumer、发布签名检查和三次手工基准，并运行文档健康检查、Markdown lint、已知断链与目标路径检查、reviewer 链接复核、批准字段与时间顺序检查及隔离缓存的 `scripts/verify-build-model.py`，逐条同步全局 AC。
 
 ## Post-Publication Gate
 
