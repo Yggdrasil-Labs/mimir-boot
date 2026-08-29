@@ -3,6 +3,7 @@ package com.yggdrasil.labs.rpc.dubbo.support;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 为 Dubbo Filter 提供 Spring 管理的依赖（静态持有，Dubbo SPI 创建 Filter 时可获取）。
@@ -11,7 +12,7 @@ import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
  */
 public final class RpcDubboSupportHolder {
 
-    private static volatile Snapshot snapshot = new Snapshot(null, null, null);
+    private static final AtomicReference<Snapshot> snapshot = new AtomicReference<>(new Snapshot(null, null, null));
     private static final RpcDubboSupportHolder INSTANCE = new RpcDubboSupportHolder();
 
     private RpcDubboSupportHolder() {}
@@ -21,11 +22,11 @@ public final class RpcDubboSupportHolder {
     }
 
     public static void set(RpcHookChain hookChain, RpcTracerBridge tracerBridge, DubboProperties properties) {
-        snapshot = new Snapshot(hookChain, tracerBridge, properties);
+        snapshot.set(new Snapshot(hookChain, tracerBridge, properties));
     }
 
     public static Snapshot current() {
-        return snapshot;
+        return snapshot.get();
     }
 
     public RpcHookChain getHookChain() {
