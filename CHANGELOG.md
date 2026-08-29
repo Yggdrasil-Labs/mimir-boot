@@ -1,5 +1,49 @@
 # Changelog
 
+## [2.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.0...v2.2.1) (2026-08-29)
+
+
+### 🐛 Bug Fixes
+
+* **common:** 修复分页与枚举兼容契约 ([29e645b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/29e645b4a8f546c501e18f88fe8757029a5e1f33))
+* **log:** 修复脱敏审查缺陷 ([e45e457](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e45e45734fc664480e8415c2780461f338f1bbd4))
+* **log:** 完善脱敏与配置刷新边界 ([3a97c62](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3a97c62a84973a4b06a06307e4844bbd5ad3459f))
+* **mybatis:** 修复日志审计与密文迁移边界 ([c6006b2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c6006b293fcb7f983aba97ef0a00ff5558f19df6))
+* **nacos:** 修复解密门控与遗留密文告警 ([5e71294](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5e7129408cbe14e3c6d4031e879c29a28c80cad4))
+* **rpc-dubbo:** 修复支持快照的并发发布 ([3730dd5](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3730dd500fb1eb974abb2b43c4ba8dc71d8efd38))
+* **rpc:** 修复异步上下文与元数据边界 ([bf493b6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bf493b634fc7d001cc2584f46b94cd780bf8f148))
+* **starters:** 收紧刷新解密与请求头元数据边界 ([2dd1b83](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2dd1b83bb87e1a4904cfc761a1bd0e0d4920624d))
+* **test:** 移除危险默认值并收敛测试工具 ([bb651cd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bb651cdd575694f02419449deee392c63cd08e1c))
+
+
+### 📝 Documentation
+
+* **architecture:** 提交技术债修复约束同步 RFC ([6930084](https://github.com/Yggdrasil-Labs/mimir-boot/commit/69300844bfc004fb5a866d6c921bcfdfa59e02d0))
+* **archive:** 归档 v2.2.0 版本文档 ([8015d14](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8015d14c24566b8e7549bb8fd9f16761e268900b))
+* **governance:** 记录技术债 RFC 批准 ([fc0a4c4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fc0a4c4bb7d9a91e9d53cd8e113b45376c813f42))
+* **tech-debt:** 发布技术债修复验收状态 ([9e459a7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9e459a7cb47ad31f7269aee6e58e6ce30fb316fe))
+* **tech-debt:** 同步技术债修复与迁移说明 ([08229e1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/08229e137cf9e058276e1331673f41796b59c952))
+* **tech-debt:** 完善 v2.2.1 技术债实施方案 ([78ee0d4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/78ee0d4a2f11cb09eda477abb8860b1634770f64))
+* **tech-debt:** 完成技术债实施台账 ([f77bdbd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f77bdbd1c8f377efab9629e2a09e5042bb55acb5))
+* **tech-debt:** 按代码复核修正技术债方案 ([0191830](https://github.com/Yggdrasil-Labs/mimir-boot/commit/019183093e58e88757967ad03d2c35aeaee17419))
+* **v2.2.1:** 建立技术债修复方案 ([0733a1c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0733a1c069b5da0220a29fe1780f34f13f8fa0fe))
+
+
+### ✅ Tests
+
+* 补强异步上下文与发布验证边界 ([4e428e6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4e428e6ab080775c2d7403230921ec5684c9729f))
+
+
+### 🔨 Build System
+
+* 修复签名默认值与依赖元数据 ([a5dba88](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a5dba884503a0381c8d02818729861f01ca28e00))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.2.1-SNAPSHOT for next development cycle ([17610c9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/17610c965caa91bc823ecd2476523d6b37606994))
+* **tech-debt:** 收敛技术债收尾门禁 ([d3df82e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d3df82e153b22533eb964f16a30e49fffd6a652e))
+
 ## [2.2.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.1...v2.2.0) (2026-08-16)
 
 
