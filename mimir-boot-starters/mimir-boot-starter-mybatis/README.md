@@ -252,6 +252,8 @@ public class CustomCryptoKeyProvider implements CryptoKeyProvider {
 - 启用字段加密时，必须配置 `crypto-key` 或提供返回稳定密钥的 `CryptoKeyProvider`；Starter 不会生成临时密钥。
 - 生产环境请使用密钥管理服务（如 Vault、KMS）动态获取密钥
 - 当前实现使用带随机 IV 的 AES-GCM，密文包含认证标签；请妥善轮换和保管稳定密钥
+- `crypto-context` 是应用级稳定标识，用于 v2 密文的 AAD；它不提供字段或记录级完整性。
+- `crypto-v2-write-enabled` 默认关闭。迁移时先配置相同 context 让所有实例具备 v2 读取能力并继续写 v1，完成列长度预检和全量升级后再统一开启；写入 v2 后只能回退到支持 v2 且使用相同 context 的版本。
 
 ### 4. JSON SQL 日志
 
@@ -261,8 +263,9 @@ public class CustomCryptoKeyProvider implements CryptoKeyProvider {
 
 ```yaml
 mimir:
-  mybatis:
-    enable-json-sql-log: true  # 启用 JSON 格式 SQL 日志
+  boot:
+    mybatis:
+      enable-json-sql-log: true  # 启用 JSON 格式 SQL 日志
 ```
 
 #### 日志输出示例
@@ -345,35 +348,22 @@ public class UserController {
 mimir:
   boot:
     mybatis:
-    # Mapper 扫描包（多个用逗号分隔）
-    # 无论是否配置，这个 Starter 都会始终包含默认扫描包：com.yggdrasil.labs.**.mapper
-    # 若配置了自定义包，将与默认包一起生效（逗号分隔）
-    # 
-    # 注意：如果使用了 mimir-boot-starter-mybatis-processor 生成 mapper，
-    # 即使 mapper 不在 com.yggdrasil.labs 包下，也会自动检测并扫描（通过检测所有 .mapper 包）
-    mapper-packages:
-      - com.example.mapper
-      - com.example.other.mapper
-    
-    # 注意：MyBatis 日志永远使用 slf4j（日志门面），支持所有 slf4j 实现（logback、log4j2 等）
-    # 是否打印 SQL 由日志级别控制，在日志配置文件中配置 Mapper 接口的日志级别：
-    # - DEBUG 级别：会打印 SQL 语句和参数
-    # - INFO 及以上级别：不会打印 SQL
-    # 
-    # 示例（使用 logback，Spring Boot 默认）：
-    # <logger name="com.example.mapper" level="DEBUG"/> 会打印 SQL
-    # 
-    # 示例（使用 log4j2）：
-    # <Logger name="com.example.mapper" level="DEBUG"/> 会打印 SQL
-    
-    # 是否启用 JSON SQL 日志（开发/测试环境默认 true）
-    enable-json-sql-log: true
-    
-    # 是否启用字段加解密功能（默认 false）
-    crypto-enabled: true
-    
-    # 加解密密钥（Base64 编码的 128/192/256 位 AES 密钥），启用加密时必填
-    crypto-key: ${MYBATIS_CRYPTO_KEY}
+      # Mapper 扫描包（多个用逗号分隔）；默认包始终包含
+      mapper-packages:
+        - com.example.mapper
+        - com.example.other.mapper
+
+      # 是否启用 JSON SQL 日志；未配置时仅 dev/local/development/test profile 默认启用
+      enable-json-sql-log: true
+
+      # 是否启用字段加解密功能（默认 false）
+      crypto-enabled: true
+      # 加解密密钥（Base64 编码的 128/192/256 位 AES 密钥），启用加密时必填
+      crypto-key: ${MYBATIS_CRYPTO_KEY}
+      # 应用级 v2 密文 context；必须显式配置，所有实例使用同一值
+      crypto-context: ${MYBATIS_CRYPTO_CONTEXT}
+      # 全量升级和列长度预检完成后才开启，默认 false
+      crypto-v2-write-enabled: false
 ```
 
 ### MyBatis-Plus 标准配置

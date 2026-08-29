@@ -78,6 +78,8 @@ redis:
 
 应用启动时会自动检测并解密所有 `ENC(...)` 格式的配置值。
 
+只有显式绑定 `mimir.boot.nacos.encrypt` 或兼容的 `mimir.nacos.encrypt` 配置前缀时才会扫描配置；没有绑定前缀时，普通配置中的 `ENC(...)` 文本不会触发密钥校验。
+
 ## 核心功能
 
 ### 1. 自动配置解密
@@ -299,15 +301,17 @@ public class DynamicConfig {
 ```yaml
 # ❌ 不推荐：直接写在配置文件中
 mimir:
-  nacos:
-    encrypt:
-      key: base64_key_in_plaintext
+  boot:
+    nacos:
+      encrypt:
+        key: base64_key_in_plaintext
 
 # ✅ 推荐：使用环境变量
 mimir:
-  nacos:
-    encrypt:
-      key: ${NACOS_ENCRYPT_KEY}  # 从环境变量读取
+  boot:
+    nacos:
+      encrypt:
+        key: ${NACOS_ENCRYPT_KEY}  # 从环境变量读取
 ```
 
 或者使用密钥管理服务（如 Vault、KMS）：
@@ -409,10 +413,11 @@ mimir:
 ```yaml
 # 检查配置
 mimir:
-  nacos:
-    encrypt:
-      enabled: true      # 确保已启用
-      key: YOUR_KEY      # 确保密钥正确配置
+  boot:
+    nacos:
+      encrypt:
+        enabled: true      # 确保已启用
+        key: YOUR_KEY      # 确保密钥正确配置
 
 # 检查配置值格式（Nacos 中）
 password: ENC(encrypted_value)  # ✅ 正确格式
@@ -498,9 +503,10 @@ public class ConfigDebugger {
 ```yaml
 # application.yml
 mimir:
-  nacos:
-    encrypt:
-      prefix: SECRET  # 自定义前缀
+  boot:
+    nacos:
+      encrypt:
+        prefix: SECRET  # 自定义前缀
 
 # Nacos 配置
 password: SECRET(encrypted_value)  # 使用新前缀
@@ -518,7 +524,7 @@ password: SECRET(encrypted_value)  # 使用新前缀
 
 ### 安全说明
 
-- **默认实现**：使用 `AES/GCM/NoPadding`，密文格式为 `v1:<iv-base64>:<ciphertext-base64>`；每次加密都会生成随机 IV。
+- **默认实现**：使用 `AES/GCM/NoPadding`，密文格式为 `v1:<iv-base64>:<ciphertext-base64>`；每次加密都会生成随机 IV，并通过 GCM 标签校验完整性。
 - **严格失败**：只要存在 `ENC(...)`，密钥缺失、密钥格式非法、密文被篡改或错误密钥都会使启动或刷新失败；日志仅记录属性名和解密数量。
 - **密钥管理**：生产环境请使用密钥管理服务（Vault、KMS）动态获取密钥
 - **密钥轮换**：定期轮换加密密钥，重新加密所有配置值

@@ -10,7 +10,7 @@
 
 Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，核心定位是**基础设施产品**而非单体业务系统。它为组织内所有 Java 微服务提供统一的依赖版本管理、构建与发布规范、公共基础模型，并以 Spring Boot Starter 形式沉淀可复用的横切能力。
 
-技术选型基于 Java 17 + Spring Boot 3.3.x + Spring Cloud 2023.0.x，持久层使用 MyBatis-Plus，配置中心对接 Nacos。仓库通过 GitHub Actions 实现 CI/CD，制品发布至 Maven Central 和 GitHub Packages，版本由根 POM 的 `revision` 属性统一管理，配合 release-please 自动化发版。
+技术选型基于 Java 17 + Spring Boot 3.3.13 + Spring Cloud 2023.0.6，持久层使用 MyBatis-Plus，配置中心对接 Nacos。仓库通过 GitHub Actions 实现 CI/CD，制品发布至 Maven Central 和 GitHub Packages，版本由根 POM 的 `revision` 属性统一管理，配合 release-please 自动化发版。
 
 接入方通过继承 `mimir-boot-parent` 并导入 `mimir-boot-bom`，按需引入所需 Starter，即可获得开箱即用的企业级基础能力（日志脱敏、链路追踪、统一异常、配置加密、RPC 治理等）。
 
@@ -85,11 +85,11 @@ graph TD
 | 应用框架 | Spring Boot | 3.3.13 |
 | 微服务 | Spring Cloud | 2023.0.6 (Leyton) |
 | 配置中心 | Spring Cloud Alibaba Nacos | 2023.0.3.4 |
-| 持久层 | MyBatis-Plus | 3.5.14 |
-| 数据库驱动 | MySQL / PostgreSQL | 8.4 / 42.7 |
-| 工具库 | Hutool / Lombok / MapStruct | 5.8.41 / 1.18.42 / 1.6.3 |
-| 日志 | Logback + SLF4J | 2.0.17 |
-| 测试 | JUnit 5 / Mockito / Testcontainers | — |
+| 持久层 | MyBatis-Plus | 3.5.17 |
+| 数据库驱动 | MySQL Connector/J / PostgreSQL JDBC | 8.3.0 / 42.7.7 |
+| 工具库 | Hutool / Lombok / MapStruct | 5.8.47 / 1.18.46 / 1.6.3 |
+| 日志 | Logback / SLF4J API | 1.5.18 / 2.0.17 |
+| 测试 | JUnit 5 / Mockito / Testcontainers | 由接入方按需引入容器模块 |
 | CI/CD | GitHub Actions | release-please + GPG 签名 |
 | 代码质量 | Spotless / JaCoCo / SonarCloud | — |
 
@@ -114,3 +114,13 @@ graph TD
 ## 关键架构决策
 
 详见 [`docs/design-docs/`](./docs/design-docs/)。
+
+## v2.2.1 已验证边界
+
+- `mimir-boot-common` 新增三个 `fromCodeOrNull` 查询方法，既有 `fromCode` fallback 保持兼容。
+- 日志脱敏覆盖 JSON、已登记的编码字段形式及私钥/访问密钥，并以完整快照发布配置；脱敏仍由接入方显式配置规则。
+- RPC 适配层使用调用级上下文与异步生命周期；旧 `RpcTracerBridge.extract` 和 Hook 直调入口继续保留兼容。
+- Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；遗留 AES 入口仅供离线迁移并输出告警。
+- MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
+- 测试 Starter 不再通过类路径资源注入数据库副作用或固定应用名；Testcontainers 由接入方按场景显式引入。
+- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径，不改变运行时模块依赖方向。

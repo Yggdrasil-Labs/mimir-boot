@@ -27,4 +27,4 @@
 ## 产物
 
 - 产品规格：[`product-specs/index.md`](./product-specs/index.md)
-- 自动生成文档：[`generated/`](./generated/)
+- 生成文档如有产出，须在对应版本或模块文档中登记实际存在的路径。

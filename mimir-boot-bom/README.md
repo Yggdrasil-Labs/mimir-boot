@@ -122,7 +122,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 | 缓存与消息 | `com.alicp.jetcache:jetcache-starter-redis` |
 | 缓存与消息 | `com.alicp.jetcache:jetcache-starter-caffeine` |
 | 任务与搜索 | `com.xuxueli:xxl-job-core` |
-| 任务与搜索 | `org.elasticsearch.client:elasticsearch-java` |
+| 任务与搜索 | `co.elastic.clients:elasticsearch-java` |
 | 任务与搜索 | `org.mongodb:mongodb-driver-sync` |
 | 工具 | `org.apache.commons:commons-lang3` |
 | 工具 | `org.apache.commons:commons-collections4` |
@@ -211,7 +211,7 @@ BOM 通过 `dependencyManagement` 管理版本，子项目继承父 POM 时自�
 <dependency>
     <groupId>cn.hutool</groupId>
     <artifactId>hutool-all</artifactId>
-    <version>5.8.41</version>  <!-- 不推荐：版本应由 BOM 管理 -->
+    <version>5.8.47</version>  <!-- 不推荐：版本应由 BOM 管理 -->
 </dependency>
 ```
 

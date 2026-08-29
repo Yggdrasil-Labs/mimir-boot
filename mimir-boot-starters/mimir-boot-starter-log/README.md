@@ -332,7 +332,7 @@ mimir:
           - password                        # 密码
           - token                           # Token
           - phone_number                    # 纯手机号
-        replacement: "******"              # 替换字符
+        replacement: "****"                # 替换字符
 ```
 
 **示例2：预置规则 + 自定义规则**
@@ -842,16 +842,16 @@ log.debug("Complex: {}", () -> expensiveOperation());
 
 ## 技术栈
 
-- **Logback**: 1.5.20
-- **SLF4J**: 2.0.16
+- **Logback**: 1.5.18
+- **SLF4J API**: 2.0.17
 - **Spring Boot**: 3.3.13+
 - **Java**: 17+
 
 ## 📚 相关文档
 
-- [Mimir Boot 项目主页](../README.md) - 项目总体说明
-- [Mimir Boot Common](../mimir-boot-common/README.md) - 公共组件说明
-- [Mimir Boot Parent](../mimir-boot-parent/README.md) - 父 POM 说明
+- [Mimir Boot 项目主页](../../README.md) - 项目总体说明
+- [Mimir Boot Common](../../mimir-boot-common/README.md) - 公共组件说明
+- [Mimir Boot Parent](../../mimir-boot-parent/README.md) - 父 POM 说明
 
 ## 许可证
 

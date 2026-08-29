@@ -61,11 +61,15 @@ public class MicrometerTracerBridge implements RpcTracerBridge {
 }
 ```
 
+对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`。旧的 `extract` 方法仍保持源码和二进制兼容，但默认返回 noop scope，不保证未知自定义上下文的回滚。
+
 ## 最佳实践
 
 - 默认 Bridge 仅接受最长 64 位、以字母或数字开头的 ASCII ID；非法 traceId 生成 32 位十六进制值，非法 requestId 不会进入当前调用 MDC
 - 在治理/观测/安全模块中实现 Hook 或 Tracer 覆盖默认值
 - 保持 Hook 幂等、快速返回，避免阻塞主调用
+
+`RpcHookChain` 的 `before`、`after`、`onError`、`cleanup` 直调方法已弃用，仅保留兼容；新代码使用 `open` 返回的 `RpcHookInvocation`，异步调用使用 `openAsync`，以获得调用级状态和异常隔离。
 
 ## API 文档
 

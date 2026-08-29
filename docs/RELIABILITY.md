@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-26
+updated: 2026-08-29
 ---
 
 # 可靠性要求
@@ -22,6 +22,8 @@ updated: 2026-07-26
 - SonarCloud 作为新代码质量门禁，具体执行纪律见 [`SONAR_QUALITY_DISCIPLINE.md`](./SONAR_QUALITY_DISCIPLINE.md)
 - 发布通过 GitHub Actions + release-please 驱动
 - Maven Wrapper 是首选构建入口
+- CI 通过 `scripts/ci-preflight.sh` 在 Java 17 下执行独立 `clean -Pci verify`，并分别检查 Surefire/Failsafe 与 JaCoCo 报告；报告扫描会排除 `.git` 和 `.worktrees`。
+- `scripts/test-suite-consumer.sh` 使用隔离的 file repository 验证 BOM、Starter 和受管依赖；`scripts/verify-release-signing.sh` 使用隔离签名 fixture 验证制品与附属制品，失败 fixture 必须阻断部署。
 
 ## 3. 发布可靠性
 
@@ -39,6 +41,8 @@ updated: 2026-07-26
 - 瞬态发布失败应优先使用 GitHub 的“重新运行失败 job”；它复用原始 ref/SHA。手动 `Release` 是确定性补偿入口，默认不产生外部副作用，必须显式选择要补偿的仓库发布、GitHub Release 或开发版本回写；同时选择发布/收尾与回写时，只有这些被选择的操作全部成功才会推进开发版本
 - 发布与打 tag 使用按目标版本/提交分组的等待队列和 job 超时，不取消正在运行或等待的同目标恢复请求；同组最多保留 100 个等待项，按开始等待时间处理，但实际启动顺序不保证
 - 开发版本回写从最新 `main` 收敛：已是目标 `-SNAPSHOT` 则幂等成功；仅允许从刚发布版本推进，其他版本明确失败而不覆盖
+- 2.2.1 MyBatis v2 rollout 先以相同 `cryptoContext` 让所有实例具备读取能力并继续写 v1，再完成列长度预检后统一开启 v2 写入；已写入 v2 后只允许回退到支持 v2 且使用相同 context 的版本。
+- 脱敏基准只作为发布证据：固定 1 KiB 消息、同一 JVM、各 100000 次预热和 1000000 次测量，连续独立运行三次，按有符号 delta 聚合，不能用单次结果替代。
 - `parent`、`bom`、发布 workflow 的改动会影响所有下游使用方
 
 因此，凡是涉及以下内容的修改，都应谨慎：

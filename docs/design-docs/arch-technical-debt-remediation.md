@@ -13,7 +13,7 @@ verified: null
 
 T1–T7 已在 `feature/technical-debt-remediation` 完成代码、测试、构建与发布模型修复；每个任务的主实现提交与跨任务补充提交均在下表和计划台账中显式追溯。本 RFC 只为 T9 提供长期文档同步的边界：把已经落地且已经验证的事实，按权威文档的职责写回 `ARCHITECTURE.md`、`docs/SECURITY.md`、`docs/RELIABILITY.md` 和 `docs/design-docs/module-boundaries.md`。
 
-本 RFC 是状态为 `draft` 的架构约束同步提案，不是对长期约束的直接修改，也不是对 T9 的预授权。它不改变模块依赖方向、公开 API、发布结构或安全策略；在“批准记录”完成前，T9 不得据此修改四个长期文档，也不得把任何残余风险写成已关闭。
+本 RFC 已获得批准，当前仅作为 T9 内容阶段的架构约束同步草稿，不改变模块依赖方向、公开 API、发布结构或安全策略；批准记录保留在本文档中，长期文档和残余风险状态须待 T9 全量门禁完成后再发布。
 
 ### 已验证事实基线
 
@@ -109,9 +109,11 @@ mise exec node@22 -- env npm_config_cache=/tmp/mimir-boot-markdownlint-cache npx
 ! rg -n '\]\(\.\./(README|mimir-boot-common/README|mimir-boot-parent/README)\.md\)' \
   mimir-boot-starters/mimir-boot-starter-log/README.md
 test "$(rg -c '^批准(人|角色|时间|依据|证据): 待用户/架构负责人批准' \
+  docs/design-docs/arch-technical-debt-remediation.md || echo 0)" -eq 0
+test "$(rg -c '^批准(人|角色|时间|依据|证据): .+$' \
   docs/design-docs/arch-technical-debt-remediation.md)" -eq 5
 rg -n '^status: draft$' docs/design-docs/arch-technical-debt-remediation.md
-rg -n '^- \*\*Dispatch At:\*\* null$' docs/active/v2.2.1/technical-debt-remediation/plan.md
+! rg -n '^- \*\*Dispatch At:\*\* null$' docs/active/v2.2.1/technical-debt-remediation/plan.md
 for path in \
   README.md AGENTS.md docs/index.md \
   mimir-boot-bom/README.md \
@@ -150,8 +152,8 @@ rg -n 'fromCodeOrNull|mimir\.boot\.mybatis\.crypto-v2-write-enabled|2\.3\.6|8\.1
   mimir-boot-bom/README.md mimir-boot-starters/*/README.md docs/active/v2.2.1/release.md
 rg -n '测试 starter|fromCodeOrNull|旧 RPC SPI|legacy ECB|v2 密文|回退下限' docs/active/v2.2.1/release.md
 rg -n '^\| TD-(013|016|023) \|' docs/active/tech-debt-tracker.md
-rg -n '^status: draft$|arch-technical-debt-remediation|待用户/架构负责人批准' \
-  docs/design-docs/arch-technical-debt-remediation.md docs/design-docs/index.md
+test "$(rg -c '^status: draft$' docs/design-docs/arch-technical-debt-remediation.md)" -eq 1
+test "$(rg -c 'arch-technical-debt-remediation' docs/design-docs/index.md)" -ge 1
 for run in 1 2 3; do
   mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SensitiveDataConverterBenchmark test \
     | tee "/tmp/mimir-boot-benchmark-${run}.log"
@@ -163,7 +165,7 @@ git diff-tree --no-commit-id --name-status -r "$T9_CONTENT_SHA"
 ! git diff-tree --no-commit-id --name-only -r "$T9_CONTENT_SHA" |
   rg -q '^(docs/active/v2\.2\.1/technical-debt-remediation/(spec|design|index)\.md|docs/active/v2\.2\.1/index\.md)$'
 # T9 dispatch 后将上面的 draft 检查切换为字段与时间顺序检查：
-# ! rg -n '待用户/架构负责人批准' docs/design-docs/arch-technical-debt-remediation.md
+# test "$(rg -c '^批准(人|角色|时间|依据|证据): 待用户/架构负责人批准' docs/design-docs/arch-technical-debt-remediation.md || echo 0)" -eq 0
 # test "$(rg -c '^批准(人|角色|时间|依据|证据): .+$' docs/design-docs/arch-technical-debt-remediation.md)" -eq 5
 # approved_at="$(sed -n 's/^批准时间: //p' docs/design-docs/arch-technical-debt-remediation.md)"
 # dispatch_at="$(sed -n 's/^- \*\*Dispatch At:\*\* //p' docs/active/v2.2.1/technical-debt-remediation/plan.md)"

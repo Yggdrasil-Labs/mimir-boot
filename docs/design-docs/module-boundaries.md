@@ -93,8 +93,8 @@
 - 模块总体定位：`ARCHITECTURE.md`
 - 长期设计原则：`docs/design-docs/`
 - 产品能力说明：`docs/product-specs/`
-- 单次执行计划：`docs/exec-plans/`
-- 自动导出的事实：`docs/generated/`
+- 单次执行计划：`docs/active/{版本}/{需求}/plan.md`
+- 自动导出的事实：若仓库生成此类文档，必须在 `docs/index.md` 登记可解析路径；当前仓库没有 `docs/generated/` 目录。
 - 模块接入细节：模块 README
 
 ## 5. 发布与版本边界

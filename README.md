@@ -8,7 +8,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.13-brightgreen.svg)
-![Maven](https://img.shields.io/badge/Maven-3.9.9-blue.svg)
+![Maven](https://img.shields.io/badge/Maven-3.9.16-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Yggdrasil-Labs_mimir-boot&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Yggdrasil-Labs_mimir-boot)
 
@@ -60,13 +60,13 @@
 
 ### 1. 继承 Parent POM 并引入 BOM
 
-**从 Maven Central 安装**（推荐）：
+**当前开发版本（尚未发布）**：根 POM 使用 `2.2.1-SNAPSHOT`。以下片段用于本地或隔离仓库验证；正式发布后再将版本替换为 `2.2.1`。
 
 ```xml
 <parent>
     <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>2.1.0</version>
+    <version>2.2.1-SNAPSHOT</version>
 </parent>
 
 <dependencyManagement>
@@ -74,7 +74,7 @@
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.1-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -82,13 +82,13 @@
 </dependencyManagement>
 ```
 
-**从 GitHub Packages 安装**（如果 Maven Central 不可用）：
+**当前快照验证的 GitHub Packages 配置**（正式发布后将版本替换为 `2.2.1`）：
 
 ```xml
 <parent>
     <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>2.1.0</version>
+    <version>2.2.1-SNAPSHOT</version>
 </parent>
 
 <dependencyManagement>
@@ -96,7 +96,7 @@
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.1-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -199,10 +199,10 @@ mvn spotless:apply
 | **应用框架** | Spring Boot 3.3.13                              |
 | **微服务**  | Spring Cloud 2023.0.6 (Leyton)                  |
 | **配置中心** | Spring Cloud Alibaba Nacos 2023.0.3.4           |
-| **数据库**  | MyBatis-Plus 3.5.14, MySQL 8.4, PostgreSQL 42.7 |
-| **工具类**  | Hutool 5.8.41, Lombok 1.18.42, MapStruct 1.6.3  |
-| **日志**   | Logback, SLF4J 2.0.17                           |
-| **测试**   | JUnit 5, Mockito, Testcontainers                |
+| **数据库**  | MyBatis-Plus 3.5.17, MySQL Connector/J 8.3.0, PostgreSQL JDBC 42.7.7 |
+| **工具类**  | Hutool 5.8.47, Lombok 1.18.46, MapStruct 1.6.3  |
+| **日志**   | Logback 1.5.18, SLF4J API 2.0.17                |
+| **测试**   | JUnit 5, Mockito；Testcontainers 由接入方按需引入 |
 | **监控**   | Micrometer, Prometheus, JaCoCo                  |
 
 完整技术栈列表请参考 [mimir-boot-bom/pom.xml](mimir-boot-bom/pom.xml)
@@ -219,7 +219,7 @@ mvn spotless:apply
 
 引入 `mimir-boot-starter-log` 后自动提供：
 
-- 自动敏感信息脱敏（密码、token 等自动替换为 `******`）
+- 自动敏感信息脱敏（密码、token 等自动替换为 `****`，可配置）
 - TraceId & SpanId 自动注入日志上下文
 - HTTP 访问日志（含慢接口自动告警）
 - 多环境配置（dev 彩色控制台 / prod 纯文件）
@@ -252,6 +252,9 @@ mvn spotless:apply
 
 - 分页拦截器、乐观锁拦截器、审计字段自动填充
 - 字段加解密（`@TableField(typeHandler = StringCryptoTypeHandler.class)`）
+- MyBatis v2 密文读取使用 `mimir.boot.mybatis.crypto-context`，写入开关
+  `mimir.boot.mybatis.crypto-v2-write-enabled` 默认关闭；启用前需完成全实例读取升级和列容量预检。
+- 三个枚举提供 `fromCodeOrNull`，旧 `fromCode` fallback 保持兼容。
 
 详细文档请参考 [mimir-boot-starter-mybatis/README.md](mimir-boot-starters/mimir-boot-starter-mybatis/README.md)
 
@@ -358,7 +361,7 @@ graph TD
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-  - 在 push 到 `main`/`develop` 和 PR 时运行：`./mvnw -B -U spotless:check verify`
+  - 在 push 到 `main`/`develop` 和 PR 时运行：`bash scripts/ci-preflight.sh`（Java 17）
   - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
   - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
 
@@ -368,7 +371,7 @@ graph TD
 
 - **发布（.github/workflows/release.yml）**
   - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
-  - 随后发布制品到 GitHub Packages（GPR）
+  - 按发布选择发布制品到 GitHub Packages（GPR）和/或 Maven Central；正式版需要显式 GPG 签名
 
 ### 使用 GitHub Packages（消费者）
 
@@ -400,7 +403,7 @@ graph TD
             <enabled>true</enabled>
         </releases>
         <snapshots>
-            <enabled>false</enabled>
+            <enabled>true</enabled>
         </snapshots>
     </repository>
     <!-- 仍需中央仓 -->

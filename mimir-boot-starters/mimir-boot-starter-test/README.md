@@ -249,7 +249,7 @@ Web 测试基类，提供：
 
 ### 测试环境配置
 
-测试环境会自动加载 `application-test.yml` 配置文件，你可以在项目中创建此文件来自定义测试配置。
+`BaseIntegrationTest`、`BaseWebTest` 和 `@MimirBootTest` 会激活 `test` profile。Starter 自身不再通过类路径资源注入数据库策略、`show-sql` 或固定应用名；接入方应在自己的 `application-test.yml` 中显式配置测试环境。
 
 ### 依赖管理
 
