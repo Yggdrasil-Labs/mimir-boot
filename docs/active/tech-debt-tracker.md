@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-29
+updated: 2026-08-30
 ---
 
 # 技术债务追踪
@@ -12,13 +12,24 @@ updated: 2026-08-29
   本文件属于"长期维护清单"，永不归档；由 doc-gardening agent 持续维护。
 -->
 
-TD-001 至 TD-012、TD-014/015、TD-017/018/019/020/021/022、TD-024/025/026/027/028/029 的有效部分已在 v2.2.1 完成并有实现提交与测试证据；对应条目从活跃清单移除。DG-1 保留旧枚举 fallback 的误判风险，DG-3 接受写入 v2 后不得回退到 v1-only 二进制。以下三项是当前仍需后续设计或兼容迁移的残余债务，统一关联 [v2.2.1 技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md)。
+TD-001 至 TD-012、TD-014/015、TD-017/018/019/020/021/022、TD-024/025/026/027/028/029 的有效部分已在 v2.2.1 完成并有实现提交与测试证据；对应条目从活跃清单移除。DG-1 保留旧枚举 fallback 的误判风险，DG-3 接受写入 v2 后不得回退到 v1-only 二进制。以下三项是当前仍需后续设计或兼容迁移的残余债务；本轮新识别的底座质量问题已建立需求与实施计划，统一关联 [v2.2.1 底座质量强化计划](./v2.2.1/foundation-quality-hardening/plan.md)。
 
 | 编号 | 领域 | 问题描述 | 优先级 | 记录日期 | Owner | 关联计划 |
 |------|------|----------|--------|----------|-------|----------|
 | TD-013 | starter-rpc-core | `MdcRpcTracerBridge.extract()` 非 scope 入口不回滚 MDC；自定义 Bridge 仅实现 `extract` 时仍可能发生上下文泄漏。T3 已将框架内部路径迁移到调用级 scope，旧入口保留兼容（证据：`bf493b6`、`2dd1b83`、`4e428e6`）。 | 中 | 2026-08-29 | YoungerYang-Y | [技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md) |
 | TD-016 | starter-mybatis | 字段加密仍无字段/记录级 AAD 完整性绑定，同密钥且同应用 context 下密文可能跨列/行互换；v2.2.1 仅提供应用级 context 绑定，不能关闭该风险（证据：`c6006b2`、`4e428e6`）。 | 中 | 2026-08-29 | YoungerYang-Y | [技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md) |
 | TD-023 | starter-rpc-core / feign | `RpcHookChain` 废弃的 before/after/onError/cleanup 直调 API 仍保留兼容；框架内部已改用调用级 invocation，旧直调入口的兼容风险继续存在（证据：`bf493b6`、`2dd1b83`、`4e428e6`）。 | 低 | 2026-08-29 | YoungerYang-Y | [技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md) |
+
+## v2.2.1 底座质量强化（设计中）
+
+| 编号 | 领域 | 问题描述 | 优先级 | 记录日期 | Owner | 关联计划 |
+|------|------|----------|--------|----------|-------|----------|
+| TD-030 | starter-mybatis | JAR 内 Mapper 自动发现使用错误路径坐标，外部包可能静默漏扫。 | 高 | 2026-08-30 | YoungerYang-Y | [底座质量强化](./v2.2.1/foundation-quality-hardening/plan.md) |
+| TD-031 | starter-log / starter-web | 异步访问日志可能提前记录；异步初始派发未释放 Trace/IP MDC。 | 高 | 2026-08-30 | YoungerYang-Y | [底座质量强化](./v2.2.1/foundation-quality-hardening/plan.md) |
+| TD-032 | starter-log / starter-feign | 转义引号、Throwable 链和 Feign URL 可能泄露敏感明文。 | 高 | 2026-08-30 | YoungerYang-Y | [底座质量强化](./v2.2.1/foundation-quality-hardening/plan.md) |
+| TD-033 | starter-rpc-core / starter-feign / starter-dubbo | Core 关闭与适配器默认启用组合会因缺 Bean 启动失败。 | 高 | 2026-08-30 | YoungerYang-Y | [底座质量强化](./v2.2.1/foundation-quality-hardening/plan.md) |
+| TD-034 | common | 分页 Long 运算可能返回负 offset 或 totalPages。 | 高 | 2026-08-30 | YoungerYang-Y | [底座质量强化](./v2.2.1/foundation-quality-hardening/plan.md) |
+| TD-035 | common | `Loggable` 无运行时消费者但仍以有效能力对外说明。 | 中 | 2026-08-30 | YoungerYang-Y | [底座质量强化](./v2.2.1/foundation-quality-hardening/plan.md) |
 
 ## 优先级含义（智能体行为指南）
 
