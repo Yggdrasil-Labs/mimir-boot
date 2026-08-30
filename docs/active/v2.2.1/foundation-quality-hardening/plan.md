@@ -1,20 +1,20 @@
 ---
 id: foundation-quality-hardening
 version: v2.2.1
-status: not-started
+status: in-progress
 owner: YoungerYang-Y
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # 底座质量强化 — 实施计划
 
-> Branch: [待填充]
-> Baseline SHA: [待填充]
-> Worktree Path: [待填充]
-> Started At: [待填充]
-> Updated At: [待填充]
-> Effective Execution Mode: [待填充]
+> Branch: feature/foundation-quality-hardening
+> Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
+> Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
+> Started At: 2026-08-31 07:34:48 +0800
+> Updated At: 2026-08-31 07:39:00 +0800
+> Effective Execution Mode: serial
 
 ## Goal
 
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：PENDING。
+- 执行状态：IN_PROGRESS（T1 已派发）。
 
 ## Plan Verdict
 
@@ -42,7 +42,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 |------|--------|
 | Verdict | PENDING |
 | Blocking Findings | 未执行，尚无结论 |
-| Verification Evidence | 未执行，尚无证据 |
+| Verification Evidence | Baseline Gate：2026-08-31 07:37 +0800，11 个相关模块 Maven 测试通过；Java 17.0.2；祖先检查通过。 |
 | Release Readiness | NOT_EVALUATED |
 
 ## Decision Log
@@ -176,7 +176,7 @@ flowchart LR
 - [ ] 真实 JAR fixture 使 `org.example.order.mapper.**` 同时出现在有效包集合和 `basePackage`，对应 `@Mapper` Bean 可调用。
 - [ ] 默认包去重；多段 `/mapper/` 取最后一段；坏 URL 的 WARN 含资源标识与解析原因且不影响好资源。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T1。
+**Execution:** Status=in_progress；Commit SHAs=[]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=t1-mapper-implementation；mode=TDD；commit=required；owner=T1。
 
 **Task Completion Gate:**
 
@@ -214,7 +214,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failI
 - [ ] starter-log README 的四个访问日志示例同步 `Status/Outcome/ErrorType/Duration`，并说明普通 HTTP 5xx 仍是 `COMPLETED/-`。
 - [ ] `AccessLogAutoConfigurationTest.enablesAsyncSupport` 断言 `FilterRegistrationBean.isAsyncSupported()` 为 true。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T2。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T2。
 
 **Task Completion Gate:**
 
@@ -248,7 +248,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 - [ ] 同步、异步初始派发、timeout/error 与 ASYNC redispatch 均恢复进入前的 `traceId/requestId/ip` 和无关 key。
 - [ ] 进入前不存在的 key 最终不存在；HTTP 状态和异常身份不因 MDC 清理改变。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T3。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T3。
 
 **Task Completion Gate:**
 
@@ -287,7 +287,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-web -am -Dsurefire.failIfNoS
 - [ ] event 无 Throwable 时 `%maskThrowable` 精确返回空字符串。
 - [ ] Benchmark 默认保持单进程阈值断言；仅当 `mimir.boot.log.mask.benchmark.enforce-threshold=false` 时跳过单进程断言、仍打印 delta 与 JVM 参数，供 T9 汇总三次均值。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T4。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T4。
 
 **Task Completion Gate:**
 
@@ -320,7 +320,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 - [ ] 缺 host 的绝对层级 URL 精确输出 `[unknown-service]/[invalid-authority]/[invalid-authority]`；任何失败分支不回退原文。
 - [ ] enabled/disabled、成功/失败 DEBUG 分支均无 userinfo/query/fragment；null URL 委托收到同一非 null Request 与 Options。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T5。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T5。
 
 **Task Completion Gate:**
 
@@ -357,7 +357,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-feign -am -Dsurefire.failIfN
 - [ ] 默认组合三类治理 Bean 存在；Core=false 时无论适配器默认或显式 true，应用启动且适配器治理 Bean 不存在。
 - [ ] 单独关闭 Feign/Dubbo 只影响对应适配器；不创建 no-op Core Bean，不新增配置键。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T6。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T6。
 
 **Task Completion Gate:**
 
@@ -391,7 +391,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter
 - [ ] `Long.MAX_VALUE/1000` 的 totalPages 精确为 `9223372036854776`，hasNext 按 pageIndex=1 为 true。
 - [ ] 可表示 offset 精确；不可表示时抛 `IllegalArgumentException("分页偏移量超出 Long 范围")`；既有纠正规则不变。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T7。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T7。
 
 **Task Completion Gate:**
 
@@ -428,7 +428,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 - [ ] 当前下游最小源码启用 `-Xlint:deprecation` 后编译成功，且诊断精确指向 `Loggable`。
 - [ ] Javadoc/README 明确无内置运行时消费者、v2.2.1 弃用、3.0 移除，不声称自动记录日志。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller-assigned；mode=TDD；commit=required；owner=T8。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T8。
 
 **Task Completion Gate:**
 
@@ -469,7 +469,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 - [ ] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs。
 - [ ] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；agent=controller；mode=verification；commit=required-for-governance-docs；owner=T9。
+**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller；mode=verification；commit=required-for-governance-docs；owner=T9。
 
 **Task Completion Gate:**
 
