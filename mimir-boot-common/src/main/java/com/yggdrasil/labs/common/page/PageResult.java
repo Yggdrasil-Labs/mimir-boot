@@ -75,7 +75,7 @@ public class PageResult<T extends Serializable> implements Serializable {
         this.totalCount = totalCount;
         this.pageIndex = pageIndex;
         this.pageSize = pageSize;
-        this.totalPages = pageSize == 0 ? 0 : (totalCount + pageSize - 1) / pageSize;
+        this.totalPages = totalCount / pageSize + (totalCount % pageSize == 0 ? 0 : 1);
         this.hasNext = pageIndex < totalPages;
         this.hasPrevious = pageIndex > 1;
     }

@@ -63,4 +63,22 @@ class PageRequestTest {
         assertEquals(CommonConstants.DEFAULT_PAGE_SIZE, pr.getPageSize());
         assertEquals(OrderDirection.ASC.getCode(), pr.getOrderDirection());
     }
+
+    @Test
+    void returnsLargestRepresentableOffset() {
+        long pageSize = CommonConstants.MAX_PAGE_SIZE;
+        PageRequest request = PageRequest.of(Long.MAX_VALUE / pageSize + 1, pageSize);
+
+        assertEquals((Long.MAX_VALUE / pageSize) * pageSize, request.getOffset());
+    }
+
+    @Test
+    void rejectsOffsetOverflow() {
+        long pageSize = CommonConstants.MAX_PAGE_SIZE;
+        PageRequest request = PageRequest.of(Long.MAX_VALUE / pageSize + 2, pageSize);
+
+        IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class, request::getOffset);
+        assertEquals("分页偏移量超出 Long 范围", exception.getMessage());
+    }
 }

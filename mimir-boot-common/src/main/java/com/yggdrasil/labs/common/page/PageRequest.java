@@ -81,7 +81,11 @@ public class PageRequest implements Serializable {
      */
     public Long getOffset() {
         validateAndCorrect();
-        return (pageIndex - 1) * pageSize;
+        try {
+            return Math.multiplyExact(pageIndex - 1, pageSize);
+        } catch (ArithmeticException exception) {
+            throw new IllegalArgumentException("分页偏移量超出 Long 范围", exception);
+        }
     }
 
     /**

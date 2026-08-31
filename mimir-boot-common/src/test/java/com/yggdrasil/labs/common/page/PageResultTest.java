@@ -53,5 +53,14 @@ class PageResultTest {
         assertEquals(3L, pr.getPageIndex());
         assertEquals(5L, pr.getPageSize());
     }
+
+    @Test
+    void calculatesMaxTotalPagesWithoutOverflow() {
+        PageResult<Integer> result = PageResult.of(List.of(), Long.MAX_VALUE, 1L, 1000L);
+
+        assertEquals(9_223_372_036_854_776L, result.getTotalPages());
+        assertTrue(result.getHasNext());
+        assertFalse(result.getHasPrevious());
+    }
 }
 
