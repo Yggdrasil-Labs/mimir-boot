@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 09:57:00 +0800
+> Updated At: 2026-08-31 10:10:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 至 T4 已完成，继续 T5）。
+- 执行状态：IN_PROGRESS（T1 至 T5 已完成，继续 T6）。
 
 ## Plan Verdict
 
@@ -147,10 +147,10 @@ flowchart LR
 | T6 | Core 关闭时适配器默认不安装治理能力 | `FeignAutoConfigurationEndToEndTest.skipsDefaultAdaptersWhenCoreDisabled` + `DubboAutoConfigurationTest.skipsAdapterWhenCoreDisabled` | T6 AC1 |
 | T6 | Core 关闭且适配器显式开启 | `FeignAutoConfigurationEndToEndTest.skipsExplicitAdaptersWhenCoreDisabled` + `DubboAutoConfigurationTest.skipsExplicitAdapterWhenCoreDisabled` | T6 AC1 |
 | T6 | 单独关闭适配器 | `FeignAutoConfigurationTest.honorsAdapterSwitch` + `DubboAutoConfigurationTest.honorsAdapterSwitch` | T6 AC2 |
-| T5 | 成功调用不记录查询凭证 | `RpcFeignClientTest.sanitizesSuccessfulAbsoluteUrl` | T5 AC1、AC3 |
-| T5 | URL userinfo 不进入观测元数据 | `RpcFeignClientTest.stripsUserInfoFromMetadataAndDebugUrl` | T5 AC1、AC3 |
-| T5 | 相对 URL 仍可执行 | `RpcFeignClientTest.delegatesRelativeUrlAndSanitizesObservation` | T5 AC1、AC3 |
-| T5 | 缺失 authority、非层级或非法 URL 的元数据不泄露 | `RpcFeignClientTest.usesExactSafePlaceholdersForUnusableUrls` | T5 AC1、AC2、AC3 |
+| T5 | 成功调用不记录查询凭证 | `RpcFeignClientTest.shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches` | T5 AC1、AC3 |
+| T5 | URL userinfo 不进入观测元数据 | `RpcFeignClientTest.shouldSanitizeMetadataForAllUrlShapes` + `shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches` | T5 AC1、AC3 |
+| T5 | 相对 URL 仍可执行 | `RpcFeignClientTest.shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches` | T5 AC1、AC3 |
+| T5 | 缺失 authority、非层级或非法 URL 的元数据不泄露 | `RpcFeignClientTest.shouldSanitizeMetadataForAllUrlShapes` + `shouldUseMissingUrlPlaceholdersAndDelegateOriginalRequest` | T5 AC1、AC2、AC3 |
 | T7 | 最大总记录数计算精确页数 | `PageResultTest.calculatesMaxTotalPagesWithoutOverflow` | T7 AC1 |
 | T7 | 可表示的 offset 保持精确 | `PageRequestTest.returnsLargestRepresentableOffset` | T7 AC2 |
 | T7 | offset 超出 Long 范围 | `PageRequestTest.rejectsOffsetOverflow` | T7 AC2 |
@@ -318,19 +318,19 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 
 **Acceptance Criteria:**
 
-- [ ] 正常绝对、userinfo、相对、opaque、非法、null 和 `https:/orders?token=secret` 均得到 Spec 表中的精确三字段。
-- [ ] 缺 host 的绝对层级 URL 精确输出 `[unknown-service]/[invalid-authority]/[invalid-authority]`；任何失败分支不回退原文。
-- [ ] enabled/disabled、成功/失败 DEBUG 分支均无 userinfo/query/fragment；null URL 委托收到同一非 null Request 与 Options。
+- [x] 正常绝对、userinfo、相对、opaque、非法、null 和 `https:/orders?token=secret` 均得到 Spec 表中的精确三字段。
+- [x] 缺 host 的绝对层级 URL 精确输出 `[unknown-service]/[invalid-authority]/[invalid-authority]`；任何失败分支不回退原文。
+- [x] enabled/disabled、成功/失败 DEBUG 分支均无 userinfo/query/fragment；null URL 委托收到同一非 null Request 与 Options。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T5。
+**Execution:** Status=completed；Commit SHAs=[20067b6d8e8037b68b21a04abe4e44bc59942c66]；Dispatch Base SHA=0516620dbebc1fc54374958e42e2fa90ff858688；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增 URL 观测夹具在旧实现暴露 userinfo/query，null URL 触发 NPE；Verify Result=2026-08-31 10:09 +0800，T5 定向 Maven 回归 19 tests passed；AC Result=3/3；agent=controller；mode=TDD；commit=completed；owner=T5。
 
 **Task Completion Gate:**
 
-- [ ] Red：4 个 Scenario 和所有 DEBUG 分支先失败。
-- [ ] Green：单次 sanitizer 结果驱动 metadata 与日志。
-- [ ] Refactor：移除 raw URL 观测 fallback。
-- [ ] Verify：定向测试通过且异常传播不变。
-- [ ] Commit：仅包含 T5 文件，提交信息 `fix(feign): 移除观测地址凭证`。
+- [x] Red：4 个 Scenario 和所有 DEBUG 分支先失败。
+- [x] Green：单次 sanitizer 结果驱动 metadata 与日志。
+- [x] Refactor：移除 raw URL 观测 fallback。
+- [x] Verify：定向测试通过且异常传播不变。
+- [x] Commit：仅包含 T5 文件，提交信息 `fix(feign): 移除观测地址凭证`。
 
 **Verify:**
 
