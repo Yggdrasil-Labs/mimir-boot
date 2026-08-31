@@ -1,10 +1,10 @@
 ---
 id: foundation-quality-hardening
 version: v2.2.1
-status: draft
+status: shipped
 owner: YoungerYang-Y
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # 底座质量强化

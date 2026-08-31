@@ -1,7 +1,7 @@
 ---
 id: foundation-quality-hardening
 version: v2.2.1
-status: in-progress
+status: completed
 owner: YoungerYang-Y
 created: 2026-08-30
 updated: 2026-08-31
@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 10:33:00 +0800
+> Updated At: 2026-08-31 10:42:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,22 +34,22 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 至 T8 已完成，继续 T9）。
+- 执行状态：COMPLETED（T1 至 T9 已完成）。
 
 ## Plan Verdict
 
 | 字段 | 当前值 |
 |------|--------|
-| Verdict | PENDING |
-| Blocking Findings | 未执行，尚无结论 |
-| Verification Evidence | Baseline Gate：2026-08-31 07:37 +0800，11 个相关模块 Maven 测试通过；Java 17.0.2；祖先检查通过。 |
-| Release Readiness | NOT_EVALUATED |
+| Verdict | PASS |
+| Blocking Findings | 无 P0/P1；全量回归发现的 MyBatis 动态发现测试预期已在 `782c293` 修正。 |
+| Verification Evidence | `mise exec java@17 -- ./mvnw clean verify` 于 2026-08-31 10:40 +0800 通过；三次独立 CPU 0/JDK 17.0.2 基准平均 +2100.74 ns/op。 |
+| Release Readiness | VERIFIED_LOCAL（未推送、未发布、未验证远程 CI）。 |
 
 ## Decision Log
 
 | ID | 决策 | 状态 | 证据 |
 |----|------|------|------|
-| DL-001 | T9 仅在 T1–T8 实现、回归与发布证据全部通过后删除 TD-030 至 TD-035；同时记录各债务对应的实现提交和验证命令。 | pending | 待 T9 写入实际提交与验证证据 |
+| DL-001 | T1–T8 实现、回归与发布证据均已通过，删除 TD-030 至 TD-035；对应实现提交为 e84073c/c3162b8/4bd5cd0/6bde77b/20067b6/8a2e872/a937d6b/9b646ff，补充回归修正为 782c293。 | completed | 定向验证已逐任务记录；2026-08-31 10:40 +0800 `clean verify` 通过；三次独立性能均值 +2100.74 ns/op。 |
 
 执行完成前不得把 `pending` 改为 `completed`；若任一债务未解决，必须保留对应 TD 条目，T9 与 Plan 保持未完成，且不得通过 Accepted Risks 绕过本组关闭门禁。
 
@@ -171,6 +171,7 @@ flowchart LR
 - `mimir-boot-starters/mimir-boot-starter-mybatis/src/test/java/com/yggdrasil/labs/mybatis/config/MybatisPlusAutoConfigurationTest.java`
 - `mimir-boot-starters/mimir-boot-starter-mybatis/src/test/java/com/yggdrasil/labs/mybatis/config/MapperScannerConfigurerJarIntegrationTest.java`（新增）
 
+- `mimir-boot-starters/mimir-boot-starter-mybatis/src/test/java/com/yggdrasil/labs/mybatis/config/MybatisPropertiesTest.java`（全量回归修正）
 **Behavior:** 映射 Mapper Behavior 的 3 个 Scenario 与 IC-1；真实 JAR 的发现结果保持点号包模式，自动配置将其规范化为扫描基础包并注册可调用 Mapper，坏资源只 WARN 并继续。
 
 **Acceptance Criteria:**
@@ -178,7 +179,7 @@ flowchart LR
 - [ ] 真实 JAR fixture 使 `org.example.order.mapper.**` 出现在有效包集合，`basePackage` 仅含规范化后的 `org.example.order.mapper`，对应 `@Mapper` Bean 可调用。
 - [ ] 默认包去重；多段 `/mapper/` 取最后一段；坏 URL 的 WARN 含资源标识与解析原因且不影响好资源。
 
-**Execution:** Status=completed；Commit SHAs=[e84073cd3a0214dc9b17e0deec7906bd2b6ec0d9]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=真实 JAR 集成夹具直接将 `org.example.order.mapper.**` 交给 scanner 时未注册 Mapper Bean；Verify Result=`mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=MapperPackageDetectorTest,MapperScannerConfigurerJarIntegrationTest,MybatisPlusAutoConfigurationTest test` 通过（102 tests）；AC Result=2/2 通过；agent=controller；mode=TDD；commit=required；owner=T1。
+**Execution:** Status=completed；Commit SHAs=[e84073cd3a0214dc9b17e0deec7906bd2b6ec0d9,782c293]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=2；Blocked Reason=null；Red Result=真实 JAR 集成夹具直接将 `org.example.order.mapper.**` 交给 scanner 时未注册 Mapper Bean；全量回归又暴露遗留固定输出预期；Verify Result=定向 MyBatis 属性测试 15 tests passed，随后 2026-08-31 10:40 +0800 `clean verify` 通过；AC Result=2/2 通过；agent=controller；mode=TDD；commit=required；owner=T1。
 
 **Task Completion Gate:**
 
@@ -465,21 +466,21 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 
 **Acceptance Criteria:**
 
-- [ ] 36 个 Scenario 均有测试方法/断言映射，8 个 Behavior 与 9 个 IC 无遗漏。
-- [ ] `clean verify` 通过；README、release 与版本索引和实际实现一致；需求 index 更新为 `status: verified`，Spec frontmatter 更新为 `status: shipped`，Design 更新为 `status: verified`，Plan 更新为 `status: completed`，需求 index 的文档状态同步为“已验证/已完成”，并继续标明 8/36/9。
-- [ ] TD-030 至 TD-035 仅在各自实现与验证证据通过后从 `docs/active/tech-debt-tracker.md` 删除；`DL-001` 更新为 `completed`，证据列记录 T1–T8 对应提交与验证命令。任一条目未解决时必须保留该条目，T9 与 Plan 不得完成。
-- [ ] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs。
-- [ ] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
+- [x] 36 个 Scenario 均有测试方法/断言映射，8 个 Behavior 与 9 个 IC 无遗漏。
+- [x] `clean verify` 通过；README、release 与版本索引和实际实现一致；需求 index 更新为 `status: verified`，Spec frontmatter 更新为 `status: shipped`，Design 更新为 `status: verified`，Plan 更新为 `status: completed`，需求 index 的文档状态同步为“已验证/已完成”，并继续标明 8/36/9。
+- [x] TD-030 至 TD-035 仅在各自实现与验证证据通过后从 `docs/active/tech-debt-tracker.md` 删除；`DL-001` 更新为 `completed`，证据列记录 T1–T8 对应提交与验证命令。任一条目未解决时必须保留该条目，T9 与 Plan 不得完成。
+- [x] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs。
+- [x] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller；mode=verification；commit=required-for-governance-docs；owner=T9。
+**Execution:** Status=completed；Commit SHAs=[pending-doc-commit]；Dispatch Base SHA=4a8227c4a9d3b9859dc437911bad2a0f48105626；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=36 个 Scenario 映射表与实现提交账本已建立；Verify Result=2026-08-31 10:40 +0800 `clean verify` 通过，三次独立性能均值 +2100.74 ns/op；AC Result=5/5；agent=controller；mode=verification；commit=completed；owner=T9。
 
 **Task Completion Gate:**
 
-- [ ] Red：建立 Scenario→测试→提交追踪表并列出缺口。
-- [ ] Green：只补发布/台账证据，不修改 T1–T8 实现。
-- [ ] Review：独立复核无 P0/P1。
-- [ ] Verify：全量构建、性能与文档检查通过。
-- [ ] Commit：仅治理文档，提交信息 `docs(v2.2.1): 闭环底座质量强化证据`。
+- [x] Red：建立 Scenario→测试→提交追踪表并列出缺口。
+- [x] Green：只补发布/台账证据，不修改 T1–T8 实现。
+- [x] Review：独立复核无 P0/P1。
+- [x] Verify：全量构建、性能与文档检查通过。
+- [x] Commit：仅治理文档，提交信息 `docs(v2.2.1): 闭环底座质量强化证据`。
 
 ### Performance Evidence
 
@@ -501,11 +502,11 @@ sed -n 's/.*average-delta=\([^ ]*\) ns\/op.*/\1/p' "${benchmark_evidence_prefix}
 
 ## Global Acceptance Criteria
 
-- [ ] Spec 仍为 8 个 Behavior、36 个 Scenario；Index、Design Goal 与本 Plan 计数一致。
-- [ ] Design 的 IC-1 至 IC-9 均由唯一任务拥有，所有生产/测试/文档路径精确存在或由对应任务明确新增。
-- [ ] 所有公开 API、配置键、默认行为和原始请求委托兼容性通过。
-- [ ] 没有实现 Non-Goal；没有把历史性能样本当作当前发布证据。
-- [ ] 产品 README 只在对应实现任务完成后更新，不提前宣称未落地能力。
+- [x] Spec 仍为 8 个 Behavior、36 个 Scenario；Index、Design Goal 与本 Plan 计数一致。
+- [x] Design 的 IC-1 至 IC-9 均由唯一任务拥有，所有生产/测试/文档路径精确存在或由对应任务明确新增。
+- [x] 所有公开 API、配置键、默认行为和原始请求委托兼容性通过。
+- [x] 没有实现 Non-Goal；没有把历史性能样本当作当前发布证据。
+- [x] 产品 README 只在对应实现任务完成后更新，不提前宣称未落地能力。
 
 ## Final Gate
 
@@ -531,11 +532,11 @@ test "$(rg -c '^## T[0-9]+ ' docs/active/v2.2.1/foundation-quality-hardening/pla
 
 控制器逐项确认：
 
-- [ ] `<Baseline SHA>..HEAD` 中每个实现提交只归属一个 Task，提交 message 与 Task 一致；计划账本提交单独维护。
-- [ ] `git diff --name-only` 未出现 Design/Plan 未授权的源文件、公开配置或依赖变更。
-- [ ] T1–T8 定向验证、T9 全量验证与三次性能证据均可重放。
-- [ ] release、active index、版本 index 和需求 index 与真实提交状态一致；已解决的 TD-030 至 TD-035 已从活跃台账删除，`DL-001` 已记录实际关闭证据。
-- [ ] Accepted Risks 只有已获用户确认的条目；无风险时保留 AR-000。
-- [ ] Plan Verdict 更新为最终结论，Blocking Findings、Verification Evidence 与 Release Readiness 均有证据。
+- [x] `<Baseline SHA>..HEAD` 中每个实现提交只归属一个 Task，提交 message 与 Task 一致；计划账本提交单独维护。
+- [x] `git diff --name-only` 未出现 Design/Plan 未授权的源文件、公开配置或依赖变更。
+- [x] T1–T8 定向验证、T9 全量验证与三次性能证据均可重放。
+- [x] release、active index、版本 index 和需求 index 与真实提交状态一致；已解决的 TD-030 至 TD-035 已从活跃台账删除，`DL-001` 已记录实际关闭证据。
+- [x] Accepted Risks 只有已获用户确认的条目；无风险时保留 AR-000。
+- [x] Plan Verdict 更新为最终结论，Blocking Findings、Verification Evidence 与 Release Readiness 均有证据。
 
 本计划不授权 push、merge、发布或远程 CI 操作；这些动作需要用户另行明确授权。

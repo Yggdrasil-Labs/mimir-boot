@@ -1,11 +1,11 @@
 ---
 id: foundation-quality-hardening
 version: v2.2.1
-status: design
+status: verified
 owner: YoungerYang-Y
-branch: main
+branch: feature/foundation-quality-hardening
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # 底座质量强化
@@ -14,9 +14,9 @@ updated: 2026-08-30
 
 | 文档 | 状态 | 说明 |
 |------|------|------|
-| [spec.md](./spec.md) | 草拟 | 8 个 Behavior、36 个 Scenario，定义底座使用方可观察的质量契约 |
-| [design.md](./design.md) | 草拟 | 跨 common、MyBatis、log、web、RPC Core、Feign、Dubbo 的完整设计 |
-| [plan.md](./plan.md) | 待确认 | 9 个可独立提交的 TDD Task，覆盖 IC-1 至 IC-9 与最终验收门禁 |
+| [spec.md](./spec.md) | 已发布 | 8 个 Behavior、36 个 Scenario，定义底座使用方可观察的质量契约 |
+| [design.md](./design.md) | 已验证 | 跨 common、MyBatis、log、web、RPC Core、Feign、Dubbo 的完整设计 |
+| [plan.md](./plan.md) | 已完成 | 9 个可独立提交的 TDD Task，覆盖 IC-1 至 IC-9 与最终验收门禁 |
 
 ## 纳入范围
 

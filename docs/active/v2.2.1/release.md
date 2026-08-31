@@ -1,8 +1,8 @@
 ---
 version: "v2.2.1"
-date: "2026-08-29"
-status: "in-progress"
-branch: "feature/technical-debt-remediation"
+date: "2026-08-31"
+status: "verified"
+branch: "feature/foundation-quality-hardening"
 ---
 
 # Release — v2.2.1
@@ -63,7 +63,7 @@ branch: "feature/technical-debt-remediation"
 | Nacos legacy ECB | 应用配置仅使用 AES-GCM；遗留 AES/ECB 仅在离线迁移路径显式调用，并关注每次调用一次的迁移告警。 | 不把遗留 API 作为新敏感数据方案；自动解密始终不得回退到 ECB。 |
 | MyBatis v2 密文 | 所有实例先部署可读 v2 的版本，统一 `cryptoContext`，继续写 v1；完成全量升级与列长度预检后统一打开 v2 写入。 | v2 已写入后只能回退到支持 v2 且 context 相同的版本；应用级 AAD 的字段/记录级完整性缺口仍需后续设计。 |
 
-## 脱敏性能证据
+## 技术债修复阶段的脱敏性能证据（历史）
 
 固定 1 KiB 消息、JDK 17、同一 JVM 下，baseline 为无规则路径，candidate 为 3 个敏感字段路径；每次均预热 100000 次、测量 1000000 次，不剔除离群值。单次 delta = candidate − baseline：
 
@@ -76,6 +76,19 @@ branch: "feature/technical-debt-remediation"
 三次运行平均 delta 为 **+2322.71 ns/op（2.323 µs）**，三次运行中的最大 delta 为 **+2408.00 ns/op（2.408 µs）**，低于 20 µs 门槛。原始日志位于 `/tmp/mimir-boot-benchmark-1.log`、`/tmp/mimir-boot-benchmark-2.log` 和 `/tmp/mimir-boot-benchmark-3.log`。
 
 ## 验证证据
+## 底座质量强化验证证据
+
+- 发布制品 Mapper 发现、异步访问日志/MDC 生命周期、日志与 Feign 脱敏、RPC 自动装配、分页 Long 边界和 `Loggable` 生命周期均完成定向验证。
+- `mise exec java@17 -- ./mvnw clean verify` 于 2026-08-31 10:40 +0800 通过，15 个 reactor 模块成功。
+- 三次独立 Maven/JVM 运行固定在 CPU 0，JDK 17.0.2，`MAVEN_OPTS=-Xms1g -Xmx1g -XX:+AlwaysPreTouch`；每次输出均确认 JVM 参数生效。
+
+| 运行 | delta ns/op |
+|------|------------:|
+| 1 | +2256.98 |
+| 2 | +1998.58 |
+| 3 | +2046.67 |
+
+三次算术平均为 **+2100.74 ns/op（2.101 µs）**，低于 20 µs 门槛。原始日志位于 `/tmp/mimir-boot-foundation-quality-benchmark-{1,2,3}.log`。
 
 - T1–T7 主提交及补充提交见技术债实施计划；T7 的 consumer 与签名 fixture 通过隔离仓库验证。
 - T9 在当前 HEAD 连续运行三次脱敏基准：三次运行平均 delta +2322.71 ns/op，运行最大 delta +2408.00 ns/op，均值低于 20 µs 门槛。
