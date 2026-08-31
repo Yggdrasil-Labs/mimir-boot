@@ -8,6 +8,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.util.StringUtils;
 
+import java.net.URL;
 import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -40,8 +41,6 @@ public final class MapperPackageDetector {
      * @return 检测到的 mapper 包集合（使用通配符模式，如 "com.example.**.mapper"）
      */
     public static Set<String> detectMapperPackages() {
-        Set<String> mapperPackages = new LinkedHashSet<>();
-
         try {
             ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
@@ -51,32 +50,7 @@ public final class MapperPackageDetector {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("开始自动检测 Mapper 包，扫描路径: {}", packageSearchPath);
             }
-
-            Set<String> detectedPackages = new LinkedHashSet<>();
-            for (Resource resource : resources) {
-                if (!resource.isReadable()) {
-                    continue;
-                }
-
-                String packageName = extractPackageFromResource(resource);
-                if (StringUtils.hasText(packageName) && packageName.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX)) {
-                    detectedPackages.add(packageName);
-                }
-            }
-
-            // 将检测到的包转换为通配符模式，以便扫描子包
-            for (String pkg : detectedPackages) {
-                // 如果包路径不是以默认包前缀开头，则添加到扫描列表
-                // 因为默认包 com.yggdrasil.labs.**.mapper 已经可以匹配所有 com.yggdrasil.labs 下的 .mapper 包
-                // 注意：使用 DEFAULT_PACKAGE_PREFIX + "." 确保是子包，避免误判（如 com.yggdrasil.labsx.mapper）
-                if (!pkg.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX + ".")) {
-                    mapperPackages.add(pkg + MybatisConstants.PACKAGE_WILDCARD_SUFFIX);
-                }
-            }
-
-            if (!mapperPackages.isEmpty() && LOGGER.isDebugEnabled()) {
-                LOGGER.debug("自动检测到 {} 个 Mapper 包: {}", mapperPackages.size(), mapperPackages);
-            }
+            return detectMapperPackages(resources);
         } catch (IOException e) {
             LOGGER.warn("自动检测 Mapper 包时发生 IO 异常，将跳过自动检测。用户可通过配置 {} 手动指定",
                     MybatisConstants.CONFIG_MAPPER_PACKAGES, e);
@@ -85,6 +59,55 @@ public final class MapperPackageDetector {
                     MybatisConstants.CONFIG_MAPPER_PACKAGES, e);
         }
 
+        return new LinkedHashSet<>();
+    }
+
+    /**
+     * 基于给定资源执行包发现，供包内测试构造可控的坏资源和正常资源组合。
+     *
+     * @param resources 待解析的 classpath 资源
+     * @return 检测到的外部 Mapper 包通配符集合
+     */
+    static Set<String> detectMapperPackages(Resource... resources) {
+        Set<String> mapperPackages = new LinkedHashSet<>();
+        Set<String> detectedPackages = new LinkedHashSet<>();
+        if (resources == null) {
+            return mapperPackages;
+        }
+
+        for (Resource resource : resources) {
+            if (resource == null) {
+                continue;
+            }
+
+            String resourceDescription = describeResource(resource);
+            try {
+                if (!resource.isReadable()) {
+                    LOGGER.warn("跳过不可读的 Mapper 资源 resource={}, reason=resource is not readable",
+                            resourceDescription);
+                    continue;
+                }
+
+                String packageName = extractPackageFromResource(resource);
+                if (StringUtils.hasText(packageName)
+                        && packageName.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX)) {
+                    detectedPackages.add(packageName);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("跳过无法处理的 Mapper 资源 resource={}, reason={}",
+                        resourceDescription, messageOf(e), e);
+            }
+        }
+
+        for (String pkg : detectedPackages) {
+            if (!pkg.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX + ".")) {
+                mapperPackages.add(pkg + MybatisConstants.PACKAGE_WILDCARD_SUFFIX);
+            }
+        }
+
+        if (!mapperPackages.isEmpty() && LOGGER.isDebugEnabled()) {
+            LOGGER.debug("自动检测到 {} 个 Mapper 包: {}", mapperPackages.size(), mapperPackages);
+        }
         return mapperPackages;
     }
 
@@ -95,18 +118,29 @@ public final class MapperPackageDetector {
      * @return 包名，如果无法提取则返回 null
      */
     private static String extractPackageFromResource(Resource resource) {
+        String resourceDescription = describeResource(resource);
         try {
-            String url = resource.getURL().toString();
-            return extractPackageFromUrl(url);
-        } catch (IOException e) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("无法读取资源 URL: {}", resource, e);
+            URL resourceUrl = resource.getURL();
+            if (resourceUrl == null) {
+                LOGGER.warn("跳过无法解析的 Mapper 资源 resource={}, reason=resource URL is null",
+                        resourceDescription);
+                return null;
             }
+
+            String url = resourceUrl.toExternalForm();
+            String packageName = extractPackageFromUrl(url);
+            if (!StringUtils.hasText(packageName)) {
+                LOGGER.warn("跳过无法解析的 Mapper 资源 resource={}, reason=缺少合法 !/、classes 根目录或 Mapper 包路径",
+                        resourceDescription);
+            }
+            return packageName;
+        } catch (IOException e) {
+            LOGGER.warn("跳过无法读取的 Mapper 资源 resource={}, reason={}",
+                    resourceDescription, messageOf(e), e);
             return null;
         } catch (Exception e) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("处理资源时发生异常: {}", resource, e);
-            }
+            LOGGER.warn("跳过无法处理的 Mapper 资源 resource={}, reason={}",
+                    resourceDescription, messageOf(e), e);
             return null;
         }
     }
@@ -121,42 +155,29 @@ public final class MapperPackageDetector {
      * @return 包名，如果无法提取则返回 null
      */
     private static String extractPackageFromUrl(String url) {
-        if (!url.contains(MybatisConstants.MAPPER_PACKAGE_SEPARATOR)) {
+        if (!StringUtils.hasText(url)) {
             return null;
         }
 
-        try {
-            int mapperIndex = url.indexOf(MybatisConstants.MAPPER_PACKAGE_SEPARATOR);
-            if (mapperIndex <= 0) {
-                return null;
-            }
-
-            String beforeMapper = extractPathBeforeMapper(url, mapperIndex);
-            if (beforeMapper == null) {
-                return null;
-            }
-
-            int startIndex = findPackageStartIndex(beforeMapper);
-            if (startIndex < 0 || startIndex >= mapperIndex) {
-                return null;
-            }
-
-            String packagePath = beforeMapper.substring(startIndex, mapperIndex)
-                    .replace('/', '.');
-            if (StringUtils.hasText(packagePath)) {
-                return packagePath + MybatisConstants.MAPPER_PACKAGE_SUFFIX;
-            }
-        } catch (StringIndexOutOfBoundsException e) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("解析 URL 时发生字符串索引越界: {}", url, e);
-            }
-        } catch (Exception e) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("解析 URL 时发生异常: {}", url, e);
-            }
+        String normalizedUrl = url.replace('\\', '/');
+        int mapperIndex = normalizedUrl.lastIndexOf(MybatisConstants.MAPPER_PACKAGE_SEPARATOR);
+        if (mapperIndex <= 0) {
+            return null;
         }
 
-        return null;
+        String pathBeforeMapper = extractPathBeforeMapper(normalizedUrl, mapperIndex);
+        if (pathBeforeMapper == null) {
+            return null;
+        }
+
+        String packagePath = extractClassesRelativePath(pathBeforeMapper);
+        if (packagePath == null && normalizedUrl.contains(MybatisConstants.JAR_SEPARATOR)) {
+            packagePath = pathBeforeMapper;
+        }
+        if (!StringUtils.hasText(packagePath)) {
+            return null;
+        }
+        return packagePath.replace('/', '.') + MybatisConstants.MAPPER_PACKAGE_SUFFIX;
     }
 
     /**
@@ -168,41 +189,43 @@ public final class MapperPackageDetector {
      */
     private static String extractPathBeforeMapper(String url, int mapperIndex) {
         String beforeMapper = url.substring(0, mapperIndex);
-
-        // 处理 jar 包中的类文件
+        if (beforeMapper.endsWith("!")) {
+            return "";
+        }
         if (beforeMapper.contains(MybatisConstants.JAR_SEPARATOR)) {
             int jarIndex = beforeMapper.lastIndexOf(MybatisConstants.JAR_SEPARATOR);
-            if (jarIndex >= 0 && jarIndex + MybatisConstants.JAR_SEPARATOR.length() < beforeMapper.length()) {
-                return beforeMapper.substring(jarIndex + MybatisConstants.JAR_SEPARATOR.length());
-            }
-            return null;
+            return beforeMapper.substring(jarIndex + MybatisConstants.JAR_SEPARATOR.length());
         }
-
         return beforeMapper;
     }
 
-    /**
-     * 查找包路径的起始索引位置。
-     *
-     * @param path "/mapper/" 之前的路径
-     * @return 包路径的起始索引，如果无法确定则返回 0
-     */
+    private static String extractClassesRelativePath(String pathBeforeMapper) {
+        int classesIndex = pathBeforeMapper.lastIndexOf(MybatisConstants.CLASSES_DIR);
+        if (classesIndex < 0) {
+            return null;
+        }
+        return pathBeforeMapper.substring(classesIndex + MybatisConstants.CLASSES_DIR.length());
+    }
+
+    private static String describeResource(Resource resource) {
+        try {
+            return resource.getDescription();
+        } catch (Exception e) {
+            return resource.getClass().getName();
+        }
+    }
+
+    private static String messageOf(Exception exception) {
+        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : exception.getClass().getSimpleName();
+    }
+
     private static int findPackageStartIndex(String path) {
-        // 查找 classes 目录
         int classesIndex = path.indexOf(MybatisConstants.CLASSES_DIR);
-        if (classesIndex != -1) {
+        if (classesIndex >= 0) {
             return classesIndex + MybatisConstants.CLASSES_DIR.length();
         }
-
-        // 如果是 jar 包，可能没有 classes 目录，尝试从最后一个 / 开始
-        if (path.contains("/")) {
-            int lastSlash = path.lastIndexOf("/");
-            if (lastSlash != -1 && lastSlash + 1 < path.length()) {
-                return lastSlash + 1;
-            }
-        }
-
-        return 0;
+        int lastSlash = path.lastIndexOf('/');
+        return lastSlash >= 0 && lastSlash + 1 < path.length() ? lastSlash + 1 : 0;
     }
 }
 

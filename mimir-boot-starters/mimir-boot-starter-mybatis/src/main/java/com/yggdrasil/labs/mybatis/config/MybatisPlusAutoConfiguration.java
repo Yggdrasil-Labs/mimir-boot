@@ -15,9 +15,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * MyBatis-Plus 自动配置，注册常用拦截器。
@@ -99,8 +103,9 @@ public class MybatisPlusAutoConfiguration {
         }
         
         MapperScannerConfigurer configurer = new MapperScannerConfigurer();
-        // 使用 Properties 中的方法获取最终扫描包（包含默认包和自动检测的包）
-        String basePackages = properties.getEffectiveMapperPackages();
+        // 对外保留通配符包模式；MyBatis 扫描器必须接收实际的基础包名。
+        String packagePatterns = properties.getEffectiveMapperPackages();
+        String basePackages = normalizeMapperScanPackages(packagePatterns);
         configurer.setBasePackage(basePackages);
         
         // 设置 annotationClass 为 Mapper，只扫描带有 @Mapper 注解的接口
@@ -112,6 +117,24 @@ public class MybatisPlusAutoConfiguration {
         }
         
         return configurer;
+    }
+
+
+    private static String normalizeMapperScanPackages(String packagePatterns) {
+        return Arrays.stream(packagePatterns.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .map(MybatisPlusAutoConfiguration::normalizeMapperScanPackage)
+                .distinct()
+                .collect(Collectors.joining(","));
+    }
+
+    private static String normalizeMapperScanPackage(String packagePattern) {
+        if (packagePattern.endsWith(MybatisConstants.PACKAGE_WILDCARD_SUFFIX)) {
+            return packagePattern.substring(0,
+                    packagePattern.length() - MybatisConstants.PACKAGE_WILDCARD_SUFFIX.length());
+        }
+        return packagePattern;
     }
 
     /**

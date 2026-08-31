@@ -2,7 +2,10 @@ package com.yggdrasil.labs.mybatis.util;
 
 import com.yggdrasil.labs.mybatis.config.MybatisConstants;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.LogTestUtils;
 import org.junit.jupiter.api.Test;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -16,6 +19,8 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Set;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -97,6 +102,73 @@ class MapperPackageDetectorTest extends BaseUnitTest {
 
     // ========== 通过反射测试私有方法 extractPackageFromUrl ==========
 
+    @Test
+    void deduplicatesDefaultAndExternalPackages() throws Exception {
+        Set<String> packages = MapperPackageDetector.detectMapperPackages(
+                resource("default mapper", "jar:file:/fixtures/default.jar!/com/yggdrasil/labs/order/mapper/OrderMapper.class"),
+                resource("external mapper", "jar:file:/fixtures/external.jar!/org/example/order/mapper/OrderMapper.class"),
+                resource("external duplicate", "jar:file:/fixtures/external.jar!/org/example/order/mapper/OrderMapper.class"));
+
+        assertEquals(Set.of("org.example.order.mapper.**"), packages);
+    }
+
+    @Test
+    void warnsAndSkipsMalformedResource() throws Exception {
+        ListAppender<ILoggingEvent> appender = LogTestUtils.setupLogger(MapperPackageDetector.class.getName());
+        try {
+            Set<String> packages = MapperPackageDetector.detectMapperPackages(
+                    resource("jar:file:/fixtures/bad.jar!broken/mapper/UserMapper.class", malformedUrl("jar:file:/fixtures/bad.jar!broken/mapper/UserMapper.class")),
+                    resource("good resource", "jar:file:/fixtures/good.jar!/org/example/order/mapper/OrderMapper.class"));
+
+            assertEquals(Set.of("org.example.order.mapper.**"), packages);
+            assertTrue(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .anyMatch(message -> message.contains("jar:file:/fixtures/bad.jar!broken/mapper/UserMapper.class")
+                            && message.contains("reason=")));
+        } finally {
+            LogTestUtils.cleanupLogger(MapperPackageDetector.class.getName(), appender);
+        }
+    }
+
+    private static Resource resource(String description, String url) throws Exception {
+        return resource(description, new URL(url));
+    }
+
+    private static Resource resource(String description, URL url) {
+        return new AbstractResource() {
+            @Override
+            public String getDescription() {
+                return description;
+            }
+
+            @Override
+            public InputStream getInputStream() {
+                return InputStream.nullInputStream();
+            }
+
+            @Override
+            public URL getURL() {
+                return url;
+            }
+
+            @Override
+            public boolean isReadable() {
+                return true;
+            }
+        };
+    }
+
+    private static URL malformedUrl(String value) throws Exception {
+        return new URL(null, value, new URLStreamHandler() {
+            @Override
+
+            protected URLConnection openConnection(URL url) {
+                throw new UnsupportedOperationException("resource URL is only used for its external form");
+            }
+        });
+    }
+
+    // ========== 通过反射测试私有方法 extractPackageFromUrl ==========
+
     @ParameterizedTest
     @MethodSource("provideExtractPackageFromUrlTestCases")
     void testExtractPackageFromUrl_variousFormats(String url, String expectedPackage) throws Exception {
@@ -114,12 +186,18 @@ class MapperPackageDetectorTest extends BaseUnitTest {
                 "file:/path/to/target/classes/com/example/mapper/UserMapper.class",
                 "com.example.mapper"
             ),
-            // jar URL 格式 - 实际实现可能因为索引计算问题返回 null
-            // 对于 jar URL，extractPathBeforeMapper 返回 "!/" 之后的部分
-            // 但后续使用 mapperIndex（相对于整个 URL）可能导致索引错误
             Arguments.of(
                 "jar:file:/path/to/app.jar!/com/example/mapper/UserMapper.class",
-                null
+                "com.example.mapper"
+            ),
+            // 含多个 /mapper/ 段时取最后一段
+            Arguments.of(
+                "jar:file:/path/to/app.jar!/BOOT-INF/classes/org/example/order/mapper/OrderMapper.class",
+                "org.example.order.mapper"
+            ),
+            Arguments.of(
+                "jar:file:/path/to/app.jar!/org/example/mapper/archive/mapper/UserMapper.class",
+                "org.example.mapper.archive.mapper"
             ),
             // 不包含 /mapper/ 的 URL
             Arguments.of(
@@ -156,16 +234,7 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         Method method = MapperPackageDetector.class.getDeclaredMethod("extractPackageFromUrl", String.class);
         method.setAccessible(true);
         
-        // 测试 null 值，实现方法没有处理 null，会抛出 NullPointerException
-        // 使用反射调用时，异常会被包装在 InvocationTargetException 中
-        Exception exception = assertThrows(Exception.class, () -> {
-            method.invoke(null, (String) null);
-        });
-        
-        // 验证异常是 InvocationTargetException，且 cause 是 NullPointerException
-        assertInstanceOf(java.lang.reflect.InvocationTargetException.class, exception);
-        Throwable cause = ((java.lang.reflect.InvocationTargetException) exception).getCause();
-        assertInstanceOf(NullPointerException.class, cause);
+        assertNull(method.invoke(null, (String) null));
     }
 
     @Test
@@ -183,15 +252,8 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         Method method = MapperPackageDetector.class.getDeclaredMethod("extractPackageFromUrl", String.class);
         method.setAccessible(true);
         
-        // 对于 "file:/mapper/"：
-        // - mapperIndex = 5（/mapper/ 的位置）
-        // - beforeMapper = "file:"（长度为 5）
-        // - startIndex = findPackageStartIndex("file:") = 0
-        // - packagePath = beforeMapper.substring(0, 5) = "file:"
-        // - 返回 "file:.mapper"
-        // 实际实现会返回 "file:.mapper"，这与之前的测试用例类似
         String result = (String) method.invoke(null, "file:/mapper/");
-        assertEquals("file:.mapper", result);
+        assertNull(result);
     }
 
     // ========== 测试 extractPathBeforeMapper ==========
@@ -230,18 +292,10 @@ class MapperPackageDetectorTest extends BaseUnitTest {
                 jarMapperIndex,
                 "com/example"
             ),
-            // jar URL 边界情况：jarIndex + separator.length() >= beforeMapper.length()
-            // 对于 "jar:file:/app.jar!/mapper/UserMapper.class"：
-            // - mapperIndex = 22（/mapper/ 的位置）
-            // - beforeMapper = "jar:file:/app.jar!"（长度为 22）
-            // - jarIndex = 20（"!/" 的位置）
-            // - jarIndex + 2 = 22
-            // - 22 < 22 是 false，所以应该返回 null
-            // 但实际实现返回了 "jar:file:/app.jar!"，我们需要验证实际行为
             Arguments.of(
                 jarUrlEdge,
                 jarEdgeMapperIndex,
-                "jar:file:/app.jar!"
+                ""
             )
         );
     }
@@ -401,20 +455,9 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         Method method = MapperPackageDetector.class.getDeclaredMethod("extractPackageFromUrl", String.class);
         method.setAccessible(true);
         
-        // 对于 "file:/path/to/target/classes/mapper/UserMapper.class"：
-        // - mapperIndex = 35（/mapper/ 的位置）
-        // - beforeMapper = "file:/path/to/target/classes"（长度为 35）
-        // - startIndex = findPackageStartIndex("file:/path/to/target/classes")
-        //   = indexOf("/classes/") + "/classes/".length() = 26 + 9 = 35
-        // - packagePath = beforeMapper.substring(35, 35) = ""（空字符串）
-        // 但实际上，如果 startIndex == beforeMapper.length()，substring 会返回空字符串
-        // 而 StringUtils.hasText("") 返回 false，所以应该返回 null
-        // 但实际返回了 "classes.mapper"，说明 startIndex 的计算可能不同
-        // 或者 beforeMapper 包含了 "classes" 部分
         String url = "file:/path/to/target/classes/mapper/UserMapper.class";
         String result = (String) method.invoke(null, url);
-        // 实际实现返回 "classes.mapper"，我们需要验证实际行为
-        assertEquals("classes.mapper", result);
+        assertNull(result);
     }
 
     @Test
@@ -422,21 +465,9 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         Method method = MapperPackageDetector.class.getDeclaredMethod("extractPackageFromUrl", String.class);
         method.setAccessible(true);
         
-        // 测试 startIndex >= mapperIndex 的情况
-        // 对于 "file:/mapper/UserMapper.class"：
-        // - mapperIndex = 5（/mapper/ 的位置）
-        // - beforeMapper = "file:"（长度为 5）
-        // - startIndex = findPackageStartIndex("file:") = 0
-        // - packagePath = beforeMapper.substring(0, 5) = "file:"
-        // - 返回 "file:.mapper"
-        // 实际实现会返回 "file:.mapper"，这不是有效的包名
-        // 但这是实现的行为，在实际使用中不会出现这种 URL
-        // 我们改为测试一个真正会导致 startIndex >= mapperIndex 的情况
-        // 或者接受实际实现的行为
         String url = "file:/mapper/UserMapper.class";
         String result = (String) method.invoke(null, url);
-        // 实际实现会返回 "file:.mapper"
-        assertEquals("file:.mapper", result);
+        assertNull(result);
     }
 
     @Test
@@ -485,7 +516,7 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         int mapperIndex = url.indexOf("/mapper/");
         String result = (String) method.invoke(null, url, mapperIndex);
         // 实际实现返回 "jar:file:/app.jar!"，我们需要验证实际行为
-        assertEquals("jar:file:/app.jar!", result);
+        assertEquals("", result);
     }
 
     @Test
@@ -698,8 +729,7 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         String url = "file:/path/to/target/classes/mapper/UserMapper.class";
         String result = (String) method.invoke(null, url);
         // 实际实现会返回 "classes.mapper" 或 "mapper"，取决于 findPackageStartIndex 的实现
-        assertNotNull(result);
-        assertTrue(result.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX));
+        assertNull(result);
     }
 
     @Test
