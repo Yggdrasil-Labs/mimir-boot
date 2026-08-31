@@ -6,7 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * @since 1.0.0
  */
 @Slf4j
-public class TraceInterceptor implements HandlerInterceptor {
+public class TraceInterceptor implements AsyncHandlerInterceptor {
 
     public static final String TRACE_ID = CommonConstants.TRACE_ID;
     private static final String MDC_STACK_ATTRIBUTE = TraceInterceptor.class.getName() + ".mdcStack";
@@ -76,6 +76,18 @@ public class TraceInterceptor implements HandlerInterceptor {
             HttpServletResponse response,
             Object handler,
             Exception ex) {
+        restorePreviousMdcState(request);
+    }
+
+    @Override
+    public void afterConcurrentHandlingStarted(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Object handler) {
+        restorePreviousMdcState(request);
+    }
+
+    private void restorePreviousMdcState(HttpServletRequest request) {
         Deque<MdcState> stack = mdcStackOrNull(request);
         if (stack == null || stack.isEmpty()) {
             return;

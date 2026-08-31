@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -30,7 +30,7 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Slf4j
-public class WebInterceptor implements HandlerInterceptor {
+public class WebInterceptor implements AsyncHandlerInterceptor {
     private static final String IP = "ip";
     private static final String IP_MDC_STACK_ATTRIBUTE = WebInterceptor.class.getName() + ".ipMdcStack";
     /**
@@ -73,6 +73,18 @@ public class WebInterceptor implements HandlerInterceptor {
             HttpServletResponse response,
             Object handler,
             Exception ex) {
+        restorePreviousIp(request);
+    }
+
+    @Override
+    public void afterConcurrentHandlingStarted(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Object handler) {
+        restorePreviousIp(request);
+    }
+
+    private void restorePreviousIp(HttpServletRequest request) {
         Deque<Optional<String>> stack = ipMdcStackOrNull(request);
         if (stack == null || stack.isEmpty()) {
             return;
