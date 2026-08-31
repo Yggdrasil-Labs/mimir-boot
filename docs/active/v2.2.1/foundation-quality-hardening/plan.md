@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 10:24:00 +0800
+> Updated At: 2026-08-31 10:33:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 至 T7 已完成，继续 T8）。
+- 执行状态：IN_PROGRESS（T1 至 T8 已完成，继续 T9）。
 
 ## Plan Verdict
 
@@ -156,8 +156,8 @@ flowchart LR
 | T7 | offset 超出 Long 范围 | `PageRequestTest.rejectsOffsetOverflow` | T7 AC2 |
 | T8 | 既有源码仍可编译 | `LoggableCompatibilityTest.compilesConsumerWithDeprecationDiagnostic` | T8 AC1、AC3 |
 | T8 | 反射元数据保持可读 | `LoggableCompatibilityTest.preservesAllAnnotationMembersAndDefaults` | T8 AC1 |
-| T8 | 预编译下游仍可运行 | `LoggableCompatibilityTest.loadsConsumerCompiledAgainstPreV221Contract` | T8 AC2 |
-| T8 | 文档明确迁移方向 | `LoggableCompatibilityTest.documentsDeprecationWithoutRuntimePromise` | T8 AC4 |
+| T8 | 预编译下游仍可运行 | `LoggableCompatibilityTest.linksLegacyConsumerAgainstCurrentLoggable` | T8 AC2 |
+| T8 | 文档明确迁移方向 | `Loggable.java` Javadoc 与 `mimir-boot-common/README.md` §6 | T8 AC4 |
 
 ## T1 — Mapper 发布制品发现
 
@@ -425,20 +425,20 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 
 **Acceptance Criteria:**
 
-- [ ] 注解标记 `@Deprecated(since="2.2.1", forRemoval=true)`，六个属性签名、默认值和反射语义不变。
-- [ ] `JavaCompiler` 先把两个资源 fixture 编译到临时目录，再删除临时目录中的旧 `Loggable.class`，用以当前 common 为 parent 的 `URLClassLoader` 加载并调用 consumer；过程无 `NoSuchMethodError`、`NoSuchFieldError` 或 `IncompatibleClassChangeError`。
-- [ ] 当前下游最小源码启用 `-Xlint:deprecation` 后编译成功，且诊断精确指向 `Loggable`。
-- [ ] Javadoc/README 明确无内置运行时消费者、v2.2.1 弃用、3.0 移除，不声称自动记录日志。
+- [x] 注解标记 `@Deprecated(since="2.2.1", forRemoval=true)`，六个属性签名、默认值和反射语义不变。
+- [x] `JavaCompiler` 先把两个资源 fixture 编译到临时目录，再删除临时目录中的旧 `Loggable.class`，用以当前 common 为 parent 的 `URLClassLoader` 加载并调用 consumer；过程无 `NoSuchMethodError`、`NoSuchFieldError` 或 `IncompatibleClassChangeError`。
+- [x] 当前下游最小源码启用 `-Xlint:deprecation` 后编译成功，且诊断精确指向 `Loggable`。
+- [x] Javadoc/README 明确无内置运行时消费者、v2.2.1 弃用、3.0 移除，不声称自动记录日志。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T8。
+**Execution:** Status=completed；Commit SHAs=[9b646ff5ec489e78d2f61c9b30c3b0ac0c97720f]；Dispatch Base SHA=dccdcacdfc96887f6d6415ed30127b7844704a13；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Loggable 缺少弃用元数据时，反射兼容性断言失败；Verify Result=2026-08-31 10:31 +0800，T8 定向 Maven 回归 3 tests passed；AC Result=4/4；agent=controller；mode=TDD；commit=completed；owner=T8。
 
 **Task Completion Gate:**
 
-- [ ] Red：编译、反射、二进制和文本断言先失败。
-- [ ] Green：新增兼容性测试和两份可复现旧契约 fixture，只增加弃用元数据与迁移说明。
-- [ ] Refactor：不增加 AOP 或新依赖。
-- [ ] Verify：兼容性测试通过。
-- [ ] Commit：仅包含 T8 文件，提交信息 `refactor(common): 弃用无消费者的 Loggable`。
+- [x] Red：编译、反射、二进制和文本断言先失败。
+- [x] Green：新增兼容性测试和两份可复现旧契约 fixture，只增加弃用元数据与迁移说明。
+- [x] Refactor：不增加 AOP 或新依赖。
+- [x] Verify：兼容性测试通过。
+- [x] Commit：仅包含 T8 文件，提交信息 `refactor(common): 弃用无消费者的 Loggable`。
 
 **Verify:**
 

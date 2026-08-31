@@ -146,7 +146,7 @@ PageResult<User> result = PageResult.of(users, totalCount, pageIndex, pageSize);
 
 ### 6. 注解
 
-- **Loggable** - 日志记录注解
+- **Loggable** - 兼容性日志元数据注解；当前无内置运行时消费者，v2.2.1 起弃用并计划于 3.0 移除。
 
 ### 7. DTO/VO 基础模型（COLA 4.0 架构）
 
