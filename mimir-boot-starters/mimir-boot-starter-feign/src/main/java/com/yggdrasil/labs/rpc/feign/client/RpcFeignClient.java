@@ -67,19 +67,19 @@ public class RpcFeignClient implements Client {
 
     @Override
     public Response execute(Request request, Request.Options options) throws IOException {
+        SanitizedUrl sanitizedUrl = sanitizeUrl(request.url());
         if (!properties.isEnabled()) {
             if (log.isDebugEnabled()) {
-                log.debug("RpcFeignClient: Filter disabled, bypassing for url={}", request.url());
+                log.debug("RpcFeignClient: Filter disabled, bypassing for url={}", sanitizedUrl.debugUrl());
             }
             return delegate.execute(request, options);
         }
 
-        URI uri = URI.create(request.url());
         RpcCallMetadata metadata = RpcCallMetadata.builder()
-                .service(resolveService(uri, request.url()))
+                .service(sanitizedUrl.service())
                 .method(request.httpMethod().name())
-                .protocol(uri.getScheme())
-                .target(uri.getAuthority())
+                .protocol(protocol(sanitizedUrl))
+                .target(sanitizedUrl.target())
                 .attachments(toStringMap(request.headers()))
                 .build();
         RpcCallContext context = RpcCallContext.create(metadata);
@@ -90,7 +90,7 @@ public class RpcFeignClient implements Client {
                     metadata.getMethod(),
                     metadata.getProtocol(),
                     metadata.getTarget(),
-                    request.url());
+                    sanitizedUrl.debugUrl());
         }
 
         Instant start = Instant.now();
@@ -105,7 +105,7 @@ public class RpcFeignClient implements Client {
                 log.debug("RpcFeignClient: HTTP call succeeded - service={}, method={}, url={}, status={}, duration={}ms",
                         metadata.getService(),
                         metadata.getMethod(),
-                        request.url(),
+                        sanitizedUrl.debugUrl(),
                         response.status(),
                         duration.toMillis());
             }
@@ -117,7 +117,7 @@ public class RpcFeignClient implements Client {
                 log.debug("RpcFeignClient: HTTP call failed - service={}, method={}, url={}, duration={}ms, error={}",
                         metadata.getService(),
                         metadata.getMethod(),
-                        request.url(),
+                        sanitizedUrl.debugUrl(),
                         duration.toMillis(),
                         throwable.getClass().getSimpleName(),
                         throwable);
@@ -177,16 +177,52 @@ public class RpcFeignClient implements Client {
         return map;
     }
 
-    private String resolveService(URI uri, String rawUrl) {
-        if (uri.getHost() != null) {
-            return uri.getHost();
+
+    private SanitizedUrl sanitizeUrl(String rawUrl) {
+        if (rawUrl == null) {
+            return placeholder("[missing-url]");
         }
-        if (uri.getAuthority() != null) {
-            return uri.getAuthority();
+        try {
+            URI uri = URI.create(rawUrl);
+            if (uri.isOpaque()) {
+                return placeholder("[opaque-url]");
+            }
+            if (uri.isAbsolute()) {
+                if (uri.getHost() == null) {
+                    return placeholder("[invalid-authority]");
+                }
+                String authority = authority(uri);
+                String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+                return new SanitizedUrl(uri.getHost(), authority, uri.getScheme() + "://" + authority + path);
+            }
+            String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+            return new SanitizedUrl("[unknown-service]", path, path);
+        } catch (IllegalArgumentException exception) {
+            return placeholder("[invalid-url]");
         }
-        return rawUrl;
     }
 
+    private SanitizedUrl placeholder(String value) {
+        return new SanitizedUrl("[unknown-service]", value, value);
+    }
+
+    private String authority(URI uri) {
+        String host = uri.getHost();
+        if (host.indexOf(':') >= 0 && !host.startsWith("[")) {
+            host = "[" + host + "]";
+        }
+        return uri.getPort() < 0 ? host : host + ":" + uri.getPort();
+    }
+
+    private String protocol(SanitizedUrl sanitizedUrl) {
+        String debugUrl = sanitizedUrl.debugUrl();
+        if (debugUrl.startsWith("[")) {
+            return null;
+        }
+        return URI.create(debugUrl).getScheme();
+    }
+
+    private record SanitizedUrl(String service, String target, String debugUrl) {}
     private static boolean isSafeAttachmentHeader(String name) {
         return name != null && SAFE_ATTACHMENT_HEADERS.contains(name.toLowerCase(Locale.ROOT));
     }

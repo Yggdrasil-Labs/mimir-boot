@@ -3,7 +3,12 @@ package com.yggdrasil.labs.rpc.feign.client;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
@@ -17,10 +22,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 
 class RpcFeignClientTest {
 
@@ -372,43 +379,107 @@ class RpcFeignClientTest {
     }
 
     @Test
-    void shouldFallBackToAuthorityWhenUriHostIsUnavailable() throws Exception {
-        Request request = Request.create(
-                Request.HttpMethod.GET, "http://:8080/api", Map.of(), null, StandardCharsets.UTF_8, null);
-        Response response = Response.builder()
-                .request(request)
-                .status(200)
-                .reason("OK")
-                .headers(Map.of())
-                .build();
-        when(delegate.execute(any(), any())).thenReturn(response);
-        when(tracerBridge.inject(any())).thenReturn(Map.of());
-
-        client.execute(request, new Request.Options());
-
-        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
-        verify(hook).before(contextCaptor.capture());
-        Assertions.assertEquals(":8080", contextCaptor.getValue().getMetadata().getService());
+    void shouldSanitizeMetadataForAllUrlShapes() throws Exception {
+        assertMetadata(
+                request("https://api.example.test:8443/orders?token=secret#detail"),
+                "api.example.test",
+                "api.example.test:8443");
+        assertMetadata(
+                request("https://user:password@api.example.test:8443/orders"),
+                "api.example.test",
+                "api.example.test:8443");
+        assertMetadata(request("/orders?token=secret"), "[unknown-service]", "/orders");
+        assertMetadata(
+                request("https:/orders?token=secret"), "[unknown-service]", "[invalid-authority]");
+        assertMetadata(
+                request("mailto:user:password@example.test"), "[unknown-service]", "[opaque-url]");
+        assertMetadata(request("http://[bad"), "[unknown-service]", "[invalid-url]");
     }
 
     @Test
-    void shouldFallBackToRawUrlWhenHostAndAuthorityAreUnavailable() throws Exception {
-        Request request = Request.create(
-                Request.HttpMethod.GET, "/api/fallback", Map.of(), null, StandardCharsets.UTF_8, null);
-        Response response = Response.builder()
-                .request(request)
-                .status(200)
-                .reason("OK")
-                .headers(Map.of())
-                .build();
-        when(delegate.execute(any(), any())).thenReturn(response);
-        when(tracerBridge.inject(any())).thenReturn(Map.of());
+    void shouldUseMissingUrlPlaceholdersAndDelegateOriginalRequest() throws Exception {
+        properties.setContextPropagationEnabled(false);
+        Request request = mock(Request.class);
+        Request.Options options = mock(Request.Options.class);
+        when(request.url()).thenReturn(null);
+        when(request.httpMethod()).thenReturn(Request.HttpMethod.GET);
+        when(request.headers()).thenReturn(Map.of());
+        when(delegate.execute(same(request), same(options))).thenReturn(response(request));
 
-        client.execute(request, new Request.Options());
+        RpcCallMetadata metadata = metadataFor(request, options);
+
+        Assertions.assertEquals("[unknown-service]", metadata.getService());
+        Assertions.assertEquals("[missing-url]", metadata.getTarget());
+        Assertions.assertNull(metadata.getProtocol());
+        verify(delegate).execute(same(request), same(options));
+    }
+
+    @Test
+    void shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches() throws Exception {
+        Logger logger = (Logger) LoggerFactory.getLogger(RpcFeignClient.class);
+        Level previousLevel = logger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.setLevel(Level.DEBUG);
+        logger.addAppender(appender);
+        try {
+            when(tracerBridge.inject(any())).thenReturn(Map.of());
+            Request credentialed = request("https://user:password@api.example.test:8443/orders?token=secret#detail");
+            when(delegate.execute(same(credentialed), any())).thenReturn(response(credentialed));
+            client.execute(credentialed, new Request.Options());
+
+            properties.setEnabled(false);
+            Request relative = request("/orders?token=secret");
+            when(delegate.execute(same(relative), any())).thenReturn(response(relative));
+            client.execute(relative, new Request.Options());
+
+            properties.setEnabled(true);
+            Request opaque = request("mailto:user:password@example.test");
+            when(delegate.execute(same(opaque), any())).thenThrow(new IOException("delegate failed"));
+            Assertions.assertThrows(IOException.class, () -> client.execute(opaque, new Request.Options()));
+
+            String output = appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .collect(Collectors.joining("\n"));
+            Assertions.assertTrue(output.contains("https://api.example.test:8443/orders"));
+            Assertions.assertTrue(output.contains("/orders"));
+            Assertions.assertTrue(output.contains("[opaque-url]"));
+            Assertions.assertFalse(output.contains("user:password"));
+            Assertions.assertFalse(output.contains("token=secret"));
+            Assertions.assertFalse(output.contains("#detail"));
+            Assertions.assertFalse(output.contains("mailto:user:password@example.test"));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    private void assertMetadata(Request request, String service, String target) throws Exception {
+        RpcCallMetadata metadata = metadataFor(request, new Request.Options());
+
+        Assertions.assertEquals(service, metadata.getService());
+        Assertions.assertEquals(target, metadata.getTarget());
+    }
+
+    private RpcCallMetadata metadataFor(Request request, Request.Options options) throws Exception {
+        clearInvocations(hook, delegate, tracerBridge);
+        when(tracerBridge.inject(any())).thenReturn(Map.of());
+        when(delegate.execute(same(request), same(options))).thenReturn(response(request));
+
+        client.execute(request, options);
 
         ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
         verify(hook).before(contextCaptor.capture());
-        Assertions.assertEquals("/api/fallback", contextCaptor.getValue().getMetadata().getService());
+        return contextCaptor.getValue().getMetadata();
+    }
+
+    private Request request(String url) {
+        return Request.create(Request.HttpMethod.GET, url, Map.of(), null, StandardCharsets.UTF_8, null);
+    }
+
+    private Response response(Request request) {
+        return Response.builder().request(request).status(200).reason("OK").headers(Map.of()).build();
     }
 
     @Test
