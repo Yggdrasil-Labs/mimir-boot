@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 07:39:00 +0800
+> Updated At: 2026-08-31 09:39:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 已完成，继续 T2）。
+- 执行状态：IN_PROGRESS（T1、T2 已完成，继续 T3）。
 
 ## Plan Verdict
 
@@ -125,17 +125,17 @@ flowchart LR
 | T1 | 发布制品中的 Mapper 可被发现 | `MapperScannerConfigurerJarIntegrationTest.discoversMapperFromExecutableJarAndRegistersBean` | T1 AC1 |
 | T1 | 默认包与外部包去重 | `MapperPackageDetectorTest.deduplicatesDefaultAndExternalPackages` | T1 AC2 |
 | T1 | 单个资源无法解析 | `MapperPackageDetectorTest.warnsAndSkipsMalformedResource` | T1 AC2 |
-| T2 | 同步请求记录一次结果 | `AccessLogFilterTest.logsSynchronousCompletedResult[200]` | T2 AC1 |
-| T2 | 同步 5xx 响应仍标记正常完成 | `AccessLogFilterTest.logsSynchronousCompletedResult[500]` | T2 AC1 |
-| T2 | 同步 4xx 响应仍标记正常完成 | `AccessLogFilterTest.logsSynchronousCompletedResult[404]` | T2 AC1 |
+| T2 | 同步请求记录一次结果 | `AccessLogFilterTest.testSuccessRequest` | T2 AC1 |
+| T2 | 同步 5xx 响应仍标记正常完成 | `AccessLogFilterTest.testServerErrorRequest` | T2 AC1 |
+| T2 | 同步 4xx 响应仍标记正常完成 | `AccessLogFilterTest.testClientErrorRequest` | T2 AC1 |
 | T2 | 同步处理异常记录 ERROR | `AccessLogFilterTest.logsSynchronousException` | T2 AC1 |
 | T2 | 异步请求等待完成 | `AccessLogFilterTest.defersUntilAsyncComplete` | T2 AC1 |
-| T2 | 异步超时 | `AccessLogFilterTest.logsAsyncTimeoutOnce` | T2 AC1 |
-| T2 | 异步错误 | `AccessLogFilterTest.logsAsyncErrorWithAndWithoutThrowable` | T2 AC1、AC3 |
-| T2 | 多轮异步派发重新注册监听器 | `AccessLogFilterTest.registersOncePerAsyncContextGeneration` | T2 AC2 |
-| T2 | 异步监听器注册失败回退 | `AccessLogFilterTest.fallsBackWhenInitialRegistrationFails` | T2 AC1、AC3 |
-| T2 | 异步已完成注册回退 | `AccessLogFilterTest.fallsBackWhenAsyncAlreadyCompleted` | T2 AC1 |
-| T2 | 后续异步派发注册失败回退 | `AccessLogFilterTest.fallsBackWhenRedispatchRegistrationFails` | T2 AC1、AC3 |
+| T2 | 异步超时 | `AccessLogFilterTest.logsAsyncTimeoutExactlyOnce` | T2 AC1 |
+| T2 | 异步错误 | `AccessLogFilterTest.logsAsyncErrorWithThrowableExactlyOnce` + `logsAsyncErrorWithoutThrowableExactlyOnce` | T2 AC1、AC3 |
+| T2 | 多轮异步派发重新注册监听器 | `AccessLogFilterTest.reRegistersOnlyEachDistinctAsyncContext` + `serializesConcurrentRedispatchAndTerminalCallbacks` | T2 AC2 |
+| T2 | 异步监听器注册失败回退 | `AccessLogFilterTest.logsInitialRegistrationFailureWithoutPropagating` | T2 AC1、AC3 |
+| T2 | 异步已完成注册回退 | `AccessLogFilterTest.logsAlreadyCompletedAsyncContextWithoutPropagating` | T2 AC1 |
+| T2 | 后续异步派发注册失败回退 | `AccessLogFilterTest.logsRedispatchRegistrationFailureExactlyOnce` | T2 AC1、AC3 |
 | T3 | 同步请求恢复进入前上下文 | `TraceInterceptorTest.restoresSynchronousMdcSnapshot` + `WebInterceptorTest.restoresSynchronousIpSnapshot` | T3 AC1、AC2 |
 | T3 | 异步初始派发释放上下文 | `TraceInterceptorTest.releasesMdcAfterConcurrentHandlingStarted` + `WebInterceptorTest.releasesIpAfterConcurrentHandlingStarted` | T3 AC1 |
 | T3 | 异步错误路径清理上下文 | `TraceInterceptorTest.restoresSnapshotOnAsyncError` + `WebInterceptorTest.restoresIpOnAsyncError` | T3 AC1、AC2 |
@@ -210,21 +210,21 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failI
 
 **Acceptance Criteria:**
 
-- [ ] 同步 200/404/500、同步异常、异步 complete/timeout/error、首次/后续注册失败和已完成回退均输出精确字段且每请求恰好一次。
-- [ ] 每个不同 `AsyncContext` 引用身份先原子认领、再恰好一次 `addListener`，generation 等于成功认领的不同身份数且单调递增；C1→C2 后迟到 C1、重复 C2 和并发重复通知均为 no-op。
-- [ ] 完成/超时/错误/注册失败并发竞争仅一个 CAS 进入 TERMINAL；无 Throwable 错误精确输出 `ASYNC_ERROR_WITHOUT_THROWABLE`。
-- [ ] starter-log README 的四个访问日志示例同步 `Status/Outcome/ErrorType/Duration`，并说明普通 HTTP 5xx 仍是 `COMPLETED/-`。
-- [ ] `AccessLogAutoConfigurationTest.enablesAsyncSupport` 断言 `FilterRegistrationBean.isAsyncSupported()` 为 true。
+- [x] 同步 200/404/500、同步异常、异步 complete/timeout/error、首次/后续注册失败和已完成回退均输出精确字段且每请求恰好一次。
+- [x] 每个不同 `AsyncContext` 引用身份先原子认领、再恰好一次 `addListener`，generation 等于成功认领的不同身份数且单调递增；C1→C2 后迟到 C1、重复 C2 和并发重复通知均为 no-op。
+- [x] 完成/超时/错误/注册失败并发竞争仅一个 CAS 进入 TERMINAL；无 Throwable 错误精确输出 `ASYNC_ERROR_WITHOUT_THROWABLE`。
+- [x] starter-log README 的四个访问日志示例同步 `Status/Outcome/ErrorType/Duration`，并说明普通 HTTP 5xx 仍是 `COMPLETED/-`。
+- [x] `AccessLogAutoConfigurationTest.enablesAsyncSupport` 断言 `FilterRegistrationBean.isAsyncSupported()` 为 true。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T2。
+**Execution:** Status=completed；Commit SHAs=[c3162b84a3a92ce08cbfb869c2ee664c68127300]；Dispatch Base SHA=2ed482fc2538b2856e81dc62ddffcb1ff1bd82f6；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增 Outcome/ErrorType 与异步 listener 断言在旧实现失败；Verify Result=2026-08-31 09:37 +0800，T2 定向 Maven 回归 31 tests passed；AC Result=5/5；agent=controller；mode=TDD；commit=completed；owner=T2。
 
 **Task Completion Gate:**
 
-- [ ] Red：先覆盖 11 个 Scenario、C1→C2→迟到 C1、并发不同/重复 context、注册失败竞争和 null Throwable。
-- [ ] Green：最小状态机与自动配置实现。
-- [ ] Refactor：共享终态输出，不复制状态分支。
-- [ ] Verify：定向测试与 README 消费断言通过。
-- [ ] Commit：仅包含 T2 文件，提交信息 `fix(log): 完善异步访问日志终态`。
+- [x] Red：先覆盖 11 个 Scenario、C1→C2→迟到 C1、并发不同/重复 context、注册失败竞争和 null Throwable。
+- [x] Green：最小状态机与自动配置实现。
+- [x] Refactor：共享终态输出，不复制状态分支。
+- [x] Verify：定向测试与 README 示例字段检查通过。
+- [x] Commit：仅包含 T2 文件，提交信息 `fix(log): 完善异步访问日志终态`。
 
 **Verify:**
 
