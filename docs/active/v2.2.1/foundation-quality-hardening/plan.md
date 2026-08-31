@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 09:49:00 +0800
+> Updated At: 2026-08-31 09:57:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1、T2、T3 已完成，继续 T4）。
+- 执行状态：IN_PROGRESS（T1 至 T4 已完成，继续 T5）。
 
 ## Plan Verdict
 
@@ -283,21 +283,21 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-web -am -Dsurefire.failIfNoS
 
 **Acceptance Criteria:**
 
-- [ ] quoted value、奇偶反斜杠和既有 `%70assword` fixture 无敏感明文，tail sentinel 原样保留。
-- [ ] cause/suppressed 消息无敏感明文，类型、堆栈和层级保留；`maskThrowable` 已注册，四个 pattern 显式引用且无隐式/重复 Throwable。
-- [ ] Benchmark 输出实际 `RuntimeMXBean.getInputArguments()`，可验证固定 JVM 参数。
-- [ ] event 无 Throwable 时 `%maskThrowable` 精确返回空字符串。
-- [ ] Benchmark 默认保持单进程阈值断言；仅当 `mimir.boot.log.mask.benchmark.enforce-threshold=false` 时跳过单进程断言、仍打印 delta 与 JVM 参数，供 T9 汇总三次均值。
+- [x] quoted value、奇偶反斜杠和既有 `%70assword` fixture 无敏感明文，tail sentinel 原样保留。
+- [x] cause/suppressed 消息无敏感明文，类型、堆栈和层级保留；`maskThrowable` 已注册，四个 pattern 显式引用且无隐式/重复 Throwable。
+- [x] Benchmark 输出实际 `RuntimeMXBean.getInputArguments()`，可验证固定 JVM 参数。
+- [x] event 无 Throwable 时 `%maskThrowable` 精确返回空字符串。
+- [x] Benchmark 默认保持单进程阈值断言；仅当 `mimir.boot.log.mask.benchmark.enforce-threshold=false` 时跳过单进程断言、仍打印 delta 与 JVM 参数，供 T9 汇总三次均值。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T4。
+**Execution:** Status=completed；Commit SHAs=[6bde77b752dd515f47cc569361b5f505c2de33e6]；Dispatch Base SHA=f45c347c94a2f923bea77c33f1f20c6f0c949c45；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=转义引号 fixture 在旧实现泄露 tail 前明文，Throwable converter 类不存在；Verify Result=2026-08-31 09:56 +0800，功能回归 57 tests passed，默认基准平均增量 +2030.24 ns/op；AC Result=5/5；agent=controller；mode=TDD；commit=completed；owner=T4。
 
 **Task Completion Gate:**
 
-- [ ] Red：普通消息、null/完整 Throwable、配置 XML 与 Benchmark 证据模式断言先失败。
-- [ ] Green：新增 Throwable converter 及测试，并完成最小普通 converter 与 pattern 变更。
-- [ ] Refactor：复用既有 snapshot，不新增跨 converter 承诺。
-- [ ] Verify：功能测试通过，手工性能命令可执行。
-- [ ] Commit：仅包含 T4 文件，提交信息 `fix(log): 完善消息与异常链脱敏`。
+- [x] Red：普通消息、null/完整 Throwable、配置 XML 与 Benchmark 证据模式断言先失败。
+- [x] Green：新增 Throwable converter 及测试，并完成最小普通 converter 与 pattern 变更。
+- [x] Refactor：复用既有 snapshot，不新增跨 converter 承诺。
+- [x] Verify：功能测试通过，手工性能命令可执行。
+- [x] Commit：仅包含 T4 文件，提交信息 `fix(log): 完善消息与异常链脱敏`。
 
 **Verify:**
 
