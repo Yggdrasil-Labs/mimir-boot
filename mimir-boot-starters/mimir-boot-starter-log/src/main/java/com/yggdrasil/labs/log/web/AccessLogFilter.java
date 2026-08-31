@@ -11,7 +11,10 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 访问日志过滤器
@@ -30,7 +33,9 @@ import java.util.List;
 public class AccessLogFilter implements Filter {
 
     private static final Logger ACCESS_LOG = LoggerFactory.getLogger("access.log");
+    private static final Logger LOGGER = LoggerFactory.getLogger(AccessLogFilter.class);
     private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
+    private static final String LIFECYCLE_ATTRIBUTE = AccessLogFilter.class.getName() + ".lifecycle";
     private final long slowThresholdMs;
     private final List<String> excludePaths;
     private final PathMatcher pathMatcher;
@@ -47,20 +52,152 @@ public class AccessLogFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        // 记录开始时间
-        long startTime = System.currentTimeMillis();
-
+        RequestLifecycle lifecycle = lifecycleFor(httpRequest, httpResponse);
+        boolean async = false;
+        Throwable failure = null;
         try {
-            // 继续过滤器链
             chain.doFilter(request, httpResponse);
-        } finally {
-            // 计算耗时
-            long duration = System.currentTimeMillis() - startTime;
-
-            // 检查是否需要记录访问日志（排除配置的路径）
-            if (shouldLogAccess(httpRequest)) {
-                logAccess(httpRequest, httpResponse, duration);
+            async = httpRequest.isAsyncStarted();
+            if (async) {
+                lifecycle.registerCurrentContext(httpRequest);
             }
+        } catch (IOException | ServletException | RuntimeException e) {
+            failure = e;
+            throw e;
+        } finally {
+            if (!async) {
+                lifecycle.terminate(failure == null ? "COMPLETED" : "ERROR",
+                        failure == null ? "-" : failure.getClass().getName());
+            }
+        }
+    }
+
+    private RequestLifecycle lifecycleFor(HttpServletRequest request, HttpServletResponse response) {
+        Object existing = request.getAttribute(LIFECYCLE_ATTRIBUTE);
+        if (existing instanceof RequestLifecycle lifecycle) {
+            return lifecycle;
+        }
+        RequestLifecycle lifecycle = new RequestLifecycle(request, response);
+        request.setAttribute(LIFECYCLE_ATTRIBUTE, lifecycle);
+        return lifecycle;
+    }
+
+    private final class RequestLifecycle {
+        private final HttpServletRequest request;
+        private final HttpServletResponse response;
+        private final long startNanos = System.nanoTime();
+        private final AtomicReference<LifecycleState> state = new AtomicReference<>(LifecycleState.initial());
+        private final AsyncListener listener = new AsyncListener() {
+            @Override
+            public void onComplete(AsyncEvent event) {
+                safeTerminate("COMPLETED", "-");
+            }
+
+            @Override
+            public void onTimeout(AsyncEvent event) {
+                safeTerminate("TIMEOUT", "ASYNC_TIMEOUT");
+            }
+
+            @Override
+            public void onError(AsyncEvent event) {
+                Throwable failure = event.getThrowable();
+                safeTerminate("ERROR", failure == null
+                        ? "ASYNC_ERROR_WITHOUT_THROWABLE" : failure.getClass().getName());
+            }
+
+            @Override
+            public void onStartAsync(AsyncEvent event) {
+                try {
+                    register(event.getAsyncContext());
+                } catch (RuntimeException e) {
+                    safeTerminate("REGISTRATION_ERROR", e.getClass().getName());
+                }
+            }
+        };
+
+        private RequestLifecycle(HttpServletRequest request, HttpServletResponse response) {
+            this.request = request;
+            this.response = response;
+        }
+
+        private void registerCurrentContext(HttpServletRequest request) {
+            try {
+                register(request.getAsyncContext());
+            } catch (IllegalStateException e) {
+                safeTerminate("REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
+            }
+        }
+
+        private void register(AsyncContext context) {
+            if (context == null) {
+                safeTerminate("REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
+                return;
+            }
+            while (true) {
+                LifecycleState current = state.get();
+                if (current.phase() == Phase.TERMINAL || current.contains(context)) {
+                    return;
+                }
+                LifecycleState claimed = current.claim(context);
+                if (state.compareAndSet(current, claimed)) {
+                    try {
+                        context.addListener(listener);
+                    } catch (RuntimeException e) {
+                        safeTerminate("REGISTRATION_ERROR", e.getClass().getName());
+                    }
+                    return;
+                }
+            }
+        }
+
+        private void safeTerminate(String outcome, String errorType) {
+            try {
+                terminate(outcome, errorType);
+            } catch (RuntimeException e) {
+                LOGGER.warn("Failed to finalize access log lifecycle", e);
+            }
+        }
+
+        private void terminate(String outcome, String errorType) {
+            while (true) {
+                LifecycleState current = state.get();
+                if (current.phase() == Phase.TERMINAL) {
+                    return;
+                }
+                if (state.compareAndSet(current, current.terminal())) {
+                    long duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+                    if (shouldLogAccess(request)) {
+                        logAccess(request, response, duration, outcome, errorType);
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    private enum Phase {
+        NEW,
+        REGISTERED,
+        TERMINAL
+    }
+
+    private record LifecycleState(Phase phase, int generation, List<AsyncContext> claimedContexts) {
+        private static LifecycleState initial() {
+            return new LifecycleState(Phase.NEW, 0, List.of());
+        }
+
+        private boolean contains(AsyncContext candidate) {
+            return claimedContexts.stream().anyMatch(existing -> existing == candidate);
+        }
+
+        private LifecycleState claim(AsyncContext context) {
+            List<AsyncContext> claimed = new ArrayList<>(claimedContexts);
+            claimed.add(context);
+            return new LifecycleState(Phase.REGISTERED, generation + 1, List.copyOf(claimed));
+        }
+
+        private LifecycleState terminal() {
+            return new LifecycleState(Phase.TERMINAL, generation, claimedContexts);
         }
     }
 
@@ -97,7 +234,7 @@ public class AccessLogFilter implements Filter {
     /**
      * 记录访问日志
      */
-    private void logAccess(HttpServletRequest request, HttpServletResponse response, long durationMs) {
+    private void logAccess(HttpServletRequest request, HttpServletResponse response, long durationMs, String outcome, String errorType) {
         try {
             String ip = sanitize(getClientIp(request));
             String method = sanitize(request.getMethod());
@@ -106,7 +243,7 @@ public class AccessLogFilter implements Filter {
             String userAgent = sanitize(request.getHeader("User-Agent"));
 
             // 查询参数可能包含令牌、口令等敏感信息，只记录请求路径。
-            logAccessByStatus(ip, method, uri, statusCode, durationMs, userAgent != null ? userAgent : "Unknown");
+            logAccessByStatus(ip, method, uri, statusCode, durationMs, userAgent != null ? userAgent : "Unknown", outcome, errorType);
         } catch (Exception e) {
             ACCESS_LOG.error("Failed to log access", e);
         }
@@ -128,12 +265,12 @@ public class AccessLogFilter implements Filter {
      * @param durationMs 耗时（毫秒）
      * @param userAgent  User-Agent
      */
-    private void logAccessByStatus(String ip, String method, String uri, int statusCode, long durationMs, String userAgent) {
+    private void logAccessByStatus(String ip, String method, String uri, int statusCode, long durationMs, String userAgent, String outcome, String errorType) {
         boolean isSlow = durationMs > slowThresholdMs;
 
         // 使用参数化日志，防止日志注入攻击
-        String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Duration=[{}ms], UserAgent=[{}]";
-        Object[] args = new Object[]{ip, method, uri, statusCode, durationMs, userAgent};
+        String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Outcome=[{}], ErrorType=[{}], Duration=[{}ms], UserAgent=[{}]";
+        Object[] args = new Object[]{ip, method, uri, statusCode, outcome, errorType, durationMs, userAgent};
 
         // 判断状态码范围
         if (statusCode >= 500) {

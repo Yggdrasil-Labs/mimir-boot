@@ -51,6 +51,7 @@ public class AccessLogAutoConfiguration {
 
         registrationBean.setName("accessLogFilter");
         registrationBean.addUrlPatterns("/*");
+        registrationBean.setAsyncSupported(true);
         // 设置较高优先级，确保在其他 Filter 之前执行
         registrationBean.setOrder(Integer.MIN_VALUE + 1);
 

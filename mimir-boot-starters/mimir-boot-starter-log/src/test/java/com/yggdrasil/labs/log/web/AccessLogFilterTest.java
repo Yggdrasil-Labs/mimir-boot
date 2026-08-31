@@ -9,19 +9,31 @@ import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 import com.yggdrasil.labs.test.util.FilterChainMockBuilder;
 import com.yggdrasil.labs.test.util.LogTestUtils;
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -74,10 +86,340 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         AssertUtils.assertLogSize(listAppender, 1);
         ILoggingEvent event = listAppender.list.get(0);
+        String message = event.getFormattedMessage();
+        assertTrue(message.contains("Outcome=[COMPLETED]"));
+        assertTrue(message.contains("ErrorType=[-]"));
+        assertTrue(message.matches(".*Duration=\\[[0-9]+ms\\].*"));
         AssertUtils.assertLogLevel(event, Level.INFO);
         AssertUtils.assertLogStatus(event, 200);
         AssertUtils.assertLogContains(event, "GET");
         AssertUtils.assertLogContains(event, "/api/user/123");
+    }
+
+    @Test
+    void logsSynchronousException() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/failure");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(500);
+        FilterChain chain = mock(FilterChain.class);
+        IllegalStateException failure = new IllegalStateException("boom");
+        doThrow(failure).when(chain).doFilter(any(), any());
+
+        assertThrows(IllegalStateException.class, () -> filter.doFilter(request, response, chain));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Status=[500]"));
+        assertTrue(message.contains("Outcome=[ERROR]"));
+        assertTrue(message.contains("ErrorType=[java.lang.IllegalStateException]"));
+    }
+
+    @Test
+    void defersUntilAsyncComplete() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AsyncContext asyncContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+        FilterChain chain = mock(FilterChain.class);
+        doAnswer(invocation -> {
+            ((HttpServletResponse) invocation.getArgument(1)).setStatus(201);
+            return null;
+        }).when(chain).doFilter(any(), any());
+
+        filter.doFilter(request, response, chain);
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(asyncContext).addListener(listenerCaptor.capture());
+        assertEquals(0, listAppender.list.size());
+        listenerCaptor.getValue().onComplete(new AsyncEvent(asyncContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Status=[201]"));
+        assertTrue(message.contains("Outcome=[COMPLETED]"));
+    }
+
+    @Test
+    void reRegistersOnlyEachDistinctAsyncContext() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/redispatch");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(204);
+        AsyncContext firstContext = mock(AsyncContext.class);
+        AsyncContext secondContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(firstContext);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> firstCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(firstContext).addListener(firstCaptor.capture());
+        AsyncListener listener = firstCaptor.getValue();
+        listener.onStartAsync(new AsyncEvent(secondContext));
+        listener.onStartAsync(new AsyncEvent(firstContext));
+        listener.onStartAsync(new AsyncEvent(secondContext));
+
+        verify(firstContext, times(1)).addListener(any(AsyncListener.class));
+        verify(secondContext, times(1)).addListener(any(AsyncListener.class));
+        assertEquals(0, listAppender.list.size());
+        listener.onComplete(new AsyncEvent(secondContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("Status=[204]"));
+    }
+
+    @Test
+    void logsAsyncErrorWithThrowableExactlyOnce() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-error-with-throwable");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(500);
+        AsyncContext asyncContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(asyncContext).addListener(listenerCaptor.capture());
+        AsyncListener listener = listenerCaptor.getValue();
+        listener.onError(new AsyncEvent(asyncContext, new IllegalArgumentException("boom")));
+        listener.onComplete(new AsyncEvent(asyncContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[ERROR]"));
+        assertTrue(message.contains("ErrorType=[java.lang.IllegalArgumentException]"));
+    }
+
+    @Test
+    void logsAsyncErrorWithoutThrowableExactlyOnce() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-error");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(500);
+        AsyncContext asyncContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(asyncContext).addListener(listenerCaptor.capture());
+        AsyncListener listener = listenerCaptor.getValue();
+        listener.onError(new AsyncEvent(asyncContext, null));
+        listener.onComplete(new AsyncEvent(asyncContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[ERROR]"));
+        assertTrue(message.contains("ErrorType=[ASYNC_ERROR_WITHOUT_THROWABLE]"));
+    }
+
+    @Test
+    void logsAsyncTimeoutExactlyOnce() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-timeout");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(503);
+        AsyncContext asyncContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(asyncContext).addListener(listenerCaptor.capture());
+        AsyncListener listener = listenerCaptor.getValue();
+        listener.onTimeout(new AsyncEvent(asyncContext));
+        listener.onError(new AsyncEvent(asyncContext, new IllegalStateException("late")));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[TIMEOUT]"));
+        assertTrue(message.contains("ErrorType=[ASYNC_TIMEOUT]"));
+    }
+
+    @Test
+    void logsInitialRegistrationFailureWithoutPropagating() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-registration");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AsyncContext asyncContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+        doThrow(new IllegalStateException("completed"))
+                .when(asyncContext).addListener(any(AsyncListener.class));
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[REGISTRATION_ERROR]"));
+        assertTrue(message.contains("ErrorType=[java.lang.IllegalStateException]"));
+    }
+
+    @Test
+    void logsRedispatchRegistrationFailureExactlyOnce() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-redispatch-failure");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AsyncContext firstContext = mock(AsyncContext.class);
+        AsyncContext secondContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(firstContext);
+        doThrow(new IllegalStateException("completed"))
+                .when(secondContext).addListener(any(AsyncListener.class));
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(firstContext).addListener(listenerCaptor.capture());
+        AsyncListener listener = listenerCaptor.getValue();
+        listener.onStartAsync(new AsyncEvent(secondContext));
+        listener.onComplete(new AsyncEvent(firstContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[REGISTRATION_ERROR]"));
+        assertTrue(message.contains("ErrorType=[java.lang.IllegalStateException]"));
+    }
+
+    @Test
+    void logsAlreadyCompletedAsyncContextWithoutPropagating() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-completed");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        when(request.getAsyncContext()).thenThrow(new IllegalStateException("completed"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[REGISTRATION_ERROR]"));
+        assertTrue(message.contains("ErrorType=[ASYNC_ALREADY_COMPLETED]"));
+    }
+
+    @Test
+    void serializesConcurrentRedispatchAndTerminalCallbacks() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-concurrent");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AsyncContext firstContext = mock(AsyncContext.class);
+        AsyncContext secondContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(firstContext);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(firstContext).addListener(listenerCaptor.capture());
+        AsyncListener listener = listenerCaptor.getValue();
+        ExecutorService executor = Executors.newFixedThreadPool(3);
+        try {
+            CountDownLatch registrationReady = new CountDownLatch(3);
+            CountDownLatch registrationStart = new CountDownLatch(1);
+            Future<?>[] registrations = new Future<?>[3];
+            for (int index = 0; index < registrations.length; index++) {
+                registrations[index] = executor.submit(() -> {
+                    registrationReady.countDown();
+                    awaitLatch(registrationStart);
+                    try {
+                        listener.onStartAsync(new AsyncEvent(secondContext));
+                    } catch (IOException e) {
+                        throw new AssertionError(e);
+                    }
+                });
+            }
+            assertTrue(registrationReady.await(5, TimeUnit.SECONDS));
+            registrationStart.countDown();
+            for (Future<?> registration : registrations) {
+                registration.get();
+            }
+            verify(secondContext, times(1)).addListener(any(AsyncListener.class));
+
+            CountDownLatch terminalReady = new CountDownLatch(3);
+            CountDownLatch terminalStart = new CountDownLatch(1);
+            Future<?> complete = executor.submit(() -> {
+                terminalReady.countDown();
+                awaitLatch(terminalStart);
+                try {
+                    listener.onComplete(new AsyncEvent(secondContext));
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            });
+            Future<?> timeout = executor.submit(() -> {
+                terminalReady.countDown();
+                awaitLatch(terminalStart);
+                try {
+                    listener.onTimeout(new AsyncEvent(secondContext));
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            });
+            Future<?> error = executor.submit(() -> {
+                terminalReady.countDown();
+                awaitLatch(terminalStart);
+                try {
+                    listener.onError(new AsyncEvent(secondContext, new IllegalStateException("boom")));
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            });
+            assertTrue(terminalReady.await(5, TimeUnit.SECONDS));
+            terminalStart.countDown();
+            complete.get();
+            timeout.get();
+            error.get();
+
+            AssertUtils.assertLogSize(listAppender, 1);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static void awaitLatch(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(e);
+        }
     }
 
     /**
@@ -109,6 +451,8 @@ class AccessLogFilterTest extends BaseUnitTest {
                 "日志消息应该包含 Status=[404]，但实际是: " + message);
         assertEquals(Level.WARN, event.getLevel(),
                 "4xx 状态码应该记录为 WARN 级别，但实际是: " + event.getLevel() + ", 消息: " + message);
+        assertTrue(message.contains("Outcome=[COMPLETED]"));
+        assertTrue(message.contains("ErrorType=[-]"));
     }
 
     /**
@@ -137,6 +481,8 @@ class AccessLogFilterTest extends BaseUnitTest {
         ILoggingEvent event = listAppender.list.get(0);
         assertEquals(Level.ERROR, event.getLevel());
         assertTrue(event.getFormattedMessage().contains("Status=[500]"));
+        assertTrue(event.getFormattedMessage().contains("Outcome=[COMPLETED]"));
+        assertTrue(event.getFormattedMessage().contains("ErrorType=[-]"));
     }
 
     /**

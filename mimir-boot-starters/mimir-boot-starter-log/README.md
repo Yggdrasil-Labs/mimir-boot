@@ -260,30 +260,32 @@ mimir:
 **成功请求（INFO 级别）**：
 
 ```
-2024-01-01 10:00:00.123 [http-nio-8080-exec-1] INFO  [a1b2c3d4e5f6] [c7d8e9f0] - IP=[192.168.1.100], Method=[GET], URI=[/api/user/123], Status=[200], Duration=[45ms], UserAgent=[Mozilla/5.0...]
+2024-01-01 10:00:00.123 [http-nio-8080-exec-1] INFO  [a1b2c3d4e5f6] [c7d8e9f0] - IP=[192.168.1.100], Method=[GET], URI=[/api/user/123], Status=[200], Outcome=[COMPLETED], ErrorType=[-], Duration=[45ms], UserAgent=[Mozilla/5.0...]
 ```
 
 **慢接口（WARN 级别）**：
 
 ```
-2024-01-01 10:05:00.456 [http-nio-8080-exec-2] WARN  [b2c3d4e5f6a7] [d8e9f0a1] - IP=[192.168.1.101], Method=[POST], URI=[/api/export/report], Status=[200], Duration=[2150ms], UserAgent=[Apache-HttpClient/4.5] [慢接口]
+2024-01-01 10:05:00.456 [http-nio-8080-exec-2] WARN  [b2c3d4e5f6a7] [d8e9f0a1] - IP=[192.168.1.101], Method=[POST], URI=[/api/export/report], Status=[200], Outcome=[COMPLETED], ErrorType=[-], Duration=[2150ms], UserAgent=[Apache-HttpClient/4.5] [慢接口]
 ```
 
 **客户端错误（4xx - WARN 级别）**：
 
 ```
-2024-01-01 10:10:00.789 [http-nio-8080-exec-3] WARN  [c3d4e5f6a7b8] [e9f0a1b2] - IP=[192.168.1.102], Method=[GET], URI=[/api/user/999], Status=[404], Duration=[12ms], UserAgent=[Mozilla/5.0...]
+2024-01-01 10:10:00.789 [http-nio-8080-exec-3] WARN  [c3d4e5f6a7b8] [e9f0a1b2] - IP=[192.168.1.102], Method=[GET], URI=[/api/user/999], Status=[404], Outcome=[COMPLETED], ErrorType=[-], Duration=[12ms], UserAgent=[Mozilla/5.0...]
 ```
 
 **服务器错误（5xx - ERROR 级别）**：
 
 ```
-2024-01-01 10:15:00.012 [http-nio-8080-exec-4] ERROR [d4e5f6a7b8c9] [f0a1b2c3] - IP=[192.168.1.103], Method=[POST], URI=[/api/process], Status=[500], Duration=[230ms], UserAgent=[Mozilla/5.0...]
+2024-01-01 10:15:00.012 [http-nio-8080-exec-4] ERROR [d4e5f6a7b8c9] [f0a1b2c3] - IP=[192.168.1.103], Method=[POST], URI=[/api/process], Status=[500], Outcome=[COMPLETED], ErrorType=[-], Duration=[230ms], UserAgent=[Mozilla/5.0...]
 ```
+
+HTTP 5xx 只决定日志级别，不等于处理链异常；只有过滤链抛出异常时，`Outcome=[ERROR]` 并记录对应的异常类型。
 
 **特点**：
 
-- 自动记录请求的 IP、HTTP 方法、URI、状态码、耗时、User-Agent
+- 自动记录请求的 IP、HTTP 方法、URI、状态码、结果、错误类型、耗时、User-Agent
 - 默认记录容器提供的直连 IP
 - **智能日志级别**（最佳实践）：
   - 2xx/3xx 成功/重定向：INFO（慢接口为 WARN）

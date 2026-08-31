@@ -84,6 +84,13 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
+    void enablesAsyncSupport() {
+        FilterRegistrationBean<?> filter = configuration.accessLogFilter();
+
+        assertTrue(filter.isAsyncSupported());
+    }
+
+    @Test
     void customAccessLogFilterByReservedNameOverridesDefault() {
         runner.withBean("accessLogFilter", FilterRegistrationBean.class,
                         () -> new FilterRegistrationBean<>(new AccessLogFilter(500, java.util.List.of())))
