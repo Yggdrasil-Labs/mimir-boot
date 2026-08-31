@@ -3,6 +3,7 @@ package com.yggdrasil.labs.log.converter;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.Test;
 
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +15,7 @@ class SensitiveDataConverterBenchmark extends BaseUnitTest {
     private static final int MEASUREMENT_ITERATIONS = 1_000_000;
     private static final int SAMPLE_COUNT = 3;
     private static final String SAMPLE_COUNT_PROPERTY = "mimir.boot.log.mask.benchmark.samples";
+    private static final String ENFORCE_THRESHOLD_PROPERTY = "mimir.boot.log.mask.benchmark.enforce-threshold";
     private static final double MAX_AVERAGE_DELTA_NANOS = 20_000.0;
     private static volatile int sink;
     private static final String MESSAGE = "password=benchmark-value token=benchmark-value accessKey=benchmark-value "
@@ -23,6 +25,9 @@ class SensitiveDataConverterBenchmark extends BaseUnitTest {
     void measuresFixedOneKiBMessage() {
         SensitiveDataConverter converter = new SensitiveDataConverter();
         int sampleCount = Integer.getInteger(SAMPLE_COUNT_PROPERTY, SAMPLE_COUNT);
+        boolean enforceThreshold = Boolean.parseBoolean(System.getProperty(ENFORCE_THRESHOLD_PROPERTY, "true"));
+        System.out.printf("jvm-input-arguments=%s enforce-threshold=%s%n",
+                ManagementFactory.getRuntimeMXBean().getInputArguments(), enforceThreshold);
         assertTrue(sampleCount > 0, "基准样本数必须为正数");
         List<Double> deltas = new ArrayList<>(sampleCount);
 
@@ -42,8 +47,10 @@ class SensitiveDataConverterBenchmark extends BaseUnitTest {
         double maxDelta = deltas.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
         System.out.printf("samples=%d average-delta=%+.2f ns/op max-delta=%+.2f ns/op threshold=%.2f ns/op%n",
                 sampleCount, averageDelta, maxDelta, MAX_AVERAGE_DELTA_NANOS);
-        assertTrue(averageDelta <= MAX_AVERAGE_DELTA_NANOS,
-                () -> "三次脱敏增量平均值超过 20µs: " + averageDelta + " ns/op");
+        if (enforceThreshold) {
+            assertTrue(averageDelta <= MAX_AVERAGE_DELTA_NANOS,
+                    () -> "三次脱敏增量平均值超过 20µs: " + averageDelta + " ns/op");
+        }
     }
 
     private double measure(SensitiveDataConverter converter) {

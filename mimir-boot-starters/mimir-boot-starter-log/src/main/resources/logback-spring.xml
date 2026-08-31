@@ -25,6 +25,8 @@
     <!-- 注册自定义转换器 -->
     <conversionRule conversionWord="mask" 
                     converterClass="com.yggdrasil.labs.log.converter.SensitiveDataConverter"/>
+    <conversionRule conversionWord="maskThrowable"
+                    converterClass="com.yggdrasil.labs.log.converter.SensitiveThrowableProxyConverter"/>
     
     <!-- 敏感信息脱敏配置属性（默认关闭）-->
     <!-- 配置属性通过 Spring 配置文件设置，默认为 false -->
@@ -38,8 +40,8 @@
     <property name="LOG_DIR" value="${LOG_PATH}/${APP_NAME}"/>
     <!-- 日志模式：包含时间戳、线程、级别、TraceId、SpanId、Logger、消息 -->
     <!-- TraceId 和 SpanId 由 Micrometer Tracing 自动注入 -->
-    <property name="LOG_PATTERN_FILE" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%logger{50} - %mask%n"/>
-    <property name="LOG_PATTERN_CONSOLE" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%thread]){magenta} %clr(%-5level){highlight} %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%clr(%logger{50}){cyan} - %mask%n"/>
+    <property name="LOG_PATTERN_FILE" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%logger{50} - %mask%maskThrowable%n"/>
+    <property name="LOG_PATTERN_CONSOLE" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%thread]){magenta} %clr(%-5level){highlight} %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%clr(%logger{50}){cyan} - %mask%maskThrowable%n"/>
     
     <!-- 控制台输出 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -107,7 +109,7 @@
         <file>${LOG_DIR}/access.log</file>
         <encoder>
             <!-- 访问日志格式：时间 [线程] 级别 [Trace/Span]（存在时才输出）- 消息 -->
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }- %mask%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }- %mask%maskThrowable%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
         
@@ -149,7 +151,7 @@
     <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/sql.log</file>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level - %mask%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level - %mask%maskThrowable%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">

@@ -766,4 +766,17 @@ class SensitiveDataConverterTest extends BaseUnitTest {
             executor.shutdownNow();
         }
     }
+    @Test
+    void masksEscapedQuotedValueAndPreservesTail() {
+        SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "****");
+
+        String escapedQuote = converter.maskSensitiveData("password=\"secret\\\"still-secret\", tail=sentinel");
+        String escapedBackslash = converter.maskSensitiveData("password=\"secret\\\\\", tail=sentinel");
+
+        assertEquals("password=\"****\", tail=sentinel", escapedQuote);
+        assertEquals("password=\"****\", tail=sentinel", escapedBackslash);
+        assertFalse(escapedQuote.contains("secret"));
+        assertFalse(escapedBackslash.contains("secret"));
+    }
+
 }

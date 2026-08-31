@@ -284,8 +284,19 @@ public class SensitiveDataConverter extends ClassicConverter {
         }
         char firstCharacter = message.charAt(valueStart);
         if (isQuote(firstCharacter)) {
-            int closingQuote = message.indexOf(firstCharacter, valueStart + 1);
-            return closingQuote < 0 ? message.length() : closingQuote + 1;
+            int slashCount = 0;
+            for (int cursor = valueStart + 1; cursor < message.length(); cursor++) {
+                char current = message.charAt(cursor);
+                if (current == '\\') {
+                    slashCount++;
+                    continue;
+                }
+                if (current == firstCharacter && slashCount % 2 == 0) {
+                    return cursor + 1;
+                }
+                slashCount = 0;
+            }
+            return message.length();
         }
         int cursor = valueStart;
         while (cursor < message.length()
