@@ -472,7 +472,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 - [x] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs。
 - [x] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
 
-**Execution:** Status=completed；Commit SHAs=[pending-doc-commit]；Dispatch Base SHA=4a8227c4a9d3b9859dc437911bad2a0f48105626；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=36 个 Scenario 映射表与实现提交账本已建立；Verify Result=2026-08-31 10:40 +0800 `clean verify` 通过，三次独立性能均值 +2100.74 ns/op；AC Result=5/5；agent=controller；mode=verification；commit=completed；owner=T9。
+**Execution:** Status=completed；Commit SHAs=[007de8e7e79203b870397188b33d14354809e638]；Dispatch Base SHA=4a8227c4a9d3b9859dc437911bad2a0f48105626；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=36 个 Scenario 映射表与实现提交账本已建立；Verify Result=2026-08-31 10:40 +0800 `clean verify` 通过，三次独立性能均值 +2100.74 ns/op；AC Result=5/5；agent=controller；mode=verification；commit=completed；owner=T9。
 
 **Task Completion Gate:**
 
