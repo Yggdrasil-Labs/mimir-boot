@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 10:10:00 +0800
+> Updated At: 2026-08-31 10:19:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 至 T5 已完成，继续 T6）。
+- 执行状态：IN_PROGRESS（T1 至 T6 已完成，继续 T7）。
 
 ## Plan Verdict
 
@@ -356,18 +356,18 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-feign -am -Dsurefire.failIfN
 
 **Acceptance Criteria:**
 
-- [ ] 默认组合三类治理 Bean 存在；Core=false 时无论适配器默认或显式 true，应用启动且适配器治理 Bean 不存在。
-- [ ] 单独关闭 Feign/Dubbo 只影响对应适配器；不创建 no-op Core Bean，不新增配置键。
+- [x] 默认组合三类治理 Bean 存在；Core=false 时无论适配器默认或显式 true，应用启动且适配器治理 Bean 不存在。
+- [x] 单独关闭 Feign/Dubbo 只影响对应适配器；不创建 no-op Core Bean，不新增配置键。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T6。
+**Execution:** Status=completed；Commit SHAs=[8a2e872a4bfb4a1c9b6d676430fff3304069a024]；Dispatch Base SHA=c79bc4f01aa60e6037ab3143e0b69a8fd6ec4d5d；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Core=false 时 Feign 治理 Bean 因缺少 RpcHookChain 启动失败；Verify Result=2026-08-31 10:18 +0800，四个配置测试 19 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T6。
 
 **Task Completion Gate:**
 
-- [ ] Red：开关矩阵先暴露缺 Bean 启动失败。
-- [ ] Green：最小条件注解修复。
-- [ ] Refactor：条件语义在三个自动配置中一致。
-- [ ] Verify：四个配置测试通过。
-- [ ] Commit：仅包含 T6 文件，提交信息 `fix(rpc): 对齐 Core 与适配器开关`。
+- [x] Red：开关矩阵先暴露缺 Bean 启动失败。
+- [x] Green：最小条件注解修复。
+- [x] Refactor：条件语义在三个自动配置中一致。
+- [x] Verify：四个配置测试通过。
+- [x] Commit：仅包含 T6 文件，提交信息 `fix(rpc): 收敛适配器自动装配条件`。
 
 **Verify:**
 
