@@ -3,14 +3,16 @@ package com.yggdrasil.labs.common.annotation;
 import java.lang.annotation.*;
 
 /**
- * 统一日志记录注解
- * 用于标记需要记录日志的方法
+ * 兼容性日志元数据注解。
+ *
+ * <p>当前无内置运行时消费者；v2.2.1 起弃用，计划于 3.0 移除。
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Deprecated(since = "2.2.1", forRemoval = true)
 @Documented
 public @interface Loggable {
 
