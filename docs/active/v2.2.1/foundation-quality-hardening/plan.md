@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 已派发）。
+- 执行状态：IN_PROGRESS（T1 已完成，继续 T2）。
 
 ## Plan Verdict
 
@@ -161,35 +161,37 @@ flowchart LR
 
 ## T1 — Mapper 发布制品发现
 
-**Interfaces:** `public static Set<String> MapperPackageDetector.detectMapperPackages()`；`public String MybatisProperties.getEffectiveMapperPackages()` 返回包含点号包模式的逗号分隔字符串；`MapperScannerConfigurer.basePackage` 接收同一字符串。
+**Interfaces:** `public static Set<String> MapperPackageDetector.detectMapperPackages()`；`public String MybatisProperties.getEffectiveMapperPackages()` 继续返回包含点号包模式的逗号分隔字符串；`MapperScannerConfigurer.basePackage` 对自动发现结果去掉终端 `.**`，默认 `com.yggdrasil.labs.**.mapper` 保持原样。
 
 **Files:**
 
 - `mimir-boot-starters/mimir-boot-starter-mybatis/src/main/java/com/yggdrasil/labs/mybatis/util/MapperPackageDetector.java`
 - `mimir-boot-starters/mimir-boot-starter-mybatis/src/test/java/com/yggdrasil/labs/mybatis/util/MapperPackageDetectorTest.java`
+- `mimir-boot-starters/mimir-boot-starter-mybatis/src/main/java/com/yggdrasil/labs/mybatis/config/MybatisPlusAutoConfiguration.java`
+- `mimir-boot-starters/mimir-boot-starter-mybatis/src/test/java/com/yggdrasil/labs/mybatis/config/MybatisPlusAutoConfigurationTest.java`
 - `mimir-boot-starters/mimir-boot-starter-mybatis/src/test/java/com/yggdrasil/labs/mybatis/config/MapperScannerConfigurerJarIntegrationTest.java`（新增）
 
-**Behavior:** 映射 Mapper Behavior 的 3 个 Scenario 与 IC-1；真实 JAR 中的包模式必须进入 scanner 并注册可调用 Mapper，坏资源只 WARN 并继续。
+**Behavior:** 映射 Mapper Behavior 的 3 个 Scenario 与 IC-1；真实 JAR 的发现结果保持点号包模式，自动配置将其规范化为扫描基础包并注册可调用 Mapper，坏资源只 WARN 并继续。
 
 **Acceptance Criteria:**
 
-- [ ] 真实 JAR fixture 使 `org.example.order.mapper.**` 同时出现在有效包集合和 `basePackage`，对应 `@Mapper` Bean 可调用。
+- [ ] 真实 JAR fixture 使 `org.example.order.mapper.**` 出现在有效包集合，`basePackage` 仅含规范化后的 `org.example.order.mapper`，对应 `@Mapper` Bean 可调用。
 - [ ] 默认包去重；多段 `/mapper/` 取最后一段；坏 URL 的 WARN 含资源标识与解析原因且不影响好资源。
 
-**Execution:** Status=in_progress；Commit SHAs=[]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=t1-mapper-implementation；mode=TDD；commit=required；owner=T1。
+**Execution:** Status=completed；Commit SHAs=[e84073cd3a0214dc9b17e0deec7906bd2b6ec0d9]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=真实 JAR 集成夹具直接将 `org.example.order.mapper.**` 交给 scanner 时未注册 Mapper Bean；Verify Result=`mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=MapperPackageDetectorTest,MapperScannerConfigurerJarIntegrationTest,MybatisPlusAutoConfigurationTest test` 通过（102 tests）；AC Result=2/2 通过；agent=controller；mode=TDD；commit=required；owner=T1。
 
 **Task Completion Gate:**
 
-- [ ] Red：新增 3 个 Scenario 的失败断言并保存失败原因。
-- [ ] Green：只修改 IC-1 列出的生产文件，并新增 `MapperScannerConfigurerJarIntegrationTest.java`。
-- [ ] Refactor：输出统一为点号包模式，不加载 Mapper 类。
-- [ ] Verify：定向命令通过且旧 MyBatis 测试不回退。
-- [ ] Commit：仅包含 T1 文件，提交信息 `fix(mybatis): 修复发布制品 Mapper 发现`。
+- [x] Red：新增 3 个 Scenario 的失败断言并保存失败原因。
+- [x] Green：只修改 IC-1 列出的生产/测试文件，并新增 `MapperScannerConfigurerJarIntegrationTest.java`。
+- [x] Refactor：输出统一为点号包模式，不加载 Mapper 类。
+- [x] Verify：定向命令通过且旧 MyBatis 测试不回退。
+- [x] Commit：仅包含 T1 列出的 MyBatis 生产与测试文件，提交信息 `fix(mybatis): 修复发布制品 Mapper 发现`。
 
 **Verify:**
 
 ```bash
-mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=MapperPackageDetectorTest,MapperScannerConfigurerJarIntegrationTest test
+mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=MapperPackageDetectorTest,MapperScannerConfigurerJarIntegrationTest,MybatisPlusAutoConfigurationTest test
 ```
 
 ## T2 — 同步与异步访问日志终态
