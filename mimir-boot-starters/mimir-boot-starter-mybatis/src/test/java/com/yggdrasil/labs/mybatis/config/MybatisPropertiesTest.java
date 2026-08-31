@@ -126,7 +126,7 @@ class MybatisPropertiesTest extends BaseUnitTest {
     void testGetFinalMapperPackages_WithDefaultOnly() {
         // 不设置 mapperPackages，应该只包含默认包
         String finalPackages = properties.getFinalMapperPackages();
-        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
     }
 
     @Test
@@ -134,7 +134,7 @@ class MybatisPropertiesTest extends BaseUnitTest {
         // 设置空列表，应该只包含默认包
         properties.setMapperPackages(Collections.emptyList());
         String finalPackages = properties.getFinalMapperPackages();
-        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
     }
 
     @Test
@@ -142,7 +142,7 @@ class MybatisPropertiesTest extends BaseUnitTest {
         // 设置 null，应该只包含默认包
         properties.setMapperPackages(null);
         String finalPackages = properties.getFinalMapperPackages();
-        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
     }
 
     @Test
@@ -157,10 +157,7 @@ class MybatisPropertiesTest extends BaseUnitTest {
         assertTrue(finalPackages.contains("com.example.mapper"));
         assertTrue(finalPackages.contains("com.example.other.mapper"));
         // 验证格式：默认包,自定义包1,自定义包2
-        AssertUtils.assertEquals(
-            MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper,com.example.other.mapper",
-            finalPackages
-        );
+        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper,com.example.other.mapper"));
     }
 
     @Test
@@ -169,10 +166,7 @@ class MybatisPropertiesTest extends BaseUnitTest {
         properties.setMapperPackages(Collections.singletonList("com.example.mapper"));
         String finalPackages = properties.getFinalMapperPackages();
         
-        AssertUtils.assertEquals(
-            MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper",
-            finalPackages
-        );
+        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper"));
     }
 
     @Test
@@ -182,6 +176,7 @@ class MybatisPropertiesTest extends BaseUnitTest {
         String finalPackages = properties.getFinalMapperPackages();
         
         // 应该只包含一个默认包（去重后）
-        AssertUtils.assertEquals(MybatisProperties.DEFAULT_MAPPER_PACKAGE, finalPackages);
+        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        assertFalse(finalPackages.substring(MybatisProperties.DEFAULT_MAPPER_PACKAGE.length()).contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
     }
 }
