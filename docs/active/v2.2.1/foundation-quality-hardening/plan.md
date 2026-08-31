@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 10:19:00 +0800
+> Updated At: 2026-08-31 10:24:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1 至 T6 已完成，继续 T7）。
+- 执行状态：IN_PROGRESS（T1 至 T7 已完成，继续 T8）。
 
 ## Plan Verdict
 
@@ -390,18 +390,18 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter
 
 **Acceptance Criteria:**
 
-- [ ] `Long.MAX_VALUE/1000` 的 totalPages 精确为 `9223372036854776`，hasNext 按 pageIndex=1 为 true。
-- [ ] 可表示 offset 精确；不可表示时抛 `IllegalArgumentException("分页偏移量超出 Long 范围")`；既有纠正规则不变。
+- [x] `Long.MAX_VALUE/1000` 的 totalPages 精确为 `9223372036854776`，hasNext 按 pageIndex=1 为 true。
+- [x] 可表示 offset 精确；不可表示时抛 `IllegalArgumentException("分页偏移量超出 Long 范围")`；既有纠正规则不变。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T7。
+**Execution:** Status=completed；Commit SHAs=[a937d6bcb9aa1f7785d1587ff4426ea739cbd33b]；Dispatch Base SHA=5adf4b984d57b6cc31533215cafd0d415f0f7527；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Long 极值下 offset 静默回绕、totalPages 先加后除溢出；Verify Result=2026-08-31 10:23 +0800，T7 定向 Maven 回归 12 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T7。
 
 **Task Completion Gate:**
 
-- [ ] Red：三个极值 Scenario 先失败。
-- [ ] Green：精确乘法与商余 ceil。
-- [ ] Refactor：保留既有校验入口。
-- [ ] Verify：分页定向测试通过。
-- [ ] Commit：仅包含 T7 文件，提交信息 `fix(common): 修复分页 Long 边界`。
+- [x] Red：三个极值 Scenario 先失败。
+- [x] Green：精确乘法与商余 ceil。
+- [x] Refactor：保留既有校验入口。
+- [x] Verify：分页定向测试通过。
+- [x] Commit：仅包含 T7 文件，提交信息 `fix(common): 修复分页 Long 边界`。
 
 **Verify:**
 
