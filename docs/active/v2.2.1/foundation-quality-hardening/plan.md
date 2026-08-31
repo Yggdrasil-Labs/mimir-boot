@@ -13,7 +13,7 @@ updated: 2026-08-31
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 09:39:00 +0800
+> Updated At: 2026-08-31 09:49:00 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,7 +34,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（T1、T2 已完成，继续 T3）。
+- 执行状态：IN_PROGRESS（T1、T2、T3 已完成，继续 T4）。
 
 ## Plan Verdict
 
@@ -136,7 +136,7 @@ flowchart LR
 | T2 | 异步监听器注册失败回退 | `AccessLogFilterTest.logsInitialRegistrationFailureWithoutPropagating` | T2 AC1、AC3 |
 | T2 | 异步已完成注册回退 | `AccessLogFilterTest.logsAlreadyCompletedAsyncContextWithoutPropagating` | T2 AC1 |
 | T2 | 后续异步派发注册失败回退 | `AccessLogFilterTest.logsRedispatchRegistrationFailureExactlyOnce` | T2 AC1、AC3 |
-| T3 | 同步请求恢复进入前上下文 | `TraceInterceptorTest.restoresSynchronousMdcSnapshot` + `WebInterceptorTest.restoresSynchronousIpSnapshot` | T3 AC1、AC2 |
+| T3 | 同步请求恢复进入前上下文 | `TraceInterceptorTest.afterCompletionRestoresRequestIdAndKeepsExternalMdcKey` + `WebInterceptorTest.afterCompletionRestoresOnlyItsPreviousIpAndKeepsOtherMdcKeysWhenExceptionExists` | T3 AC1、AC2 |
 | T3 | 异步初始派发释放上下文 | `TraceInterceptorTest.releasesMdcAfterConcurrentHandlingStarted` + `WebInterceptorTest.releasesIpAfterConcurrentHandlingStarted` | T3 AC1 |
 | T3 | 异步错误路径清理上下文 | `TraceInterceptorTest.restoresSnapshotOnAsyncError` + `WebInterceptorTest.restoresIpOnAsyncError` | T3 AC1、AC2 |
 | T3 | 异步超时路径清理上下文 | `TraceInterceptorTest.restoresSnapshotOnAsyncTimeout` + `WebInterceptorTest.restoresIpOnAsyncTimeout` | T3 AC1、AC2 |
@@ -247,18 +247,18 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 
 **Acceptance Criteria:**
 
-- [ ] 同步、异步初始派发、timeout/error 与 ASYNC redispatch 均恢复进入前的 `traceId/requestId/ip` 和无关 key。
-- [ ] 进入前不存在的 key 最终不存在；HTTP 状态和异常身份不因 MDC 清理改变。
+- [x] 同步、异步初始派发、timeout/error 与 ASYNC redispatch 均恢复进入前的 `traceId/requestId/ip` 和无关 key。
+- [x] 进入前不存在的 key 最终不存在；HTTP 状态和异常身份不因 MDC 清理改变。
 
-**Execution:** Status=pending；Commit SHAs=[]；Dispatch Base SHA=null；Dispatch Ref=null；Attempts=0；Blocked Reason=null；Red Result=null；Verify Result=null；AC Result=null；agent=controller-assigned；mode=TDD；commit=required；owner=T3。
+**Execution:** Status=completed；Commit SHAs=[4bd5cd00de729f847fa905b69d6cc003e92bd6f5]；Dispatch Base SHA=6313d12c65f33e516c2b9f39389eaa28e9a0d596；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增异步回调测试在旧实现缺少 afterConcurrentHandlingStarted 时编译失败；Verify Result=2026-08-31 09:48 +0800，T3 定向 Maven 回归 25 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T3。
 
 **Task Completion Gate:**
 
-- [ ] Red：四个 Scenario 均先失败。
-- [ ] Green：实现 `AsyncHandlerInterceptor` 最小清理。
-- [ ] Refactor：复用既有 MDC 栈语义。
-- [ ] Verify：定向测试通过。
-- [ ] Commit：仅包含 T3 文件，提交信息 `fix(web): 清理异步请求 MDC 上下文`。
+- [x] Red：四个 Scenario 均先失败。
+- [x] Green：实现 `AsyncHandlerInterceptor` 最小清理。
+- [x] Refactor：复用既有 MDC 栈语义。
+- [x] Verify：定向测试通过。
+- [x] Commit：仅包含 T3 文件，提交信息 `fix(web): 清理异步请求 MDC 上下文`。
 
 **Verify:**
 
