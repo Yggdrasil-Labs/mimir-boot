@@ -24,6 +24,9 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -119,6 +122,29 @@ class AccessLogFilterTest extends BaseUnitTest {
     }
 
     @Test
+    void logsSynchronousErrorAsFailureAndPropagatesSameError() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/error");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+        AssertionError failure = new AssertionError("boom");
+        doThrow(failure).when(chain).doFilter(any(), any());
+
+        AssertionError propagated = assertThrows(AssertionError.class,
+                () -> filter.doFilter(request, response, chain));
+
+        assertSame(failure, propagated);
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Outcome=[ERROR]"));
+        assertTrue(message.contains("ErrorType=[java.lang.AssertionError]"));
+    }
+
+
+    @Test
     void defersUntilAsyncComplete() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn("/api/async");
@@ -149,6 +175,38 @@ class AccessLogFilterTest extends BaseUnitTest {
     }
 
     @Test
+    void usesAsyncEventResponseForTerminalStatus() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-wrapper");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(200);
+        AsyncContext asyncContext = mock(AsyncContext.class);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+        HttpServletResponse asyncResponse = mock(HttpServletResponse.class);
+        when(asyncResponse.getStatus()).thenReturn(202);
+        when(asyncContext.getResponse()).thenReturn(asyncResponse);
+        FilterChain chain = mock(FilterChain.class);
+        doAnswer(invocation -> {
+            ((HttpServletResponse) invocation.getArgument(1)).setStatus(200);
+            return null;
+        }).when(chain).doFilter(any(), any());
+
+        filter.doFilter(request, response, chain);
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(asyncContext).addListener(listenerCaptor.capture());
+        listenerCaptor.getValue().onComplete(new AsyncEvent(asyncContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Status=[202]"));
+    }
+
+    @Test
     void reRegistersOnlyEachDistinctAsyncContext() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn("/api/redispatch");
@@ -174,7 +232,11 @@ class AccessLogFilterTest extends BaseUnitTest {
         verify(firstContext, times(1)).addListener(any(AsyncListener.class));
         verify(secondContext, times(1)).addListener(any(AsyncListener.class));
         assertEquals(0, listAppender.list.size());
+        ArgumentCaptor<AsyncListener> secondCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(secondContext).addListener(secondCaptor.capture());
         listener.onComplete(new AsyncEvent(secondContext));
+        assertEquals(0, listAppender.list.size());
+        secondCaptor.getValue().onComplete(new AsyncEvent(secondContext));
 
         AssertUtils.assertLogSize(listAppender, 1);
         assertTrue(listAppender.list.get(0).getFormattedMessage().contains("Status=[204]"));
@@ -313,6 +375,39 @@ class AccessLogFilterTest extends BaseUnitTest {
     }
 
     @Test
+    void usesRestartedAsyncEventResponseWhenRegistrationFails() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/async-redispatch-failure-status");
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+
+        MockHttpServletResponse initialResponse = new MockHttpServletResponse();
+        initialResponse.setStatus(200);
+        AsyncContext initialContext = mock(AsyncContext.class);
+        AsyncContext restartedContext = mock(AsyncContext.class);
+        HttpServletResponse restartedResponse = mock(HttpServletResponse.class);
+        when(request.getAsyncContext()).thenReturn(initialContext);
+        when(restartedContext.getResponse()).thenReturn(restartedResponse);
+        when(restartedResponse.getStatus()).thenReturn(202);
+        doThrow(new IllegalStateException("completed"))
+                .when(restartedContext).addListener(any(AsyncListener.class));
+
+        filter.doFilter(request, initialResponse, (servletRequest, servletResponse) -> { });
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(initialContext).addListener(listenerCaptor.capture());
+        listenerCaptor.getValue().onStartAsync(new AsyncEvent(restartedContext));
+
+        AssertUtils.assertLogSize(listAppender, 1);
+        String message = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(message.contains("Status=[202]"),
+                "重启异步周期注册失败应使用当前 AsyncContext response 的状态码: " + message);
+        assertTrue(message.contains("Outcome=[REGISTRATION_ERROR]"));
+    }
+
+    @Test
     void logsAlreadyCompletedAsyncContextWithoutPropagating() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn("/api/async-completed");
@@ -370,6 +465,10 @@ class AccessLogFilterTest extends BaseUnitTest {
             for (Future<?> registration : registrations) {
                 registration.get();
             }
+            ArgumentCaptor<AsyncListener> secondCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+            verify(secondContext).addListener(secondCaptor.capture());
+            AsyncListener currentListener = secondCaptor.getValue();
+
             verify(secondContext, times(1)).addListener(any(AsyncListener.class));
 
             CountDownLatch terminalReady = new CountDownLatch(3);
@@ -378,7 +477,7 @@ class AccessLogFilterTest extends BaseUnitTest {
                 terminalReady.countDown();
                 awaitLatch(terminalStart);
                 try {
-                    listener.onComplete(new AsyncEvent(secondContext));
+                    currentListener.onComplete(new AsyncEvent(secondContext));
                 } catch (IOException e) {
                     throw new AssertionError(e);
                 }
@@ -387,7 +486,7 @@ class AccessLogFilterTest extends BaseUnitTest {
                 terminalReady.countDown();
                 awaitLatch(terminalStart);
                 try {
-                    listener.onTimeout(new AsyncEvent(secondContext));
+                    currentListener.onTimeout(new AsyncEvent(secondContext));
                 } catch (IOException e) {
                     throw new AssertionError(e);
                 }
@@ -396,7 +495,7 @@ class AccessLogFilterTest extends BaseUnitTest {
                 terminalReady.countDown();
                 awaitLatch(terminalStart);
                 try {
-                    listener.onError(new AsyncEvent(secondContext, new IllegalStateException("boom")));
+                    currentListener.onError(new AsyncEvent(secondContext, new IllegalStateException("boom")));
                 } catch (IOException e) {
                     throw new AssertionError(e);
                 }
@@ -787,5 +886,19 @@ class AccessLogFilterTest extends BaseUnitTest {
         String message = event.getFormattedMessage();
 
         assertTrue(message.contains("\\t"), "制表符应该被转义为 \\t");
+    }
+
+    @Test
+    void readmeExamplesDocumentTerminalOutcomeFields() throws Exception {
+        String readme = Files.readString(Path.of("README.md"));
+        List<String> examples = readme.lines()
+                .filter(line -> line.contains("Status=["))
+                .toList();
+
+        assertEquals(4, examples.size());
+        assertTrue(examples.stream().allMatch(line -> line.contains("Outcome=[")
+                && line.contains("ErrorType=[")
+                && line.contains("Duration=[")));
+        assertTrue(readme.contains("HTTP 5xx 只决定日志级别，不等于处理链异常"));
     }
 }

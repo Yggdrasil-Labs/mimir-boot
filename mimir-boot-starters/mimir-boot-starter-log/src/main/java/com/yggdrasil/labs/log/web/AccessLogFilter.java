@@ -64,9 +64,12 @@ public class AccessLogFilter implements Filter {
         } catch (IOException | ServletException | RuntimeException e) {
             failure = e;
             throw e;
+        } catch (Error e) {
+            failure = e;
+            throw e;
         } finally {
             if (!async) {
-                lifecycle.terminate(failure == null ? "COMPLETED" : "ERROR",
+                lifecycle.terminate(httpResponse, -1, failure == null ? "COMPLETED" : "ERROR",
                         failure == null ? "-" : failure.getClass().getName());
             }
         }
@@ -87,33 +90,36 @@ public class AccessLogFilter implements Filter {
         private final HttpServletResponse response;
         private final long startNanos = System.nanoTime();
         private final AtomicReference<LifecycleState> state = new AtomicReference<>(LifecycleState.initial());
-        private final AsyncListener listener = new AsyncListener() {
-            @Override
-            public void onComplete(AsyncEvent event) {
-                safeTerminate("COMPLETED", "-");
-            }
 
-            @Override
-            public void onTimeout(AsyncEvent event) {
-                safeTerminate("TIMEOUT", "ASYNC_TIMEOUT");
-            }
-
-            @Override
-            public void onError(AsyncEvent event) {
-                Throwable failure = event.getThrowable();
-                safeTerminate("ERROR", failure == null
-                        ? "ASYNC_ERROR_WITHOUT_THROWABLE" : failure.getClass().getName());
-            }
-
-            @Override
-            public void onStartAsync(AsyncEvent event) {
-                try {
-                    register(event.getAsyncContext());
-                } catch (RuntimeException e) {
-                    safeTerminate("REGISTRATION_ERROR", e.getClass().getName());
+        private AsyncListener listenerFor(int registrationGeneration) {
+            return new AsyncListener() {
+                @Override
+                public void onComplete(AsyncEvent event) {
+                    safeTerminate(event, registrationGeneration, "COMPLETED", "-");
                 }
-            }
-        };
+
+                @Override
+                public void onTimeout(AsyncEvent event) {
+                    safeTerminate(event, registrationGeneration, "TIMEOUT", "ASYNC_TIMEOUT");
+                }
+
+                @Override
+                public void onError(AsyncEvent event) {
+                    Throwable failure = event.getThrowable();
+                    safeTerminate(event, registrationGeneration, "ERROR", failure == null
+                            ? "ASYNC_ERROR_WITHOUT_THROWABLE" : failure.getClass().getName());
+                }
+
+                @Override
+                public void onStartAsync(AsyncEvent event) {
+                    try {
+                        registerRestartedContext(event, registrationGeneration);
+                    } catch (RuntimeException e) {
+                        safeTerminate(event, registrationGeneration, "REGISTRATION_ERROR", e.getClass().getName());
+                    }
+                }
+            };
+        }
 
         private RequestLifecycle(HttpServletRequest request, HttpServletResponse response) {
             this.request = request;
@@ -122,13 +128,13 @@ public class AccessLogFilter implements Filter {
 
         private void registerCurrentContext(HttpServletRequest request) {
             try {
-                register(request.getAsyncContext());
+                registerInitialContext(request.getAsyncContext());
             } catch (IllegalStateException e) {
                 safeTerminate("REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
             }
         }
 
-        private void register(AsyncContext context) {
+        private void registerInitialContext(AsyncContext context) {
             if (context == null) {
                 safeTerminate("REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
                 return;
@@ -141,33 +147,80 @@ public class AccessLogFilter implements Filter {
                 LifecycleState claimed = current.claim(context);
                 if (state.compareAndSet(current, claimed)) {
                     try {
-                        context.addListener(listener);
+                        context.addListener(listenerFor(claimed.generation()));
                     } catch (RuntimeException e) {
-                        safeTerminate("REGISTRATION_ERROR", e.getClass().getName());
+                        safeTerminate(response, claimed.generation(), "REGISTRATION_ERROR", e.getClass().getName());
                     }
                     return;
                 }
             }
         }
 
+        private void registerRestartedContext(AsyncEvent event, int previousGeneration) {
+            AsyncContext context = event.getAsyncContext();
+            HttpServletResponse terminalResponse = resolveResponse(event);
+            if (context == null) {
+                safeTerminate(terminalResponse, previousGeneration, "REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
+                return;
+            }
+            while (true) {
+                LifecycleState current = state.get();
+                if (current.phase() == Phase.TERMINAL || current.generation() != previousGeneration) {
+                    return;
+                }
+                LifecycleState claimed = current.claim(context);
+                if (state.compareAndSet(current, claimed)) {
+                    try {
+                        context.addListener(listenerFor(claimed.generation()));
+                    } catch (RuntimeException e) {
+                        safeTerminate(terminalResponse, claimed.generation(), "REGISTRATION_ERROR", e.getClass().getName());
+                    }
+                    return;
+                }
+            }
+        }
+
+        private void safeTerminate(AsyncEvent event, int registrationGeneration, String outcome, String errorType) {
+            safeTerminate(resolveResponse(event), registrationGeneration, outcome, errorType);
+        }
+
         private void safeTerminate(String outcome, String errorType) {
+            safeTerminate(response, -1, outcome, errorType);
+        }
+
+        private void safeTerminate(HttpServletResponse terminalResponse, int registrationGeneration,
+                                   String outcome, String errorType) {
             try {
-                terminate(outcome, errorType);
+                terminate(terminalResponse, registrationGeneration, outcome, errorType);
             } catch (RuntimeException e) {
                 LOGGER.warn("Failed to finalize access log lifecycle", e);
             }
         }
 
-        private void terminate(String outcome, String errorType) {
+        private HttpServletResponse resolveResponse(AsyncEvent event) {
+            try {
+                ServletResponse asyncResponse = event.getAsyncContext().getResponse();
+                if (asyncResponse instanceof HttpServletResponse httpServletResponse) {
+                    return httpServletResponse;
+                }
+            } catch (RuntimeException e) {
+                LOGGER.debug("Failed to resolve async response", e);
+            }
+            return response;
+        }
+
+        private void terminate(HttpServletResponse terminalResponse, int registrationGeneration,
+                               String outcome, String errorType) {
             while (true) {
                 LifecycleState current = state.get();
-                if (current.phase() == Phase.TERMINAL) {
+                if (current.phase() == Phase.TERMINAL
+                        || (registrationGeneration >= 0 && current.generation() != registrationGeneration)) {
                     return;
                 }
                 if (state.compareAndSet(current, current.terminal())) {
                     long duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
                     if (shouldLogAccess(request)) {
-                        logAccess(request, response, duration, outcome, errorType);
+                        logAccess(request, terminalResponse, duration, outcome, errorType);
                     }
                     return;
                 }
@@ -191,8 +244,11 @@ public class AccessLogFilter implements Filter {
         }
 
         private LifecycleState claim(AsyncContext context) {
-            List<AsyncContext> claimed = new ArrayList<>(claimedContexts);
-            claimed.add(context);
+            List<AsyncContext> claimed = contains(context)
+                    ? claimedContexts : new ArrayList<>(claimedContexts);
+            if (!contains(context)) {
+                claimed.add(context);
+            }
             return new LifecycleState(Phase.REGISTERED, generation + 1, List.copyOf(claimed));
         }
 
