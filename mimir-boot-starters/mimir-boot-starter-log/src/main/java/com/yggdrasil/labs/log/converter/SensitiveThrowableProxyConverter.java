@@ -11,11 +11,26 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
  */
 public class SensitiveThrowableProxyConverter extends ThrowableProxyConverter {
 
+    private final SensitiveDataConverter dataConverter = new SensitiveDataConverter();
+
+    @Override
+    public void start() {
+        dataConverter.setContext(getContext());
+        dataConverter.start();
+        super.start();
+    }
+
+    @Override
+    public void stop() {
+        dataConverter.stop();
+        super.stop();
+    }
+
     @Override
     public String convert(ILoggingEvent event) {
         if (event.getThrowableProxy() == null) {
             return "";
         }
-        return new SensitiveDataConverter().maskSensitiveData(super.convert(event));
+        return dataConverter.maskSensitiveData(super.convert(event));
     }
 }

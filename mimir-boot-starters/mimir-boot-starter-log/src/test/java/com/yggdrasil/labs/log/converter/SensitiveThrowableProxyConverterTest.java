@@ -1,19 +1,26 @@
 package com.yggdrasil.labs.log.converter;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.PatternLayout;
+import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxy;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -72,8 +79,60 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
 
             assertTrue(xml.contains("conversionWord=\"maskThrowable\""));
             assertTrue(xml.contains("SensitiveThrowableProxyConverter"));
-            assertEquals(4, occurrences(xml, "%mask%maskThrowable%n"));
-            assertFalse(xml.contains("%mask%n"));
+            assertEquals(4, occurrences(xml, "%mask%n%maskThrowable"));
+            assertEquals(0, occurrences(xml, "%mask%maskThrowable%n"));
+            assertEquals(0, occurrences(xml, "%mask%n\""));
+        }
+    }
+
+    @Test
+    void reusesMessageConverterAcrossEventsAndHonorsDynamicConfiguration() throws Exception {
+        Field field = SensitiveThrowableProxyConverter.class.getDeclaredField("dataConverter");
+        field.setAccessible(true);
+        Object firstConverter = field.get(converter);
+        assertNotNull(firstConverter);
+
+        ILoggingEvent event = mock(ILoggingEvent.class);
+        when(event.getThrowableProxy()).thenReturn(new ThrowableProxy(
+                new IllegalStateException("password=throwable-secret")));
+
+        SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "FIRST");
+        String first = converter.convert(event);
+        SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "SECOND");
+        String second = converter.convert(event);
+
+        assertTrue(first.contains("FIRST"));
+        assertTrue(second.contains("SECOND"));
+        assertSame(firstConverter, field.get(converter));
+    }
+
+    @Test
+    void configuredPatternKeepsThrowableOnNewLineWithoutBlankLineWhenAbsent() throws Exception {
+        PatternLayout layout = new PatternLayout();
+        LoggerContext context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+        layout.setContext(context);
+        layout.getInstanceConverterMap().put("mask", SensitiveDataConverter::new);
+        layout.getInstanceConverterMap().put("maskThrowable", SensitiveThrowableProxyConverter::new);
+        layout.setPattern("%mask%n%maskThrowable");
+        layout.start();
+        try {
+            Logger logger = context.getLogger("THROWABLE_PATTERN_TEST");
+            ILoggingEvent withoutThrowable = new LoggingEvent(
+                    SensitiveThrowableProxyConverterTest.class.getName(), logger, Level.ERROR,
+                    "message", null, null);
+            assertEquals("message" + System.lineSeparator(), layout.doLayout(withoutThrowable));
+
+            ILoggingEvent withThrowable = new LoggingEvent(
+                    SensitiveThrowableProxyConverterTest.class.getName(), logger, Level.ERROR,
+                    "message", new IllegalStateException("password=throwable-secret"), null);
+            String rendered = layout.doLayout(withThrowable);
+            assertTrue(rendered.startsWith("message" + System.lineSeparator()
+                    + IllegalStateException.class.getName() + ": "));
+            assertFalse(rendered.contains("message" + IllegalStateException.class.getName()));
+            assertFalse(rendered.contains("password=throwable-secret"));
+            assertFalse(rendered.contains(System.lineSeparator() + System.lineSeparator()));
+        } finally {
+            layout.stop();
         }
     }
 

@@ -60,14 +60,18 @@ public class SensitiveDataConverter extends ClassicConverter {
     public static void publishConfiguration(List<String> enabledPatternNames,
                                             List<String> customPatternExpressions,
                                             String replacement) {
-        configuration.set(buildConfiguration(enabledPatternNames, customPatternExpressions, replacement));
+        synchronized (CONFIGURATION_LOCK) {
+            configuration.set(buildConfiguration(enabledPatternNames, customPatternExpressions, replacement));
+        }
     }
 
     /**
      * 重新从 Logback 或系统属性加载配置，保留既有动态刷新入口。
      */
     public static void reloadConfig() {
-        configuration.set(null);
+        synchronized (CONFIGURATION_LOCK) {
+            configuration.set(null);
+        }
     }
 
     public static void addCustomPattern(String pattern) {
