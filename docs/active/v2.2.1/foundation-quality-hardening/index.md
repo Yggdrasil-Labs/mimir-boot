@@ -1,7 +1,7 @@
 ---
 id: foundation-quality-hardening
 version: v2.2.1
-status: in-progress
+status: completed
 owner: YoungerYang-Y
 branch: feature/foundation-quality-hardening
 created: 2026-08-30
@@ -16,7 +16,7 @@ updated: 2026-09-02
 |------|------|------|
 | [spec.md](./spec.md) | 已发布 | 8 个 Behavior、36 个 Scenario，定义底座使用方可观察的质量契约 |
 | [design.md](./design.md) | 已验证 | 跨 common、MyBatis、log、web、RPC Core、Feign、Dubbo 的完整设计 |
-| [plan.md](./plan.md) | 最终复验中 | 9 个 TDD Task 已有历史证据；终审代码补丁已分阶段提交，等待干净工作树全量复验 |
+| [plan.md](./plan.md) | 本地验收通过 | 9 个 TDD Task 已完成；终审代码补丁已分阶段提交并通过干净工作树全量复验 |
 
 ## 纳入范围
 

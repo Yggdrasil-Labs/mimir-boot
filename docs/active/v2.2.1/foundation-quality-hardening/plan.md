@@ -35,22 +35,22 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：IN_PROGRESS（终审代码补丁已分阶段提交；等待最终复验）。
+- 执行状态：COMPLETED（终审代码补丁已分阶段提交并通过最终复验）。
 
 ## Plan Verdict
 
 | 字段 | 当前值 |
 |------|--------|
-| Verdict | PENDING_FINAL_VERIFICATION |
-| Blocking Findings | 终审代码补丁已分阶段提交；必须在干净 worktree 重新执行全量验证后才能恢复 PASS。性能证据已通过。 |
-| Verification Evidence | 2026-09-02 22:22 +0800，终审代码补丁提交后、文档账本提交前的 worktree `clean verify` 已通过 15 个 Reactor 模块；最终干净 worktree 仍须复验。此前 97 份 Surefire/Failsafe 报告无 failures/errors/skipped；三次独立性能运行平均 +1716.60 ns/op。 |
-| Release Readiness | NOT_READY（本地提交已完成；未推送、未发布、未验证远程 CI）。 |
+| Verdict | PASS（LOCAL） |
+| Blocking Findings | 无 P0/P1；终审遗留 P2 已获用户接受。 |
+| Verification Evidence | 以 `9766238` 为 HEAD，2026-09-02 22:30 +0800 在干净 worktree 执行 `mise exec java@17 -- ./mvnw clean verify` 通过全部 15 个 Reactor 模块；97 份 Surefire/Failsafe 报告无 failures/errors/skipped；同一 HEAD 的 `./mvnw verify -q` 退出码 0。三次独立性能运行平均 +1716.60 ns/op。 |
+| Release Readiness | LOCAL_READY（本地提交和验证完成；未推送、未发布、未验证远程 CI）。 |
 
 ## Decision Log
 
 | ID | 决策 | 状态 | 证据 |
 |----|------|------|------|
-| DL-001 | T1–T8 历史实现与回归证据已通过；终审补丁覆盖 T1/T2/T3/T4/T5/T6/T8，须完成最终验证后才可再次关闭发布证据。 | in-progress | 终审补丁已提交为 `0002261`、`ac47c3f`、`aa52fa8`、`31343b7`、`6df8ee0`、`7e126b0`、`2ad47e0`；等待干净 worktree 最终复验。 |
+| DL-001 | T1–T8 历史实现与回归证据已通过；终审补丁覆盖 T1/T2/T3/T4/T5/T6/T8，已完成本地最终验证并关闭发布前本地证据。 | completed | 终审补丁为 `0002261`、`ac47c3f`、`aa52fa8`、`31343b7`、`6df8ee0`、`7e126b0`、`2ad47e0`；账本提交 `9766238` 后在干净 worktree 全量验证通过。 |
 
 执行完成前不得把 `pending` 改为 `completed`；若任一债务未解决，必须保留对应 TD 条目，T9 与 Plan 保持未完成，且不得通过 Accepted Risks 绕过本组关闭门禁。
 
@@ -487,20 +487,20 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 **Acceptance Criteria:**
 
 - [x] 36 个 Scenario 均有测试方法/断言映射，8 个 Behavior 与 9 个 IC 无遗漏。
-- [ ] 在终审补丁提交后的干净 worktree 执行 `clean verify`；README、release 与版本索引再同步为实际最终验证状态。
-- [x] 终审补丁已进入提交区间，`DL-001` 与 T1/T2/T3/T4/T5/T6/T8 账本已回填；T9 仍待最终验证。
+- [x] 在终审补丁提交后的干净 worktree 执行 `clean verify`；README、release 与版本索引已同步为实际最终验证状态。
+- [x] 终审补丁已进入提交区间，`DL-001` 与 T1/T2/T3/T4/T5/T6/T8 账本已回填；T9 最终验证证据已完成。
 - [x] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs（2026-09-02：+1716.60 ns/op）。
-- [ ] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
+- [x] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
 
-**Execution:** Status=in-progress；Commit SHAs=[007de8e7e79203b870397188b33d14354809e638,ff10dbb07bbe91f842c525da2c35cf2a0c2b82be]；Dispatch Base SHA=4a8227c7e879c013b624faa8d963fa2cc69369f7；Dispatch Ref=feature/foundation-quality-hardening；Attempts=5；Blocked Reason=等待终审补丁提交后的干净 worktree 最终复验；Red Result=终审复核确认真实 Servlet 重启异步周期测试可能被同步 finally 兜底误通过，且 Scenario 表、测试方法名和提交 SHA 无法机械追踪；Verify Result=2026-09-02 22:22 +0800 终审代码补丁提交后、文档账本提交前的 `clean verify` 已通过全部 15 个 Reactor 模块；此前 97 份 Surefire/Failsafe 报告无 failures/errors/skipped；三次独立性能运行平均 +1716.60 ns/op；AC Result=待终审补丁提交后的干净 worktree `clean verify`；agent=controller；mode=verification；commit=pending；owner=T9。
+**Execution:** Status=completed；Commit SHAs=[007de8e7e79203b870397188b33d14354809e638,ff10dbb07bbe91f842c525da2c35cf2a0c2b82be,976623831f34314eef51f6b20ed32bd6f1950a83]；Dispatch Base SHA=4a8227c7e879c013b624faa8d963fa2cc69369f7；Dispatch Ref=feature/foundation-quality-hardening；Attempts=6；Blocked Reason=null；Red Result=终审复核确认真实 Servlet 重启异步周期测试可能被同步 finally 兜底误通过，且 Scenario 表、测试方法名和提交 SHA 无法机械追踪；Verify Result=以 `9766238` 为 HEAD，2026-09-02 22:30 +0800 干净 worktree `clean verify` 通过全部 15 个 Reactor 模块，97 份 Surefire/Failsafe 报告无 failures/errors/skipped；同一 HEAD `verify -q` 退出码 0；三次独立性能运行平均 +1716.60 ns/op；AC Result=全部通过；agent=controller；mode=verification；commit=completed；owner=T9。
 
 **Task Completion Gate:**
 
 - [x] Red：建立 Scenario→测试→提交追踪表并列出缺口。
 - [x] Green：只补发布/台账证据，不修改 T1–T8 实现。
 - [x] Review：2026-09-02 独立复核确认无 P0/P1；终审发现的剩余 P2 文档状态已同步修正。
-- [ ] Verify：终审代码补丁提交后已完成一次全量构建；等待文档账本提交后的干净 worktree 复验，性能证据已通过。
-- [ ] Commit：等待提交终审状态账本与最终验证证据。
+- [x] Verify：终审代码补丁与账本提交后，已在干净 worktree 完成全量构建；性能证据已通过。
+- [x] Commit：提交最终验证证据与本地验收状态。
 
 ### Performance Evidence
 
@@ -552,11 +552,11 @@ test "$(rg -c '^## T[0-9]+ ' docs/active/v2.2.1/foundation-quality-hardening/pla
 
 控制器逐项确认：
 
-- [ ] `<Baseline SHA>..HEAD` 中每个实现提交只归属一个 Task，提交 message 与 Task 一致；计划账本提交单独维护。
-- [ ] `git diff --name-only` 未出现 Design/Plan 未授权的源文件、公开配置或依赖变更。
-- [ ] T1–T8 定向验证、T9 全量验证与三次性能证据均可重放。
-- [ ] release、active index、版本 index 和需求 index 与真实提交状态一致；已解决的 TD-030 至 TD-035 已从活跃台账删除，`DL-001` 已记录实际关闭证据。
+- [x] `<Baseline SHA>..HEAD` 中每个实现提交只归属一个 Task，提交 message 与 Task 一致；计划账本提交单独维护。
+- [x] `git diff --name-only` 未出现 Design/Plan 未授权的源文件、公开配置或依赖变更。
+- [x] T1–T8 定向验证、T9 全量验证与三次性能证据均可重放。
+- [x] release、active index、版本 index 和需求 index 与真实提交状态一致；已解决的 TD-030 至 TD-035 已从活跃台账删除，`DL-001` 已记录实际关闭证据。
 - [x] Accepted Risks 只有已获用户确认的条目；无风险时保留 AR-000。
-- [ ] Plan Verdict 更新为最终结论，Blocking Findings、Verification Evidence 与 Release Readiness 均有证据。
+- [x] Plan Verdict 已更新为本地最终结论，Blocking Findings、Verification Evidence 与 Release Readiness 均有证据。
 
 本计划不授权 push、merge、发布或远程 CI 操作；这些动作需要用户另行明确授权。
