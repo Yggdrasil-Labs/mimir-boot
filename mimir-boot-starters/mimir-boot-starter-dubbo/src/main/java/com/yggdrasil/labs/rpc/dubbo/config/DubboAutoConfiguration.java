@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.rpc.dubbo.config;
 
+import com.yggdrasil.labs.rpc.core.config.RpcCoreAutoConfiguration;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
@@ -11,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
-@AutoConfiguration
+@AutoConfiguration(after = RpcCoreAutoConfiguration.class)
 @EnableConfigurationProperties(DubboProperties.class)
 @ConditionalOnProperty(prefix = "mimir.boot.dubbo", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class DubboAutoConfiguration {
@@ -30,4 +31,3 @@ public class DubboAutoConfiguration {
         return RpcDubboSupportHolder.getInstance();
     }
 }
-

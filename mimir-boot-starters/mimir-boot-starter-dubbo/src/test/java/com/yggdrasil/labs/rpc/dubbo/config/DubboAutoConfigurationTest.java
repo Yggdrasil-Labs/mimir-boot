@@ -13,6 +13,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,5 +97,13 @@ class DubboAutoConfigurationTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(RpcDubboSupportHolder.class);
         });
+    }
+
+    @Test
+    void runsAfterRpcCoreAutoConfiguration() {
+        AutoConfiguration autoConfiguration = DubboAutoConfiguration.class.getAnnotation(AutoConfiguration.class);
+
+        assertThat(autoConfiguration).isNotNull();
+        assertThat(autoConfiguration.after()).containsExactly(RpcCoreAutoConfiguration.class);
     }
 }

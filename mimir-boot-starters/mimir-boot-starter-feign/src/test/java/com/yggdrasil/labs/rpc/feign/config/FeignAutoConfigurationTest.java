@@ -12,6 +12,7 @@ import com.yggdrasil.labs.rpc.feign.client.RpcFeignClient;
 import feign.Client;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,5 +96,13 @@ class FeignAutoConfigurationTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(RpcFeignCapability.class);
         });
+    }
+
+    @Test
+    void runsAfterRpcCoreAutoConfiguration() {
+        AutoConfiguration autoConfiguration = FeignAutoConfiguration.class.getAnnotation(AutoConfiguration.class);
+
+        assertThat(autoConfiguration).isNotNull();
+        assertThat(autoConfiguration.after()).containsExactly(RpcCoreAutoConfiguration.class);
     }
 }

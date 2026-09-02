@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.rpc.feign.config;
 
+import com.yggdrasil.labs.rpc.core.config.RpcCoreAutoConfiguration;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.feign.client.RpcFeignCapability;
@@ -12,7 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
-@AutoConfiguration("mimirFeignAutoConfiguration")
+@AutoConfiguration(value = "mimirFeignAutoConfiguration", after = RpcCoreAutoConfiguration.class)
 @EnableConfigurationProperties(FeignProperties.class)
 @ConditionalOnProperty(prefix = "mimir.boot.feign", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class FeignAutoConfiguration {
