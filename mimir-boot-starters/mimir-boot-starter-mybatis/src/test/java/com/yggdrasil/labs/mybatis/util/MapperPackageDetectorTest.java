@@ -300,54 +300,6 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         );
     }
 
-    // ========== 测试 findPackageStartIndex ==========
-
-    @ParameterizedTest
-    @MethodSource("provideFindPackageStartIndexTestCases")
-    void testFindPackageStartIndex(String path, int expected) throws Exception {
-        Method method = MapperPackageDetector.class.getDeclaredMethod("findPackageStartIndex", String.class);
-        method.setAccessible(true);
-        
-        int result = (Integer) method.invoke(null, path);
-        assertEquals(expected, result, "Path: " + path);
-    }
-
-    private static Stream<Arguments> provideFindPackageStartIndexTestCases() {
-        String pathWithClasses = "file:/path/to/target/classes/com/example";
-        int classesIndex = pathWithClasses.indexOf(MybatisConstants.CLASSES_DIR);
-        int expectedWithClasses = classesIndex != -1 ? 
-            classesIndex + MybatisConstants.CLASSES_DIR.length() : 0;
-        
-        String pathWithSlash = "com/example";
-        int lastSlash = pathWithSlash.lastIndexOf("/");
-        int expectedWithSlash = lastSlash != -1 && lastSlash + 1 < pathWithSlash.length() ? 
-            lastSlash + 1 : 0;
-        
-        return Stream.of(
-            // 包含 /classes/ 目录
-            Arguments.of(
-                pathWithClasses,
-                expectedWithClasses
-            ),
-            // jar 包，没有 classes 目录，有斜杠
-            Arguments.of(
-                pathWithSlash,
-                expectedWithSlash
-            ),
-            // 没有斜杠的路径
-            Arguments.of(
-                "com.example",
-                0
-            ),
-            // 空字符串
-            Arguments.of("", 0),
-            // 只有斜杠
-            Arguments.of("/", 0),
-            // 路径末尾是斜杠
-            Arguments.of("com/example/", 0)
-        );
-    }
-
     // ========== 测试 extractPackageFromResource ==========
 
     @Test
@@ -445,7 +397,7 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         String jarUrl = "jar:file:/app.jar!/mapper/UserMapper.class";
         // 可能返回 null 或有效包名，取决于 URL 解析
         // 由于 jar URL 中可能没有 classes 目录，结果可能为 null
-        // 这是正常的，因为 findPackageStartIndex 可能无法正确解析
+        // JAR 路径没有 classes 目录时，当前解析策略仍应保持不抛异常。
         // 不进行断言，因为两种结果都是可接受的
         assertDoesNotThrow(() -> method.invoke(null, jarUrl));
     }
@@ -484,20 +436,6 @@ class MapperPackageDetectorTest extends BaseUnitTest {
     }
 
     @Test
-    void testFindPackageStartIndex_withComplexPaths() throws Exception {
-        Method method = MapperPackageDetector.class.getDeclaredMethod("findPackageStartIndex", String.class);
-        method.setAccessible(true);
-        
-        // 测试复杂路径
-        int result1 = (Integer) method.invoke(null, "file:/very/long/path/to/target/classes/com/example");
-        assertTrue(result1 > 0, "应该找到 classes 目录后的位置");
-        
-        // 测试没有 classes 但有多个斜杠
-        int result2 = (Integer) method.invoke(null, "jar:/com/example/package");
-        assertTrue(result2 >= 0, "应该找到最后一个斜杠后的位置或返回 0");
-    }
-
-    @Test
     void testExtractPathBeforeMapper_withEdgeCases() throws Exception {
         Method method = MapperPackageDetector.class.getDeclaredMethod(
             "extractPathBeforeMapper", String.class, int.class);
@@ -531,29 +469,6 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         String result = (String) method.invoke(null, url, mapperIndex);
         // 应该能正常提取
         assertNotNull(result);
-    }
-
-    @Test
-    void testFindPackageStartIndex_withLastSlashAtEnd() throws Exception {
-        Method method = MapperPackageDetector.class.getDeclaredMethod("findPackageStartIndex", String.class);
-        method.setAccessible(true);
-        
-        // 测试最后一个斜杠在末尾的情况（lastSlash + 1 >= path.length()）
-        String path = "com/example/";
-        int result = (Integer) method.invoke(null, path);
-        // 应该返回 0，因为 lastSlash + 1 >= path.length()
-        assertEquals(0, result);
-    }
-
-    @Test
-    void testFindPackageStartIndex_withNoSlash() throws Exception {
-        Method method = MapperPackageDetector.class.getDeclaredMethod("findPackageStartIndex", String.class);
-        method.setAccessible(true);
-        
-        // 测试没有斜杠的路径
-        String path = "com.example";
-        int result = (Integer) method.invoke(null, path);
-        assertEquals(0, result);
     }
 
     // ========== 测试 detectMapperPackages 中的各种分支 ==========
@@ -728,7 +643,7 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         // 这种情况下，包路径为空，应该返回 null 或 "mapper"
         String url = "file:/path/to/target/classes/mapper/UserMapper.class";
         String result = (String) method.invoke(null, url);
-        // 实际实现会返回 "classes.mapper" 或 "mapper"，取决于 findPackageStartIndex 的实现
+        // classes 目录紧邻 mapper 时没有业务包名，必须忽略。
         assertNull(result);
     }
 
@@ -758,19 +673,6 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         // 应该使用最后一个 "!/" 之后的部分
         assertNotNull(result);
         assertTrue(result.contains("com/example"));
-    }
-
-    @Test
-    void testFindPackageStartIndex_withMultipleClassesDirs() throws Exception {
-        Method method = MapperPackageDetector.class.getDeclaredMethod("findPackageStartIndex", String.class);
-        method.setAccessible(true);
-        
-        // 测试包含多个 "/classes/" 的路径（应该使用第一个）
-        String path = "file:/path/to/classes/target/classes/com/example";
-        int result = (Integer) method.invoke(null, path);
-        // 应该使用第一个 "/classes/" 的位置
-        assertTrue(result > 0);
-        assertTrue(result < path.length());
     }
 
     @Test
@@ -837,4 +739,3 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         assertNull(result);
     }
 }
-

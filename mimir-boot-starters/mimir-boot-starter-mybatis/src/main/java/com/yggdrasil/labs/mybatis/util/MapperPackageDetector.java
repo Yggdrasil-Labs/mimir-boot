@@ -38,7 +38,7 @@ public final class MapperPackageDetector {
      * 则不会重复添加，因为默认包的通配符已经可以匹配到这些包。
      * 只添加不在默认包覆盖范围内的包（如其他组织或项目的 mapper 包）。
      *
-     * @return 检测到的 mapper 包集合（使用通配符模式，如 "com.example.**.mapper"）
+     * @return 检测到的 mapper 包集合（使用通配符模式，如 "com.example.mapper.**"）
      */
     public static Set<String> detectMapperPackages() {
         try {
@@ -219,13 +219,4 @@ public final class MapperPackageDetector {
         return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : exception.getClass().getSimpleName();
     }
 
-    private static int findPackageStartIndex(String path) {
-        int classesIndex = path.indexOf(MybatisConstants.CLASSES_DIR);
-        if (classesIndex >= 0) {
-            return classesIndex + MybatisConstants.CLASSES_DIR.length();
-        }
-        int lastSlash = path.lastIndexOf('/');
-        return lastSlash >= 0 && lastSlash + 1 < path.length() ? lastSlash + 1 : 0;
-    }
 }
-
