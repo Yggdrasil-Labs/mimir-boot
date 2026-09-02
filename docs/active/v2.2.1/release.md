@@ -1,11 +1,13 @@
 ---
 version: "v2.2.1"
 date: "2026-08-31"
-status: "verified"
+status: "in-progress"
 branch: "feature/foundation-quality-hardening"
 ---
 
 # Release — v2.2.1
+
+> 2026-09-02 终审代码补丁已分阶段提交。本文既有验证记录均为历史证据，仍不能替代干净 worktree 复验、远程 CI 与正式发布放行。
 
 ## Changelog
 
@@ -75,22 +77,22 @@ branch: "feature/foundation-quality-hardening"
 
 三次运行平均 delta 为 **+2322.71 ns/op（2.323 µs）**，三次运行中的最大 delta 为 **+2408.00 ns/op（2.408 µs）**，低于 20 µs 门槛。原始日志位于 `/tmp/mimir-boot-benchmark-1.log`、`/tmp/mimir-boot-benchmark-2.log` 和 `/tmp/mimir-boot-benchmark-3.log`。
 
-## 验证证据
 ## 底座质量强化验证证据
 
 - 发布制品 Mapper 发现、异步访问日志/MDC 生命周期、日志与 Feign 脱敏、RPC 自动装配、分页 Long 边界和 `Loggable` 生命周期均完成定向验证。
 - `mise exec java@17 -- ./mvnw clean verify` 于 2026-08-31 10:40 +0800 通过，15 个 reactor 模块成功。
+- 同一命令于 2026-09-02 11:36 +0800 在未提交终审补丁工作树再次通过，15 个 reactor 模块成功、97 份 Surefire/Failsafe 报告无 failures/errors/skipped；该证据不替代补丁提交后的干净工作树复验。
 - 三次独立 Maven/JVM 运行固定在 CPU 0，JDK 17.0.2，`MAVEN_OPTS=-Xms1g -Xmx1g -XX:+AlwaysPreTouch`；每次输出均确认 JVM 参数生效。
 
 | 运行 | delta ns/op |
 |------|------------:|
-| 1 | +2256.98 |
-| 2 | +1998.58 |
-| 3 | +2046.67 |
+| 1 | +1851.84 |
+| 2 | +1785.67 |
+| 3 | +1512.30 |
 
-三次算术平均为 **+2100.74 ns/op（2.101 µs）**，低于 20 µs 门槛。原始日志位于 `/tmp/mimir-boot-foundation-quality-benchmark-{1,2,3}.log`。
+三次算术平均为 **+1716.60 ns/op（1.717 µs）**，低于 20 µs 门槛。原始日志位于 `/tmp/mimir-boot-foundation-quality-benchmark-{1,2,3}.log`。
 
 - T1–T7 主提交及补充提交见技术债实施计划；T7 的 consumer 与签名 fixture 通过隔离仓库验证。
-- T9 在当前 HEAD 连续运行三次脱敏基准：三次运行平均 delta +2322.71 ns/op，运行最大 delta +2408.00 ns/op，均值低于 20 µs 门槛。
+- T9 于 2026-09-02 在未提交终审补丁工作树连续运行三次脱敏基准：三次运行平均 delta +1716.60 ns/op，均值低于 20 µs 门槛；该证据不替代补丁提交后的最终复验。
 - `test-suite-consumer.sh` 已完成 13 个发布前模块构建及独立 file repository consumer 1/1；签名门禁已验证 46 个制品和 `.asc`，失败 GPG fixture 正确阻断部署。签名预热模式曾因远端 TLS handshake 中断，使用完整种子 Maven 缓存重跑通过；该网络波动不改变代码门禁结论。
 - 本文档不宣称 Maven Central、GitHub Packages 或生产实例已发布；正式发布仍需既有 workflow、凭证和 GPG 门禁。

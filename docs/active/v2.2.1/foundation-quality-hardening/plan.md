@@ -1,19 +1,20 @@
 ---
 id: foundation-quality-hardening
 version: v2.2.1
-status: completed
+status: in-progress
 owner: YoungerYang-Y
 created: 2026-08-30
-updated: 2026-08-31
+updated: 2026-09-02
 ---
 
 # 底座质量强化 — 实施计划
 
 > Branch: feature/foundation-quality-hardening
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
+> Behavior Baseline SHA: 3730dd500fb1eb974abb2b43c4ba8dc71d8efd38
 > Worktree Path: /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot/.worktrees/foundation-quality-hardening
 > Started At: 2026-08-31 07:34:48 +0800
-> Updated At: 2026-08-31 10:42:00 +0800
+> Updated At: 2026-09-02 11:36:18 +0800
 > Effective Execution Mode: serial
 
 ## Goal
@@ -34,22 +35,22 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 - Commit Mode: per-task。
 - Ledger Mode: controller-commits。
-- 执行状态：COMPLETED（T1 至 T9 已完成）。
+- 执行状态：IN_PROGRESS（终审代码补丁已分阶段提交；等待最终复验）。
 
 ## Plan Verdict
 
 | 字段 | 当前值 |
 |------|--------|
-| Verdict | PASS |
-| Blocking Findings | 无 P0/P1；全量回归发现的 MyBatis 动态发现测试预期已在 `782c293` 修正。 |
-| Verification Evidence | `mise exec java@17 -- ./mvnw clean verify` 于 2026-08-31 10:40 +0800 通过；三次独立 CPU 0/JDK 17.0.2 基准平均 +2100.74 ns/op。 |
-| Release Readiness | VERIFIED_LOCAL（未推送、未发布、未验证远程 CI）。 |
+| Verdict | PENDING_FINAL_VERIFICATION |
+| Blocking Findings | 终审代码补丁已分阶段提交；必须在干净 worktree 重新执行全量验证后才能恢复 PASS。性能证据已通过。 |
+| Verification Evidence | 2026-09-02 22:22 +0800，终审代码补丁提交后、文档账本提交前的 worktree `clean verify` 已通过 15 个 Reactor 模块；最终干净 worktree 仍须复验。此前 97 份 Surefire/Failsafe 报告无 failures/errors/skipped；三次独立性能运行平均 +1716.60 ns/op。 |
+| Release Readiness | NOT_READY（本地提交已完成；未推送、未发布、未验证远程 CI）。 |
 
 ## Decision Log
 
 | ID | 决策 | 状态 | 证据 |
 |----|------|------|------|
-| DL-001 | T1–T8 实现、回归与发布证据均已通过，删除 TD-030 至 TD-035；对应实现提交为 e84073c/c3162b8/4bd5cd0/6bde77b/20067b6/8a2e872/a937d6b/9b646ff，补充回归修正为 782c293。 | completed | 定向验证已逐任务记录；2026-08-31 10:40 +0800 `clean verify` 通过；三次独立性能均值 +2100.74 ns/op。 |
+| DL-001 | T1–T8 历史实现与回归证据已通过；终审补丁覆盖 T1/T2/T3/T4/T5/T6/T8，须完成最终验证后才可再次关闭发布证据。 | in-progress | 终审补丁已提交为 `0002261`、`ac47c3f`、`aa52fa8`、`31343b7`、`6df8ee0`、`7e126b0`、`2ad47e0`；等待干净 worktree 最终复验。 |
 
 执行完成前不得把 `pending` 改为 `completed`；若任一债务未解决，必须保留对应 TD 条目，T9 与 Plan 保持未完成，且不得通过 Accepted Risks 绕过本组关闭门禁。
 
@@ -61,7 +62,7 @@ Java 17 + Spring Boot 3.3.13 + Maven 多模块。实现遵循模块现有边界�
 
 ## Global Constraints
 
-- 开始任何 Red 前，必须确认 Design 固定基线 `3730dd500fb1eb974abb2b43c4ba8dc71d8efd38` 是当前 HEAD 的祖先，并记录实际 Branch、Baseline SHA、Worktree Path 与时间。
+- 开始任何 Red 前，必须确认行为基线 `3730dd500fb1eb974abb2b43c4ba8dc71d8efd38` 与功能分支基线 `3596025c80c446eb99d58a891163bdd0f2b202ae` 均是当前 HEAD 的祖先，并记录实际 Branch、Baseline SHA、Worktree Path 与时间。
 - 首轮基线回归失败时立即停止，不得通过修改旧断言来掩盖 T1/T2/T3/T5 已完成行为的回退。
 - 只实现 IC-1 至 IC-9；不得引入 `Loggable` AOP、跨 ApplicationContext 静态状态重构、校验 wire format 变化或其他 Non-Goal。
 - 所有实现任务采用 TDD：先产生可归因的失败断言，再写最小实现，再执行定向验证。
@@ -132,7 +133,7 @@ flowchart LR
 | T2 | 异步请求等待完成 | `AccessLogFilterTest.defersUntilAsyncComplete` | T2 AC1 |
 | T2 | 异步超时 | `AccessLogFilterTest.logsAsyncTimeoutExactlyOnce` | T2 AC1 |
 | T2 | 异步错误 | `AccessLogFilterTest.logsAsyncErrorWithThrowableExactlyOnce` + `logsAsyncErrorWithoutThrowableExactlyOnce` | T2 AC1、AC3 |
-| T2 | 多轮异步派发重新注册监听器 | `AccessLogFilterTest.reRegistersOnlyEachDistinctAsyncContext` + `serializesConcurrentRedispatchAndTerminalCallbacks` | T2 AC2 |
+| T2 | 多轮异步派发重新注册监听器 | `AccessLogFilterTest.reRegistersOnlyEachDistinctAsyncContext` + `serializesConcurrentRedispatchAndTerminalCallbacks` + `AccessLogFilterServletIntegrationTest.reRegistersListenerWhenServletRestartsAsyncCycle` | T2 AC2 |
 | T2 | 异步监听器注册失败回退 | `AccessLogFilterTest.logsInitialRegistrationFailureWithoutPropagating` | T2 AC1、AC3 |
 | T2 | 异步已完成注册回退 | `AccessLogFilterTest.logsAlreadyCompletedAsyncContextWithoutPropagating` | T2 AC1 |
 | T2 | 后续异步派发注册失败回退 | `AccessLogFilterTest.logsRedispatchRegistrationFailureExactlyOnce` | T2 AC1、AC3 |
@@ -140,12 +141,12 @@ flowchart LR
 | T3 | 异步初始派发释放上下文 | `TraceInterceptorTest.releasesMdcAfterConcurrentHandlingStarted` + `WebInterceptorTest.releasesIpAfterConcurrentHandlingStarted` | T3 AC1 |
 | T3 | 异步错误路径清理上下文 | `TraceInterceptorTest.restoresSnapshotOnAsyncError` + `WebInterceptorTest.restoresIpOnAsyncError` | T3 AC1、AC2 |
 | T3 | 异步超时路径清理上下文 | `TraceInterceptorTest.restoresSnapshotOnAsyncTimeout` + `WebInterceptorTest.restoresIpOnAsyncTimeout` | T3 AC1、AC2 |
-| T4 | 普通键值和编码键遮蔽 | `SensitiveDataConverterTest.masksPlainAndSupportedEncodedKeys` | T4 AC1 |
+| T4 | 普通键值和编码键遮蔽 | `SensitiveDataConverterTest.masksJsonAndPercentEncodedPasswordValues` | T4 AC1 |
 | T4 | 转义引号值整体遮蔽 | `SensitiveDataConverterTest.masksEscapedQuotedValueAndPreservesTail` | T4 AC1 |
 | T4 | 异常链消息遮蔽且堆栈保留 | `SensitiveThrowableProxyConverterTest.masksThrowableGraphAndPreservesStructure` | T4 AC2 |
-| T6 | Core 与适配器均启用 | `FeignAutoConfigurationEndToEndTest.registersDefaultRpcAdapters` + `DubboAutoConfigurationTest.registersDefaultAdapter` | T6 AC1 |
-| T6 | Core 关闭时适配器默认不安装治理能力 | `FeignAutoConfigurationEndToEndTest.skipsDefaultAdaptersWhenCoreDisabled` + `DubboAutoConfigurationTest.skipsAdapterWhenCoreDisabled` | T6 AC1 |
-| T6 | Core 关闭且适配器显式开启 | `FeignAutoConfigurationEndToEndTest.skipsExplicitAdaptersWhenCoreDisabled` + `DubboAutoConfigurationTest.skipsExplicitAdapterWhenCoreDisabled` | T6 AC1 |
+| T6 | Core 与适配器均启用 | `FeignAutoConfigurationTest.registersDefaultAdapter` + `DubboAutoConfigurationTest.registersDefaultAdapter` | T6 AC1 |
+| T6 | Core 关闭时适配器默认不安装治理能力 | `FeignAutoConfigurationTest.skipsDefaultAdapterWhenCoreDisabled` + `DubboAutoConfigurationTest.skipsDefaultAdapterWhenCoreDisabled` | T6 AC1 |
+| T6 | Core 关闭且适配器显式开启 | `FeignAutoConfigurationTest.skipsExplicitAdapterWhenCoreDisabled` + `DubboAutoConfigurationTest.skipsExplicitAdapterWhenCoreDisabled` | T6 AC1 |
 | T6 | 单独关闭适配器 | `FeignAutoConfigurationTest.honorsAdapterSwitch` + `DubboAutoConfigurationTest.honorsAdapterSwitch` | T6 AC2 |
 | T5 | 成功调用不记录查询凭证 | `RpcFeignClientTest.shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches` | T5 AC1、AC3 |
 | T5 | URL userinfo 不进入观测元数据 | `RpcFeignClientTest.shouldSanitizeMetadataForAllUrlShapes` + `shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches` | T5 AC1、AC3 |
@@ -157,7 +158,9 @@ flowchart LR
 | T8 | 既有源码仍可编译 | `LoggableCompatibilityTest.compilesConsumerWithDeprecationDiagnostic` | T8 AC1、AC3 |
 | T8 | 反射元数据保持可读 | `LoggableCompatibilityTest.preservesAllAnnotationMembersAndDefaults` | T8 AC1 |
 | T8 | 预编译下游仍可运行 | `LoggableCompatibilityTest.linksLegacyConsumerAgainstCurrentLoggable` | T8 AC2 |
-| T8 | 文档明确迁移方向 | `Loggable.java` Javadoc 与 `mimir-boot-common/README.md` §6 | T8 AC4 |
+| T8 | 文档明确迁移方向 | `LoggableCompatibilityTest.documentsDeprecationMigrationWithoutRuntimePromise` | T8 AC4 |
+
+补充集成覆盖不计入 36 个 Spec Scenario：`MdcAsyncServletIntegrationTest.restoresMdcAcrossRealAsyncDispatchAndRedispatch` 验证真实 Servlet ASYNC redispatch；`AccessLogFilterServletIntegrationTest.reRegistersListenerWhenServletRestartsAsyncCycle` 验证容器重启异步周期时的 listener 重注册。
 
 ## T1 — Mapper 发布制品发现
 
@@ -176,10 +179,12 @@ flowchart LR
 
 **Acceptance Criteria:**
 
-- [ ] 真实 JAR fixture 使 `org.example.order.mapper.**` 出现在有效包集合，`basePackage` 仅含规范化后的 `org.example.order.mapper`，对应 `@Mapper` Bean 可调用。
-- [ ] 默认包去重；多段 `/mapper/` 取最后一段；坏 URL 的 WARN 含资源标识与解析原因且不影响好资源。
+- [x] 真实 JAR fixture 使 `org.example.order.mapper.**` 出现在有效包集合，`basePackage` 仅含规范化后的 `org.example.order.mapper`，对应 `@Mapper` Bean 可调用。
+- [x] 默认包去重；多段 `/mapper/` 取最后一段；坏 URL 的 WARN 含资源标识与解析原因且不影响好资源。
 
-**Execution:** Status=completed；Commit SHAs=[e84073cd3a0214dc9b17e0deec7906bd2b6ec0d9,782c293]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=2；Blocked Reason=null；Red Result=真实 JAR 集成夹具直接将 `org.example.order.mapper.**` 交给 scanner 时未注册 Mapper Bean；全量回归又暴露遗留固定输出预期；Verify Result=定向 MyBatis 属性测试 15 tests passed，随后 2026-08-31 10:40 +0800 `clean verify` 通过；AC Result=2/2 通过；agent=controller；mode=TDD；commit=required；owner=T1。
+**Execution:** Status=completed；Commit SHAs=[e84073c0a49a715ec4fe246428781ca86d4a2575,782c29356d45c87938e93e033242639bc7bba88e]；Dispatch Base SHA=3596025c80c446eb99d58a891163bdd0f2b202ae；Dispatch Ref=feature/foundation-quality-hardening；Attempts=2；Blocked Reason=null；Red Result=真实 JAR 集成夹具直接将 `org.example.order.mapper.**` 交给 scanner 时未注册 Mapper Bean；全量回归又暴露遗留固定输出预期；Verify Result=定向 MyBatis 属性测试 15 tests passed，随后 2026-08-31 10:40 +0800 `clean verify` 通过；AC Result=2/2 通过；agent=controller；mode=TDD；commit=completed；owner=T1。
+
+**终审补丁（2026-09-02）：** `MapperPackageDetector` Javadoc 示例已与实际返回契约统一为 `com.example.mapper.**`；已提交为 `0002261`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -197,27 +202,30 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failI
 
 ## T2 — 同步与异步访问日志终态
 
-**Interfaces:** `public AccessLogFilter(long slowThresholdMs, List<String> excludePaths)`；`public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException`；内部 listener 实现 `public void onComplete(AsyncEvent event)`、`onTimeout(AsyncEvent event)`、`onError(AsyncEvent event)`、`onStartAsync(AsyncEvent event)`，四个回调不向外抛异常；内部 `LifecycleState(phase, generation, claimedContexts)` 的 `claimedContexts` 为按 `==` 比较的不可变 `List<AsyncContext>` 快照；`AccessLogAutoConfiguration` 显式设置 async supported。
+**Interfaces:** `public AccessLogFilter(long slowThresholdMs, List<String> excludePaths)`；`public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException`；内部 listener 实现 `public void onComplete(AsyncEvent event)`、`onTimeout(AsyncEvent event)`、`onError(AsyncEvent event)`、`onStartAsync(AsyncEvent event)`，四个回调不向外抛异常；内部 `LifecycleState(phase, generation, claimedContexts)` 的 `claimedContexts` 为按 `==` 比较的不可变 `List<AsyncContext>` 快照，listener 捕获 generation 以区分新的异步周期和旧回调；`AccessLogAutoConfiguration` 显式设置 async supported。
 
 **Files:**
 
 - `mimir-boot-starters/mimir-boot-starter-log/src/main/java/com/yggdrasil/labs/log/web/AccessLogFilter.java`
 - `mimir-boot-starters/mimir-boot-starter-log/src/main/java/com/yggdrasil/labs/log/web/AccessLogAutoConfiguration.java`
 - `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/web/AccessLogFilterTest.java`
+- `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/web/AccessLogFilterServletIntegrationTest.java`
 - `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/web/AccessLogAutoConfigurationTest.java`
 - `mimir-boot-starters/mimir-boot-starter-log/README.md`
 
-**Behavior:** 映射访问日志 Behavior 的 11 个 Scenario 与 IC-2。每个 context 身份必须先通过 CAS 加入 `claimedContexts`、再恰好尝试一次注册；迟到旧、当前和并发重复 context 均不重复注册，null Throwable 使用 `ASYNC_ERROR_WITHOUT_THROWABLE`。
+**Behavior:** 映射访问日志 Behavior 的 11 个 Scenario 与 IC-2。首次 context 身份必须先通过 CAS 加入 `claimedContexts`、再恰好尝试一次注册；每个当前 generation 的 `onStartAsync` 都是新异步周期，即使容器复用 context 身份也必须注册下一代 listener；旧 generation 的终态回调不可进入 `TERMINAL`，并发重复回调不重复注册，null Throwable 使用 `ASYNC_ERROR_WITHOUT_THROWABLE`。
 
 **Acceptance Criteria:**
 
 - [x] 同步 200/404/500、同步异常、异步 complete/timeout/error、首次/后续注册失败和已完成回退均输出精确字段且每请求恰好一次。
-- [x] 每个不同 `AsyncContext` 引用身份先原子认领、再恰好一次 `addListener`，generation 等于成功认领的不同身份数且单调递增；C1→C2 后迟到 C1、重复 C2 和并发重复通知均为 no-op。
+- [x] 每个不同 `AsyncContext` 引用身份首次原子认领、再恰好一次 `addListener`；每次当前 generation 的 `onStartAsync` 均原子创建下一 generation 并注册 listener，即使 context 引用复用；C1→C2 后迟到 C1、旧 generation 的终态回调和并发重复通知均为 no-op。
 - [x] 完成/超时/错误/注册失败并发竞争仅一个 CAS 进入 TERMINAL；无 Throwable 错误精确输出 `ASYNC_ERROR_WITHOUT_THROWABLE`。
 - [x] starter-log README 的四个访问日志示例同步 `Status/Outcome/ErrorType/Duration`，并说明普通 HTTP 5xx 仍是 `COMPLETED/-`。
 - [x] `AccessLogAutoConfigurationTest.enablesAsyncSupport` 断言 `FilterRegistrationBean.isAsyncSupported()` 为 true。
 
-**Execution:** Status=completed；Commit SHAs=[c3162b84a3a92ce08cbfb869c2ee664c68127300]；Dispatch Base SHA=2ed482fc2538b2856e81dc62ddffcb1ff1bd82f6；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增 Outcome/ErrorType 与异步 listener 断言在旧实现失败；Verify Result=2026-08-31 09:37 +0800，T2 定向 Maven 回归 31 tests passed；AC Result=5/5；agent=controller；mode=TDD；commit=completed；owner=T2。
+**Execution:** Status=completed；Commit SHAs=[c3162b84a3a92ce08cbfb869c2ee664c68127300]；Dispatch Base SHA=2ed482fe60e6db0f9eb30db3a2b450db45b914d5；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增 Outcome/ErrorType 与异步 listener 断言在旧实现失败；Verify Result=2026-08-31 09:37 +0800，T2 定向 Maven 回归 31 tests passed；AC Result=5/5；agent=controller；mode=TDD；commit=completed；owner=T2。
+
+**终审补丁（2026-09-02）：** `AccessLogFilter` 收敛 generation/CAS 终态，新增终态响应与同步 `Error` 传播回归；真实 Servlet 重启异步周期测试断言完成前 0 条、完成后恰好 1 条访问日志；`AccessLogFilterTest.readmeExamplesDocumentTerminalOutcomeFields` 将 README 四个示例纳入可执行校验。已提交为 `ac47c3f`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -230,7 +238,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-mybatis -am -Dsurefire.failI
 **Verify:**
 
 ```bash
-mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=AccessLogFilterTest,AccessLogAutoConfigurationTest test
+mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false -Dtest=AccessLogFilterTest,AccessLogAutoConfigurationTest -Dit.test=AccessLogFilterServletIntegrationTest verify
 ```
 
 ## T3 — Web MDC 异步生命周期
@@ -243,15 +251,18 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 - `mimir-boot-starters/mimir-boot-starter-web/src/main/java/com/yggdrasil/labs/web/interceptor/WebInterceptor.java`
 - `mimir-boot-starters/mimir-boot-starter-web/src/test/java/com/yggdrasil/labs/web/interceptor/TraceInterceptorTest.java`
 - `mimir-boot-starters/mimir-boot-starter-web/src/test/java/com/yggdrasil/labs/web/interceptor/WebInterceptorTest.java`
+- `mimir-boot-starters/mimir-boot-starter-web/src/test/java/com/yggdrasil/labs/web/interceptor/MdcAsyncServletIntegrationTest.java`
 
 **Behavior:** 映射 HTTP MDC Behavior 的 4 个 Scenario 与 IC-3；完整恢复进入前快照，无关 key 不变，不传播业务线程池。
 
 **Acceptance Criteria:**
 
-- [x] 同步、异步初始派发、timeout/error 与 ASYNC redispatch 均恢复进入前的 `traceId/requestId/ip` 和无关 key。
+- [x] 同步、异步初始派发、timeout/error 与 ASYNC redispatch 均恢复进入前的 `traceId/requestId/ip` 和无关 key；嵌入式 Tomcat 真实 HTTP 验证 `DeferredResult` 初始派发、并发回调和 ASYNC redispatch。
 - [x] 进入前不存在的 key 最终不存在；HTTP 状态和异常身份不因 MDC 清理改变。
 
-**Execution:** Status=completed；Commit SHAs=[4bd5cd00de729f847fa905b69d6cc003e92bd6f5]；Dispatch Base SHA=6313d12c65f33e516c2b9f39389eaa28e9a0d596；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增异步回调测试在旧实现缺少 afterConcurrentHandlingStarted 时编译失败；Verify Result=2026-08-31 09:48 +0800，T3 定向 Maven 回归 25 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T3。
+**Execution:** Status=completed；Commit SHAs=[4bd5cd00de729f847fa905b69d6cc003e92bd6f5]；Dispatch Base SHA=6313d12d54cc6743cd9882f0852d5322936b431b；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增异步回调测试在旧实现缺少 afterConcurrentHandlingStarted 时编译失败；Verify Result=2026-08-31 09:48 +0800，T3 定向 Maven 回归 25 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T3。
+
+**终审补丁（2026-09-02）：** 新增嵌入式 Tomcat `DeferredResult` 异步重派发集成测试，证明三个托管 MDC key 恢复、外部 key 保留。已提交为 `31343b7`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -264,7 +275,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 **Verify:**
 
 ```bash
-mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=TraceInterceptorTest,WebInterceptorTest test
+mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-web -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=TraceInterceptorTest,WebInterceptorTest,MdcAsyncServletIntegrationTest test
 ```
 
 ## T4 — 普通消息与 Throwable 脱敏
@@ -280,17 +291,19 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-web -am -Dsurefire.failIfNoS
 - `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/converter/SensitiveThrowableProxyConverterTest.java`（新增）
 - `mimir-boot-starters/mimir-boot-starter-log/src/test/java/com/yggdrasil/labs/log/converter/SensitiveDataConverterBenchmark.java`
 
-**Behavior:** 映射脱敏 Behavior 的 3 个 Scenario 与 IC-4/IC-5；每次 converter 调用使用完整快照，Throwable 结构保留。
+**Behavior:** 映射脱敏 Behavior 的 3 个 Scenario 与 IC-4/IC-5；每次 converter 调用使用完整快照，Throwable 结构保留；存在 Throwable 时从消息新行开始、无 Throwable 时不额外输出空行。
 
 **Acceptance Criteria:**
 
 - [x] quoted value、奇偶反斜杠和既有 `%70assword` fixture 无敏感明文，tail sentinel 原样保留。
-- [x] cause/suppressed 消息无敏感明文，类型、堆栈和层级保留；`maskThrowable` 已注册，四个 pattern 显式引用且无隐式/重复 Throwable。
+- [x] cause/suppressed 消息无敏感明文，类型、堆栈和层级保留；`maskThrowable` 已注册，四个 pattern 显式引用且无隐式/重复 Throwable；converter 复用消息脱敏器，异常从消息新行开始且无异常时不额外空行。
 - [x] Benchmark 输出实际 `RuntimeMXBean.getInputArguments()`，可验证固定 JVM 参数。
 - [x] event 无 Throwable 时 `%maskThrowable` 精确返回空字符串。
 - [x] Benchmark 默认保持单进程阈值断言；仅当 `mimir.boot.log.mask.benchmark.enforce-threshold=false` 时跳过单进程断言、仍打印 delta 与 JVM 参数，供 T9 汇总三次均值。
 
-**Execution:** Status=completed；Commit SHAs=[6bde77b752dd515f47cc569361b5f505c2de33e6]；Dispatch Base SHA=f45c347c94a2f923bea77c33f1f20c6f0c949c45；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=转义引号 fixture 在旧实现泄露 tail 前明文，Throwable converter 类不存在；Verify Result=2026-08-31 09:56 +0800，功能回归 57 tests passed，默认基准平均增量 +2030.24 ns/op；AC Result=5/5；agent=controller；mode=TDD；commit=completed；owner=T4。
+**Execution:** Status=completed；Commit SHAs=[6bde77b752dd515f47cc569361b5f505c2de33e6]；Dispatch Base SHA=f45c34728a59c2fd62aed42de23d205d8596c43b；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=转义引号 fixture 在旧实现泄露 tail 前明文，Throwable converter 类不存在；Verify Result=2026-08-31 09:56 +0800，功能回归 57 tests passed，默认基准平均增量 +2030.24 ns/op；AC Result=5/5；agent=controller；mode=TDD；commit=completed；owner=T4。
+
+**终审补丁（2026-09-02）：** `%maskThrowable` 改为复用同一脱敏器，四处 pattern 改为消息与 Throwable 分行输出，并补充无 Throwable 空行断言。已提交为 `aa52fa8`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -321,9 +334,11 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-log -am -Dsurefire.failIfNoS
 
 - [x] 正常绝对、userinfo、相对、opaque、非法、null 和 `https:/orders?token=secret` 均得到 Spec 表中的精确三字段。
 - [x] 缺 host 的绝对层级 URL 精确输出 `[unknown-service]/[invalid-authority]/[invalid-authority]`；任何失败分支不回退原文。
-- [x] enabled/disabled、成功/失败 DEBUG 分支均无 userinfo/query/fragment；null URL 委托收到同一非 null Request 与 Options。
+- [x] enabled/disabled、成功/失败 DEBUG 分支均无 userinfo/query/fragment；null URL 无论传播关闭或传播开启且注入 Header，委托均收到同一非 null Request 与 Options。
 
-**Execution:** Status=completed；Commit SHAs=[20067b6d8e8037b68b21a04abe4e44bc59942c66]；Dispatch Base SHA=0516620dbebc1fc54374958e42e2fa90ff858688；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增 URL 观测夹具在旧实现暴露 userinfo/query，null URL 触发 NPE；Verify Result=2026-08-31 10:09 +0800，T5 定向 Maven 回归 19 tests passed；AC Result=3/3；agent=controller；mode=TDD；commit=completed；owner=T5。
+**Execution:** Status=completed；Commit SHAs=[20067b6fe02e71d70908b8a327866abd1e4ad546]；Dispatch Base SHA=051662037ba02cd41e88209cc4d7aa1baf7297ab；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=新增 URL 观测夹具在旧实现暴露 userinfo/query，null URL 触发 NPE；Verify Result=2026-08-31 10:09 +0800，T5 定向 Maven 回归 19 tests passed；AC Result=3/3；agent=controller；mode=TDD；commit=completed；owner=T5。
+
+**终审补丁（2026-09-02）：** 在注入传播头前保护 null URL，确保委托收到原始 `Request`；失败 DEBUG 不再附带可能含原始 URL 的 Throwable。已提交为 `6df8ee0`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -341,7 +356,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-feign -am -Dsurefire.failIfN
 
 ## T6 — RPC Core 与适配器条件
 
-**Interfaces:** `mimir.boot.rpc.core.enabled`（boolean，默认 true）；Feign/Dubbo/RPC Core 自动配置以 Core 属性和 `RpcHookChain`、`RpcTracerBridge` Bean 同时存在为治理适配器注册条件。
+**Interfaces:** `mimir.boot.rpc.core.enabled`（boolean，默认 true）；Feign/Dubbo 通过 `@AutoConfiguration(after = RpcCoreAutoConfiguration.class)` 显式固定在 Core 之后处理，并以 Core 属性和 `RpcHookChain`、`RpcTracerBridge` Bean 同时存在为治理适配器注册条件。
 
 **Files:**
 
@@ -359,8 +374,11 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-feign -am -Dsurefire.failIfN
 
 - [x] 默认组合三类治理 Bean 存在；Core=false 时无论适配器默认或显式 true，应用启动且适配器治理 Bean 不存在。
 - [x] 单独关闭 Feign/Dubbo 只影响对应适配器；不创建 no-op Core Bean，不新增配置键。
+- [x] Feign/Dubbo 的 `@AutoConfiguration.after` 均精确包含 `RpcCoreAutoConfiguration`，不依赖类名字母排序。
 
-**Execution:** Status=completed；Commit SHAs=[8a2e872a4bfb4a1c9b6d676430fff3304069a024]；Dispatch Base SHA=c79bc4f01aa60e6037ab3143e0b69a8fd6ec4d5d；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Core=false 时 Feign 治理 Bean 因缺少 RpcHookChain 启动失败；Verify Result=2026-08-31 10:18 +0800，四个配置测试 19 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T6。
+**Execution:** Status=completed；Commit SHAs=[8a2e87243189a627ef81fe9dd90ba44ea1cf4f86]；Dispatch Base SHA=c79bc4fe5de0504a1bef3c8d21fb1e86644b5b00；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Core=false 时 Feign 治理 Bean 因缺少 RpcHookChain 启动失败；Verify Result=2026-08-31 10:18 +0800，四个配置测试 19 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T6。
+
+**终审补丁（2026-09-02）：** Feign/Dubbo 显式声明 `@AutoConfiguration(after = RpcCoreAutoConfiguration.class)`，对应注解契约测试先 RED 后分别以 8/8、7/7 通过；补充 AC 1/1 通过。已提交为 `7e126b0`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -394,7 +412,7 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-starter-rpc-core,:mimir-boot-starter
 - [x] `Long.MAX_VALUE/1000` 的 totalPages 精确为 `9223372036854776`，hasNext 按 pageIndex=1 为 true。
 - [x] 可表示 offset 精确；不可表示时抛 `IllegalArgumentException("分页偏移量超出 Long 范围")`；既有纠正规则不变。
 
-**Execution:** Status=completed；Commit SHAs=[a937d6bcb9aa1f7785d1587ff4426ea739cbd33b]；Dispatch Base SHA=5adf4b984d57b6cc31533215cafd0d415f0f7527；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Long 极值下 offset 静默回绕、totalPages 先加后除溢出；Verify Result=2026-08-31 10:23 +0800，T7 定向 Maven 回归 12 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T7。
+**Execution:** Status=completed；Commit SHAs=[a937d6bb397641f605d08acb9817c8928d5b089a]；Dispatch Base SHA=5adf4b93b1e27019a7f35a32828ba9421c7f2066；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Long 极值下 offset 静默回绕、totalPages 先加后除溢出；Verify Result=2026-08-31 10:23 +0800，T7 定向 Maven 回归 12 tests passed；AC Result=2/2；agent=controller；mode=TDD；commit=completed；owner=T7。
 
 **Task Completion Gate:**
 
@@ -431,7 +449,9 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 - [x] 当前下游最小源码启用 `-Xlint:deprecation` 后编译成功，且诊断精确指向 `Loggable`。
 - [x] Javadoc/README 明确无内置运行时消费者、v2.2.1 弃用、3.0 移除，不声称自动记录日志。
 
-**Execution:** Status=completed；Commit SHAs=[9b646ff5ec489e78d2f61c9b30c3b0ac0c97720f]；Dispatch Base SHA=dccdcacdfc96887f6d6415ed30127b7844704a13；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Loggable 缺少弃用元数据时，反射兼容性断言失败；Verify Result=2026-08-31 10:31 +0800，T8 定向 Maven 回归 3 tests passed；AC Result=4/4；agent=controller；mode=TDD；commit=completed；owner=T8。
+**Execution:** Status=completed；Commit SHAs=[9b646ff07a12a2dccba1f54bc6d590a489e0280f]；Dispatch Base SHA=dccdcacf69e6a04c222f307e19fd4cf37ace18dc；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=Loggable 缺少弃用元数据时，反射兼容性断言失败；Verify Result=2026-08-31 10:31 +0800，T8 定向 Maven 回归 3 tests passed；AC Result=4/4；agent=controller；mode=TDD；commit=completed；owner=T8。
+
+**终审补丁（2026-09-02）：** 新增 `documentsDeprecationMigrationWithoutRuntimePromise`，直接校验源码 Javadoc 与 common README 的无运行时消费者、3.0 移除和无自动记录承诺；已提交为 `2ad47e0`，最终状态由 T9 统一跟踪。
 
 **Task Completion Gate:**
 
@@ -467,20 +487,20 @@ mise exec java@17 -- ./mvnw -pl :mimir-boot-common -am -Dsurefire.failIfNoSpecif
 **Acceptance Criteria:**
 
 - [x] 36 个 Scenario 均有测试方法/断言映射，8 个 Behavior 与 9 个 IC 无遗漏。
-- [x] `clean verify` 通过；README、release 与版本索引和实际实现一致；需求 index 更新为 `status: verified`，Spec frontmatter 更新为 `status: shipped`，Design 更新为 `status: verified`，Plan 更新为 `status: completed`，需求 index 的文档状态同步为“已验证/已完成”，并继续标明 8/36/9。
-- [x] TD-030 至 TD-035 仅在各自实现与验证证据通过后从 `docs/active/tech-debt-tracker.md` 删除；`DL-001` 更新为 `completed`，证据列记录 T1–T8 对应提交与验证命令。任一条目未解决时必须保留该条目，T9 与 Plan 不得完成。
-- [x] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs。
-- [x] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
+- [ ] 在终审补丁提交后的干净 worktree 执行 `clean verify`；README、release 与版本索引再同步为实际最终验证状态。
+- [x] 终审补丁已进入提交区间，`DL-001` 与 T1/T2/T3/T4/T5/T6/T8 账本已回填；T9 仍待最终验证。
+- [x] 三次独立性能运行均证明固定 JVM 参数生效，三次 delta 算术平均不超过 20 µs（2026-09-02：+1716.60 ns/op）。
+- [ ] Final Gate 的文件边界、任务提交归属、Accepted Risks 与 Plan Verdict 全部闭合。
 
-**Execution:** Status=completed；Commit SHAs=[007de8e7e79203b870397188b33d14354809e638]；Dispatch Base SHA=4a8227c4a9d3b9859dc437911bad2a0f48105626；Dispatch Ref=feature/foundation-quality-hardening；Attempts=1；Blocked Reason=null；Red Result=36 个 Scenario 映射表与实现提交账本已建立；Verify Result=2026-08-31 10:40 +0800 `clean verify` 通过，三次独立性能均值 +2100.74 ns/op；AC Result=5/5；agent=controller；mode=verification；commit=completed；owner=T9。
+**Execution:** Status=in-progress；Commit SHAs=[007de8e7e79203b870397188b33d14354809e638,ff10dbb07bbe91f842c525da2c35cf2a0c2b82be]；Dispatch Base SHA=4a8227c7e879c013b624faa8d963fa2cc69369f7；Dispatch Ref=feature/foundation-quality-hardening；Attempts=5；Blocked Reason=等待终审补丁提交后的干净 worktree 最终复验；Red Result=终审复核确认真实 Servlet 重启异步周期测试可能被同步 finally 兜底误通过，且 Scenario 表、测试方法名和提交 SHA 无法机械追踪；Verify Result=2026-09-02 22:22 +0800 终审代码补丁提交后、文档账本提交前的 `clean verify` 已通过全部 15 个 Reactor 模块；此前 97 份 Surefire/Failsafe 报告无 failures/errors/skipped；三次独立性能运行平均 +1716.60 ns/op；AC Result=待终审补丁提交后的干净 worktree `clean verify`；agent=controller；mode=verification；commit=pending；owner=T9。
 
 **Task Completion Gate:**
 
 - [x] Red：建立 Scenario→测试→提交追踪表并列出缺口。
 - [x] Green：只补发布/台账证据，不修改 T1–T8 实现。
-- [x] Review：独立复核无 P0/P1。
-- [x] Verify：全量构建、性能与文档检查通过。
-- [x] Commit：仅治理文档，提交信息 `docs(v2.2.1): 闭环底座质量强化证据`。
+- [x] Review：2026-09-02 独立复核确认无 P0/P1；终审发现的剩余 P2 文档状态已同步修正。
+- [ ] Verify：终审代码补丁提交后已完成一次全量构建；等待文档账本提交后的干净 worktree 复验，性能证据已通过。
+- [ ] Commit：等待提交终审状态账本与最终验证证据。
 
 ### Performance Evidence
 
@@ -532,11 +552,11 @@ test "$(rg -c '^## T[0-9]+ ' docs/active/v2.2.1/foundation-quality-hardening/pla
 
 控制器逐项确认：
 
-- [x] `<Baseline SHA>..HEAD` 中每个实现提交只归属一个 Task，提交 message 与 Task 一致；计划账本提交单独维护。
-- [x] `git diff --name-only` 未出现 Design/Plan 未授权的源文件、公开配置或依赖变更。
-- [x] T1–T8 定向验证、T9 全量验证与三次性能证据均可重放。
-- [x] release、active index、版本 index 和需求 index 与真实提交状态一致；已解决的 TD-030 至 TD-035 已从活跃台账删除，`DL-001` 已记录实际关闭证据。
+- [ ] `<Baseline SHA>..HEAD` 中每个实现提交只归属一个 Task，提交 message 与 Task 一致；计划账本提交单独维护。
+- [ ] `git diff --name-only` 未出现 Design/Plan 未授权的源文件、公开配置或依赖变更。
+- [ ] T1–T8 定向验证、T9 全量验证与三次性能证据均可重放。
+- [ ] release、active index、版本 index 和需求 index 与真实提交状态一致；已解决的 TD-030 至 TD-035 已从活跃台账删除，`DL-001` 已记录实际关闭证据。
 - [x] Accepted Risks 只有已获用户确认的条目；无风险时保留 AR-000。
-- [x] Plan Verdict 更新为最终结论，Blocking Findings、Verification Evidence 与 Release Readiness 均有证据。
+- [ ] Plan Verdict 更新为最终结论，Blocking Findings、Verification Evidence 与 Release Readiness 均有证据。
 
 本计划不授权 push、merge、发布或远程 CI 操作；这些动作需要用户另行明确授权。
