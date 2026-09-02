@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -31,9 +32,9 @@ public class SqlLogMaskUtils {
             "password", "passwd", "pwd", "token", "accesstoken", "refreshtoken", "idtoken",
             "secret", "clientsecret", "authorization", "apikey");
 
-    private static final Pattern SENSITIVE_SQL_ASSIGNMENT = Pattern.compile(
-            "(?i)\\b(password|passwd|pwd|token|access[_-]?token|refresh[_-]?token|id[_-]?token|secret|client[_-]?secret|authorization|api[_-]?key)"
-                    + "\\b(\\s*=\\s*)(?:'[^']*'|\\\"[^\\\"]*\\\"|[^\\s,;)]+)");
+    private static final Pattern SQL_ASSIGNMENT = Pattern.compile(
+            "([A-Za-z][A-Za-z0-9_-]*)(\\s*=\\s*)(?:'[^']*'|\\\"[^\\\"]*\\\"|[^\\s,;)]+)",
+            Pattern.CASE_INSENSITIVE);
 
     private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
@@ -52,8 +53,16 @@ public class SqlLogMaskUtils {
         if (sql == null || sql.isEmpty()) {
             return sql;
         }
-        return SENSITIVE_SQL_ASSIGNMENT.matcher(sql)
-                .replaceAll("$1$2" + CommonConstants.MASKED);
+        Matcher matcher = SQL_ASSIGNMENT.matcher(sql);
+        StringBuffer maskedSql = new StringBuffer();
+        while (matcher.find()) {
+            if (isSensitiveParameterName(matcher.group(1))) {
+                String replacement = matcher.group(1) + matcher.group(2) + CommonConstants.MASKED;
+                matcher.appendReplacement(maskedSql, Matcher.quoteReplacement(replacement));
+            }
+        }
+        matcher.appendTail(maskedSql);
+        return maskedSql.toString();
     }
 
     private static Object maskParams(Object params, int depth, IdentityHashMap<Object, Boolean> visited) {

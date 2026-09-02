@@ -92,7 +92,8 @@ class AccessLogFilterTest extends BaseUnitTest {
         String message = event.getFormattedMessage();
         assertTrue(message.contains("Outcome=[COMPLETED]"));
         assertTrue(message.contains("ErrorType=[-]"));
-        assertTrue(message.matches(".*Duration=\\[[0-9]+ms\\].*"));
+        assertTrue(message.matches(".*Duration=\\[[0-9]+ms\\].*"),
+                "访问日志应包含毫秒耗时字段: " + message);
         AssertUtils.assertLogLevel(event, Level.INFO);
         AssertUtils.assertLogStatus(event, 200);
         AssertUtils.assertLogContains(event, "GET");

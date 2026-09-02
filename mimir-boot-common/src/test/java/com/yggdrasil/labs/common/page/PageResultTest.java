@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PageResultTest {
 
+    private static final List<String> SINGLE_ENTRY_DATA = List.of("a");
+
     @Test
     void of_computes_totalPages_hasNext_hasPrevious() {
         PageResult<Integer> pr = PageResult.of(List.of(1, 2, 3), 23L, 2L, 10L);
@@ -21,15 +23,15 @@ class PageResultTest {
     void validated_constructor_and_factories_reject_invalid_numeric_values() {
         assertAll(
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> new PageResult<>(List.of("a"), null, 1L, 10L)),
+                        () -> new PageResult<>(SINGLE_ENTRY_DATA, null, 1L, 10L)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.of(List.of("a"), 1L, null, 10L)),
+                        () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, null, 10L)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.of(List.of("a"), 1L, 1L, null)),
+                        () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, 1L, null)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> new PageResult<>(List.of("a"), -1L, 1L, 10L)),
+                        () -> new PageResult<>(SINGLE_ENTRY_DATA, -1L, 1L, 10L)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.of(List.of("a"), 1L, 0L, 10L)),
+                        () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, 0L, 10L)),
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> PageResult.empty(1L, 0L))
         );
@@ -63,4 +65,3 @@ class PageResultTest {
         assertFalse(result.getHasPrevious());
     }
 }
-

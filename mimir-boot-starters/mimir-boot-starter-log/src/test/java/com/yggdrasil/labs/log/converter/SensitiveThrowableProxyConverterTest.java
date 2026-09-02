@@ -107,7 +107,7 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
     }
 
     @Test
-    void configuredPatternKeepsThrowableOnNewLineWithoutBlankLineWhenAbsent() throws Exception {
+    void configuredPatternKeepsThrowableOnNewLineWithoutBlankLineWhenAbsent() {
         PatternLayout layout = new PatternLayout();
         LoggerContext context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
         layout.setContext(context);

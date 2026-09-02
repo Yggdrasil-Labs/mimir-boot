@@ -69,44 +69,60 @@ public final class MapperPackageDetector {
      * @return 检测到的外部 Mapper 包通配符集合
      */
     static Set<String> detectMapperPackages(Resource... resources) {
-        Set<String> mapperPackages = new LinkedHashSet<>();
-        Set<String> detectedPackages = new LinkedHashSet<>();
         if (resources == null) {
-            return mapperPackages;
+            return new LinkedHashSet<>();
         }
 
+        Set<String> detectedPackages = new LinkedHashSet<>();
         for (Resource resource : resources) {
-            if (resource == null) {
-                continue;
-            }
-
-            String resourceDescription = describeResource(resource);
-            try {
-                if (!resource.isReadable()) {
-                    LOGGER.warn("跳过不可读的 Mapper 资源 resource={}, reason=resource is not readable",
-                            resourceDescription);
-                    continue;
-                }
-
-                String packageName = extractPackageFromResource(resource);
-                if (StringUtils.hasText(packageName)
-                        && packageName.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX)) {
-                    detectedPackages.add(packageName);
-                }
-            } catch (Exception e) {
-                LOGGER.warn("跳过无法处理的 Mapper 资源 resource={}, reason={}",
-                        resourceDescription, messageOf(e), e);
-            }
+            addDetectedPackage(detectedPackages, resource);
         }
 
+        Set<String> mapperPackages = toExternalMapperPackages(detectedPackages);
+        if (!mapperPackages.isEmpty() && LOGGER.isDebugEnabled()) {
+            LOGGER.debug("自动检测到 {} 个 Mapper 包: {}", mapperPackages.size(), mapperPackages);
+        }
+        return mapperPackages;
+    }
+
+    private static void addDetectedPackage(Set<String> detectedPackages, Resource resource) {
+        String packageName = detectMapperPackage(resource);
+        if (isMapperPackage(packageName)) {
+            detectedPackages.add(packageName);
+        }
+    }
+
+    private static String detectMapperPackage(Resource resource) {
+        if (resource == null) {
+            LOGGER.warn("跳过无法处理的 Mapper 资源 resource=null, reason=resource is null");
+            return null;
+        }
+
+        String resourceDescription = describeResource(resource);
+        try {
+            if (resource.isReadable()) {
+                return extractPackageFromResource(resource);
+            }
+            LOGGER.warn("跳过不可读的 Mapper 资源 resource={}, reason=resource is not readable",
+                    resourceDescription);
+        } catch (Exception e) {
+            LOGGER.warn("跳过无法处理的 Mapper 资源 resource={}, reason={}",
+                    resourceDescription, messageOf(e), e);
+        }
+        return null;
+    }
+
+    private static boolean isMapperPackage(String packageName) {
+        return StringUtils.hasText(packageName)
+                && packageName.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX);
+    }
+
+    private static Set<String> toExternalMapperPackages(Set<String> detectedPackages) {
+        Set<String> mapperPackages = new LinkedHashSet<>();
         for (String pkg : detectedPackages) {
             if (!pkg.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX + ".")) {
                 mapperPackages.add(pkg + MybatisConstants.PACKAGE_WILDCARD_SUFFIX);
             }
-        }
-
-        if (!mapperPackages.isEmpty() && LOGGER.isDebugEnabled()) {
-            LOGGER.debug("自动检测到 {} 个 Mapper 包: {}", mapperPackages.size(), mapperPackages);
         }
         return mapperPackages;
     }
@@ -117,6 +133,7 @@ public final class MapperPackageDetector {
      * @param resource 资源对象
      * @return 包名，如果无法提取则返回 null
      */
+    @SuppressWarnings("java:S2583") // 自定义 Resource 可能返回 null；IOException 降级契约仍需保留
     private static String extractPackageFromResource(Resource resource) {
         String resourceDescription = describeResource(resource);
         try {

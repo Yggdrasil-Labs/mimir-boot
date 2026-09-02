@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -178,7 +179,7 @@ class AccessLogFilterServletIntegrationTest {
                     break;
                 }
             }
-            Thread.sleep(10);
+            awaitLogPollInterval();
         }
 
         List<ILoggingEvent> stableMatches = matchingAccessLogs(uri);
@@ -190,6 +191,14 @@ class AccessLogFilterServletIntegrationTest {
         assertTrue(message.contains("Status=[" + status + "]"));
         assertTrue(message.contains("Outcome=[COMPLETED]"));
         assertTrue(message.contains("ErrorType=[-]"));
+    }
+
+    private void awaitLogPollInterval() throws InterruptedException {
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
+        if (Thread.interrupted()) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("等待访问日志时线程被中断");
+        }
     }
 
     private List<ILoggingEvent> matchingAccessLogs(String uri) {

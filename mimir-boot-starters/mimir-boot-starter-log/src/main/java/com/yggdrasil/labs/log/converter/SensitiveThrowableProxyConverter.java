@@ -9,6 +9,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
  * @author Yggdrasil Labs
  * @since 2.2.1
  */
+@SuppressWarnings("java:S110") // Logback conversionRule 要求继承 ThrowableProxyConverter 才能保留异常渲染契约。
 public class SensitiveThrowableProxyConverter extends ThrowableProxyConverter {
 
     private final SensitiveDataConverter dataConverter = new SensitiveDataConverter();

@@ -194,6 +194,7 @@ public class RpcDubboFilter implements Filter {
         return result != null && result.hasException() ? result.getException() : null;
     }
 
+    @SuppressWarnings("java:S1181") // trace 清理必须吞掉所有 Throwable，避免覆盖 RPC 主结果
     private void closeScope(RpcTraceScope scope, Throwable primaryFailure) {
         try {
             scope.close();
@@ -207,7 +208,7 @@ public class RpcDubboFilter implements Filter {
 
     private Map<String, String> copyAttachments(Map<String, Object> source) {
         if (source == null) {
-            return null;
+            return Map.of();
         }
         Map<String, String> copied = new LinkedHashMap<>();
         source.forEach((key, value) -> copied.put(key, value == null ? null : String.valueOf(value)));

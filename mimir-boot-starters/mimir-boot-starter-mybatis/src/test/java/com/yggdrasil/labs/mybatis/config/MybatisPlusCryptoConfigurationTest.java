@@ -184,7 +184,7 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
-    void configuredBeans_keepLegacyNames_and_onlyWriteV2_when_context_and_switch_are_enabled() throws Exception {
+    void configuredBeans_keepLegacyNames_and_onlyWriteV2_when_context_and_switch_are_enabled() {
         String key = CryptoUtils.generateKey();
         runner.withPropertyValues(
                         "mimir.boot.mybatis.crypto-enabled=true",

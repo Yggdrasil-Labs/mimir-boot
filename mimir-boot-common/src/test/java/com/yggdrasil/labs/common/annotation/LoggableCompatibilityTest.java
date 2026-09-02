@@ -21,8 +21,10 @@ import org.junit.jupiter.api.Test;
 
 class LoggableCompatibilityTest {
 
+    // 仅兼容性契约（反射、编译与链接）测试刻意引用 forRemoval API；生产代码没有运行时消费者。
     private static final String LEGACY_FIXTURE_ROOT = "/compatibility/loggable-pre-v2.2.1/";
 
+    @SuppressWarnings({"removal", "java:S5738"})
     @Test
     void preservesAllAnnotationMembersAndDefaults() throws Exception {
         Deprecated deprecated = Loggable.class.getAnnotation(Deprecated.class);
@@ -39,6 +41,7 @@ class LoggableCompatibilityTest {
         assertEquals(true, Loggable.class.getMethod("logExecutionTime").getDefaultValue());
     }
 
+    @SuppressWarnings({"removal", "java:S5738"})
     @Test
     void compilesConsumerWithDeprecationDiagnostic() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -75,6 +78,7 @@ class LoggableCompatibilityTest {
         assertFalse(readme.contains("自动记录日志"));
     }
 
+    @SuppressWarnings({"removal", "java:S5738"})
     @Test
     void linksLegacyConsumerAgainstCurrentLoggable() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();

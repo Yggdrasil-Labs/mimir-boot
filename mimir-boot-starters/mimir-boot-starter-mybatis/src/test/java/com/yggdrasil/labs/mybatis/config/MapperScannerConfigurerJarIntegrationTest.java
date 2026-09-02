@@ -28,8 +28,10 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 
 class MapperScannerConfigurerJarIntegrationTest {
@@ -72,7 +74,7 @@ class MapperScannerConfigurerJarIntegrationTest {
                 Class<?> mapperType = Class.forName("org.example.order.mapper.OrderMapper", true, jarClassLoader);
                 Object mapper = context.getBean(mapperType);
                 assertTrue(context.containsBean("orderMapper"));
-                assertTrue("ok".equals(mapperType.getMethod("probe").invoke(mapper)));
+                assertEquals("ok", mapperType.getMethod("probe").invoke(mapper));
             } finally {
                 context.close();
             }
@@ -100,7 +102,7 @@ class MapperScannerConfigurerJarIntegrationTest {
 
     private void compileMapper(Path compiledClasses) throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertTrue(compiler != null, "当前 JDK 必须提供 JavaCompiler");
+        assertNotNull(compiler, "当前 JDK 必须提供 JavaCompiler");
         Files.createDirectories(compiledClasses);
         JavaFileObject source = new SimpleJavaFileObject(
                 URI.create("string:///org/example/order/mapper/OrderMapper.java"), JavaFileObject.Kind.SOURCE) {

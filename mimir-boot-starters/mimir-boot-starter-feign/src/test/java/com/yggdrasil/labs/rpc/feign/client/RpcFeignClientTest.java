@@ -487,8 +487,9 @@ class RpcFeignClientTest {
             IllegalStateException failure = new IllegalStateException(
                     "request failed: https://user:password@api.example.test:8443/orders?token=secret");
             when(delegate.execute(same(request), any())).thenThrow(failure);
+            Request.Options options = new Request.Options();
 
-            Assertions.assertThrows(IllegalStateException.class, () -> client.execute(request, new Request.Options()));
+            Assertions.assertThrows(IllegalStateException.class, () -> client.execute(request, options));
 
             ILoggingEvent event = appender.list.stream()
                     .filter(loggingEvent -> loggingEvent.getFormattedMessage().contains("HTTP call failed"))

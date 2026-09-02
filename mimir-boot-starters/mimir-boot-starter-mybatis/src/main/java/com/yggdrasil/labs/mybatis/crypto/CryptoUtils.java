@@ -6,6 +6,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -141,7 +142,8 @@ public class CryptoUtils {
         return new SecretKeySpec(Base64.getDecoder().decode(key), ALGORITHM);
     }
 
-    private static Cipher initCipher(int mode, String key, String aad, byte[] iv) throws Exception {
+    private static Cipher initCipher(int mode, String key, String aad, byte[] iv)
+            throws GeneralSecurityException {
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(mode, keySpec(key), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
         cipher.updateAAD(toApplicationAad(aad));

@@ -9,6 +9,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("java:S3577")
+// 基准类由手工命令按原名发现，故意不符合普通 Surefire *Test 命名。
 class SensitiveDataConverterBenchmark extends BaseUnitTest {
 
     private static final int WARMUP_ITERATIONS = 100_000;
@@ -17,6 +19,7 @@ class SensitiveDataConverterBenchmark extends BaseUnitTest {
     private static final String SAMPLE_COUNT_PROPERTY = "mimir.boot.log.mask.benchmark.samples";
     private static final String ENFORCE_THRESHOLD_PROPERTY = "mimir.boot.log.mask.benchmark.enforce-threshold";
     private static final double MAX_AVERAGE_DELTA_NANOS = 20_000.0;
+    @SuppressWarnings("java:S1068") // sink 仅作为 volatile 黑洞，阻止 JIT 消除测量路径。
     private static volatile int sink;
     private static final String MESSAGE = "password=benchmark-value token=benchmark-value accessKey=benchmark-value "
             + "payload=" + "x".repeat(943);

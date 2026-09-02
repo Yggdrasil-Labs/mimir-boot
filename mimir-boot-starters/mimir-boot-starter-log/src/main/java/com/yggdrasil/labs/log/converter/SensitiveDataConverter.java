@@ -40,6 +40,9 @@ public class SensitiveDataConverter extends ClassicConverter {
                                              String replacement) {
     }
 
+    private record SensitiveFieldValue(int valueStart, int valueEnd) {
+    }
+
     @Override
     public void start() {
         CONFIGURATION_CONTEXT.compareAndSet(null, getContext());
@@ -214,46 +217,59 @@ public class SensitiveDataConverter extends ClassicConverter {
         }
         StringBuilder masked = null;
         int copiedUntil = 0;
-        for (int index = 0; index < message.length(); index++) {
-            if (!isPotentialFieldInitial(message.charAt(index))) {
-                continue;
-            }
-            String fieldName = matchingFieldName(message, index, fieldNames);
-            if (fieldName == null) {
-                continue;
-            }
-            int cursor = index + fieldName.length();
-            if (cursor < message.length() && isQuote(message.charAt(cursor))) {
-                cursor++;
-            }
-            while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
-                cursor++;
-            }
-            if (cursor >= message.length() || (message.charAt(cursor) != '=' && message.charAt(cursor) != ':')) {
-                continue;
-            }
-            cursor++;
-            while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
-                cursor++;
-            }
-            int valueStart = cursor;
-            int valueEnd = valueEnd(message, valueStart);
-            if (valueEnd == valueStart) {
-                continue;
-            }
-            if (masked == null) {
-                masked = new StringBuilder(message.length());
-            }
-            masked.append(message, copiedUntil, valueStart);
-            if (isQuote(message.charAt(valueStart))) {
-                masked.append(message.charAt(valueStart)).append(replacement).append(message.charAt(valueStart));
+        int index = 0;
+        while (index < message.length()) {
+            SensitiveFieldValue fieldValue = findSensitiveFieldValue(message, index, fieldNames);
+            if (fieldValue == null) {
+                index++;
             } else {
-                masked.append(replacement);
+                if (masked == null) {
+                    masked = new StringBuilder(message.length());
+                }
+                masked.append(message, copiedUntil, fieldValue.valueStart());
+                appendMaskedFieldValue(masked, message, fieldValue.valueStart(), replacement);
+                copiedUntil = fieldValue.valueEnd();
+                index = fieldValue.valueEnd();
             }
-            copiedUntil = valueEnd;
-            index = valueEnd - 1;
         }
         return masked == null ? message : masked.append(message, copiedUntil, message.length()).toString();
+    }
+
+    private static SensitiveFieldValue findSensitiveFieldValue(String message, int index,
+                                                               List<String> fieldNames) {
+        if (!isPotentialFieldInitial(message.charAt(index))) {
+            return null;
+        }
+        String fieldName = matchingFieldName(message, index, fieldNames);
+        if (fieldName == null) {
+            return null;
+        }
+        int cursor = index + fieldName.length();
+        if (cursor < message.length() && isQuote(message.charAt(cursor))) {
+            cursor++;
+        }
+        while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
+            cursor++;
+        }
+        if (cursor >= message.length() || (message.charAt(cursor) != '=' && message.charAt(cursor) != ':')) {
+            return null;
+        }
+        cursor++;
+        while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
+            cursor++;
+        }
+        int valueStart = cursor;
+        int valueEnd = valueEnd(message, valueStart);
+        return valueEnd == valueStart ? null : new SensitiveFieldValue(valueStart, valueEnd);
+    }
+
+    private static void appendMaskedFieldValue(StringBuilder masked, String message, int valueStart,
+                                               String replacement) {
+        if (isQuote(message.charAt(valueStart))) {
+            masked.append(message.charAt(valueStart)).append(replacement).append(message.charAt(valueStart));
+        } else {
+            masked.append(replacement);
+        }
     }
 
     private static String matchingFieldName(String message, int index, List<String> fieldNames) {
@@ -293,12 +309,12 @@ public class SensitiveDataConverter extends ClassicConverter {
                 char current = message.charAt(cursor);
                 if (current == '\\') {
                     slashCount++;
-                    continue;
+                } else {
+                    if (current == firstCharacter && slashCount % 2 == 0) {
+                        return cursor + 1;
+                    }
+                    slashCount = 0;
                 }
-                if (current == firstCharacter && slashCount % 2 == 0) {
-                    return cursor + 1;
-                }
-                slashCount = 0;
             }
             return message.length();
         }

@@ -129,6 +129,22 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         }
     }
 
+    @Test
+    void warnsAndSkipsNullResourceWithoutAffectingValidResources() throws Exception {
+        ListAppender<ILoggingEvent> appender = LogTestUtils.setupLogger(MapperPackageDetector.class.getName());
+        try {
+            Set<String> packages = MapperPackageDetector.detectMapperPackages(
+                    null,
+                    resource("good resource", "jar:file:/fixtures/good.jar!/org/example/order/mapper/OrderMapper.class"));
+
+            assertEquals(Set.of("org.example.order.mapper.**"), packages);
+            assertTrue(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .anyMatch(message -> message.contains("resource=null") && message.contains("reason=")));
+        } finally {
+            LogTestUtils.cleanupLogger(MapperPackageDetector.class.getName(), appender);
+        }
+    }
+
     private static Resource resource(String description, String url) throws Exception {
         return resource(description, new URL(url));
     }

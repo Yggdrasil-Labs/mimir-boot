@@ -65,6 +65,17 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     // ========== maskParams 方法测试 ==========
 
     @Test
+    void maskSql_masksSensitiveAssignmentsAndPreservesOtherAssignments() {
+        String sql = "UPDATE user SET password='secret', access_token = \"token-value\", nickname='alice' "
+                + "WHERE api-key=plain-key";
+
+        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED
+                        + ", access_token = " + CommonConstants.MASKED + ", nickname='alice' WHERE api-key="
+                        + CommonConstants.MASKED,
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
     void maskParams_with_null() {
         assertNull(SqlLogMaskUtils.maskParams(null));
     }

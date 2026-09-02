@@ -36,6 +36,8 @@ public class AccessLogFilter implements Filter {
     private static final Logger LOGGER = LoggerFactory.getLogger(AccessLogFilter.class);
     private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
     private static final String LIFECYCLE_ATTRIBUTE = AccessLogFilter.class.getName() + ".lifecycle";
+    private static final String REGISTRATION_ERROR = "REGISTRATION_ERROR";
+    private static final String ASYNC_ALREADY_COMPLETED = "ASYNC_ALREADY_COMPLETED";
     private final long slowThresholdMs;
     private final List<String> excludePaths;
     private final PathMatcher pathMatcher;
@@ -46,6 +48,7 @@ public class AccessLogFilter implements Filter {
         this.pathMatcher = new AntPathMatcher();
     }
 
+    @SuppressWarnings("java:S1181") // 必须记录同步 Error 后原样重抛，保持 Servlet 处理链契约。
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -61,10 +64,7 @@ public class AccessLogFilter implements Filter {
             if (async) {
                 lifecycle.registerCurrentContext(httpRequest);
             }
-        } catch (IOException | ServletException | RuntimeException e) {
-            failure = e;
-            throw e;
-        } catch (Error e) {
+        } catch (IOException | ServletException | RuntimeException | Error e) {
             failure = e;
             throw e;
         } finally {
@@ -115,7 +115,7 @@ public class AccessLogFilter implements Filter {
                     try {
                         registerRestartedContext(event, registrationGeneration);
                     } catch (RuntimeException e) {
-                        safeTerminate(event, registrationGeneration, "REGISTRATION_ERROR", e.getClass().getName());
+                        safeTerminate(event, registrationGeneration, REGISTRATION_ERROR, e.getClass().getName());
                     }
                 }
             };
@@ -130,13 +130,13 @@ public class AccessLogFilter implements Filter {
             try {
                 registerInitialContext(request.getAsyncContext());
             } catch (IllegalStateException e) {
-                safeTerminate("REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
+                safeTerminate(REGISTRATION_ERROR, ASYNC_ALREADY_COMPLETED);
             }
         }
 
         private void registerInitialContext(AsyncContext context) {
             if (context == null) {
-                safeTerminate("REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
+                safeTerminate(REGISTRATION_ERROR, ASYNC_ALREADY_COMPLETED);
                 return;
             }
             while (true) {
@@ -149,7 +149,7 @@ public class AccessLogFilter implements Filter {
                     try {
                         context.addListener(listenerFor(claimed.generation()));
                     } catch (RuntimeException e) {
-                        safeTerminate(response, claimed.generation(), "REGISTRATION_ERROR", e.getClass().getName());
+                        safeTerminate(response, claimed.generation(), REGISTRATION_ERROR, e.getClass().getName());
                     }
                     return;
                 }
@@ -160,7 +160,7 @@ public class AccessLogFilter implements Filter {
             AsyncContext context = event.getAsyncContext();
             HttpServletResponse terminalResponse = resolveResponse(event);
             if (context == null) {
-                safeTerminate(terminalResponse, previousGeneration, "REGISTRATION_ERROR", "ASYNC_ALREADY_COMPLETED");
+                safeTerminate(terminalResponse, previousGeneration, REGISTRATION_ERROR, ASYNC_ALREADY_COMPLETED);
                 return;
             }
             while (true) {
@@ -173,7 +173,7 @@ public class AccessLogFilter implements Filter {
                     try {
                         context.addListener(listenerFor(claimed.generation()));
                     } catch (RuntimeException e) {
-                        safeTerminate(terminalResponse, claimed.generation(), "REGISTRATION_ERROR", e.getClass().getName());
+                        safeTerminate(terminalResponse, claimed.generation(), REGISTRATION_ERROR, e.getClass().getName());
                     }
                     return;
                 }
@@ -207,6 +207,70 @@ public class AccessLogFilter implements Filter {
                 LOGGER.debug("Failed to resolve async response", e);
             }
             return response;
+        }
+
+        /**
+         * 记录访问日志。
+         */
+        private void logAccess(HttpServletRequest request, HttpServletResponse response, long durationMs,
+                               String outcome, String errorType) {
+            try {
+                String ip = sanitize(getClientIp(request));
+                String method = sanitize(request.getMethod());
+                String uri = sanitize(request.getRequestURI());
+                int statusCode = response.getStatus();
+                String userAgent = sanitize(request.getHeader("User-Agent"));
+
+                // 查询参数可能包含令牌、口令等敏感信息，只记录请求路径。
+                logAccessByStatus(new AccessLogEntry(ip, method, uri, statusCode, durationMs,
+                        userAgent != null ? userAgent : "Unknown", new TerminalState(outcome, errorType)));
+            } catch (Exception e) {
+                ACCESS_LOG.error("Failed to log access", e);
+            }
+        }
+
+        /**
+         * 根据 HTTP 状态码和耗时决定日志级别。
+         */
+        private void logAccessByStatus(AccessLogEntry entry) {
+            boolean isSlow = entry.durationMs() > slowThresholdMs;
+
+            // 使用参数化日志，防止日志注入攻击
+            String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Outcome=[{}], ErrorType=[{}], "
+                    + "Duration=[{}ms], UserAgent=[{}]";
+            Object[] args = new Object[]{entry.ip(), entry.method(), entry.uri(), entry.statusCode(),
+                    entry.terminal().outcome(), entry.terminal().errorType(), entry.durationMs(), entry.userAgent()};
+
+            // 判断状态码范围
+            if (entry.statusCode() >= 500) {
+                // 5xx: 服务器错误，记录为 ERROR
+                // 示例：500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable
+                ACCESS_LOG.error(message, args);
+            } else if (entry.statusCode() >= 400) {
+                // 4xx: 客户端错误，记录为 WARN
+                // 示例：400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests
+                if (isSlow) {
+                    ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
+                } else {
+                    ACCESS_LOG.warn(message, args);
+                }
+            } else if (entry.statusCode() >= 300) {
+                // 3xx: 重定向，记录为 INFO
+                // 示例：301 Moved Permanently, 302 Found, 304 Not Modified
+                if (isSlow) {
+                    ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
+                } else {
+                    ACCESS_LOG.info(message, args);
+                }
+            } else {
+                // 2xx: 成功，记录为 INFO
+                // 示例：200 OK, 201 Created, 204 No Content
+                if (isSlow) {
+                    ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
+                } else {
+                    ACCESS_LOG.info(message, args);
+                }
+            }
         }
 
         private void terminate(HttpServletResponse terminalResponse, int registrationGeneration,
@@ -257,6 +321,13 @@ public class AccessLogFilter implements Filter {
         }
     }
 
+    private record TerminalState(String outcome, String errorType) {
+    }
+
+    private record AccessLogEntry(String ip, String method, String uri, int statusCode, long durationMs,
+                                  String userAgent, TerminalState terminal) {
+    }
+
     /**
      * 判断是否应该记录访问日志
      * 如果请求路径匹配排除列表中的任何模式，则不记录
@@ -285,79 +356,6 @@ public class AccessLogFilter implements Filter {
         }
 
         return true;
-    }
-
-    /**
-     * 记录访问日志
-     */
-    private void logAccess(HttpServletRequest request, HttpServletResponse response, long durationMs, String outcome, String errorType) {
-        try {
-            String ip = sanitize(getClientIp(request));
-            String method = sanitize(request.getMethod());
-            String uri = sanitize(request.getRequestURI());
-            int statusCode = response.getStatus();
-            String userAgent = sanitize(request.getHeader("User-Agent"));
-
-            // 查询参数可能包含令牌、口令等敏感信息，只记录请求路径。
-            logAccessByStatus(ip, method, uri, statusCode, durationMs, userAgent != null ? userAgent : "Unknown", outcome, errorType);
-        } catch (Exception e) {
-            ACCESS_LOG.error("Failed to log access", e);
-        }
-    }
-
-    /**
-     * 根据 HTTP 状态码和耗时决定日志级别
-     * <p>
-     * 最佳实践：
-     * - 2xx (成功): INFO，如果慢则 WARN
-     * - 3xx (重定向): INFO，如果慢则 WARN
-     * - 4xx (客户端错误): WARN，如果慢则 WARN
-     * - 5xx (服务器错误): ERROR，如果慢则 ERROR
-     *
-     * @param ip         客户端 IP
-     * @param method     HTTP 方法
-     * @param uri        请求路径
-     * @param statusCode HTTP 状态码
-     * @param durationMs 耗时（毫秒）
-     * @param userAgent  User-Agent
-     */
-    private void logAccessByStatus(String ip, String method, String uri, int statusCode, long durationMs, String userAgent, String outcome, String errorType) {
-        boolean isSlow = durationMs > slowThresholdMs;
-
-        // 使用参数化日志，防止日志注入攻击
-        String message = "IP=[{}], Method=[{}], URI=[{}], Status=[{}], Outcome=[{}], ErrorType=[{}], Duration=[{}ms], UserAgent=[{}]";
-        Object[] args = new Object[]{ip, method, uri, statusCode, outcome, errorType, durationMs, userAgent};
-
-        // 判断状态码范围
-        if (statusCode >= 500) {
-            // 5xx: 服务器错误，记录为 ERROR
-            // 示例：500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable
-            ACCESS_LOG.error(message, args);
-        } else if (statusCode >= 400) {
-            // 4xx: 客户端错误，记录为 WARN
-            // 示例：400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests
-            if (isSlow) {
-                ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
-            } else {
-                ACCESS_LOG.warn(message, args);
-            }
-        } else if (statusCode >= 300) {
-            // 3xx: 重定向，记录为 INFO
-            // 示例：301 Moved Permanently, 302 Found, 304 Not Modified
-            if (isSlow) {
-                ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
-            } else {
-                ACCESS_LOG.info(message, args);
-            }
-        } else {
-            // 2xx: 成功，记录为 INFO
-            // 示例：200 OK, 201 Created, 204 No Content
-            if (isSlow) {
-                ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
-            } else {
-                ACCESS_LOG.info(message, args);
-            }
-        }
     }
 
     /**
