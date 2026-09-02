@@ -415,6 +415,24 @@ class RpcFeignClientTest {
     }
 
     @Test
+    void shouldDelegateOriginalRequestWhenUrlMissingAndContextIsInjected() throws Exception {
+        Request request = mock(Request.class);
+        Request.Options options = mock(Request.Options.class);
+        when(request.url()).thenReturn(null);
+        when(request.httpMethod()).thenReturn(Request.HttpMethod.GET);
+        when(request.headers()).thenReturn(Map.of());
+        when(tracerBridge.inject(any())).thenReturn(Map.of("trace-id", "t1"));
+        Response response = response(request);
+        when(delegate.execute(same(request), same(options))).thenReturn(response);
+
+        Response actual = client.execute(request, options);
+
+        assertSame(response, actual);
+        verify(tracerBridge).inject(any());
+        verify(delegate).execute(same(request), same(options));
+    }
+
+    @Test
     void shouldOnlyLogSanitizedUrlsAcrossEnabledDisabledAndFailureBranches() throws Exception {
         Logger logger = (Logger) LoggerFactory.getLogger(RpcFeignClient.class);
         Level previousLevel = logger.getLevel();
@@ -448,6 +466,39 @@ class RpcFeignClientTest {
             Assertions.assertFalse(output.contains("token=secret"));
             Assertions.assertFalse(output.contains("#detail"));
             Assertions.assertFalse(output.contains("mailto:user:password@example.test"));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void shouldNotAttachRawFailureThrowableToDebugLogEvent() throws Exception {
+        Logger logger = (Logger) LoggerFactory.getLogger(RpcFeignClient.class);
+        Level previousLevel = logger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.setLevel(Level.DEBUG);
+        logger.addAppender(appender);
+        try {
+            properties.setContextPropagationEnabled(false);
+            Request request = request("https://user:password@api.example.test:8443/orders?token=secret");
+            IllegalStateException failure = new IllegalStateException(
+                    "request failed: https://user:password@api.example.test:8443/orders?token=secret");
+            when(delegate.execute(same(request), any())).thenThrow(failure);
+
+            Assertions.assertThrows(IllegalStateException.class, () -> client.execute(request, new Request.Options()));
+
+            ILoggingEvent event = appender.list.stream()
+                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().contains("HTTP call failed"))
+                    .findFirst()
+                    .orElseThrow();
+            Assertions.assertNull(event.getThrowableProxy());
+            Assertions.assertTrue(event.getFormattedMessage().contains("error=IllegalStateException"));
+            Assertions.assertTrue(event.getFormattedMessage().contains("https://api.example.test:8443/orders"));
+            Assertions.assertFalse(event.getFormattedMessage().contains("user:password"));
+            Assertions.assertFalse(event.getFormattedMessage().contains("token=secret"));
         } finally {
             logger.detachAppender(appender);
             logger.setLevel(previousLevel);

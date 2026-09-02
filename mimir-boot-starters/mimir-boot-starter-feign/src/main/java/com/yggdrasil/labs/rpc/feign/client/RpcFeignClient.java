@@ -119,8 +119,7 @@ public class RpcFeignClient implements Client {
                         metadata.getMethod(),
                         sanitizedUrl.debugUrl(),
                         duration.toMillis(),
-                        throwable.getClass().getSimpleName(),
-                        throwable);
+                        throwable.getClass().getSimpleName());
             }
             invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
             throw propagate(throwable);
@@ -135,6 +134,9 @@ public class RpcFeignClient implements Client {
         }
         Map<String, String> injected = tracerBridge.inject(context);
         if (injected == null || injected.isEmpty()) {
+            return request;
+        }
+        if (request.url() == null) {
             return request;
         }
         if (log.isDebugEnabled()) {
