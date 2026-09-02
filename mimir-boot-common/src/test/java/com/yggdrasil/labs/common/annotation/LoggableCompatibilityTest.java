@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.common.annotation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -59,6 +60,21 @@ class LoggableCompatibilityTest {
         assertTrue(compiled);
         assertTrue(diagnostics.getDiagnostics().stream().anyMatch(diagnostic -> diagnostic.getMessage(null).contains("Loggable")));
     }
+
+    @Test
+    void documentsDeprecationMigrationWithoutRuntimePromise() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/yggdrasil/labs/common/annotation/Loggable.java"));
+        String readme = Files.readString(Path.of("README.md"));
+
+        assertTrue(source.contains("当前无内置运行时消费者"));
+        assertTrue(source.contains("计划于 3.0 移除"));
+        assertTrue(readme.contains("当前无内置运行时消费者"));
+        assertTrue(readme.contains("计划于 3.0 移除"));
+        assertFalse(source.contains("自动记录日志"));
+        assertFalse(readme.contains("自动记录日志"));
+    }
+
     @Test
     void linksLegacyConsumerAgainstCurrentLoggable() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
