@@ -1,5 +1,85 @@
 # Changelog
 
+## [2.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.0...v2.2.1) (2026-09-04)
+
+
+### 🐛 Bug Fixes
+
+* **common:** 修复分页 Long 边界 ([a937d6b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a937d6bb397641f605d08acb9817c8928d5b089a))
+* **common:** 修复分页与枚举兼容契约 ([29e645b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/29e645b4a8f546c501e18f88fe8757029a5e1f33))
+* **feign:** 收敛空地址与失败日志安全 ([6df8ee0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6df8ee0ceee8811defe60ec7deb5f192a6d754b1))
+* **feign:** 移除观测地址凭证 ([20067b6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/20067b6fe02e71d70908b8a327866abd1e4ad546))
+* **log:** 修复脱敏审查缺陷 ([e45e457](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e45e45734fc664480e8415c2780461f338f1bbd4))
+* **log:** 完善异常链脱敏输出 ([aa52fa8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/aa52fa81a9f892ab3965b776758d4297d74dda85))
+* **log:** 完善异步访问日志终态 ([c3162b8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c3162b84a3a92ce08cbfb869c2ee664c68127300))
+* **log:** 完善消息与异常链脱敏 ([6bde77b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6bde77b752dd515f47cc569361b5f505c2de33e6))
+* **log:** 完善脱敏与配置刷新边界 ([3a97c62](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3a97c62a84973a4b06a06307e4844bbd5ad3459f))
+* **log:** 收敛异步访问日志终态 ([ac47c3f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ac47c3fe94ecc6f79557c41df72cf23969bae94c))
+* **mybatis:** 修复发布制品 Mapper 发现 ([e84073c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e84073c0a49a715ec4fe246428781ca86d4a2575))
+* **mybatis:** 修复日志审计与密文迁移边界 ([c6006b2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c6006b293fcb7f983aba97ef0a00ff5558f19df6))
+* **nacos:** 修复解密门控与遗留密文告警 ([5e71294](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5e7129408cbe14e3c6d4031e879c29a28c80cad4))
+* **rpc-dubbo:** 修复支持快照的并发发布 ([3730dd5](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3730dd500fb1eb974abb2b43c4ba8dc71d8efd38))
+* **rpc:** 修复异步上下文与元数据边界 ([bf493b6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bf493b634fc7d001cc2584f46b94cd780bf8f148))
+* **rpc:** 固定适配器自动装配顺序 ([7e126b0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7e126b0b7bd8d96bb7873c87c8f9575b0503cd14))
+* **rpc:** 收敛适配器自动装配条件 ([8a2e872](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8a2e87243189a627ef81fe9dd90ba44ea1cf4f86))
+* **starters:** 收紧刷新解密与请求头元数据边界 ([2dd1b83](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2dd1b83bb87e1a4904cfc761a1bd0e0d4920624d))
+* **test:** 移除危险默认值并收敛测试工具 ([bb651cd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bb651cdd575694f02419449deee392c63cd08e1c))
+* **web:** 清理异步请求 MDC 上下文 ([4bd5cd0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4bd5cd00de729f847fa905b69d6cc003e92bd6f5))
+
+
+### 📝 Documentation
+
+* **architecture:** 提交技术债修复约束同步 RFC ([6930084](https://github.com/Yggdrasil-Labs/mimir-boot/commit/69300844bfc004fb5a866d6c921bcfdfa59e02d0))
+* **archive:** 归档 v2.2.0 版本文档 ([8015d14](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8015d14c24566b8e7549bb8fd9f16761e268900b))
+* **governance:** 记录技术债 RFC 批准 ([fc0a4c4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fc0a4c4bb7d9a91e9d53cd8e113b45376c813f42))
+* **tech-debt:** 发布技术债修复验收状态 ([9e459a7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9e459a7cb47ad31f7269aee6e58e6ce30fb316fe))
+* **tech-debt:** 同步技术债修复与迁移说明 ([08229e1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/08229e137cf9e058276e1331673f41796b59c952))
+* **tech-debt:** 完善 v2.2.1 技术债实施方案 ([78ee0d4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/78ee0d4a2f11cb09eda477abb8860b1634770f64))
+* **tech-debt:** 完成技术债实施台账 ([f77bdbd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f77bdbd1c8f377efab9629e2a09e5042bb55acb5))
+* **tech-debt:** 按代码复核修正技术债方案 ([0191830](https://github.com/Yggdrasil-Labs/mimir-boot/commit/019183093e58e88757967ad03d2c35aeaee17419))
+* **v2.2.1:** 初始化底座质量强化执行账本 ([89154df](https://github.com/Yggdrasil-Labs/mimir-boot/commit/89154dfc81982b0700b9f1a1aab9110ea61adfba))
+* **v2.2.1:** 回填 Feign 实施证据 ([c79bc4f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c79bc4fe5de0504a1bef3c8d21fb1e86644b5b00))
+* **v2.2.1:** 回填 Loggable 实施证据 ([4a8227c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4a8227c7e879c013b624faa8d963fa2cc69369f7))
+* **v2.2.1:** 回填 Mapper 实施证据 ([2ed482f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2ed482fe60e6db0f9eb30db3a2b450db45b914d5))
+* **v2.2.1:** 回填 MDC 实施证据 ([f45c347](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f45c34728a59c2fd62aed42de23d205d8596c43b))
+* **v2.2.1:** 回填 RPC 实施证据 ([5adf4b9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5adf4b93b1e27019a7f35a32828ba9421c7f2066))
+* **v2.2.1:** 回填分页实施证据 ([dccdcac](https://github.com/Yggdrasil-Labs/mimir-boot/commit/dccdcacf69e6a04c222f307e19fd4cf37ace18dc))
+* **v2.2.1:** 回填终审补丁提交账本 ([9766238](https://github.com/Yggdrasil-Labs/mimir-boot/commit/976623831f34314eef51f6b20ed32bd6f1950a83))
+* **v2.2.1:** 回填脱敏实施证据 ([0516620](https://github.com/Yggdrasil-Labs/mimir-boot/commit/051662037ba02cd41e88209cc4d7aa1baf7297ab))
+* **v2.2.1:** 回填访问日志实施证据 ([6313d12](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6313d12d54cc6743cd9882f0852d5322936b431b))
+* **v2.2.1:** 建立技术债修复方案 ([0733a1c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0733a1c069b5da0220a29fe1780f34f13f8fa0fe))
+* **v2.2.1:** 新增底座质量强化实施计划 ([3596025](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3596025c80c446eb99d58a891163bdd0f2b202ae))
+* **v2.2.1:** 补全 T9 提交账本 ([ff10dbb](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ff10dbb07bbe91f842c525da2c35cf2a0c2b82be))
+* **v2.2.1:** 记录底座质量强化最终复验 ([3356017](https://github.com/Yggdrasil-Labs/mimir-boot/commit/335601713edb485ab2b0e1616e28e08511ffabec))
+* **v2.2.1:** 闭环底座质量强化证据 ([007de8e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/007de8e7e79203b870397188b33d14354809e638))
+
+
+### ♻️ Code Refactoring
+
+* **common:** 弃用无消费者的 Loggable ([9b646ff](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9b646ff07a12a2dccba1f54bc6d590a489e0280f))
+* **quality:** 清理 Sonar 代码质量问题 ([f45df64](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f45df64fd49059d091119d6fbe5d224373ec2aa5))
+
+
+### ✅ Tests
+
+* **common:** 校验 Loggable 迁移文档承诺 ([2ad47e0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2ad47e0c02fe0431ad7dd54787fcc09b7d6420d4))
+* **mybatis:** 收敛 Mapper 探测器契约测试 ([0002261](https://github.com/Yggdrasil-Labs/mimir-boot/commit/00022617db9738d2aecfd5debe47ce6917866fde))
+* **mybatis:** 适配动态 Mapper 发现 ([782c293](https://github.com/Yggdrasil-Labs/mimir-boot/commit/782c29356d45c87938e93e033242639bc7bba88e))
+* **web:** 覆盖真实异步 MDC 重派发 ([31343b7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/31343b7fd4d70855de1b40441679c5b6fec5b551))
+* 补强异步上下文与发布验证边界 ([4e428e6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4e428e6ab080775c2d7403230921ec5684c9729f))
+
+
+### 🔨 Build System
+
+* 修复签名默认值与依赖元数据 ([a5dba88](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a5dba884503a0381c8d02818729861f01ca28e00))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.2.1-SNAPSHOT for next development cycle ([17610c9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/17610c965caa91bc823ecd2476523d6b37606994))
+* **deps:** 升级基础依赖与构建工具 ([5a6a623](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5a6a62321fe8b1afae045bd3c4fa1d2d6909dda5))
+* **tech-debt:** 收敛技术债收尾门禁 ([d3df82e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d3df82e153b22533eb964f16a30e49fffd6a652e))
+
 ## [2.2.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.1.1...v2.2.0) (2026-08-16)
 
 
