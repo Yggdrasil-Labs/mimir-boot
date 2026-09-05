@@ -65,7 +65,7 @@
         <jetcache.version>2.7.9</jetcache.version>
 
         <!-- 搜索引擎和NoSQL -->
-        <elasticsearch.version>8.11.0</elasticsearch.version>
+        <elasticsearch.version>9.5.3</elasticsearch.version>
         <mongodb.version>4.11.5</mongodb.version>
 
         <!-- 其他工具 -->
