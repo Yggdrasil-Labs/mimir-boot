@@ -108,9 +108,7 @@ public class RpcDubboFilter implements Filter {
                         RpcTraceScope completionScope = RpcTraceScope.noop();
                         try {
                             if (properties.isContextPropagationEnabled() && providerSide) {
-                                RpcTraceScope extractedScope = tracerBridge.extractScope(
-                                        context, attachments == null ? Map.of() : attachments);
-                                completionScope = extractedScope == null ? RpcTraceScope.noop() : extractedScope;
+                                completionScope = extractCompletionScope(tracerBridge, context, attachments);
                             }
                             completeCall(hookInvocation, metadata, start, completedResult, throwable);
                         } finally {
@@ -154,6 +152,21 @@ public class RpcDubboFilter implements Filter {
         } else {
             logSuccess(metadata, duration);
             hookInvocation.completeSuccess(RpcCallResult.success(duration));
+        }
+    }
+
+    @SuppressWarnings("java:S1181") // 完成阶段追踪是辅助能力，失败时不得覆盖已完成的 RPC 结果
+    private RpcTraceScope extractCompletionScope(
+            RpcTracerBridge tracerBridge, RpcCallContext context, Map<String, String> attachments) {
+        try {
+            RpcTraceScope extractedScope = tracerBridge.extractScope(
+                    context, attachments == null ? Map.of() : attachments);
+            return extractedScope == null ? RpcTraceScope.noop() : extractedScope;
+        } catch (Throwable extractionFailure) {
+            log.warn(
+                    "RPC trace scope extraction failed during async completion; preserving RPC result, error={}",
+                    extractionFailure.getClass().getName());
+            return RpcTraceScope.noop();
         }
     }
 

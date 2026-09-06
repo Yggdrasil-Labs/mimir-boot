@@ -305,6 +305,33 @@ class RpcDubboFilterTest {
     }
 
     @Test
+    void shouldKeepAsyncBusinessResultWhenCompletionContextExtractionFails() throws Exception {
+        Invocation invocation = new RpcInvocation();
+        ((RpcInvocation) invocation).setMethodName("completionExtractFailure");
+        ((RpcInvocation) invocation).setObjectAttachments(Map.of("x-trace-id", "upstream-trace"));
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RpcTraceScope scope = mock(RpcTraceScope.class);
+        RuntimeException extractionFailure = new RuntimeException("completion extract failure");
+        CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+        AppResponse response = new AppResponse("ok");
+        Result result = new AsyncRpcResult(responseFuture, invocation);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(tracerBridge.extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace"))))
+                .thenReturn(scope)
+                .thenThrow(extractionFailure);
+
+        Result actual = filter.invoke(invoker, invocation);
+        responseFuture.complete(response);
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> actual.get());
+        assertSame(response, actual.get());
+        verify(hook).after(any(), any(RpcCallResult.class));
+        verify(hook, never()).onError(any(), any());
+        verify(hook).cleanup(any());
+        verify(scope).close();
+    }
+
+    @Test
     void shouldKeepSynchronousResultWhenProviderScopeCloseFails() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);

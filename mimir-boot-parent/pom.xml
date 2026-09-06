@@ -227,6 +227,7 @@
                             <dependencyManagement>resolve</dependencyManagement>
                             <pluginManagement>resolve</pluginManagement>
                             <profiles>resolve</profiles>
+                            <build>keep</build>
                         </pomElements>
                     </configuration>
                     <executions>

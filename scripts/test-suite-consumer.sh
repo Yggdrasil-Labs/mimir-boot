@@ -119,47 +119,6 @@ run_maven_stage root-fixture-deploy "${deploy_maven[@]}" deploy \
   -Dmaven.deploy.skip=false \
   "-DaltDeploymentRepository=fixture::default::file://$repository_dir"
 
-# 根聚合 POM 将 deploy 的 skip 硬编码为 true，BOM 因而无法随 reactor 部署。
-# consumer 解析 BOM 时仍需要根 POM 与 BOM POM；使用无父 POM 的部署器显式投放它们。
-fixture_deployer_pom="$work_dir/fixture-deployer-pom.xml"
-cat >"$fixture_deployer_pom" <<'EOF'
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>io.github.yggdrasil-labs.fixture</groupId>
-  <artifactId>fixture-pom-deployer</artifactId>
-  <version>1.0.0</version>
-</project>
-EOF
-
-deploy_fixture_pom() {
-  local stage="$1"
-  local artifact="$2"
-  local pom="$3"
-  run_maven_stage "$stage" "$project_dir/mvnw" -B -s "$blocked_settings_file" -f "$fixture_deployer_pom" \
-    "-Dmaven.repo.local=$producer_cache_dir" \
-    org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
-    "-Dfile=$pom" \
-    "-DpomFile=$pom" \
-    -DgroupId=io.github.yggdrasil-labs \
-    "-DartifactId=$artifact" \
-    "-Dversion=$revision" \
-    -Dpackaging=pom \
-    -DgeneratePom=false \
-    "-Durl=file://$repository_dir" \
-    -DrepositoryId=fixture
-}
-
-fixture_root_pom="$producer_cache_dir/io/github/yggdrasil-labs/mimir-boot/$revision/mimir-boot-$revision.pom"
-fixture_bom_pom="$producer_cache_dir/io/github/yggdrasil-labs/mimir-boot-bom/$revision/mimir-boot-bom-$revision.pom"
-test -s "$fixture_root_pom"
-test -s "$fixture_bom_pom"
-fixture_root_deploy_pom="$work_dir/mimir-boot-$revision.pom"
-fixture_bom_deploy_pom="$work_dir/mimir-boot-bom-$revision.pom"
-cp "$fixture_root_pom" "$fixture_root_deploy_pom"
-cp "$fixture_bom_pom" "$fixture_bom_deploy_pom"
-deploy_fixture_pom fixture-deploy-root-pom mimir-boot "$fixture_root_deploy_pom"
-deploy_fixture_pom fixture-deploy-bom-pom mimir-boot-bom "$fixture_bom_deploy_pom"
-
 fixture_required_artifacts=(
   mimir-boot
   mimir-boot-parent
@@ -189,23 +148,18 @@ cat >"$consumer_dir/pom.xml" <<EOF
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.yggdrasil-labs</groupId>
+        <artifactId>mimir-boot-parent</artifactId>
+        <version>$revision</version>
+        <relativePath/>
+    </parent>
     <groupId>io.github.yggdrasil-labs.fixture</groupId>
     <artifactId>mimir-suite-consumer</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <properties><maven.compiler.release>17</maven.compiler.release></properties>
     <repositories>
         <repository><id>fixture</id><url>file://$repository_dir</url></repository>
     </repositories>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>io.github.yggdrasil-labs</groupId>
-                <artifactId>mimir-boot-bom</artifactId>
-                <version>$revision</version>
-                <type>pom</type><scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
     <dependencies>
         <dependency><groupId>io.github.yggdrasil-labs</groupId><artifactId>mimir-boot-starter-exception</artifactId></dependency>
         <dependency><groupId>io.github.yggdrasil-labs</groupId><artifactId>mimir-boot-starter-log</artifactId></dependency>
@@ -218,21 +172,6 @@ cat >"$consumer_dir/pom.xml" <<EOF
         <dependency><groupId>org.apache.rocketmq</groupId><artifactId>rocketmq-spring-boot-starter</artifactId></dependency>
         <dependency><groupId>co.elastic.clients</groupId><artifactId>elasticsearch-java</artifactId></dependency>
     </dependencies>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
-                <configuration><release>17</release></configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.6</version>
-            </plugin>
-        </plugins>
-    </build>
 </project>
 EOF
 
@@ -267,11 +206,28 @@ class IsolatedConsumerTest {
 }
 EOF
 
+cat >"$consumer_dir/src/test/java/io/github/yggdrasil/labs/fixture/ParentLifecycleIT.java" <<'EOF'
+package io.github.yggdrasil.labs.fixture;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+class ParentLifecycleIT {
+
+    @Test
+    void isExecutedByThePublishedParentFailsafeConfiguration() {
+        assertTrue(true);
+    }
+}
+EOF
+
 test ! -e "$consumer_cache_dir/io/github/yggdrasil-labs"
 online_consumer_maven=("$project_dir/mvnw" -B -s "$settings_file" -f "$consumer_dir/pom.xml" "-Dmaven.repo.local=$consumer_cache_dir")
 run_maven_stage consumer-online-resolve "${online_consumer_maven[@]}" dependency:resolve -DoutputFile="$consumer_dir/target/online-dependency-resolve.txt"
 run_maven_stage consumer-online-tree "${online_consumer_maven[@]}" dependency:tree -DoutputFile="$consumer_dir/target/online-dependency-tree.txt"
-run_maven_stage consumer-online-clean-test "${online_consumer_maven[@]}" clean test
+run_maven_stage consumer-online-clean-verify "${online_consumer_maven[@]}" clean verify
+test -s "$consumer_dir/target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml"
 
 mapfile -d '' mimir_repository_markers < <(find "$consumer_cache_dir/io/github/yggdrasil-labs" -name _remote.repositories -type f -print0)
 test "${#mimir_repository_markers[@]}" -gt 0
@@ -282,5 +238,6 @@ run_maven_stage consumer-isolated-resolve "${consumer_maven[@]}" dependency:reso
 run_maven_stage consumer-isolated-tree "${consumer_maven[@]}" dependency:tree -DoutputFile="$consumer_dir/target/dependency-tree.txt"
 grep -Fq "org.apache.rocketmq:rocketmq-spring-boot-starter:jar:$rocketmq_version" "$consumer_dir/target/dependency-tree.txt"
 grep -Fq "co.elastic.clients:elasticsearch-java:jar:$elasticsearch_version" "$consumer_dir/target/dependency-tree.txt"
-run_maven_stage consumer-isolated-clean-test "${consumer_maven[@]}" clean test
-echo "隔离 BOM consumer 验证通过：版本 $revision，八个 Starter 与受管依赖均从独立 file repository 消费。"
+run_maven_stage consumer-isolated-clean-verify "${consumer_maven[@]}" clean verify
+test -s "$consumer_dir/target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml"
+echo "隔离 Parent/BOM consumer 验证通过：版本 $revision，八个 Starter、受管依赖与 Failsafe 生命周期均从独立 file repository 消费。"

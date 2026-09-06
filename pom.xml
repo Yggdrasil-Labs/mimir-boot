@@ -54,6 +54,8 @@
         <!-- 普通构建不要求本机私钥；maven-central profile 显式覆盖为 false。 -->
         <gpg.skip>true</gpg.skip>
         <maven.deploy.plugin.version>3.1.4</maven.deploy.plugin.version>
+        <!-- 默认不发布；发布工作流可用 -Dmaven.deploy.skip=false 显式覆盖。 -->
+        <maven.deploy.skip>true</maven.deploy.skip>
         <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
         <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
     </properties>
@@ -233,7 +235,7 @@
                 <artifactId>maven-deploy-plugin</artifactId>
                 <version>${maven.deploy.plugin.version}</version>
                 <configuration>
-                    <skip>true</skip>
+                    <skip>${maven.deploy.skip}</skip>
                 </configuration>
             </plugin>
         </plugins>
