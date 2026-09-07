@@ -76,6 +76,42 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     }
 
     @Test
+    void maskSql_preservesEscapedValuesAndLiteralOrCommentText() {
+        String sql = "UPDATE t SET password='a''b', nickname='password=secret' -- password=secret\n"
+                + "/* password=secret */ WHERE api_key='key''value'";
+
+        assertEquals("UPDATE t SET password=" + CommonConstants.MASKED
+                        + ", nickname='password=secret' -- password=secret\n"
+                        + "/* password=secret */ WHERE api_key=" + CommonConstants.MASKED,
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentsWithQuotedIdentifiers() {
+        String sql = "UPDATE user SET `password`='secret', \"api_key\" = 'key-value', `nickname`='alice'";
+
+        assertEquals("UPDATE user SET `password`=" + CommonConstants.MASKED
+                        + ", \"api_key\" = " + CommonConstants.MASKED + ", `nickname`='alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksWholeMySqlBackslashEscapedSensitiveValue() {
+        String sql = "UPDATE user SET password='safe\\'secret', nickname='alice'";
+
+        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_endsMySqlStringAfterEscapedQuote() {
+        String sql = "UPDATE user SET password='safe\\'', nickname='alice'";
+
+        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
     void maskParams_with_null() {
         assertNull(SqlLogMaskUtils.maskParams(null));
     }
@@ -1091,5 +1127,19 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Object masked = SqlLogMaskUtils.maskParams(container);
         assertNotNull(masked);
         assertInstanceOf(Map.class, masked);
+    }
+
+    @Test
+    void maskSql_handlesEscapedQuotesAndIgnoresStringsAndComments() {
+        String sql = "UPDATE user SET `password`='a''b', \"api_key\"=\"quoted-value\" "
+                + "WHERE note='password=inside-string' "
+                + "-- password='line-secret'\n"
+                + "AND nickname='alice' /* token='block-secret' */";
+
+        assertEquals("UPDATE user SET `password`=" + CommonConstants.MASKED + ", \"api_key\"="
+                        + CommonConstants.MASKED + " WHERE note='password=inside-string' "
+                        + "-- password='line-secret'\n"
+                        + "AND nickname='alice' /* token='block-secret' */",
+                SqlLogMaskUtils.maskSql(sql));
     }
 }

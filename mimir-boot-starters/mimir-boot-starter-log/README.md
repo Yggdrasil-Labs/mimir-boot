@@ -162,57 +162,41 @@ public class YourClass {
 
 ### 日志文件路径
 
-**配置项**：`mimir.boot.log.path` 或环境变量 `LOG_PATH`
+**配置项**：`LOG_PATH` 环境变量或 Java 系统属性
 
 **默认值**：`logs`（项目运行目录下的 logs 文件夹）
 
-**示例**：
+日志文件实际写入 `LOG_PATH/<spring.application.name>` 目录；未设置 `spring.application.name` 时使用 `application`。
 
-```yaml
-# application.yml
-mimir:
-  boot:
-    log:
-      path: /var/log/myapp
-```
-
-或者使用环境变量：
+**环境变量示例**：
 
 ```bash
 export LOG_PATH=/var/log/myapp
 ```
 
-### 启用/禁用日志
+**JVM 系统属性示例**：
 
-**配置项**：`mimir.boot.log.enabled`
-
-**默认值**：`true`
-
-**示例**：
-
-```yaml
-mimir:
-  boot:
-    log:
-      enabled: false  # 禁用日志文件输出
+```bash
+java -DLOG_PATH=/var/log/myapp -jar app.jar
 ```
 
-### 日志级别
+### 环境与日志级别
 
-**配置项**：`mimir.boot.log.level`
+通过 `spring.profiles.active` 选择 Logback 环境配置：`dev`、`local`、`development` 使用开发配置，`test` 使用测试配置，`prod`、`produce`、`production` 使用生产配置；未指定时使用默认配置。
 
-**默认值**：`INFO`
-
-**可选项**：`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`
-
-**示例**：
+各环境的默认根日志级别和应用包级别由 `logback-spring.xml` 定义。需要调整级别时使用 Spring Boot 标准的 `logging.level` 配置：
 
 ```yaml
-mimir:
-  boot:
-    log:
-      level: DEBUG
+spring:
+  profiles:
+    active: dev
+logging:
+  level:
+    root: INFO
+    com.yggdrasil.labs: DEBUG
 ```
+
+访问日志是否启用、慢接口阈值和排除路径由 `mimir.boot.log.access` 配置，详见下方“访问日志配置”。Starter 未提供统一的日志文件输出开关。
 
 ### 应用名称
 
@@ -220,7 +204,7 @@ mimir:
 
 **默认值**：`application`
 
-**说明**：影响日志文件名，如 `myapp.log`、`myapp-error.log`
+**说明**：影响日志目录名。日志 Starter 为 `info.log`、`error.log`、`access.log` 和 `sql.log` 配置 appender；其中 `access.log` 仅记录启用且未排除的 Servlet 请求，`sql.log` 仅在同时引入 MyBatis Starter 并启用 JSON SQL 日志时写入。
 
 **示例**：
 
@@ -232,7 +216,7 @@ spring:
 
 ### 访问日志配置
 
-**说明**：自动记录每个 HTTP 请求的访问信息到独立的 `access.log` 文件
+**说明**：在 Servlet Web 应用中，自动记录已启用且未被排除的 HTTP 请求到独立的 `access.log` 文件。
 
 **配置项**：`mimir.boot.log.access`
 
@@ -240,6 +224,7 @@ spring:
 
 - `enabled=true` - 启用访问日志
 - `slowThresholdMs=3000` - 慢接口阈值（毫秒）
+- 默认排除 `/actuator/**`、`/favicon.ico`、静态资源路径及 `/error`；配置 `exclude-paths` 会完整替换这份默认列表
 - 访问日志仅记录请求路径，不记录 query string，避免令牌、验证码等敏感参数落盘
 - 访问日志不缓存响应体，不影响 SSE、文件下载和大响应的流式写出
 - 审计 IP 默认只使用 `request.getRemoteAddr()`；Starter 不会自行信任任意转发头
@@ -461,10 +446,11 @@ public class UserController {
    - 所有环境都会输出到控制台
 
 2. **文件输出**：
-   - 位置：`./logs/`（项目运行目录下）
-   - 通用日志：`application.log`
-   - 错误日志：`application-error.log`
-   - 访问日志：`application-access.log`（记录所有 HTTP 请求）
+   - 位置：`./logs/application/`（默认值；实际为 `LOG_PATH/<spring.application.name>/`）
+   - 通用日志：`info.log`
+   - 错误日志：`error.log`
+   - 访问日志：`access.log`（仅记录已启用且未被排除的 Servlet 请求）
+   - SQL 日志：`sql.log`（仅在 MyBatis Starter 启用 JSON SQL 日志时写入）
 
 3. **环境差异**：
    - 开发环境：DEBUG 级别，详细日志
@@ -510,7 +496,7 @@ public class UserController {
 
 1. 目录权限不足
 2. 配置被覆盖
-3. 日志被禁用
+3. 访问日志未启用、日志级别过滤了事件，或自定义 Logback 配置覆盖了默认 appender
 
 **解决方案**：
 
@@ -525,14 +511,11 @@ mkdir -p logs && chmod 755 logs
 # 确保有写入权限
 ```
 
-1. **检查配置**：
+1. **检查日志路径配置**：
 
-```yaml
-# 确保没有禁用日志
-mimir:
-  boot:
-    log:
-      enabled: true  # 必须是 true
+```bash
+# 未设置时使用 ./logs/application；实际目录为 LOG_PATH/<spring.application.name>
+echo "${LOG_PATH:-logs}/${SPRING_APPLICATION_NAME:-application}"
 ```
 
 1. **查看启动日志**：

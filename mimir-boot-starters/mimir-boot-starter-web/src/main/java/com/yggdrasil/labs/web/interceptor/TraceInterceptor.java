@@ -30,6 +30,8 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
 
     public static final String TRACE_ID = CommonConstants.TRACE_ID;
     private static final String MDC_STACK_ATTRIBUTE = TraceInterceptor.class.getName() + ".mdcStack";
+    private static final String TRACE_ID_ATTRIBUTE = TraceInterceptor.class.getName() + ".traceId";
+    private static final String REQUEST_ID_ATTRIBUTE = TraceInterceptor.class.getName() + ".requestId";
     private static final Pattern TRACE_ID_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
 
     /**
@@ -47,14 +49,17 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 获取或生成 traceId
         String traceId = getOrGenerateTraceId(request);
+        String requestId = getOrGenerateRequestId(request);
 
         // 将 traceId 添加到响应头
         response.setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
 
+        request.setAttribute(TRACE_ID_ATTRIBUTE, traceId);
+        request.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
         mdcStack(request).push(new MdcState(
                 org.slf4j.MDC.get(TRACE_ID), org.slf4j.MDC.get(CommonConstants.REQUEST_ID)));
         org.slf4j.MDC.put(TRACE_ID, traceId);
-        org.slf4j.MDC.put(CommonConstants.REQUEST_ID, getOrGenerateRequestId(request));
+        org.slf4j.MDC.put(CommonConstants.REQUEST_ID, requestId);
 
         return true;
     }
@@ -77,6 +82,7 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
             Object handler,
             Exception ex) {
         restorePreviousMdcState(request);
+        clearRequestIdentityIfComplete(request);
     }
 
     @Override
@@ -100,33 +106,31 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
         }
     }
 
+    private void clearRequestIdentityIfComplete(HttpServletRequest request) {
+        Deque<MdcState> stack = mdcStackOrNull(request);
+        if (stack == null || stack.isEmpty()) {
+            request.removeAttribute(TRACE_ID_ATTRIBUTE);
+            request.removeAttribute(REQUEST_ID_ATTRIBUTE);
+        }
+    }
+
     /**
-     * 获取或生成 traceId
-     * <p>
-     * 优先级：
-     * 1. 请求头存在且合法时直接使用
-     * 2. 请求头存在但非法时生成新的 UUID，不回退 MDC
-     * 3. 请求头缺失时使用 MDC 中的合法 traceId
-     * 4. 请求头与 MDC 均无可用值时生成新的 UUID（去除连字符）
-     * </p>
+     * 获取或生成 traceId。
      *
      * @param request HTTP 请求
      * @return traceId
      */
     private String getOrGenerateTraceId(HttpServletRequest request) {
-        // 请求头存在时必须先验证；非法值不允许回退并复用 MDC
+        String storedTraceId = requestAttribute(request, TRACE_ID_ATTRIBUTE);
+        if (isValidTraceId(storedTraceId)) {
+            return storedTraceId;
+        }
         String traceId = request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER);
         if (traceId != null) {
             return isValidTraceId(traceId) ? traceId : generateTraceId();
         }
-
-        // 请求头缺失时才从 MDC 获取（可能已被其他组件设置）
         traceId = org.slf4j.MDC.get(TRACE_ID);
-        if (isValidTraceId(traceId)) {
-            return traceId;
-        }
-
-        return generateTraceId();
+        return isValidTraceId(traceId) ? traceId : generateTraceId();
     }
 
     private String generateTraceId() {
@@ -134,8 +138,17 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
     }
 
     private String getOrGenerateRequestId(HttpServletRequest request) {
+        String storedRequestId = requestAttribute(request, REQUEST_ID_ATTRIBUTE);
+        if (isValidTraceId(storedRequestId)) {
+            return storedRequestId;
+        }
         String requestId = request.getHeader(HttpHeaderConstants.REQUEST_ID_HEADER);
         return isValidTraceId(requestId) ? requestId : generateTraceId();
+    }
+
+    private String requestAttribute(HttpServletRequest request, String name) {
+        Object value = request.getAttribute(name);
+        return value instanceof String stringValue ? stringValue : null;
     }
 
     private boolean isValidTraceId(String traceId) {

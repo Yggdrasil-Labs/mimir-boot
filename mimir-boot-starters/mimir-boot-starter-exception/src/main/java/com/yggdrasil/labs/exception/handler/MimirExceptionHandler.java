@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.exception.handler;
 
+import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.common.util.LogSanitizer;
@@ -75,11 +77,11 @@ public class MimirExceptionHandler {
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleSystemException(SystemException e, HttpServletRequest request) {
-        log.error("系统异常: code={}, message={}, uri={}",
+        log.error("系统异常: code={}, message={}, uri={}, type={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()),
-                e);
+                e.getClass().getSimpleName());
         String code = e.getCode();
         String message = e.getMessage();
         try {
@@ -93,11 +95,11 @@ public class MimirExceptionHandler {
     @ExceptionHandler(BaseException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleBaseException(BaseException e, HttpServletRequest request) {
-        log.error("框架异常: code={}, message={}, uri={}",
+        log.error("框架异常: code={}, message={}, uri={}, type={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()),
-                e);
+                e.getClass().getSimpleName());
         String code = e.getCode();
         String message = e.getMessage();
         try {
@@ -272,9 +274,20 @@ public class MimirExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleHttpMessageNotReadableException(
             HttpMessageNotReadableException e, HttpServletRequest request) {
-        log.warn("HTTP 消息不可读异常: {}, uri={}",
-                sanitizeForLog(e.getMessage()),
-                sanitizeForLog(request.getRequestURI()));
+        String uri = sanitizeForLog(request.getRequestURI());
+        String exceptionType = e.getClass().getSimpleName();
+        JsonLocation location = e.getCause() instanceof JsonProcessingException jsonException
+                ? jsonException.getLocation()
+                : null;
+        if (location == null) {
+            log.warn("HTTP 消息不可读异常: type={}, uri={}", exceptionType, uri);
+        } else {
+            log.warn("HTTP 消息不可读异常: type={}, line={}, column={}, uri={}",
+                    exceptionType,
+                    location.getLineNr(),
+                    location.getColumnNr(),
+                    uri);
+        }
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = "请求体格式错误";
         try {
@@ -328,11 +341,11 @@ public class MimirExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleException(Exception e, HttpServletRequest request) {
         if (e instanceof IException ie) {
-            log.error("框架异常（未捕获）: code={}, message={}, uri={}",
+            log.error("框架异常（未捕获）: code={}, message={}, uri={}, type={}",
                     sanitizeForLog(ie.getCode()),
                     sanitizeForLog(ie.getMessage()),
                     sanitizeForLog(request.getRequestURI()),
-                    e);
+                    e.getClass().getSimpleName());
             String code = ie.getCode();
             String message = ie.getMessage();
             try {

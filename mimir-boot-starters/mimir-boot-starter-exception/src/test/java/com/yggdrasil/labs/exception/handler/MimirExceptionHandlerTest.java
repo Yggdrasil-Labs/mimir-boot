@@ -3,6 +3,9 @@ package com.yggdrasil.labs.exception.handler;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
@@ -228,6 +231,56 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         R<?> r = (R<?>) response;
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         AssertUtils.assertEquals("请求体格式错误", r.getMessage());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void shouldNotLogRawRequestValueFromJacksonParseError() throws JsonProcessingException {
+        String sensitiveValue = "password-from-request-7f4b9a";
+        String malformedJson = "{\"password\": \"" + sensitiveValue + "\", \"profile\":}";
+        JsonMapper mapper = JsonMapper.builder()
+                .enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION)
+                .build();
+        JsonProcessingException parseException;
+        try {
+            mapper.readTree(malformedJson);
+            fail("malformed JSON should fail to parse");
+            return;
+        } catch (JsonProcessingException exception) {
+            parseException = exception;
+        }
+
+        HttpMessageNotReadableException exception =
+                new HttpMessageNotReadableException(parseException.getMessage(), parseException);
+        Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            Object response = handler.handleHttpMessageNotReadableException(exception, request);
+
+            assertInstanceOf(R.class, response);
+            R<?> result = (R<?>) response;
+            assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
+            assertEquals("请求体格式错误", result.getMessage());
+            List<ILoggingEvent> events = appender.list.stream()
+                    .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
+                    .toList();
+            assertEquals(1, events.size());
+            ILoggingEvent event = events.get(0);
+            String formattedMessage = event.getFormattedMessage();
+            assertTrue(formattedMessage.contains("type=HttpMessageNotReadableException"));
+            assertTrue(formattedMessage.contains("uri=" + request.getRequestURI()));
+            assertTrue(formattedMessage.contains("line=" + parseException.getLocation().getLineNr()));
+            assertTrue(formattedMessage.contains("column=" + parseException.getLocation().getColumnNr()));
+            assertFalse(formattedMessage.contains(sensitiveValue));
+            assertFalse(formattedMessage.contains(parseException.getMessage()));
+            assertNull(event.getThrowableProxy());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test

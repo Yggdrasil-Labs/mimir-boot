@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * SQL 参数脱敏工具。
@@ -32,9 +30,6 @@ public class SqlLogMaskUtils {
             "password", "passwd", "pwd", "token", "accesstoken", "refreshtoken", "idtoken",
             "secret", "clientsecret", "authorization", "apikey");
 
-    private static final Pattern SQL_ASSIGNMENT = Pattern.compile(
-            "([A-Za-z][A-Za-z0-9_-]*)(\\s*=\\s*)(?:'[^']*'|\\\"[^\\\"]*\\\"|[^\\s,;)]+)",
-            Pattern.CASE_INSENSITIVE);
 
     private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
@@ -53,16 +48,125 @@ public class SqlLogMaskUtils {
         if (sql == null || sql.isEmpty()) {
             return sql;
         }
-        Matcher matcher = SQL_ASSIGNMENT.matcher(sql);
-        StringBuffer maskedSql = new StringBuffer();
-        while (matcher.find()) {
-            if (isSensitiveParameterName(matcher.group(1))) {
-                String replacement = matcher.group(1) + matcher.group(2) + CommonConstants.MASKED;
-                matcher.appendReplacement(maskedSql, Matcher.quoteReplacement(replacement));
+        StringBuilder masked = new StringBuilder(sql.length());
+        for (int index = 0; index < sql.length();) {
+            if (startsLineComment(sql, index)) {
+                int end = sql.indexOf('\n', index);
+                masked.append(sql, index, end < 0 ? sql.length() : end);
+                index = end < 0 ? sql.length() : end;
+            } else if (startsBlockComment(sql, index)) {
+                int end = sql.indexOf("*/", index + 2);
+                end = end < 0 ? sql.length() : end + 2;
+                masked.append(sql, index, end);
+                index = end;
+            } else if (sql.charAt(index) == '\'') {
+                int end = quotedEnd(sql, index, '\'');
+                masked.append(sql, index, end);
+                index = end;
+            } else if (isIdentifierStart(sql.charAt(index))) {
+                int identifierEnd = identifierEnd(sql, index);
+                int equalsIndex = skipWhitespace(sql, identifierEnd);
+                if (equalsIndex < sql.length() && sql.charAt(equalsIndex) == '=') {
+                    int valueStart = skipWhitespace(sql, equalsIndex + 1);
+                    int valueEnd = sqlValueEnd(sql, valueStart);
+                    String identifier = sql.substring(index, identifierEnd);
+                    if (valueStart < valueEnd && isSensitiveParameterName(unquoteSqlIdentifier(identifier))) {
+                        masked.append(sql, index, valueStart).append(CommonConstants.MASKED);
+                    } else {
+                        masked.append(sql, index, valueEnd);
+                    }
+                    index = valueEnd;
+                } else {
+                    masked.append(sql, index, identifierEnd);
+                    index = identifierEnd;
+                }
+            } else {
+                masked.append(sql.charAt(index++));
             }
         }
-        matcher.appendTail(maskedSql);
-        return maskedSql.toString();
+        return masked.toString();
+    }
+
+    private static boolean startsLineComment(String sql, int index) {
+        return sql.startsWith("--", index);
+    }
+
+    private static boolean startsBlockComment(String sql, int index) {
+        return sql.startsWith("/*", index);
+    }
+
+    private static boolean isIdentifierStart(char value) {
+        return Character.isLetter(value) || value == '`' || value == '"';
+    }
+
+    private static int identifierEnd(String sql, int start) {
+        char quote = sql.charAt(start);
+        if (quote == '`' || quote == '"') {
+            return quotedEnd(sql, start, quote);
+        }
+        int index = start + 1;
+        while (index < sql.length()) {
+            char value = sql.charAt(index);
+            if (!Character.isLetterOrDigit(value) && value != '_' && value != '-') {
+                break;
+            }
+            index++;
+        }
+        return index;
+    }
+
+    private static int sqlValueEnd(String sql, int start) {
+        if (start >= sql.length()) {
+            return start;
+        }
+        char quote = sql.charAt(start);
+        if (quote == '\'' || quote == '"') {
+            return quotedEnd(sql, start, quote);
+        }
+        int index = start;
+        while (index < sql.length()) {
+            char value = sql.charAt(index);
+            if (Character.isWhitespace(value) || value == ',' || value == ')' || value == ';') {
+                break;
+            }
+            index++;
+        }
+        return index;
+    }
+
+    private static int quotedEnd(String sql, int start, char quote) {
+        int index = start + 1;
+        while (index < sql.length()) {
+            if (sql.charAt(index) == quote) {
+                if (quote == '\'' && hasOddNumberOfPrecedingBackslashes(sql, start, index)) {
+                    index++;
+                    continue;
+                }
+                if (index + 1 < sql.length() && sql.charAt(index + 1) == quote) {
+                    index += 2;
+                    continue;
+                }
+                return index + 1;
+            }
+            index++;
+        }
+        return sql.length();
+    }
+
+    private static boolean hasOddNumberOfPrecedingBackslashes(String sql, int start, int index) {
+        int count = 0;
+        for (int cursor = index - 1; cursor > start && sql.charAt(cursor) == '\\'; cursor--) {
+            count++;
+        }
+        return count % 2 != 0;
+    }
+
+    private static int skipWhitespace(String sql, int start) {
+        int index = start;
+        while (index < sql.length() && Character.isWhitespace(sql.charAt(index))) {
+            index++;
+        }
+        return index;
     }
 
     private static Object maskParams(Object params, int depth, IdentityHashMap<Object, Boolean> visited) {
@@ -225,6 +329,18 @@ public class SqlLogMaskUtils {
                 .replace("_", "")
                 .replace("-", "");
         return SENSITIVE_PARAMETER_NAMES.contains(normalized);
+    }
+
+    private static String unquoteSqlIdentifier(String identifier) {
+        if (identifier == null || identifier.length() < 2) {
+            return identifier;
+        }
+        char first = identifier.charAt(0);
+        char last = identifier.charAt(identifier.length() - 1);
+        if ((first == '`' && last == '`') || (first == '\"' && last == '\"')) {
+            return identifier.substring(1, identifier.length() - 1);
+        }
+        return identifier;
     }
 
     private static Object maskCollection(Collection<?> collection, int depth, IdentityHashMap<Object, Boolean> visited) {
