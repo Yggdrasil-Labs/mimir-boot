@@ -96,6 +96,121 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     }
 
     @Test
+    void maskSql_masksWholeSensitiveFunctionExpression() {
+        String sql = "UPDATE user SET password=CONCAT('alpha', 'beta-secret'), nickname='alice' WHERE id=1";
+
+        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED
+                        + ", nickname='alice' WHERE id=1",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksWholePostgreSqlDollarQuotedSensitiveValue() {
+        String sql = "UPDATE user SET password=$tag$alpha, beta-secret$tag$, nickname='alice' WHERE id=1";
+
+        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED
+                        + ", nickname='alice' WHERE id=1",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksSensitiveConditionNestedInANonSensitiveExpression() {
+        String secret = "nested-secret";
+        String sql = "UPDATE user SET nickname=CASE WHEN password='" + secret
+                + "' THEN 'redacted' ELSE 'visible' END, updated_at=CURRENT_TIMESTAMP";
+
+        assertEquals("UPDATE user SET nickname=CASE WHEN password=" + CommonConstants.MASKED
+                        + " THEN 'redacted' ELSE 'visible' END, updated_at=CURRENT_TIMESTAMP",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_doesNotTreatPostgreSqlJsonOperatorAsALineComment() {
+        String secret = "postgres-json-secret";
+        String sql = "UPDATE t SET data = payload #> '{a}', password='" + secret + "'";
+
+        assertFalse(SqlLogMaskUtils.maskSql(sql).contains(secret));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentsWithSqlServerBracketIdentifiers() {
+        String secret = "sql-server-secret";
+        String sql = "UPDATE [user] SET [password] = '" + secret + "', [nickname]='alice'";
+
+        assertFalse(SqlLogMaskUtils.maskSql(sql).contains(secret));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentInsideMySqlExecutableComment() {
+        String secret = "executable-comment-secret";
+        String sql = "/*!50000 SET password='" + secret + "' */";
+
+        assertFalse(SqlLogMaskUtils.maskSql(sql).contains(secret));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentWithColonEqualsOperator() {
+        String secret = "colon-equals-secret";
+        String sql = "SET password := '" + secret + "'";
+
+        assertFalse(SqlLogMaskUtils.maskSql(sql).contains(secret));
+    }
+
+    @Test
+    void maskSql_doesNotTreatBackslashAsDoubleQuotedIdentifierEscape() {
+        String secret = "double-quote-secret";
+        String sql = "UPDATE t SET nickname = \"a\\\", password='" + secret + "'";
+
+        assertFalse(SqlLogMaskUtils.maskSql(sql).contains(secret));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentWithBlockCommentBetweenIdentifierAndEquals() {
+        String sql = "UPDATE user SET password /* comment */ = 'secret', nickname='alice'";
+
+        assertEquals("UPDATE user SET password /* comment */ = " + CommonConstants.MASKED
+                        + ", nickname='alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentWithBlockCommentBetweenEqualsAndValue() {
+        String sql = "UPDATE user SET password=/* comment */'secret', nickname='alice'";
+
+        assertEquals("UPDATE user SET password=/* comment */" + CommonConstants.MASKED
+                        + ", nickname='alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksDoubleQuotedValueWithBackslashEscapedQuote() {
+        String sql = "UPDATE user SET password=\"a\\\"secret\", nickname='alice'";
+
+        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksSensitiveAssignmentAcrossLineAndHashComments() {
+        String sql = "UPDATE user SET password -- identifier comment\n"
+                + " = # equals comment\n'secret', nickname /* keep */ = /* value */ 'alice'";
+
+        assertEquals("UPDATE user SET password -- identifier comment\n"
+                        + " = # equals comment\n" + CommonConstants.MASKED
+                        + ", nickname /* keep */ = /* value */ 'alice'",
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
+    void maskSql_masksQuotedIdentifierAndDoubleQuotedValueWithDoubledQuote() {
+        String sql = "UPDATE user SET \"password\" /* identifier */ = /* value */ \"a\"\"secret\"";
+
+        assertEquals("UPDATE user SET \"password\" /* identifier */ = /* value */ "
+                        + CommonConstants.MASKED,
+                SqlLogMaskUtils.maskSql(sql));
+    }
+
+    @Test
     void maskSql_masksWholeMySqlBackslashEscapedSensitiveValue() {
         String sql = "UPDATE user SET password='safe\\'secret', nickname='alice'";
 

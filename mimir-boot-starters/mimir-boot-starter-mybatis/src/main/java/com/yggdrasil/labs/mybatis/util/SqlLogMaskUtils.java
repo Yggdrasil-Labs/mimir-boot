@@ -57,7 +57,14 @@ public class SqlLogMaskUtils {
             } else if (startsBlockComment(sql, index)) {
                 int end = sql.indexOf("*/", index + 2);
                 end = end < 0 ? sql.length() : end + 2;
-                masked.append(sql, index, end);
+                if (isExecutableBlockComment(sql, index) && end >= index + 4) {
+                    int contentStart = executableCommentContentStart(sql, index, end - 2);
+                    masked.append(sql, index, contentStart)
+                            .append(maskSql(sql.substring(contentStart, end - 2)))
+                            .append("*/");
+                } else {
+                    masked.append(sql, index, end);
+                }
                 index = end;
             } else if (sql.charAt(index) == '\'') {
                 int end = quotedEnd(sql, index, '\'');
@@ -65,17 +72,20 @@ public class SqlLogMaskUtils {
                 index = end;
             } else if (isIdentifierStart(sql.charAt(index))) {
                 int identifierEnd = identifierEnd(sql, index);
-                int equalsIndex = skipWhitespace(sql, identifierEnd);
-                if (equalsIndex < sql.length() && sql.charAt(equalsIndex) == '=') {
-                    int valueStart = skipWhitespace(sql, equalsIndex + 1);
+                int equalsIndex = skipSqlTrivia(sql, identifierEnd);
+                int assignmentEnd = assignmentOperatorEnd(sql, equalsIndex);
+                if (assignmentEnd > equalsIndex) {
+                    int valueStart = skipSqlTrivia(sql, assignmentEnd);
                     int valueEnd = sqlValueEnd(sql, valueStart);
                     String identifier = sql.substring(index, identifierEnd);
                     if (valueStart < valueEnd && isSensitiveParameterName(unquoteSqlIdentifier(identifier))) {
                         masked.append(sql, index, valueStart).append(CommonConstants.MASKED);
+                        index = sensitiveValueEnd(sql, valueStart, valueEnd);
                     } else {
-                        masked.append(sql, index, valueEnd);
+                        // 不跳过非敏感表达式，以便继续识别其中嵌套的敏感比较或赋值。
+                        masked.append(sql, index, valueStart);
+                        index = valueStart;
                     }
-                    index = valueEnd;
                 } else {
                     masked.append(sql, index, identifierEnd);
                     index = identifierEnd;
@@ -88,21 +98,42 @@ public class SqlLogMaskUtils {
     }
 
     private static boolean startsLineComment(String sql, int index) {
-        return sql.startsWith("--", index);
+        if (sql.startsWith("--", index)) {
+            return true;
+        }
+        if (sql.charAt(index) != '#') {
+            return false;
+        }
+        return index + 1 >= sql.length() || (sql.charAt(index + 1) != '>' && sql.charAt(index + 1) != '-');
     }
 
     private static boolean startsBlockComment(String sql, int index) {
         return sql.startsWith("/*", index);
     }
 
+    private static boolean isExecutableBlockComment(String sql, int index) {
+        return sql.startsWith("/*!", index) || sql.startsWith("/*M!", index);
+    }
+
+    private static int executableCommentContentStart(String sql, int start, int contentEnd) {
+        int index = start + (sql.startsWith("/*M!", start) ? 4 : 3);
+        while (index < contentEnd && Character.isDigit(sql.charAt(index))) {
+            index++;
+        }
+        return index;
+    }
+
     private static boolean isIdentifierStart(char value) {
-        return Character.isLetter(value) || value == '`' || value == '"';
+        return Character.isLetter(value) || value == '`' || value == '"' || value == '[';
     }
 
     private static int identifierEnd(String sql, int start) {
         char quote = sql.charAt(start);
         if (quote == '`' || quote == '"') {
             return quotedEnd(sql, start, quote);
+        }
+        if (quote == '[') {
+            return bracketIdentifierEnd(sql, start);
         }
         int index = start + 1;
         while (index < sql.length()) {
@@ -115,23 +146,165 @@ public class SqlLogMaskUtils {
         return index;
     }
 
+    private static int bracketIdentifierEnd(String sql, int start) {
+        int index = start + 1;
+        while (index < sql.length()) {
+            if (sql.charAt(index) == ']') {
+                if (index + 1 < sql.length() && sql.charAt(index + 1) == ']') {
+                    index += 2;
+                    continue;
+                }
+                return index + 1;
+            }
+            index++;
+        }
+        return sql.length();
+    }
+
     private static int sqlValueEnd(String sql, int start) {
         if (start >= sql.length()) {
             return start;
         }
-        char quote = sql.charAt(start);
-        if (quote == '\'' || quote == '"') {
-            return quotedEnd(sql, start, quote);
-        }
         int index = start;
+        int parenthesesDepth = 0;
         while (index < sql.length()) {
             char value = sql.charAt(index);
-            if (Character.isWhitespace(value) || value == ',' || value == ')' || value == ';') {
+            if (value == '$') {
+                int dollarQuoteEnd = dollarQuotedEnd(sql, index);
+                if (dollarQuoteEnd > index) {
+                    index = dollarQuoteEnd;
+                    continue;
+                }
+            }
+            if (value == '\'' || value == '"') {
+                index = quotedEnd(sql, index, value);
+                continue;
+            }
+            if (startsBlockComment(sql, index)) {
+                int end = sql.indexOf("*/", index + 2);
+                index = end < 0 ? sql.length() : end + 2;
+                continue;
+            }
+            if (startsLineComment(sql, index)) {
+                int end = sql.indexOf('\n', index);
+                index = end < 0 ? sql.length() : end + 1;
+                continue;
+            }
+            if (value == '(') {
+                parenthesesDepth++;
+                index++;
+                continue;
+            }
+            if (value == ')') {
+                if (parenthesesDepth == 0) {
+                    break;
+                }
+                parenthesesDepth--;
+                index++;
+                continue;
+            }
+            if (parenthesesDepth == 0 && (value == ',' || value == ';')) {
                 break;
+            }
+            if (parenthesesDepth == 0 && Character.isWhitespace(value)) {
+                int nextToken = skipWhitespace(sql, index);
+                if (startsSqlValueTerminator(sql, nextToken)) {
+                    break;
+                }
             }
             index++;
         }
         return index;
+    }
+
+    private static int sensitiveValueEnd(String sql, int start, int fallbackEnd) {
+        char first = sql.charAt(start);
+        if (first == '\'') {
+            return quotedEnd(sql, start, first);
+        }
+        if (first == '"') {
+            return quotedEndWithBackslashEscapes(sql, start, first);
+        }
+        if (first == '$') {
+            int dollarQuoteEnd = dollarQuotedEnd(sql, start);
+            if (dollarQuoteEnd > start) {
+                return dollarQuoteEnd;
+            }
+        }
+        return fallbackEnd;
+    }
+
+    private static int dollarQuotedEnd(String sql, int start) {
+        int delimiterEnd = sql.indexOf('$', start + 1);
+        if (delimiterEnd < 0 || !isDollarQuoteTag(sql, start + 1, delimiterEnd)) {
+            return start;
+        }
+        String delimiter = sql.substring(start, delimiterEnd + 1);
+        int valueEnd = sql.indexOf(delimiter, delimiterEnd + 1);
+        return valueEnd < 0 ? sql.length() : valueEnd + delimiter.length();
+    }
+
+    private static boolean isDollarQuoteTag(String sql, int start, int end) {
+        if (start == end) {
+            return true;
+        }
+        char first = sql.charAt(start);
+        if (!Character.isLetter(first) && first != '_') {
+            return false;
+        }
+        for (int index = start + 1; index < end; index++) {
+            char value = sql.charAt(index);
+            if (!Character.isLetterOrDigit(value) && value != '_') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int skipWhitespace(String sql, int start) {
+        int index = start;
+        while (index < sql.length() && Character.isWhitespace(sql.charAt(index))) {
+            index++;
+        }
+        return index;
+    }
+
+    private static int assignmentOperatorEnd(String sql, int start) {
+        if (start >= sql.length()) {
+            return start;
+        }
+        if (sql.charAt(start) == '=') {
+            return start + 1;
+        }
+        if (start + 1 < sql.length()
+                && ((sql.charAt(start) == ':' && sql.charAt(start + 1) == '=')
+                || (sql.charAt(start) == '=' && sql.charAt(start + 1) == '>'))) {
+            return start + 2;
+        }
+        return start;
+    }
+
+    private static boolean startsSqlValueTerminator(String sql, int index) {
+        return startsSqlKeyword(sql, index, "AND")
+                || startsSqlKeyword(sql, index, "OR")
+                || startsSqlKeyword(sql, index, "WHERE")
+                || startsSqlKeyword(sql, index, "RETURNING")
+                || startsSqlKeyword(sql, index, "FROM")
+                || startsSqlKeyword(sql, index, "LIMIT")
+                || startsSqlKeyword(sql, index, "ORDER")
+                || startsSqlKeyword(sql, index, "GROUP")
+                || startsSqlKeyword(sql, index, "HAVING");
+    }
+
+    private static boolean startsSqlKeyword(String sql, int index, String keyword) {
+        int end = index + keyword.length();
+        return end <= sql.length()
+                && sql.regionMatches(true, index, keyword, 0, keyword.length())
+                && (end == sql.length() || !isSqlIdentifierPart(sql.charAt(end)));
+    }
+
+    private static boolean isSqlIdentifierPart(char value) {
+        return Character.isLetterOrDigit(value) || value == '_' || value == '-';
     }
 
     private static int quotedEnd(String sql, int start, char quote) {
@@ -139,6 +312,25 @@ public class SqlLogMaskUtils {
         while (index < sql.length()) {
             if (sql.charAt(index) == quote) {
                 if (quote == '\'' && hasOddNumberOfPrecedingBackslashes(sql, start, index)) {
+                    index++;
+                    continue;
+                }
+                if (index + 1 < sql.length() && sql.charAt(index + 1) == quote) {
+                    index += 2;
+                    continue;
+                }
+                return index + 1;
+            }
+            index++;
+        }
+        return sql.length();
+    }
+
+    private static int quotedEndWithBackslashEscapes(String sql, int start, char quote) {
+        int index = start + 1;
+        while (index < sql.length()) {
+            if (sql.charAt(index) == quote) {
+                if (hasOddNumberOfPrecedingBackslashes(sql, start, index)) {
                     index++;
                     continue;
                 }
@@ -161,10 +353,24 @@ public class SqlLogMaskUtils {
         return count % 2 != 0;
     }
 
-    private static int skipWhitespace(String sql, int start) {
+    private static int skipSqlTrivia(String sql, int start) {
         int index = start;
-        while (index < sql.length() && Character.isWhitespace(sql.charAt(index))) {
-            index++;
+        while (index < sql.length()) {
+            if (Character.isWhitespace(sql.charAt(index))) {
+                index++;
+                continue;
+            }
+            if (startsBlockComment(sql, index)) {
+                int end = sql.indexOf("*/", index + 2);
+                index = end < 0 ? sql.length() : end + 2;
+                continue;
+            }
+            if (startsLineComment(sql, index)) {
+                int end = sql.indexOf('\n', index);
+                index = end < 0 ? sql.length() : end + 1;
+                continue;
+            }
+            break;
         }
         return index;
     }
@@ -337,7 +543,7 @@ public class SqlLogMaskUtils {
         }
         char first = identifier.charAt(0);
         char last = identifier.charAt(identifier.length() - 1);
-        if ((first == '`' && last == '`') || (first == '\"' && last == '\"')) {
+        if ((first == '`' && last == '`') || (first == '\"' && last == '\"') || (first == '[' && last == ']')) {
             return identifier.substring(1, identifier.length() - 1);
         }
         return identifier;
