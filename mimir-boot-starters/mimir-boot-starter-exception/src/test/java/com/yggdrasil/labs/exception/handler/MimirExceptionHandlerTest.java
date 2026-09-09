@@ -115,6 +115,31 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldNotLogThrowableChainForSystemException() {
+        String sensitiveValue = "system-exception-secret-4c72";
+        SystemException exception = new SystemException(
+                "SYS_001", "系统错误", new IllegalStateException("downstream unavailable: " + sensitiveValue));
+        Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            handler.handleSystemException(exception, request);
+
+            ILoggingEvent event = appender.list.stream()
+                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().startsWith("系统异常:"))
+                    .findFirst()
+                    .orElseThrow();
+            assertFalse(event.getFormattedMessage().contains(sensitiveValue));
+            assertNull(event.getThrowableProxy());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
     void testHandleSystemExceptionWithErrorCode() {
         SystemException exception = new SystemException(ErrorCode.SYSTEM_ERROR);
 
@@ -136,6 +161,29 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         R<?> r = (R<?>) response;
         AssertUtils.assertEquals("99999", r.getCode());
         AssertUtils.assertEquals("基础异常", r.getMessage());
+    }
+
+    @Test
+    void shouldNotLogThrowableChainForBaseException() {
+        BaseException exception = new BaseException(
+                "BASE_001", "基础异常", new IllegalStateException("dependency failure")) {};
+        Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            handler.handleBaseException(exception, request);
+
+            ILoggingEvent event = appender.list.stream()
+                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().startsWith("框架异常:"))
+                    .findFirst()
+                    .orElseThrow();
+            assertNull(event.getThrowableProxy());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test
@@ -284,6 +332,43 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
+    void shouldNotLogRawRequestValueFromWrappedNonJacksonReadError() {
+        String sensitiveValue = "opaque-secret-from-request-3c9d2e";
+        String rawMessage = "request body decoder rejected value=" + sensitiveValue;
+        IllegalStateException cause = new IllegalStateException("decoder detail=" + sensitiveValue);
+        HttpMessageNotReadableException exception = new HttpMessageNotReadableException(rawMessage, cause);
+        Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            Object response = handler.handleHttpMessageNotReadableException(exception, request);
+
+            assertInstanceOf(R.class, response);
+            R<?> result = (R<?>) response;
+            assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
+            assertEquals("请求体格式错误", result.getMessage());
+            List<ILoggingEvent> events = appender.list.stream()
+                    .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
+                    .toList();
+            assertEquals(1, events.size());
+            ILoggingEvent event = events.get(0);
+            String formattedMessage = event.getFormattedMessage();
+            assertTrue(formattedMessage.contains("type=HttpMessageNotReadableException"));
+            assertTrue(formattedMessage.contains("uri=" + request.getRequestURI()));
+            assertFalse(formattedMessage.contains(sensitiveValue));
+            assertFalse(formattedMessage.contains(rawMessage));
+            assertFalse(formattedMessage.contains(cause.getMessage()));
+            assertNull(event.getThrowableProxy());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
     void testHandleHttpRequestMethodNotSupportedException() {
         HttpRequestMethodNotSupportedException exception = mock(HttpRequestMethodNotSupportedException.class);
         when(exception.getMethod()).thenReturn("DELETE");
@@ -323,6 +408,29 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         R<?> r = (R<?>) response;
         AssertUtils.assertEquals("99999", r.getCode());
         AssertUtils.assertEquals("未知异常", r.getMessage());
+    }
+
+    @Test
+    void shouldNotLogThrowableChainForUnhandledIException() {
+        IException exception = new BaseException(
+                "BASE_002", "未捕获框架异常", new IllegalStateException("unexpected state")) {};
+        Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            handler.handleException((Exception) exception, request);
+
+            ILoggingEvent event = appender.list.stream()
+                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().startsWith("框架异常（未捕获）:"))
+                    .findFirst()
+                    .orElseThrow();
+            assertNull(event.getThrowableProxy());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test
