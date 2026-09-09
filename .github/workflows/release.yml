@@ -83,10 +83,28 @@ jobs:
       - name: Verify build (format check + compile)
         run: ./mvnw -B spotless:check clean package -DskipTests
 
-  publish-gpr:
+  release-consumer-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [ release-verify ]
+    permissions:
+      contents: read
+    steps:
+      # 本地复合 Action 在检出后才可被 GitHub Actions 解析。
+      - name: Bootstrap local Action
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - uses: ./.github/actions/checkout-setup
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
+
+      - name: Verify published-consumer contract
+        run: bash scripts/test-suite-consumer.sh
+
+  publish-gpr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [ release-verify, release-consumer-verify ]
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_gpr == 'true' }}
     permissions:
       contents: read
@@ -142,7 +160,7 @@ jobs:
   publish-maven-central:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: [ release-verify ]
+    needs: [ release-verify, release-consumer-verify ]
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_maven_central == 'true' }}
     permissions:
       contents: read
@@ -226,10 +244,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # 等两个仓库发布都完成（成功或被跳过）后再创建 GitHub Release
-    needs: [ release-verify, publish-gpr, publish-maven-central ]
+    needs: [ release-verify, release-consumer-verify, publish-gpr, publish-maven-central ]
     if: >-
       ${{ always()
           && needs.release-verify.result == 'success'
+          && needs['release-consumer-verify'].result == 'success'
           && (needs['publish-gpr'].result == 'success' || needs['publish-gpr'].result == 'skipped')
           && (needs['publish-maven-central'].result == 'success' || needs['publish-maven-central'].result == 'skipped')
           && (github.event_name != 'workflow_dispatch' || github.event.inputs.finalize_github_release == 'true') }}
@@ -374,11 +393,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # 等 GitHub Release 创建成功后，再更新开发版本号
-    needs: [ create-github-release, publish-gpr, publish-maven-central ]
+    needs: [ create-github-release, release-consumer-verify, publish-gpr, publish-maven-central ]
     # 自动路径在 GitHub Release 成功后回写；手动路径仅在明确选择后执行，
     # 且本次同时选择的发布或收尾操作必须成功，避免失败后错误推进 main。
     if: >-
       ${{ always()
+          && needs['release-consumer-verify'].result == 'success'
           && ((github.event_name != 'workflow_dispatch'
                && needs['create-github-release'].result == 'success')
               || (github.event_name == 'workflow_dispatch'
