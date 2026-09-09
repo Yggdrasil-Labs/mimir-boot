@@ -116,6 +116,8 @@
                         <updatePomFile>true</updatePomFile>
                         <flattenMode>oss</flattenMode>
                         <pomElements>
+                            <!-- 下游不能解析 CI 友好版本占位符，发布 POM 必须使用实际 Parent 版本。 -->
+                            <parent>resolve</parent>
                             <dependencies>resolve</dependencies>
                             <dependencyManagement>resolve</dependencyManagement>
                         </pomElements>

@@ -214,7 +214,7 @@
                     </executions>
                 </plugin>
 
-                <!-- Flatten Plugin (版本管理) -->
+                <!-- 发布 Parent 需要保留可继承的构建插件与属性。 -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>flatten-maven-plugin</artifactId>
@@ -223,9 +223,11 @@
                         <updatePomFile>true</updatePomFile>
                         <flattenMode>oss</flattenMode>
                         <pomElements>
+                            <parent>resolve</parent>
                             <dependencies>resolve</dependencies>
                             <dependencyManagement>resolve</dependencyManagement>
                             <pluginManagement>resolve</pluginManagement>
+                            <properties>keep</properties>
                             <profiles>resolve</profiles>
                             <build>keep</build>
                         </pomElements>
@@ -409,12 +411,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-            </plugin>
-
-            <!-- Flatten Plugin - 所有模块都需要版本管理 -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
 
             <!-- SonarQube Maven Plugin (代码质量分析) -->

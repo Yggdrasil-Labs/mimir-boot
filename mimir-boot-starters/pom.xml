@@ -15,6 +15,25 @@
     <description>Mimir Boot Starter 集合模块，包含日志、异常处理、Web、MyBatis、Nacos 配置加密、测试等启动器</description>
     <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
+    <build>
+        <plugins>
+            <!-- 聚合制品沿用精简发布 POM，避免继承 Parent 的构建插件。 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <configuration combine.self="override">
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>oss</flattenMode>
+                    <pomElements>
+                        <parent>resolve</parent>
+                        <dependencies>resolve</dependencies>
+                        <dependencyManagement>resolve</dependencyManagement>
+                    </pomElements>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <modules>
         <module>mimir-boot-starter-log</module>
         <module>mimir-boot-starter-exception</module>
