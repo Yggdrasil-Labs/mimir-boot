@@ -311,8 +311,8 @@ class TraceInterceptorTest extends BaseUnitTest {
             }
             assertEquals("before-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
             assertEquals("before-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
-            assertNull(localRequest.getAttribute(TraceInterceptor.class.getName() + ".traceId"));
-            assertNull(localRequest.getAttribute(TraceInterceptor.class.getName() + ".requestId"));
+            assertEquals("initial-trace-id", localRequest.getAttribute(TraceInterceptor.class.getName() + ".traceId"));
+            assertEquals("initial-request-id", localRequest.getAttribute(TraceInterceptor.class.getName() + ".requestId"));
             org.slf4j.MDC.clear();
         }
     }
@@ -415,6 +415,32 @@ class TraceInterceptorTest extends BaseUnitTest {
 
         traceInterceptor.afterConcurrentHandlingStarted(localRequest, localResponse, handler);
         localRequest.setDispatcherType(DispatcherType.ASYNC);
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+
+        assertEquals(initialTraceId, org.slf4j.MDC.get(TraceInterceptor.TRACE_ID));
+        assertEquals(initialRequestId, org.slf4j.MDC.get("requestId"));
+
+        traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
+
+        assertNull(org.slf4j.MDC.get(TraceInterceptor.TRACE_ID));
+        assertNull(org.slf4j.MDC.get("requestId"));
+    }
+
+    @Test
+    void reusesStoredIdentityAfterRequestCompletionBeforeErrorRedispatch() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        MockHttpServletResponse localResponse = new MockHttpServletResponse();
+
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+        String initialTraceId = org.slf4j.MDC.get(TraceInterceptor.TRACE_ID);
+        String initialRequestId = org.slf4j.MDC.get("requestId");
+
+        traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
+
+        assertNull(org.slf4j.MDC.get(TraceInterceptor.TRACE_ID));
+        assertNull(org.slf4j.MDC.get("requestId"));
+
+        localRequest.setDispatcherType(DispatcherType.ERROR);
         traceInterceptor.preHandle(localRequest, localResponse, handler);
 
         assertEquals(initialTraceId, org.slf4j.MDC.get(TraceInterceptor.TRACE_ID));

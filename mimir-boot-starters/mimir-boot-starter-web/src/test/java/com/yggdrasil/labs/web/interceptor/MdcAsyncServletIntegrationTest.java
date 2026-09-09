@@ -17,6 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -66,6 +67,12 @@ class MdcAsyncServletIntegrationTest {
     @Autowired
     private MdcProbe probe;
 
+    @BeforeEach
+    void resetProbeState() {
+        endpoint.reset();
+        probe.reset();
+    }
+
     @Test
     void restoresMdcAcrossRealAsyncDispatchAndRedispatch() throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + PATH))
@@ -101,9 +108,55 @@ class MdcAsyncServletIntegrationTest {
         assertEquals(List.of(DispatcherType.REQUEST, DispatcherType.ASYNC), probe.dispatcherTypes());
     }
 
+    @Test
+    void preservesGeneratedIdsAcrossRealAsyncDispatchAndRedispatchWithoutInboundHeaders() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + PATH))
+                .GET()
+                .build();
+        CompletableFuture<HttpResponse<String>> responseFuture = HttpClient.newHttpClient()
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString());
+
+        MdcSnapshot initial = endpoint.awaitInitialDispatch();
+        assertEquals(DispatcherType.REQUEST, initial.dispatcherType());
+        assertGeneratedIdentity(initial);
+
+        MdcSnapshot concurrent = probe.awaitConcurrentHandlingStarted();
+        assertEquals(DispatcherType.REQUEST, concurrent.dispatcherType());
+        assertClearedMdcValues(concurrent);
+
+        endpoint.complete("generated-id-async-complete");
+
+        MdcSnapshot asyncPreHandle = probe.awaitAsyncPreHandle();
+        assertEquals(DispatcherType.ASYNC, asyncPreHandle.dispatcherType());
+        assertEquals(initial.traceId(), asyncPreHandle.traceId());
+        assertEquals(initial.requestId(), asyncPreHandle.requestId());
+        assertEquals(initial.ip(), asyncPreHandle.ip());
+        assertEquals(EXTERNAL_VALUE, asyncPreHandle.external());
+
+        HttpResponse<String> response = responseFuture.get(AWAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        assertEquals(200, response.statusCode());
+        assertEquals("generated-id-async-complete", response.body());
+        assertEquals(initial.traceId(), response.headers()
+                .firstValue(HttpHeaderConstants.TRACE_ID_HEADER).orElse(null));
+
+        MdcSnapshot completion = probe.awaitCompletion();
+        assertEquals(DispatcherType.ASYNC, completion.dispatcherType());
+        assertClearedMdcValues(completion);
+        assertEquals(List.of(DispatcherType.REQUEST, DispatcherType.ASYNC), probe.dispatcherTypes());
+    }
+
     private void assertMdcValues(MdcSnapshot snapshot) {
         assertEquals(TRACE_ID, snapshot.traceId());
         assertEquals(REQUEST_ID, snapshot.requestId());
+        assertEquals("127.0.0.1", snapshot.ip());
+        assertEquals(EXTERNAL_VALUE, snapshot.external());
+    }
+
+    private void assertGeneratedIdentity(MdcSnapshot snapshot) {
+        assertNotNull(snapshot.traceId());
+        assertEquals(32, snapshot.traceId().length());
+        assertNotNull(snapshot.requestId());
+        assertEquals(32, snapshot.requestId().length());
         assertEquals("127.0.0.1", snapshot.ip());
         assertEquals(EXTERNAL_VALUE, snapshot.external());
     }
@@ -124,9 +177,15 @@ class MdcAsyncServletIntegrationTest {
     @RestController
     static class AsyncEndpoint {
 
-        private final CountDownLatch initialDispatch = new CountDownLatch(1);
-        private final AtomicReference<MdcSnapshot> initialSnapshot = new AtomicReference<>();
-        private final AtomicReference<DeferredResult<String>> pendingResult = new AtomicReference<>();
+        private volatile CountDownLatch initialDispatch = new CountDownLatch(1);
+        private volatile AtomicReference<MdcSnapshot> initialSnapshot = new AtomicReference<>();
+        private volatile AtomicReference<DeferredResult<String>> pendingResult = new AtomicReference<>();
+
+        void reset() {
+            initialDispatch = new CountDownLatch(1);
+            initialSnapshot = new AtomicReference<>();
+            pendingResult = new AtomicReference<>();
+        }
 
         @GetMapping(PATH)
         DeferredResult<String> handle(HttpServletRequest request) {
@@ -229,11 +288,19 @@ class MdcAsyncServletIntegrationTest {
 
     static class MdcProbe {
 
-        private final List<MdcSnapshot> preHandles = new CopyOnWriteArrayList<>();
-        private final AtomicReference<MdcSnapshot> concurrentHandlingStarted = new AtomicReference<>();
-        private final AtomicReference<MdcSnapshot> completion = new AtomicReference<>();
-        private final CountDownLatch concurrentHandlingStartedLatch = new CountDownLatch(1);
-        private final CountDownLatch completionLatch = new CountDownLatch(1);
+        private volatile List<MdcSnapshot> preHandles = new CopyOnWriteArrayList<>();
+        private volatile AtomicReference<MdcSnapshot> concurrentHandlingStarted = new AtomicReference<>();
+        private volatile AtomicReference<MdcSnapshot> completion = new AtomicReference<>();
+        private volatile CountDownLatch concurrentHandlingStartedLatch = new CountDownLatch(1);
+        private volatile CountDownLatch completionLatch = new CountDownLatch(1);
+
+        void reset() {
+            preHandles = new CopyOnWriteArrayList<>();
+            concurrentHandlingStarted = new AtomicReference<>();
+            completion = new AtomicReference<>();
+            concurrentHandlingStartedLatch = new CountDownLatch(1);
+            completionLatch = new CountDownLatch(1);
+        }
 
         void recordPreHandle(MdcSnapshot snapshot) {
             preHandles.add(snapshot);

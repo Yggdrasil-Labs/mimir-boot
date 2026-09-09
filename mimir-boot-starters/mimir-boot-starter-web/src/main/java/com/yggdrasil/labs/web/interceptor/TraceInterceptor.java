@@ -82,7 +82,6 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
             Object handler,
             Exception ex) {
         restorePreviousMdcState(request);
-        clearRequestIdentityIfComplete(request);
     }
 
     @Override
@@ -103,14 +102,6 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
         restoreMdcValue(CommonConstants.REQUEST_ID, previous.requestId());
         if (stack.isEmpty()) {
             request.removeAttribute(MDC_STACK_ATTRIBUTE);
-        }
-    }
-
-    private void clearRequestIdentityIfComplete(HttpServletRequest request) {
-        Deque<MdcState> stack = mdcStackOrNull(request);
-        if (stack == null || stack.isEmpty()) {
-            request.removeAttribute(TRACE_ID_ATTRIBUTE);
-            request.removeAttribute(REQUEST_ID_ATTRIBUTE);
         }
     }
 
