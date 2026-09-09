@@ -443,7 +443,8 @@ public class UserController {
 
 1. **控制台输出**：
    - 彩色日志格式
-   - 所有环境都会输出到控制台
+   - 开发、测试和默认环境的应用日志、访问日志与 SQL 日志输出到控制台
+   - 生产环境仅根 Logger 的 WARN 及以上日志输出到控制台；`com.yggdrasil.labs`、访问日志和 SQL 日志只写文件
 
 2. **文件输出**：
    - 位置：`./logs/application/`（默认值；实际为 `LOG_PATH/<spring.application.name>/`）
@@ -453,9 +454,9 @@ public class UserController {
    - SQL 日志：`sql.log`（仅在 MyBatis Starter 启用 JSON SQL 日志时写入）
 
 3. **环境差异**：
-   - 开发环境：DEBUG 级别，详细日志
-   - 测试环境：INFO 级别
-   - 生产环境：WARN 级别，减少日志
+   - 开发环境：应用日志为 DEBUG，访问日志与 SQL 日志为 INFO
+   - 测试环境：应用日志、访问日志与 SQL 日志均为 INFO
+   - 生产环境：控制台 root 为 WARN；应用、访问与 SQL 文件日志为 INFO
 
 ### 日志滚动策略
 
