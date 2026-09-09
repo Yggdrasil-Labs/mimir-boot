@@ -332,6 +332,63 @@ class RpcDubboFilterTest {
     }
 
     @Test
+    void shouldKeepAsyncBusinessFailureWhenCompletionContextExtractionFails() throws Exception {
+        Invocation invocation = new RpcInvocation();
+        ((RpcInvocation) invocation).setMethodName("completionExtractFailureWithBusinessError");
+        ((RpcInvocation) invocation).setObjectAttachments(Map.of("x-trace-id", "upstream-trace"));
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RpcTraceScope scope = mock(RpcTraceScope.class);
+        RuntimeException extractionFailure = new RuntimeException("completion extract failure");
+        RuntimeException businessFailure = new IllegalStateException("business failure");
+        CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+        AppResponse response = new AppResponse(businessFailure);
+        Result result = new AsyncRpcResult(responseFuture, invocation);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(tracerBridge.extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace"))))
+                .thenReturn(scope)
+                .thenThrow(extractionFailure);
+
+        Result actual = filter.invoke(invoker, invocation);
+        responseFuture.complete(response);
+
+        assertSame(response, actual.get());
+        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
+        verify(hook, times(1)).onError(any(), resultCaptor.capture());
+        verify(hook, never()).after(any(), any());
+        verify(hook, times(1)).cleanup(any());
+        assertSame(businessFailure, resultCaptor.getValue().getError().orElseThrow());
+        verify(scope, times(1)).close();
+    }
+
+    @Test
+    void shouldKeepAsyncBusinessResultWhenCompletionScopeCloseFails() throws Exception {
+        Invocation invocation = new RpcInvocation();
+        ((RpcInvocation) invocation).setMethodName("completionScopeCloseFailure");
+        ((RpcInvocation) invocation).setObjectAttachments(Map.of("x-trace-id", "upstream-trace"));
+        Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+        RpcTraceScope initialScope = mock(RpcTraceScope.class);
+        RpcTraceScope completionScope = mock(RpcTraceScope.class);
+        RuntimeException closeFailure = new IllegalStateException("completion scope close failure");
+        CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+        AppResponse response = new AppResponse("ok");
+        Result result = new AsyncRpcResult(responseFuture, invocation);
+        when(invoker.invoke(invocation)).thenReturn(result);
+        when(tracerBridge.extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace"))))
+                .thenReturn(initialScope, completionScope);
+        doThrow(closeFailure).when(completionScope).close();
+
+        Result actual = filter.invoke(invoker, invocation);
+        responseFuture.complete(response);
+
+        assertSame(response, actual.get());
+        verify(hook, times(1)).after(any(), any(RpcCallResult.class));
+        verify(hook, never()).onError(any(), any());
+        verify(hook, times(1)).cleanup(any());
+        verify(initialScope, times(1)).close();
+        verify(completionScope, times(1)).close();
+    }
+
+    @Test
     void shouldKeepSynchronousResultWhenProviderScopeCloseFails() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
