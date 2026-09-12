@@ -98,6 +98,12 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
 
+      - name: Verify published artifact layout contract
+        run: |
+          if [[ -f scripts/test-suite-consumer-contract-test.sh ]]; then
+            bash scripts/test-suite-consumer-contract-test.sh
+          fi
+
       - name: Verify published-consumer contract
         run: bash scripts/test-suite-consumer.sh
 

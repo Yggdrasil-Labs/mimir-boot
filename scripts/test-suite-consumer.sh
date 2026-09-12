@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$project_dir/scripts/lib/published-artifact-contract.sh"
 work_dir="$(mktemp -d -t mimir-suite-consumer.XXXXXX)"
 consumer_dir="$work_dir/consumer"
 bom_consumer_dir="$work_dir/bom-only-consumer"
@@ -225,10 +226,7 @@ fixture_required_artifacts=(
   "${starter_artifacts[@]}"
 )
 for artifact in "${fixture_required_artifacts[@]}"; do
-  fixture_artifact_dir="$repository_dir/io/github/yggdrasil-labs/$artifact/$revision"
-  if [[ ! -s "$fixture_artifact_dir/maven-metadata.xml" ]] \
-    || ! find "$fixture_artifact_dir" -maxdepth 1 -type f -name '*.pom' -size +0c -print -quit | grep -q .; then
-    echo "fixture repository 缺少 $artifact 的已发布 POM：$fixture_artifact_dir" >&2
+  if ! assert_fixture_published_artifact "$repository_dir" "$revision" "$artifact"; then
     exit 1
   fi
 done
