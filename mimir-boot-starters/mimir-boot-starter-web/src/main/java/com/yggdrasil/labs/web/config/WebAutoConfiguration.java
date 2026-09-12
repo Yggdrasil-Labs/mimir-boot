@@ -49,6 +49,17 @@ public class WebAutoConfiguration {
     }
 
     /**
+     * 创建内部 MVC advice 包装器，保留 {@link ResponseBodyEnhancer} 的可替换扩展点。
+     *
+     * @param responseBodyEnhancer 响应体增强器
+     * @return MVC 响应 advice
+    */
+    @Bean
+    ResponseBodyEnhancerAdviceFactory.MvcResponseBodyEnhancer responseBodyEnhancerAdvice(ResponseBodyEnhancer responseBodyEnhancer) {
+        return new ResponseBodyEnhancerAdviceFactory().create(responseBodyEnhancer);
+    }
+
+    /**
      * 注册 Trace 拦截器
      * <p>如果应用已提供同类型 Bean，则不创建默认实现。</p>
      *
@@ -70,4 +81,5 @@ public class WebAutoConfiguration {
     public WebInterceptor webInterceptor() {
         return new WebInterceptor();
     }
+
 }

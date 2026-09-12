@@ -6,12 +6,15 @@ import com.yggdrasil.labs.web.config.WebProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 /**
@@ -21,7 +24,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
  * <ul>
  * <li>自动为 R 响应对象填充 traceId</li>
  * <li>支持跳过已包含 traceId 的响应</li>
- * <li>仅处理返回类型为 R 的接口</li>
+ * <li>仅增强 {@code R} 响应对象</li>
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -36,7 +39,7 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
     /**
      * 判断是否支持增强
      * <p>
-     * 仅对返回类型为 R 的接口进行增强
+     * 仅对返回 {@code R} 或 {@code ResponseEntity<R>} 的接口进行增强
      * </p>
      *
      * @param returnType    返回类型
@@ -46,18 +49,44 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         // 检查是否启用响应增强
-        if (!webProperties.getResponse().isEnabled()) {
+        if (!isEnabled()) {
             return false;
         }
 
         // 检查是否为 R 类型
-        Class<?> returnClass = returnType.getParameterType();
-        if (!R.class.isAssignableFrom(returnClass)) {
+        if (!isResponseBodyType(returnType)) {
             return false;
         }
 
-        // 检查是否为 @RestController
-        return AnnotatedElementUtils.hasAnnotation(returnType.getContainingClass(), RestController.class);
+        // 检查是否为 @RestController 或 @RestControllerAdvice
+        Class<?> containingClass = returnType.getContainingClass();
+        return AnnotatedElementUtils.hasAnnotation(containingClass, RestController.class)
+                || AnnotatedElementUtils.hasAnnotation(containingClass, RestControllerAdvice.class);
+    }
+
+    private boolean isResponseBodyType(MethodParameter returnType) {
+        Class<?> returnClass = returnType.getParameterType();
+        if (R.class.isAssignableFrom(returnClass)) {
+            return true;
+        }
+        if (Object.class == returnClass
+                && AnnotatedElementUtils.hasAnnotation(returnType.getContainingClass(), RestControllerAdvice.class)) {
+            return true;
+        }
+        if (!HttpEntity.class.isAssignableFrom(returnClass)) {
+            return false;
+        }
+        Class<?> responseBodyType = ResolvableType.forMethodParameter(returnType).getGeneric(0).resolve();
+        return responseBodyType != null && R.class.isAssignableFrom(responseBodyType);
+    }
+
+    /**
+     * 判断响应增强是否启用。
+     *
+     * @return 是否启用
+     */
+    public boolean isEnabled() {
+        return webProperties.getResponse().isEnabled();
     }
 
     /**
@@ -82,7 +111,6 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
             Class<? extends HttpMessageConverter<?>> selectedConverterType,
             ServerHttpRequest request,
             ServerHttpResponse response) {
-
         // 如果响应体为 null，直接返回
         if (body == null) {
             return null;
@@ -131,4 +159,3 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
         return null;
     }
 }
-
