@@ -64,12 +64,12 @@ flowchart LR
 | 设计文档 | `docs/active/{版本}/{需求}/design.md` | 阅读设计，理解技术方案和约束 |
 | 执行计划 | `docs/active/{版本}/{需求}/plan.md` | 按计划执行任务，更新进度 |
 
-## v2.2.1 已验证能力边界
+## 当前能力边界
 
-v2.2.1 的技术债修复仍遵循“稳定可预测、按需组合、向后兼容”的产品原则：
+当前能力遵循“稳定可预测、按需组合、向后兼容”的产品原则：
 
-- 公共枚举增加 `fromCodeOrNull`，不改变既有 `fromCode` fallback；接入方可按需选择更明确的未知值处理。
-- 日志、RPC、Nacos、MyBatis 和测试 Starter 保持原有接入方式；新增的配置和 API 只补充能力，不要求立即迁移旧入口。
+- 公共枚举提供 `fromCodeOrNull`，保留既有 `fromCode` fallback；接入方可按需选择更明确的未知值处理。
+- 日志、RPC、Nacos、MyBatis 和测试 Starter 的接入方式与兼容入口以模块 README 为准；启用新配置或迁移旧 API 前需核对使用边界。
 - MyBatis v2 密文采用应用级 context 的渐进 rollout：先读 v2/写 v1，完成全实例升级和列长度预检后再开启写入；该能力不替代字段或记录级完整性设计。
 - 测试 Starter 不再注入数据库副作用或固定应用名；下游需要的测试数据库、日志和应用标识必须显式配置，避免基础 Starter 对业务环境作隐式假设。
 

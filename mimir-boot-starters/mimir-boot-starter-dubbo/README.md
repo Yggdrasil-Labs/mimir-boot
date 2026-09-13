@@ -11,7 +11,7 @@ Dubbo 接入层，基于 RPC Core 统一过滤调用并暴露可插拔钩子，�
 
 - Dubbo Filter 自动装配（Consumer/Provider）
 - 统一调用元数据与上下文，调用前/后/异常/清理钩子
-- 默认 MDC Bridge 在 Consumer 注入合法 `traceId`/`requestId`，Provider 在调用返回前恢复自身两个 MDC 键；可由外部实现覆盖
+- 默认 MDC Bridge 在 Consumer 注入合法 `traceId`/`requestId`；Provider 同步调用结束时恢复自身两个 MDC 键，异步调用则在返回前释放当前线程 scope，并在完成回调中重新建立并释放 scope；可由外部实现覆盖
 - 配置开关：`mimir.boot.dubbo.enabled`（默认开启）、`context-propagation-enabled`
 
 ## 快速开始指南
@@ -37,6 +37,8 @@ mimir:
       enabled: true
       context-propagation-enabled: true
 ```
+
+适配层的自动配置同时要求 `mimir.boot.rpc.core.enabled=true`（默认）且存在 `RpcHookChain`、`RpcTracerBridge` Bean；任一条件不满足时，Dubbo Filter 会直通调用，不执行上述 Hook 与上下文处理。
 
 ## 使用示例
 

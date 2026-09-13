@@ -6,14 +6,16 @@
 
 Mimir Boot Starter Exception 提供了开箱即用的全局异常处理功能：
 
-- ✅ **统一异常处理**：自动捕获并处理所有异常
+- ✅ **全局异常处理**：在 Web 应用中处理业务、系统、参数校验及常见 HTTP 异常
 - ✅ **业务异常**：`BizException` - 业务层面的可预期异常
 - ✅ **系统异常**：`SystemException` - 系统层面的不可预期异常
 - ✅ **参数校验异常**：自动处理 `@Valid`、`@ModelAttribute` 等校验异常
 - ✅ **Spring 6 HTTP 异常**：处理 400、404、405、406、413、415 等 HTTP 相关异常
-- ✅ **统一响应格式**：所有异常统一返回 `R` 格式
+- ✅ **默认响应格式**：默认响应工厂返回 `R`，可通过 `ExceptionResponseFactory` 自定义
 - ✅ **日志记录**：自动记录异常日志，支持日志安全清理
 - ✅ **可配置开关**：支持通过配置文件启用/禁用
+
+默认异常响应由 `DefaultExceptionResponseFactory` 构造为 `R`；接入方提供 `ExceptionResponseFactory` 后可以返回其他响应对象。下方示例中的 `traceId` 由 Web Starter 的响应增强在存在 MDC 追踪标识时填充，单独使用本 Starter 时可能为空。
 
 ## 快速开始
 
@@ -353,7 +355,7 @@ spring:
 }
 ```
 
-### 9. 所有未捕获的异常
+### 9. 未捕获的 Exception
 
 #### Exception（兜底处理）
 
@@ -378,7 +380,7 @@ spring:
 
 ### 10. Spring 6 请求与资源异常
 
-下列异常同样返回统一 `R` 响应，并保留 Spring 的 HTTP 语义：
+默认响应工厂下，下列异常返回 `R` 响应，并保留 Spring 的 HTTP 语义；自定义 `ExceptionResponseFactory` 可以改变响应对象：
 
 | 异常 | HTTP 状态 | 错误码语义 |
 | --- | --- | --- |
@@ -409,14 +411,14 @@ spring:
         ↓                  ↓                  ↓
    HTTP 200          HTTP 500          HTTP 400
         ↓                  ↓                  ↓
-  统一响应格式 R     统一响应格式 R     统一响应格式 R
+  工厂结果（默认 R）  工厂结果（默认 R）  工厂结果（默认 R）
         ↓                  ↓                  ↓
                   返回给客户端
 ```
 
 ## 日志记录
 
-所有异常都会自动记录日志：
+本处理器接管的异常会自动记录日志：
 
 - **业务异常**：`WARN` 级别
 - **系统异常**：`ERROR` 级别
@@ -426,7 +428,7 @@ spring:
 **日志示例**：
 
 ```
-2024-01-01 10:00:00.123 [http-nio-8080-exec-1] WARN  [a1b2c3d4e5f6] com.yggdrasil.labs.exception.handler.GlobalExceptionHandler - 业务异常: code=20001, message=用户不存在, uri=/api/user/123
+2024-01-01 10:00:00.123 [http-nio-8080-exec-1] WARN  [a1b2c3d4e5f6] com.yggdrasil.labs.exception.handler.MimirExceptionHandler - 业务异常: code=20001, message=用户不存在, uri=/api/user/123
 ```
 
 **安全特性**：

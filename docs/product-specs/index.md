@@ -17,4 +17,4 @@
 
 - 实现细节：看模块 README 和 `ARCHITECTURE.md`
 - 长期设计原则：看 `../design-docs/`
-- 当前执行任务：看 `../exec-plans/`
+- 当前执行任务：看[活跃版本索引](../active/index.md)

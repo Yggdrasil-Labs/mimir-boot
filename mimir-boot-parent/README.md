@@ -25,9 +25,9 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
 </parent>
 ```
 
-### 2. 引入 BOM（可选）
+### 2. 独立使用 BOM（不继承 Parent 时）
 
-如果需要统一管理依赖版本，可以在 `dependencyManagement` 中引入 BOM：
+继承 Parent 后已自动引入 BOM，无需重复配置。若项目使用其他父 POM，仅需依赖版本管理，可在 `dependencyManagement` 中单独引入 BOM：
 
 ```xml
 <dependencyManagement>
@@ -95,7 +95,7 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
 #### 集成测试（Failsafe）
 
 - 测试类命名模式：`**/*IT.java`、`**/*IntegrationTest.java`
-- 在 `verify` 阶段执行
+- 在 `integration-test` 阶段执行测试，在 `verify` 阶段检查结果
 
 ## 📦 Maven Profiles
 
@@ -302,7 +302,7 @@ open target/site/jacoco/index.html
 
 ### 格式化规则
 
-- **代码风格**：Google Java Format
+- **代码风格**：Google Java Format 的 AOSP 风格
 - **缩进**：4 个空格（不使用 Tab）
 - **导入**：自动移除未使用的导入
 - **空白**：自动去除行尾空格
@@ -323,7 +323,7 @@ mvn -Pci clean verify
 
 ### IDE 集成
 
-建议在 IDE 中安装 Google Java Format 插件，并配置为保存时自动格式化，避免在 CI 中格式检查失败。
+建议在 IDE 中安装 Google Java Format 插件，选择 AOSP 风格并配置为保存时自动格式化，与 POM 的格式设置保持一致。
 
 ## 🔒 依赖约束
 

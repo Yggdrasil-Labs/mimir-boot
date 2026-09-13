@@ -80,7 +80,7 @@ public class MicrometerTracerBridge implements RpcTracerBridge {
 
 ## API 文档
 
-- 本模块不暴露对外 API，仅提供 Spring Boot 自动装配与扩展点。
+- 本模块提供可供 Dubbo、Feign 等接入层使用的公共 API，包括调用上下文、Hook 链、执行模板和追踪 Bridge；不直接提供 HTTP API。
 
 ## 常见问题
 

@@ -11,8 +11,8 @@
 - ✅ 错误日志单独文件存储
 - ✅ 支持多环境配置（dev/test/prod）
 - ✅ 异步写入，提升性能
-- ✅ **敏感信息自动脱敏**（密码、账号、身份证号等）✨
-- ✅ **TraceId & SpanId 支持**（与 Micrometer Tracing 无缝集成）🔍
+- ✅ **敏感信息脱敏**：按配置启用密码、账号、身份证号等预置规则或自定义规则 ✨
+- ✅ **TraceId & SpanId 格式支持**：输出 MDC 中的值，可与 Micrometer Tracing 集成 🔍
 - ✅ **访问日志**（access.log）：记录每个请求的 IP、URI、耗时、状态等信息，慢接口自动 WARN 📊
 
 ## 快速开始
@@ -27,7 +27,7 @@
 </dependency>
 ```
 
-**不需要排除任何依赖**，直接引入即可使用！
+默认无需排除依赖，直接引入即可使用；如果项目已使用 Log4j2 等其他日志实现，请按下方冲突处理说明迁移。
 
 ### 使用示例
 
@@ -104,7 +104,7 @@ public class TraceController {
     
     @GetMapping("/api/user/{id}")
     public String getUser(@PathVariable String id) {
-        // 直接使用，TraceId 和 SpanId 由 Micrometer Tracing 自动注入
+        // 引入 Micrometer Tracing 后，TraceId 和 SpanId 会注入 MDC
         log.info("查询用户: id={}", id);
         
         processRequest();
@@ -127,7 +127,7 @@ public class TraceController {
                                                                 TraceId        SpanId
 ```
 
-**所有日志都包含相同的 TraceId**，方便追踪整个请求链路！
+在已配置链路追踪且请求上下文存在时，日志会包含相同的 TraceId，方便追踪整个请求链路；本 Starter 只负责从 MDC 输出这些值。
 
 #### Lombok 日志注解说明
 
@@ -242,6 +242,8 @@ mimir:
 
 **访问日志输出示例**：
 
+以下示例假设请求上下文已经将 TraceId 和 SpanId 写入 MDC；未写入时对应字段为空。
+
 **成功请求（INFO 级别）**：
 
 ```
@@ -278,7 +280,7 @@ HTTP 5xx 只决定日志级别，不等于处理链异常；只有过滤链抛�
   - 5xx 服务器错误：ERROR（如 500、502、503）
 - 独立的日志文件，与业务日志分离，方便分析
 - 异步写入，不影响业务性能
-- **所有环境都会生成**：dev、test、prod 都会自动记录访问日志
+- **各环境均可生成**：在 Servlet Web 应用中且未禁用访问日志时，dev、test、prod 都会自动记录访问日志
 
 **可信代理边界**：只有网络入口和 Servlet 容器已配置为仅信任受控反向代理，并将可信转发信息安全改写为 `remoteAddr` 时，访问日志才会记录原始客户端地址。Tomcat 可按实际受控网段精确配置：
 
@@ -306,7 +308,7 @@ server:
 
 ### 敏感信息脱敏
 
-**说明**：选择性启用脱敏功能，支持预置规则和自定义规则
+**说明**：默认不启用任何预置规则；可按需启用预置规则或配置自定义规则
 
 **示例1：使用预置规则**
 
@@ -387,9 +389,9 @@ SensitiveDataConverter.clearCustomPatterns();
 
 **TraceId 和 SpanId**：
 
-- 由 Micrometer Tracing 自动注入到 MDC
-- 日志格式中通过 `%X{traceId}` 和 `%X{spanId}` 输出
-- 所有日志自动包含，无需手动配置
+- 本 Starter 不负责生成或注入 TraceId、SpanId；应用或 Micrometer Tracing 等组件可将它们写入 MDC
+- 日志格式中通过 `%X{traceId}` 和 `%X{spanId}` 输出，MDC 中没有值时对应字段为空
+- 接入 Micrometer Tracing 后可自动填充 MDC，无需额外修改日志格式
 
 ### MDC 扩展支持
 
@@ -415,7 +417,7 @@ public class UserController {
     
     @GetMapping("/api/user/{id}")
     public User getUser(@PathVariable String id) {
-        // TraceId 和 SpanId 由 Micrometer Tracing 自动注入
+        // 若已接入 Micrometer Tracing，TraceId 和 SpanId 会注入 MDC
         log.info("查询用户: id={}", id);
         
         User user = userService.getById(id);
@@ -483,9 +485,9 @@ public class UserController {
 
 **说明**：
 
-- TraceId 和 SpanId 由 Micrometer Tracing 自动注入
+- 本 Starter 从 MDC 读取 TraceId 和 SpanId；接入 Micrometer Tracing 后可自动注入
 - 在日志中通过 `[traceId]` 和 `[spanId]` 显示
-- 如果未集成 Micrometer，这两个字段显示为空
+- 如果 MDC 中没有这两个值，字段显示为空
 
 ## 异常处理
 

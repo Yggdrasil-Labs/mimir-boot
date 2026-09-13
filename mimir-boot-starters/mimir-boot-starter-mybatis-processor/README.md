@@ -32,6 +32,8 @@
 #### 1. 标注实体类
 
 ```java
+package com.example;
+
 import com.yggdrasil.labs.mybatis.annotation.AutoMybatis;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -111,8 +113,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 ```java
 import com.example.service.UserService;
 import com.example.User;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
-@Service
+@RestController
 public class UserController {
     @Autowired
     private UserService userService;  // 注入生成的 Service
@@ -317,14 +325,18 @@ public class User {
 
 ### 3. 扩展生成的 Service
 
-生成的 ServiceImpl 可以添加自定义业务方法：
+生成的 `ServiceImpl` 已带 `@Service`。如果通过扩展类加入业务方法并交给 Spring 管理，应同时标记 `@Primary`，避免注入 `UserService` 时出现多个 Bean：
 
 ```java
 // 方式1：直接在生成的类上添加方法（需要确保不会在重新生成时被覆盖）
 // 注意：如果修改了实体类并重新编译，生成的文件会重新生成，自定义方法会丢失
 
 // 方式2：创建扩展类（推荐）
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+
 @Service
+@Primary
 public class UserServiceExt extends UserServiceImpl {
     
     public User findByUsername(String username) {
@@ -447,7 +459,11 @@ mvn clean compile
 // 不要修改生成的 UserServiceImpl
 // 而是创建扩展类
 
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+
 @Service
+@Primary
 public class UserServiceExt extends UserServiceImpl {
     // 添加自定义方法
     public User findByUsername(String username) {

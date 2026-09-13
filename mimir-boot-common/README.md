@@ -75,6 +75,8 @@ return R.success(data);
 return R.fail("20001", "用户不存在");
 ```
 
+`R<T>` 和 `PageResult<T>` 的类型参数都必须实现 `Serializable`；下方示例中的 `User` 需满足该类型约束。
+
 ### 3. 分页
 
 - **PageRequest** - 分页请求参数（构造工厂会校验；绑定后的对象需显式触发校验）

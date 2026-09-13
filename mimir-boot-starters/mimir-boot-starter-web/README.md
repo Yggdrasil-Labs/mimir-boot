@@ -10,7 +10,7 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 - ✅ **Jackson 序列化配置**：统一日期时间格式、空值处理等
 - ✅ **Trace 拦截器**：处理受限格式的 traceId/requestId，写入 MDC，并将 traceId 写入响应头
 - ✅ **Web 拦截器**：记录容器提供的直连 IP，并只恢复自己写入的 MDC 键
-- ✅ **响应体增强器**：自动为 `R` 响应对象填充 traceId
+- ✅ **响应体增强器**：自动为实际 `R` 响应对象（含 `HttpEntity<R>`/`ResponseEntity<R>` 响应）填充 traceId
 - ✅ **上传限制迁移**：使用 Spring Boot multipart 配置管理请求和文件大小
 - ✅ **可配置开关**：支持通过配置文件启用/禁用各项功能
 
@@ -309,9 +309,9 @@ log.info("用户登录：IP={}", org.slf4j.MDC.get("ip"));
 
 **功能**：
 
-- 自动为 `R` 响应对象填充 traceId
-- 仅处理返回类型为 `R` 的接口
-- 仅处理 `@RestController` 注解的类
+- 自动为实际的 `R` 响应对象填充 traceId；支持直接返回 `R`，以及声明为 `HttpEntity<R>`/`ResponseEntity<R>` 的接口
+- `@RestControllerAdvice` 方法即使声明返回 `Object` 也可处理，但实际响应体必须是 `R`
+- 仅处理 `@RestController` 或 `@RestControllerAdvice` 注解的类
 
 **使用示例**：
 

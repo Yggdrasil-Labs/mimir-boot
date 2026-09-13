@@ -12,7 +12,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，核心定�
 
 技术选型基于 Java 17 + Spring Boot 3.3.13 + Spring Cloud 2023.0.6，持久层使用 MyBatis-Plus，配置中心对接 Nacos。仓库通过 GitHub Actions 实现 CI/CD，制品发布至 Maven Central 和 GitHub Packages，版本由根 POM 的 `revision` 属性统一管理，配合 release-please 自动化发版。
 
-接入方通过继承 `mimir-boot-parent` 并导入 `mimir-boot-bom`，按需引入所需 Starter，即可获得开箱即用的企业级基础能力（日志脱敏、链路追踪、统一异常、配置加密、RPC 治理等）。
+接入方通过继承 `mimir-boot-parent`（已自动引入 `mimir-boot-bom`），按需引入所需 Starter，即可获得企业级基础能力（日志脱敏、链路追踪、统一异常、配置加密、RPC 治理等）。使用其他父 POM 的项目也可单独导入 BOM 管理依赖版本。
 
 ## 项目结构
 

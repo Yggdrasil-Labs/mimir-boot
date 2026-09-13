@@ -40,11 +40,12 @@
 | `mimir-boot-starter-exception`         | 异常处理启动器（全局异常处理、统一响应）         | ✅ 已完成 |
 | `mimir-boot-starter-web`               | Web 层启动器（CORS、Trace、响应增强）    | ✅ 已完成 |
 | `mimir-boot-starter-mybatis`           | MyBatis 启动器（分页、审计、加密字段）      | ✅ 已完成 |
-| `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（自动 Mapper 扫描） | ✅ 已完成 |
+| `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（生成 Mapper、Service 和 ServiceImpl） | ✅ 已完成 |
 | `mimir-boot-starter-nacos`             | Nacos 配置加密启动器（ENC() 格式解密）    | ✅ 已完成 |
 | `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | ✅ 已完成 |
 | `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | ✅ 已完成 |
 | `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | ✅ 已完成 |
+| `mimir-boot-starter-test`               | 测试基类与辅助工具                     | ✅ 已完成 |
 
 ### 🔮 未来方向
 
@@ -203,16 +204,16 @@ logging:
 
 引入 `mimir-boot-starter-log` 后自动提供：
 
-- 自动敏感信息脱敏（密码、token 等自动替换为 `****`，可配置）
-- TraceId & SpanId 自动注入日志上下文
-- HTTP 访问日志（含慢接口自动告警）
-- 多环境配置（dev 彩色控制台 / prod 纯文件）
+- 按配置规则进行敏感信息脱敏（默认替换为 `****`，规则配置见模块文档）
+- 日志输出 MDC 中已有的 TraceId / SpanId；Web Starter 提供 TraceId，SpanId 需由接入方的追踪组件提供
+- HTTP 访问日志（慢接口自动记录为 WARN）
+- 多环境配置（开发环境输出到控制台和文件；生产环境按 logger 分流，根日志保留控制台输出）
 
 详细文档请参考 [mimir-boot-starter-log/README.md](mimir-boot-starters/mimir-boot-starter-log/README.md)
 
 ### 🔐 配置加密脱敏
 
-引入 `mimir-boot-starter-nacos` 后提供：
+引入 `mimir-boot-starter-nacos`，显式绑定 `mimir.boot.nacos.encrypt`（兼容旧前缀 `mimir.nacos.encrypt`）并启用解密后提供：
 
 - Nacos 配置中 `ENC(encrypted_value)` 格式自动解密
 - 配置动态刷新时自动重新解密
@@ -302,22 +303,26 @@ graph TD
     Starters --> Feign[mimir-boot-starter-feign<br/>Feign 专用治理]
     
     Log --> Common
-    Log --> Test
+    Log -.test.-> Test
     Exception --> Common
-    Exception --> Test
+    Exception -.test.-> Test
     Web --> Common
     Web --> Exception
-    Web --> Test
+    Web -.test.-> Test
     MyBatis --> Common
-    MyBatis --> Test
-    Processor --> Test
+    MyBatis -.test.-> Test
+    Processor -.test.-> Test
     Nacos --> Common
-    Nacos --> Test
+    Nacos -.test.-> Test
     Test --> Common
     
     RPCCore --> Common
+    RPCCore -.test.-> Test
     Dubbo --> RPCCore
+    Dubbo -.test.-> Test
     Feign --> RPCCore
+    Feign -.test.-> Test
+    Feign -.test.-> Web
     
     style Root fill:#e1f5ff
     style Parent fill:#fff4e1
@@ -329,8 +334,9 @@ graph TD
 
 ### 依赖关系说明
 
-- **实线箭头**：已实现的模块依赖关系
-- **虚线箭头**：管理/版本依赖关系（Parent → BOM）
+- **根模块和 Starter 聚合模块发出的实线箭头**：模块聚合关系
+- **其余实线箭头**：编译依赖关系
+- **虚线箭头**：按标签区分依赖管理（Parent → BOM）和仅测试使用的依赖（`test`）
 - **颜色说明**：
   - 🔵 蓝色：根模块
   - 🟡 黄色：基础设施模块（Parent、BOM）
@@ -345,7 +351,7 @@ graph TD
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-  - 在 push 到 `main`/`develop` 和 PR 时运行：`bash scripts/ci-preflight.sh`
+  - 在 push 到 `main`/`develop` 和目标分支为 `main` 的 PR 时运行：`bash scripts/ci-preflight.sh`
   - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率；当前 JaCoCo XML 在集成测试前生成
   - Spotless 检查随 CI profile 执行，实际扫描范围受模块配置影响
   - 可选 Sonar：仅在 push 到 `main`/`develop` 且同时存在 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和 `SONAR_PROJECT_KEY` 时自动执行
@@ -356,7 +362,7 @@ graph TD
 
 - **发布（.github/workflows/release.yml）**
   - 基于 Tag 触发：先执行 `./mvnw -B spotless:check clean package -DskipTests`，再执行消费者契约校验
-  - 按发布选择发布制品到 GitHub Packages（GPR）和/或 Maven Central；正式版需要显式 GPG 签名
+  - 按发布选择发布制品到 GitHub Packages（GPR）和/或 Maven Central；Maven Central 正式版需要显式 GPG 签名
 
 ### 使用 GitHub Packages（消费者）
 

@@ -6,7 +6,7 @@
 
 提供完整的 MyBatis-Plus 集成方案：
 
-- ✅ **自动配置拦截器**（分页、乐观锁、JSON SQL日志）
+- ✅ **自动配置拦截器**（分页、乐观锁；JSON SQL 日志按环境和配置启用）
 - ✅ **审计字段自动填充**（createBy、createTime、updateBy、updateTime）
 - ✅ **字段加解密支持**（String、Integer、Long 类型）
 - ✅ **SQL 日志结构化输出**（JSON 格式，支持敏感信息脱敏）
@@ -140,7 +140,7 @@ public class User {
 
 #### 启用审计功能
 
-审计功能默认启用，自动填充以下字段：
+审计功能默认启用。实体类需要为以下字段声明对应的 `@TableField(fill = ...)`，处理器才会自动填充：
 
 - `createBy` - 创建人
 - `createTime` - 创建时间
@@ -150,6 +150,8 @@ public class User {
 #### 实体类示例
 
 ```java
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
@@ -159,9 +161,13 @@ public class User {
     private String username;
     
     // 审计字段
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
     
     // getters and setters...
@@ -295,18 +301,18 @@ public class UserQuery {
 }
 ```
 
-对于参数 `Map`（包括多个 `@Param` 参数），`password`、`passwd`、`pwd`、`token`、`access_token`、`refresh_token`、`id_token`、`secret`、`client_secret`、`authorization` 和 `api_key` 会自动替换为 `***`。参数名不区分大小写，并兼容 `_`、`-` 分隔；其他敏感字段仍应使用 `@SensitiveField` 显式标注。
+对于参数 `Map`（包括多个 `@Param` 参数），`password`、`passwd`、`pwd`、`token`、`access_token`、`refresh_token`、`id_token`、`secret`、`client_secret`、`authorization` 和 `api_key` 会自动替换为 `****`。参数名不区分大小写，并兼容 `_`、`-` 分隔；其他敏感字段仍应使用 `@SensitiveField` 显式标注。
 
 **支持的脱敏策略**：
 
 | 策略 | 说明 | 示例 |
 |------|------|------|
-| `ALL` | 全部脱敏 | `13812345678` → `******` |
+| `ALL` | 全部脱敏 | `13812345678` → `****` |
 | `PHONE` | 保留前3位后4位 | `13812345678` → `138****5678` |
-| `ID_CARD` | 保留前6位后4位 | `110101199001011234` → `110101********1234` |
+| `ID_CARD` | 保留前6位后4位 | `110101199001011234` → `110101****1234` |
 | `BANK_CARD` | 保留前4位后4位 | `6222021234567890` → `6222****7890` |
 | `EMAIL` | 邮箱脱敏 | `user@example.com` → `u****@example.com` |
-| `CUSTOM` | 自定义替换字符 | 使用 `replacement` 属性指定 |
+| `CUSTOM` | 自定义替换字符 | 使用 `@SensitiveField` 的 `replacement` 属性指定 |
 
 ### 5. 分页工具类
 
@@ -360,7 +366,7 @@ mimir:
       crypto-enabled: true
       # 加解密密钥（Base64 编码的 128/192/256 位 AES 密钥），启用加密时必填
       crypto-key: ${MYBATIS_CRYPTO_KEY}
-      # 应用级 v2 密文 context；必须显式配置，所有实例使用同一值
+      # 应用级 v2 密文 context；启用 v2 写入时必须配置，且所有实例使用同一值
       crypto-context: ${MYBATIS_CRYPTO_CONTEXT}
       # 全量升级和列长度预检完成后才开启，默认 false
       crypto-v2-write-enabled: false
@@ -380,8 +386,7 @@ mybatis-plus:
   configuration:
     # 驼峰命名转换
     map-underscore-to-camel-case: true
-    # 日志实现（可选，已通过 starter 自动配置）
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 日志实现由 starter 统一设置为 SLF4J，无需配置 log-impl
   
   # 全局配置
   global-config:
@@ -413,9 +418,13 @@ public class User {
     private String email;
     
     // 审计字段（自动填充）
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }
 
@@ -513,9 +522,13 @@ public class User {
     private String email;
     
     // 审计字段（推荐统一命名）
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
     
     // 逻辑删除字段（可选）

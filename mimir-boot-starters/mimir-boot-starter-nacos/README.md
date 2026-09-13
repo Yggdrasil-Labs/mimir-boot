@@ -55,7 +55,7 @@ mimir:
     nacos:
       encrypt:
         enabled: true              # 是否启用配置加密脱敏功能，默认 true
-        key: ${NACOS_ENCRYPT_KEY}  # Base64 编码的 AES 密钥（必填）
+        key: ${NACOS_ENCRYPT_KEY}  # Base64 编码的 AES 密钥（存在加密配置值时必填）
         prefix: ENC                # 加密前缀，默认 ENC
 ```
 
@@ -76,9 +76,9 @@ redis:
   password: ENC(zzzzzzzz)        # 加密的 Redis 密码
 ```
 
-应用启动时会自动检测并解密所有 `ENC(...)` 格式的配置值。
+应用启动时会自动检测并解密所有符合已配置加密前缀（默认 `ENC`）格式的配置值。
 
-只有显式绑定 `mimir.boot.nacos.encrypt` 或兼容的 `mimir.nacos.encrypt` 配置前缀时才会扫描配置；没有绑定前缀时，普通配置中的 `ENC(...)` 文本不会触发密钥校验。
+只有显式绑定 `mimir.boot.nacos.encrypt` 或兼容的 `mimir.nacos.encrypt` 配置前缀时才会扫描配置；没有绑定前缀时，普通配置中的匹配前缀文本不会触发密钥校验。
 
 ## 核心功能
 
@@ -160,7 +160,7 @@ password: SECRET(encrypted_value)  # 使用自定义前缀
 
 ## 配置参数
 
-所有配置项前缀为 `mimir.boot.nacos.encrypt`：
+默认配置项前缀为 `mimir.boot.nacos.encrypt`；仍兼容已弃用的 `mimir.nacos.encrypt`：
 
 ```yaml
 mimir:
@@ -170,7 +170,7 @@ mimir:
         # 是否启用配置加密脱敏功能
         enabled: true
       
-        # 加密密钥（Base64 编码），必填
+        # 加密密钥（Base64 编码；存在匹配配置前缀的加密值时必填）
         # 可以通过工具类生成：NacosEncryptUtil.generateKey()
         key: YOUR_BASE64_ENCODED_KEY
       
@@ -184,7 +184,7 @@ mimir:
 | 配置项 | 类型 | 默认值 | 必填 | 说明 |
 |--------|------|--------|------|------|
 | `enabled` | Boolean | `true` | 否 | 是否启用配置加密脱敏功能 |
-| `key` | String | - | 是 | Base64 编码的加密密钥，用于解密配置值 |
+| `key` | String | - | 有加密值时是 | Base64 编码的加密密钥，用于解密配置值 |
 | `algorithm` | String | `AES/GCM/NoPadding` | 否 | 已弃用；应用配置仅支持 AES-GCM |
 | `prefix` | String | `ENC` | 否 | 加密配置值的前缀，格式为 `prefix(encrypted_value)` |
 
@@ -519,7 +519,7 @@ password: SECRET(encrypted_value)  # 使用新前缀
 ### 工作原理
 
 1. **配置加载阶段**：`EnvironmentPostProcessor` 在 ApplicationContext 刷新前处理已加载的配置属性源
-2. **配置扫描**：遍历所有配置属性源，查找包含 `ENC(...)` 格式的值
+2. **配置扫描**：遍历所有配置属性源，查找包含已配置加密前缀（默认 `ENC`）格式的值
 3. **自动解密**：提取加密内容，使用配置的密钥进行解密
 4. **配置替换**：将解密后的值紧邻原属性源之前加入，只覆盖对应密文键并保持其他属性源的优先级
 5. **动态刷新**：监听 `EnvironmentChangeEvent`，配置刷新时重新解密
@@ -527,7 +527,7 @@ password: SECRET(encrypted_value)  # 使用新前缀
 ### 安全说明
 
 - **默认实现**：使用 `AES/GCM/NoPadding`，密文格式为 `v1:<iv-base64>:<ciphertext-base64>`；每次加密都会生成随机 IV，并通过 GCM 标签校验完整性。
-- **严格失败**：只要存在 `ENC(...)`，密钥缺失、密钥格式非法、密文被篡改或错误密钥都会使启动或刷新失败；日志仅记录属性名和解密数量。
+- **严格失败**：显式绑定加密配置前缀、启用解密（`enabled=true`）且存在匹配配置前缀的加密值时，密钥缺失、密钥格式非法、密文被篡改或错误密钥都会使启动或刷新失败；日志仅记录属性名和解密数量。
 - **密钥管理**：生产环境请使用密钥管理服务（Vault、KMS）动态获取密钥
 - **密钥轮换**：定期轮换加密密钥，重新加密所有配置值
 
