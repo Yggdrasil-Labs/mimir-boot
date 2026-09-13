@@ -8,10 +8,10 @@ Mimir Boot Common 是 Yggdrasil-Labs 企业级基础框架的**核心规范模�
 
 遵循"不重复造轮子"原则，只提供项目规范层面内容：
 
-- ❌ **不提供工具类**：使用 Hutool、Commons-Lang 等成熟库
+- ❌ **不提供通用工具集合**：字符串、日期、集合等通用能力使用 Hutool、Commons-Lang 等成熟库
 - ❌ **不提供自定义校验**：使用 Spring Validation 标准注解
 - ❌ **不提供领域功能**：MyBatis Plus、Security 等由子项目各自引入
-- ✅ **只提供项目规范**：异常、响应、分页、枚举
+- ✅ **提供项目规范与边界适配**：异常、响应、分页、枚举，以及 `IpUtils`、`LogSanitizer` 这类框架边界工具
 
 ## 核心组件
 
@@ -77,12 +77,12 @@ return R.fail("20001", "用户不存在");
 
 ### 3. 分页
 
-- **PageRequest** - 分页请求参数（自动校验）
+- **PageRequest** - 分页请求参数（构造工厂会校验；绑定后的对象需显式触发校验）
 
 ```java
-// 构造时自动校验参数
+// 带参数构造会自动校验参数
 PageRequest request = new PageRequest(1L, 10L);
-PageRequest request = PageRequest.of(1L, 10L, "createTime", "DESC");
+PageRequest sortedRequest = PageRequest.of(1L, 10L, "createTime", "DESC");
 // 语义：pageIndex 从 1 开始；pageSize 上限 1000；orderDirection 支持 ASC/DESC
 // 偏移量：request.getOffset()
 ```
@@ -98,15 +98,15 @@ PageRequest request = PageRequest.of(1L, 10L, "createTime", "DESC");
 
 **自动校验规则：**
 
-- 构造时调用 `validateAndCorrect()` 自动校验并修正参数：
+- 带参数构造方法和 `PageRequest.of()` 会调用 `validateAndCorrect()`：
   - `pageIndex` 必须 >= 1，否则修正为默认值 1
   - `pageSize` 必须在 1 到 MAX_PAGE_SIZE(1000) 之间，否则修正为默认值 10 或最大值
   - `orderDirection` 必须是 ASC 或 DESC，否则修正为 ASC
 
 **注意事项：**
 
-- 使用无参构造方法时，需要手动调用 `validateAndCorrect()` 进行校验
-- 或使用 `PageRequest.of()` 静态方法，会自动校验
+- 无参构造只设置默认字段值，不会为后续 setter 或 Jackson 绑定自动校验；绑定请求参数后应显式调用 `validateAndCorrect()`，或在计算偏移量前调用 `getOffset()`
+- 直接读取 `getPageIndex()`、`getPageSize()` 时不会触发校验；相关边界见 [TD-042](../docs/active/tech-debt-tracker.md#td-042-分页参数校验)
 
 - **PageResult** - 分页结果
 
@@ -219,13 +219,13 @@ public class UserVO extends BaseVO {
 ### 2. 使用示例
 
 ```java
-// Controller 层（自动校验，无需手动调用）
+// Controller 层：Jackson 使用无参构造绑定后，需显式校验
 @RestController
 public class UserController {
     @GetMapping("/users")
     public R<PageResult<User>> getUsers(
             @RequestBody PageRequest pageRequest) {
-        // 自动校验已在构造时完成
+        pageRequest.validateAndCorrect();
         PageResult<User> result = userService.list(pageRequest);
         return R.success(result);
     }
@@ -265,7 +265,7 @@ if (user == null) {
 ### 工具类
 
 - ✅ 使用 Hutool、Commons Lang、Guava 等成熟库
-- ❌ Common 模块不提供工具类
+- ✅ Common 仅保留 `IpUtils`、`LogSanitizer` 等框架边界工具，不提供通用工具集合
 
 ### 校验
 

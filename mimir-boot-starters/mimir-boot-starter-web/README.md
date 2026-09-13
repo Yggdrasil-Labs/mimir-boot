@@ -30,7 +30,7 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 
 ### 使用示例
 
-引入依赖后，无需额外配置即可使用。所有功能默认启用，可按需调整配置。
+引入依赖后，Web 增强会自动装配。Trace、MDC、响应增强和 Jackson 配置按默认值生效；CORS 默认关闭，启用时必须显式配置 Origin 白名单。
 
 ```java
 import com.yggdrasil.labs.common.response.R;

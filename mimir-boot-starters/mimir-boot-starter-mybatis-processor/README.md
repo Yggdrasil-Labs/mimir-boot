@@ -520,10 +520,11 @@ public class User {
 
 ## 技术栈
 
-- **JavaPoet**: 1.13.0 - 代码生成库
-- **MyBatis-Plus**: 3.5.14+ - ORM 框架
-- **Java Annotation Processing**: Java 17+
-- **Maven**: 3.6+
+- **JavaPoet** - 代码生成库
+- **MyBatis-Plus** - ORM 框架
+- **Java Annotation Processing** - 编译期代码生成
+- **Maven** - 构建工具
+- **Java**: 17+
 
 ## 📚 相关文档
 

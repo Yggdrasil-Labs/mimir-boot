@@ -218,6 +218,8 @@ MockDataBuilder.of(MyClass.class)
 - 自动清理测试环境
 - 可重写的 `setUp()` 和 `tearDown()` 方法
 
+`tearDown()` 会在基类完成环境清理后执行。重写该方法时，应自行清理其中写入的 MDC 或其他线程级状态；相关清理顺序边界见 [TD-046](../../docs/active/tech-debt-tracker.md#td-046-测试清理顺序)。
+
 #### BaseIntegrationTest
 
 集成测试基类，提供：

@@ -90,4 +90,4 @@ Mimir Boot 不负责：
 
 - 架构关系：[`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - Starter 全景：[`starter-capabilities.md`](./starter-capabilities.md)
-- 计划与治理：[`../PLANS.md`](../PLANS.md)
+- 计划与治理：[`../active/index.md`](../active/index.md)

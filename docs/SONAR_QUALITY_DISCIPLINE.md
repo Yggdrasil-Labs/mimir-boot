@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-13
+updated: 2026-09-13
 ---
 
 # SonarCloud 质量纪律
@@ -16,7 +16,8 @@ updated: 2026-08-13
 
 ## 2. 当前质量门禁
 
-CI 的单一 Build Job 先执行同源 `scripts/ci-preflight.sh`，具备可信事件与三项配置时，
+CI 的单一 Build Job 先执行同源 `scripts/ci-preflight.sh`，仅在 push 到 `main`/`develop` 且
+`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 均配置时，
 在同一次 Maven invocation 中追加 `sonar:sonar`，并上传各模块的 JaCoCo XML 报告；不具备资格时只跳过分析。
 新代码必须满足下列条件：
 
@@ -29,8 +30,10 @@ CI 的单一 Build Job 先执行同源 `scripts/ci-preflight.sh`，具备可信�
 | 新代码重复率 | <= 3% | 提取共享逻辑或测试夹具，避免复制粘贴。 |
 | 安全热点审查率 | 100% | 每个新热点必须完成安全判断，不能仅标记为已审查。 |
 
-门禁配置与 CI 命令的权威来源分别是 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
-和 [`mimir-boot-parent/pom.xml`](../mimir-boot-parent/pom.xml)。修改阈值、分析范围或上报方式属于
+分析触发条件以 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) 为准，Maven 命令以
+[`scripts/ci-preflight.sh`](../scripts/ci-preflight.sh) 为准；本地 JaCoCo 配置位于
+[`mimir-boot-parent/pom.xml`](../mimir-boot-parent/pom.xml)，与上表 Sonar 新代码门禁要求分别维护。
+修改阈值、分析范围或上报方式属于
 构建治理变更，必须说明影响并完成完整验证。
 
 ## 3. 推送前检查清单
@@ -44,11 +47,11 @@ CI 的单一 Build Job 先执行同源 `scripts/ci-preflight.sh`，具备可信�
    mise exec java@17 -- bash scripts/ci-preflight.sh
    ```
 
-3. 运行 `git diff --check`；格式问题由 `verify` 内的 Spotless 检查兜底，不应依赖 CI 自动修复。
+3. 运行 `git diff --check` 并确认 Spotless 实际扫描了目标 Java 文件；当前子模块扫描范围存在限制，不能仅凭 `verify` 成功认定格式已检查，详见 [Parent 文档](../mimir-boot-parent/README.md)。
 4. 对已知 Sonar 规则逐项确认：没有未使用导入、嵌套三元表达式、无意义的 `throws`、或会掩盖异常来源的断言 lambda。
 5. 若改动包含新分支、错误处理或配置解析，确认 JaCoCo 报告已经覆盖成功和失败路径，而不仅是 happy path。
 
-本地 `verify` 不能代替 SonarCloud 分析。不要在未明确分支参数和凭证用途的情况下从本地向主分支上传 Sonar 分析；以 PR 或受控 CI 运行的分析结果为准。
+本地 `verify` 不能代替 SonarCloud 分析。不要在未明确分支参数和凭证用途的情况下从本地向主分支上传 Sonar 分析；以具备上述运行条件的受控 CI 分析结果为准，PR 事件本身不执行 Sonar 分析。
 
 ## 4. 常见问题的处置
 

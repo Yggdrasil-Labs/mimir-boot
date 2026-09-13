@@ -57,11 +57,18 @@ public class LoggingHook implements RpcHook {
 @Component
 public class MicrometerTracerBridge implements RpcTracerBridge {
     public Map<String,String> inject(RpcCallContext ctx){ /* ... */ return Map.of(); }
-    public void extract(RpcCallContext ctx, Map<String,String> carrier){ /* ... */ }
+    @Deprecated
+    public void extract(RpcCallContext ctx, Map<String,String> carrier){
+        /* 执行旧提取逻辑；兼容调用方仍自行管理上下文生命周期 */
+    }
+    public RpcTraceScope extractScope(RpcCallContext ctx, Map<String,String> carrier){
+        /* 提取上下文，并在 scope.close() 中恢复自定义上下文 */
+        return () -> { /* 恢复先前上下文 */ };
+    }
 }
 ```
 
-对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`。旧的 `extract` 方法仍保持源码和二进制兼容，但默认返回 noop scope，不保证未知自定义上下文的回滚。
+对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`，同时实现仍为接口必需的旧 `extract` 方法。旧 `extract` 入口的调用方仍需自行管理上下文生命周期；默认 `extractScope` 只是将旧入口适配为 noop scope，不保证未知自定义上下文的回滚，不能替代自定义实现。相关兼容入口见 [TD-013](../../docs/active/tech-debt-tracker.md#td-013-rpc-mdc-scope)。
 
 ## 最佳实践
 

@@ -116,6 +116,8 @@ public class ConfigController {
 }
 ```
 
+刷新监听器只有在 `mimir.boot.nacos.encrypt` 或兼容的 `mimir.nacos.encrypt` 前缀仍处于绑定状态时才会处理事件。若刷新时直接删除整个加密配置前缀，当前版本不会进入清理流程，旧的 `decryptedProperties:*` 覆盖层可能继续生效；该边界记录在 [TD-039](../../docs/active/tech-debt-tracker.md#td-039-nacos-解密覆盖层)。
+
 ### 3. 加密工具类
 
 提供便捷的工具类用于生成密钥和加密配置值：

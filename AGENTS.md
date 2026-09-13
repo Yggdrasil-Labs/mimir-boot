@@ -60,17 +60,20 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 # 全量构建
 ./mvnw clean install
 
-# 构建特定模块（含依赖）
-./mvnw clean install -pl mimir-boot-starter-log -am
+# 构建特定嵌套模块（含依赖；-pl 使用模块路径）
+./mvnw clean install -pl mimir-boot-starters/mimir-boot-starter-log -am
 
 # 跳过测试
 ./mvnw clean package -DskipTests
 
-# 运行测试 + 质量门禁
-./mvnw verify
+# 运行测试 + Maven 质量门禁
+./mvnw -Pci clean verify
+
+# CI 同等预检（额外校验测试报告和 JaCoCo 产物）
+bash scripts/ci-preflight.sh
 
 # 代码格式检查
-./mvnw spotless:check
+./mvnw -Pci spotless:check
 
 # 自动格式化
 ./mvnw spotless:apply

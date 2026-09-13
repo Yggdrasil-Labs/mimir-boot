@@ -27,7 +27,7 @@
 - 🪵 **智能日志**: 自动脱敏、Trace追踪、访问日志
 - 🔐 **配置安全**: Nacos 配置加密脱敏，支持 ENC() 格式
 - 🔧 **开箱即用**: 多个 Starter 模块，快速接入
-- 📋 **质量保证**: Spotless 代码格式化、单元测试、JaCoCo 覆盖率、SonarCloud 分析
+- 📋 **质量工具**: Spotless 代码格式化、单元测试、JaCoCo 覆盖率、SonarCloud 分析
 
 ## 📦 模块说明
 
@@ -58,45 +58,27 @@
 
 ## 🚀 快速开始
 
-### 1. 继承 Parent POM 并引入 BOM
+### 1. 继承 Parent POM
 
-**当前开发版本（尚未发布）**：根 POM 使用 `2.2.1-SNAPSHOT`。以下片段用于本地或隔离仓库验证；正式发布后再将版本替换为 `2.2.1`。
+**当前开发版本（尚未发布）**：以下片段中的开发版本应与根 POM 的 `<revision>` 保持一致；正式发布后再将版本替换为对应的正式版本。
 
 ```xml
 <parent>
     <groupId>io.github.yggdrasil-labs</groupId>
     <artifactId>mimir-boot-parent</artifactId>
-    <version>2.2.1-SNAPSHOT</version>
+    <version>2.2.2-SNAPSHOT</version>
 </parent>
-
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>io.github.yggdrasil-labs</groupId>
-            <artifactId>mimir-boot-bom</artifactId>
-            <version>2.2.1-SNAPSHOT</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
 ```
 
-**当前快照验证的 GitHub Packages 配置**（正式发布后将版本替换为 `2.2.1`）：
+`mimir-boot-parent` 已在 `dependencyManagement` 中引入 `mimir-boot-bom`，继承 Parent 的项目通常无需重复导入 BOM。若项目不继承 Parent，或需要独立使用版本矩阵，再显式导入 BOM：
 
 ```xml
-<parent>
-    <groupId>io.github.yggdrasil-labs</groupId>
-    <artifactId>mimir-boot-parent</artifactId>
-    <version>2.2.1-SNAPSHOT</version>
-</parent>
-
 <dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-bom</artifactId>
-            <version>2.2.1-SNAPSHOT</version>
+            <version>2.2.2-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -173,35 +155,37 @@ logging:
 
 ```bash
 # 构建整个项目
-mvn clean install
+./mvnw clean install
 
-# 构建特定模块
-mvn clean install -pl mimir-boot-starter-log -am
+# 构建特定嵌套模块（-pl 使用模块路径）
+./mvnw clean install -pl mimir-boot-starters/mimir-boot-starter-log -am
 
 # 跳过测试
-mvn clean package -DskipTests
+./mvnw clean package -DskipTests
 
-# 代码格式化检查（Spotless）
-mvn spotless:check
+# 测试与 CI profile 质量门禁
+./mvnw -Pci clean verify
+
+# CI profile 下的代码格式化检查（Spotless）
+./mvnw -Pci spotless:check
 
 # 自动格式化代码（Spotless）
-mvn spotless:apply
-
-# 使用 Maven Wrapper
-./mvnw clean install
+./mvnw spotless:apply
 ```
+
+`-Pci clean verify` 启用当前配置的测试、覆盖率、Spotless 和 Enforcer 门禁。当前子模块格式扫描范围和集成测试覆盖率报告仍有局限，配置细节见 [Parent 文档](mimir-boot-parent/README.md)。
 
 ## 📋 技术栈
 
 | 类别       | 主要技术                                            |
 |----------|-------------------------------------------------|
 | **运行环境** | Java 17 (LTS)                                   |
-| **应用框架** | Spring Boot 3.3.13                              |
-| **微服务**  | Spring Cloud 2023.0.6 (Leyton)                  |
-| **配置中心** | Spring Cloud Alibaba Nacos 2023.0.3.4           |
-| **数据库**  | MyBatis-Plus 3.5.17, MySQL Connector/J 8.3.0, PostgreSQL JDBC 42.7.7 |
-| **工具类**  | Hutool 5.8.47, Lombok 1.18.46, MapStruct 1.6.3  |
-| **日志**   | Logback 1.5.18, SLF4J API 2.0.17                |
+| **应用框架** | Spring Boot 3.3.13                               |
+| **微服务**  | Spring Cloud 2023.0.6 (Leyton)                    |
+| **配置中心** | Spring Cloud Alibaba Nacos 2023.0.3.4            |
+| **数据库**  | MyBatis-Plus, MySQL Connector/J, PostgreSQL JDBC |
+| **工具类**  | Hutool, Lombok, MapStruct                       |
+| **日志**   | Logback, SLF4J API                               |
 | **测试**   | JUnit 5, Mockito；Testcontainers 由接入方按需引入 |
 | **监控**   | Micrometer, Prometheus, JaCoCo                  |
 
@@ -211,9 +195,9 @@ mvn spotless:apply
 
 ### 📦 智能依赖管理
 
-- **统一 BOM 管理**: 所有第三方依赖版本由 BOM 统一管理
-- **自动版本同步**: 避免版本冲突，确保依赖兼容性
-- **与 Spring Boot 兼容**: 依赖版本与 Spring Boot BOM 保持一致
+- **统一 BOM 管理**: BOM 集中声明显式管理坐标，导入的上游 BOM 继续提供传递版本
+- **版本来源清晰**: 已验证和仅管理坐标以 [BOM 支持等级](mimir-boot-bom/README.md#-支持等级) 为准
+- **兼容性范围明确**: BOM 以 Spring Boot BOM 为基线并补充部分版本；支持范围和接入限制见 [BOM 文档](mimir-boot-bom/README.md)
 
 ### 🪵 企业级日志方案
 
@@ -238,11 +222,11 @@ mvn spotless:apply
 
 ### 🔧 Web 层增强
 
-引入 `mimir-boot-starter-web` 后自动提供：
+`mimir-boot-starter-web` 提供以下能力：
 
 - 统一响应格式 `R<T>` 自动填充 traceId
 - 自动生成/传递 traceId（MDC + 响应头）
-- CORS 跨域配置开箱即用
+- CORS 跨域配置默认关闭，启用时需显式配置 Origin 白名单
 
 详细文档请参考 [mimir-boot-starter-web/README.md](mimir-boot-starters/mimir-boot-starter-web/README.md)
 
@@ -361,16 +345,17 @@ graph TD
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-  - 在 push 到 `main`/`develop` 和 PR 时运行：`bash scripts/ci-preflight.sh`（Java 17）
-  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率
-  - 可选 Sonar：存在 `SONAR_TOKEN` 时自动执行
+  - 在 push 到 `main`/`develop` 和 PR 时运行：`bash scripts/ci-preflight.sh`
+  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率；当前 JaCoCo XML 在集成测试前生成
+  - Spotless 检查随 CI profile 执行，实际扫描范围受模块配置影响
+  - 可选 Sonar：仅在 push 到 `main`/`develop` 且同时存在 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和 `SONAR_PROJECT_KEY` 时自动执行
 
 - **Release PR 与自动打 Tag（.github/workflows/release-please.yml）**
   - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
-  - 合并该 PR 后，自动创建 `vX.Y.Z` Tag 与 GitHub Release
+  - 合并该 PR 后，由 `create-tag.yml` 创建 `vX.Y.Z` Tag；Tag 再触发 `release.yml`，在公开制品校验通过后创建 GitHub Release
 
 - **发布（.github/workflows/release.yml）**
-  - 基于 Tag 触发：先最终校验 `./mvnw clean verify`
+  - 基于 Tag 触发：先执行 `./mvnw -B spotless:check clean package -DskipTests`，再执行消费者契约校验
   - 按发布选择发布制品到 GitHub Packages（GPR）和/或 Maven Central；正式版需要显式 GPG 签名
 
 ### 使用 GitHub Packages（消费者）

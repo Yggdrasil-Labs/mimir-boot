@@ -53,35 +53,37 @@ Mimir Boot 的父 POM 模块，提供统一的 Maven 插件版本管理、构建
 
 ### 已配置的 Maven 插件
 
+插件版本以 [Parent POM](./pom.xml) 为准，以下仅列出名称与用途。
+
 #### 核心插件
 
-- **maven-compiler-plugin** (3.14.1)：Java 编译插件，支持参数名称保留
-- **maven-surefire-plugin** (3.5.4)：单元测试插件
-- **maven-failsafe-plugin** (3.5.4)：集成测试插件
-- **spring-boot-maven-plugin** (3.3.13)：Spring Boot 打包插件
+- **maven-compiler-plugin**：Java 编译插件，支持参数名称保留
+- **maven-surefire-plugin**：单元测试插件
+- **maven-failsafe-plugin**：集成测试插件
+- **spring-boot-maven-plugin**：Spring Boot 打包插件
 
 #### 代码质量插件
 
-- **jacoco-maven-plugin** (0.8.14)：代码覆盖率检查
-  - 指令覆盖率要求：≥ 80%
+- **jacoco-maven-plugin**：代码覆盖率检查
+  - 指令覆盖率要求：≥ 60%
   - 分支覆盖率要求：≥ 50%
-  - 排除配置类、实体类、DTO、VO 等
+  - 排除实体类、DTO、VO 和主应用类等
   
-- **spotless-maven-plugin** (2.43.0)：代码格式化
-  - 使用 Google Java Format 1.22.0
+- **spotless-maven-plugin**：代码格式化
+  - 使用 Google Java Format
   - 自动移除未使用的导入
   - 自动去除行尾空格
   - 文件末尾自动换行
 
-- **maven-enforcer-plugin** (3.6.2)：依赖约束检查
+- **maven-enforcer-plugin**：依赖约束检查
   - 要求 Java 版本 ≥ 17
   - 要求 Maven 版本 ≥ 3.8.0
   - 禁止使用 `commons-logging` 和 `log4j`
 
 #### 版本管理插件
 
-- **flatten-maven-plugin** (1.7.3)：POM 扁平化，支持 `${revision}` 版本占位符
-- **versions-maven-plugin** (2.19.1)：版本管理工具
+- **flatten-maven-plugin**：POM 扁平化，支持 `${revision}` 版本占位符
+- **versions-maven-plugin**：版本管理工具
 
 ### 测试配置
 
@@ -133,8 +135,8 @@ mvn clean verify -Pprecheck
 **特性**：
 
 - ✅ 执行单元测试
-- ✅ 检查代码覆盖率（指令覆盖率 ≥ 80%，分支覆盖率 ≥ 50%）
-- ❌ 不检查代码格式
+- ✅ 检查代码覆盖率（指令覆盖率 ≥ 60%，分支覆盖率 ≥ 50%）
+- ⚠️ 执行 Spotless 格式检查；子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制
 - 🔍 适合提交前验证代码质量
 
 **配置说明**：
@@ -153,8 +155,8 @@ mvn clean verify -Pci
 **特性**：
 
 - ✅ 执行单元测试
-- ✅ 检查代码覆盖率（指令覆盖率 ≥ 80%，分支覆盖率 ≥ 50%）
-- ✅ 检查代码格式（Spotless）
+- ✅ 检查代码覆盖率（指令覆盖率 ≥ 60%，分支覆盖率 ≥ 50%）
+- ⚠️ 执行代码格式检查（Spotless）；子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制
 - ✅ 检查依赖约束（Maven Enforcer）
 - 🛡️ 最严格的检查，确保代码质量
 
@@ -167,32 +169,32 @@ mvn clean verify -Pci
 
 ### 4. prod
 
-**用途**：生产环境发布
+**用途**：生产环境构建与发布准备
 
 ```bash
-mvn clean deploy -Pprod
+mvn clean deploy -Pprod -Dmaven.deploy.skip=false
 ```
 
 **特性**：
 
 - ❌ 跳过测试（加快构建速度）
 - ❌ 不检查代码覆盖率
-- 📦 仅打包和部署
+- 📦 默认仍跳过远程部署；需要显式设置 `-Dmaven.deploy.skip=false`
 - 🚀 适合生产发布场景
 
 **配置说明**：
 
 - 跳过所有测试（`maven.test.skip=true`）
 - 禁用 JaCoCo 覆盖率检查
-- 专注于快速打包和部署
+- 专注于快速打包；远程部署还需要仓库凭证和显式开启部署
 
 ### 组合使用
 
 可以同时激活多个 profiles：
 
 ```bash
-# 生产发布（跳过测试）
-mvn clean deploy -Pprod
+# 生产发布（跳过测试；显式开启远程部署）
+mvn clean deploy -Pprod -Dmaven.deploy.skip=false
 
 # CI 检查（最严格）
 mvn clean verify -Pci
@@ -203,7 +205,7 @@ mvn clean verify -Pprecheck
 
 ### 发布到 Maven Central
 
-继承 `mimir-boot-parent` 的项目**默认不会**发布到 Maven Central（`maven-central` profile 未设 `activeByDefault`）。若需发布到 Maven Central，请在 `~/.m2/settings.xml` 中配置 Central 凭证（`<server id="central">`），并显式激活 profile。
+继承 `mimir-boot-parent` 的项目默认跳过远程部署（`maven.deploy.skip=true`）。仓库根 POM 另外定义了未默认激活的 `maven-central` profile；该 profile 只属于本仓库聚合构建，不会随着独立发布的 parent 自动提供给外部项目。发布到 Maven Central 时，还需在 `~/.m2/settings.xml` 中配置 `<server id="central">` 凭证，并在发布项目中显式配置对应发布 profile。
 
 **mimir-boot 本仓库**发布命令（在仓库根目录执行）：
 
@@ -237,7 +239,7 @@ mvn clean verify -Pprecheck
 # 在子项目中使用
 mvn clean install -Pprecheck
 mvn clean verify -Pci
-mvn clean deploy -Pprod
+mvn clean deploy -Pprod -Dmaven.deploy.skip=false
 ```
 
 ## 📊 代码覆盖率
@@ -255,14 +257,14 @@ JaCoCo 插件用于代码覆盖率检查，通过不同的 profiles 控制是否
 
 ### 覆盖率报告
 
-启用覆盖率检查时，JaCoCo 会在 `test` 阶段生成覆盖率报告：
+启用覆盖率检查时，JaCoCo 会在 `test` 阶段生成覆盖率报告；集成测试覆盖率尚未合并到该报告，见 [TD-043](../docs/active/tech-debt-tracker.md#td-043-jacoco-集成测试覆盖率)：
 
 - **报告位置**：`target/site/jacoco/index.html`
 - **XML 报告**：`target/site/jacoco/jacoco.xml`（用于 CI 集成）
 
 ### 覆盖率要求
 
-- **指令覆盖率**：≥ 80%
+- **指令覆盖率**：≥ 60%
 - **分支覆盖率**：≥ 50%
 
 如果覆盖率不达标，构建会失败。
@@ -271,7 +273,6 @@ JaCoCo 插件用于代码覆盖率检查，通过不同的 profiles 控制是否
 
 以下类型的类不计入覆盖率统计：
 
-- `**/config/**`：配置类
 - `**/entity/**`：实体类
 - `**/dto/**`：DTO 类
 - `**/vo/**`：VO 类
@@ -295,13 +296,13 @@ open target/site/jacoco/index.html
 
 格式化检查在以下 profiles 中启用：
 
-- **ci**：CI 流水线中自动检查代码格式（在 `validate` 阶段）
+- **ci**：CI 流水线中自动执行代码格式检查（在 `validate` 阶段）；子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制
 
-在 **dev**、**precheck** 和 **prod** profiles 中，格式化检查被跳过。
+**dev** profile 会跳过格式化检查；`precheck`、`ci` 和 `prod` 会执行已配置的 Spotless 检查，但子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制。
 
 ### 格式化规则
 
-- **代码风格**：Google Java Format 1.22.0
+- **代码风格**：Google Java Format
 - **缩进**：4 个空格（不使用 Tab）
 - **导入**：自动移除未使用的导入
 - **空白**：自动去除行尾空格
@@ -311,13 +312,13 @@ open target/site/jacoco/index.html
 
 ```bash
 # 检查代码格式（不修改文件）
-mvn spotless:check
+mvn -Pci spotless:check
 
 # 自动格式化代码（修改文件）
 mvn spotless:apply
 
 # 在 CI profile 中，格式化检查会自动执行
-mvn clean verify -Pci
+mvn -Pci clean verify
 ```
 
 ### IDE 集成
@@ -360,7 +361,7 @@ mvn enforcer:enforce
 
 ### 使用 `${revision}` 占位符
 
-项目使用 `flatten-maven-plugin` 支持 `${revision}` 版本占位符，便于统一管理版本号。
+项目使用 `flatten-maven-plugin` 支持 `${revision}` 版本占位符，便于统一管理版本号。发布 Parent 时，flatten 会解析并固化部分 `pluginManagement` 配置；下游项目通过属性覆盖编译插件版本、Java 版本或 JaCoCo 门槛时，不能假设这些覆盖一定作用于已发布 Parent，详见技术债 [TD-036](../docs/active/tech-debt-tracker.md#td-036-parent-flatten-属性覆盖)。
 
 在根 POM 中定义：
 
@@ -404,8 +405,8 @@ mvn package
 # 安装到本地仓库
 mvn install
 
-# 部署到远程仓库
-mvn deploy
+# 部署到远程仓库（需显式开启部署）
+mvn deploy -Dmaven.deploy.skip=false
 
 # 验证（包括集成测试）
 mvn verify

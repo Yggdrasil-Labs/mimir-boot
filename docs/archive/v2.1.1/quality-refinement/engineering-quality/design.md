@@ -36,7 +36,7 @@ Mimir Boot 自 v2.0.4 发布以来（2026-03-23），已完成 exception-handler
 - CI 已使用单步 `verify -Pci`，并将 JaCoCo XML 报告提供给 SonarCloud；全局覆盖率排除配置已移除。
 - Markdown lint、README 规划模块清理、归档与技术债治理已落地；发布准备步骤已提取为 composite action。
 - Web 与 Exception starter 的 AutoConfiguration 集成测试、`ErrorCode` Javadoc 与全量 Java 17 `verify` 已具备验证证据。
-- 本设计对应的实施任务已完成，保留在活跃目录仅等待随下一版本统一归档；新的 Sonar 门禁运行纪律以 [`SONAR_QUALITY_DISCIPLINE.md`](../../../SONAR_QUALITY_DISCIPLINE.md) 为准。
+- 本设计对应的实施任务已完成，现随 v2.1.1 归档；新的 Sonar 门禁运行纪律以 [`SONAR_QUALITY_DISCIPLINE.md`](../../../../SONAR_QUALITY_DISCIPLINE.md) 为准。
 
 ## Non-Goal
 

@@ -259,7 +259,7 @@ public class CustomCryptoKeyProvider implements CryptoKeyProvider {
 
 #### 启用 JSON SQL 日志
 
-开发/测试环境默认启用，生产环境需要显式配置：
+未显式配置时，`dev`、`local`、`development`、`test` profile 默认启用；其他环境需要显式配置：
 
 ```yaml
 mimir:
@@ -658,7 +658,7 @@ private String encryptedField;
 
 1. 检查日志级别配置（JSON 日志使用 INFO 级别）
 2. 确认日志记录器名称：`SQL.JSON`
-3. 检查环境配置（开发/测试环境默认启用）
+3. 检查环境配置（未配置时仅 `dev`、`local`、`development`、`test` profile 默认启用）
 
 ```yaml
 logging:
@@ -668,8 +668,8 @@ logging:
 
 ## 技术栈
 
-- **MyBatis-Plus**: 3.5.14+
-- **MyBatis**: 3.5.19+
+- **MyBatis-Plus**
+- **MyBatis**
 - **Spring Boot**: 3.3.13+
 - **Java**: 17+
 

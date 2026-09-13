@@ -26,7 +26,7 @@ mimir-boot/
     ├── mimir-boot-starter-exception/          #   异常处理（全局异常、统一响应）
     ├── mimir-boot-starter-web/                #   Web 层增强（CORS、Trace、响应增强）
     ├── mimir-boot-starter-mybatis/            #   MyBatis（分页、审计、加密字段）
-    ├── mimir-boot-starter-mybatis-processor/  #   MyBatis 编译期处理器（自动 Mapper 扫描）
+    ├── mimir-boot-starter-mybatis-processor/  #   MyBatis 编译期处理器（生成 Mapper/Service）
     ├── mimir-boot-starter-nacos/              #   Nacos 配置加密（ENC() 格式解密）
     ├── mimir-boot-starter-test/               #   测试支持（测试基类与工具）
     ├── mimir-boot-starter-rpc-core/           #   RPC 通用治理核心（Dubbo/Feign 通用能力）
@@ -79,19 +79,21 @@ graph TD
 
 ## 技术栈
 
-| 层级 | 技术 | 版本/备注 |
+| 层级 | 技术 | 说明 |
 |------|------|-----------|
 | 运行环境 | Java | 17 (LTS) |
 | 应用框架 | Spring Boot | 3.3.13 |
 | 微服务 | Spring Cloud | 2023.0.6 (Leyton) |
 | 配置中心 | Spring Cloud Alibaba Nacos | 2023.0.3.4 |
-| 持久层 | MyBatis-Plus | 3.5.17 |
-| 数据库驱动 | MySQL Connector/J / PostgreSQL JDBC | 8.3.0 / 42.7.7 |
-| 工具库 | Hutool / Lombok / MapStruct | 5.8.47 / 1.18.46 / 1.6.3 |
-| 日志 | Logback / SLF4J API | 1.5.18 / 2.0.17 |
-| 测试 | JUnit 5 / Mockito / Testcontainers | 由接入方按需引入容器模块 |
+| 持久层 | MyBatis-Plus | 数据访问增强 |
+| 数据库驱动 | MySQL Connector/J / PostgreSQL JDBC | 数据库连接 |
+| 工具库 | Hutool / Lombok / MapStruct | 通用工具与编译期代码生成 |
+| 日志 | Logback / SLF4J API | 日志实现与门面 |
+| 测试 | JUnit / Mockito / Testcontainers | 由接入方按需引入容器模块 |
 | CI/CD | GitHub Actions | release-please + GPG 签名 |
 | 代码质量 | Spotless / JaCoCo / SonarCloud | — |
+
+本表保留核心技术基线；普通依赖与插件的具体版本以[根 POM](./pom.xml)、[BOM](./mimir-boot-bom/pom.xml)和 [Parent POM](./mimir-boot-parent/pom.xml)为准。
 
 ## 模块职责
 
@@ -104,7 +106,7 @@ graph TD
 | `starter-exception` | 全局异常处理、统一错误响应格式 | common |
 | `starter-web` | Web 层增强：CORS、Trace 追踪、响应体自动填充 traceId | common, starter-exception |
 | `starter-mybatis` | 持久层增强：分页拦截器、乐观锁、审计字段自动填充、字段加解密 | common |
-| `starter-mybatis-processor` | 编译期注解处理器：自动生成 Mapper 扫描配置 | 无运行时依赖 |
+| `starter-mybatis-processor` | 编译期注解处理器：按 `@AutoMybatis` 生成 Mapper、Service 和 ServiceImpl | 无运行时依赖 |
 | `starter-nacos` | Nacos 配置加密：ENC() 格式自动解密、动态刷新支持 | common |
 | `starter-test` | 测试基类与工具集 | common |
 | `starter-rpc-core` | RPC 通用治理核心：Dubbo/Feign 共享的治理抽象 | common |
@@ -115,12 +117,15 @@ graph TD
 
 详见 [`docs/design-docs/`](./docs/design-docs/)。
 
-## v2.2.1 已验证边界
+## 当前能力边界
 
 - `mimir-boot-common` 新增三个 `fromCodeOrNull` 查询方法，既有 `fromCode` fallback 保持兼容。
-- 日志脱敏覆盖 JSON、已登记的编码字段形式及私钥/访问密钥，并以完整快照发布配置；脱敏仍由接入方显式配置规则。
+- 日志脱敏支持部分 JSON 字段、已登记的编码字段形式及私钥/访问密钥，并以完整快照发布配置；脱敏由接入方显式配置规则，`api_key`、`account` 等预置规则仍有 JSON 匹配缺口（TD-038）。
 - RPC 适配层使用调用级上下文与异步生命周期；旧 `RpcTracerBridge.extract` 和 Hook 直调入口继续保留兼容。
-- Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；遗留 AES 入口仅供离线迁移并输出告警。
+- Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；删除前缀时旧解密覆盖层仍可能残留（TD-039）。遗留 AES 入口仅供离线迁移并输出告警。
 - MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
 - 测试 Starter 不再通过类路径资源注入数据库副作用或固定应用名；Testcontainers 由接入方按场景显式引入。
-- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径，不改变运行时模块依赖方向。
+- 分页构造和转换存在不同校验边界；Jackson 绑定及直接 setter 路径不保证自动校正（TD-042）。
+- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。发布属性覆盖、部分受管依赖兼容性、覆盖率报告时序与格式扫描范围仍有缺口（TD-036、TD-037、TD-040、TD-041、TD-043、TD-044）。
+
+已知问题的处置状态与验收标准统一维护在[技术债台账](./docs/active/tech-debt-tracker.md)。

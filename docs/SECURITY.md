@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-29
+updated: 2026-09-13
 ---
 
 # 安全要求
@@ -20,11 +20,13 @@ updated: 2026-08-29
 - `mimir-boot-starter-nacos`：配置加解密
 - 规划中的 `starter-security`：尚未正式落地
 
-v2.2.1 已验证以下边界：
+当前能力边界：
 
-- 日志脱敏支持 JSON、已登记的 URL 编码字段名（例如 `%70assword`）以及 private/secret/access key；公钥字段保持可见。规则编译完成后以不可变快照整体刷新，避免一次日志输出混用新旧配置。
-- Nacos 解密处理器只有在新前缀 `mimir.boot.nacos.encrypt` 或兼容旧前缀 `mimir.nacos.encrypt` 被绑定时才运行；遗留 AES/ECB 三参数 API 仅供离线迁移，不能用于应用配置。
+- 日志脱敏支持部分 JSON 字段、已登记的 URL 编码字段名（例如 `%70assword`）以及 private/secret/access key；公钥字段保持可见。`api_key`、`account` 等预置规则仍有带引号 JSON 字段的匹配缺口（TD-038）。规则编译完成后以不可变快照整体刷新，避免一次日志输出混用新旧配置。
+- Nacos 解密处理器只有在新前缀 `mimir.boot.nacos.encrypt` 或兼容旧前缀 `mimir.nacos.encrypt` 被绑定时才运行；刷新时删除前缀可能残留旧解密覆盖层（TD-039）。遗留 AES/ECB 三参数 API 仅供离线迁移，不能用于应用配置。
 - MyBatis v2 密文使用相同应用 `cryptoContext` 生成的应用级 AAD，并保留 v1 读取；`mimir.boot.mybatis.crypto-v2-write-enabled` 默认关闭。应用级 AAD 不提供字段或记录级完整性，启用写入前必须完成全实例可读和列容量预检。
+
+接入方需按实际日志格式和配置迁移路径验证，已知问题的处置状态见[技术债台账](./active/tech-debt-tracker.md)。
 
 `mimir-boot-starter-web` **不提供**通用 XSS 防护，也不强制请求或上传大小限制。已弃用的
 `mimir.boot.web.security` 仅为保持 2.x 配置绑定和 Java API 兼容而保留，不产生运行时效果：

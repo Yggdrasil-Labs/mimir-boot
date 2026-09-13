@@ -356,6 +356,8 @@ mimir:
 | `bank_card_number` | 纯银行卡号 | 6222021234567890 |
 | `email_address` | 纯邮箱地址 | <user@example.com> |
 
+`password`、`token`、`secret` 规则支持常见的带引号 JSON 字段；`api_key`、`account` 等规则当前按普通 `key=value` 形式匹配，带引号的 JSON 字段可能无法命中。敏感日志请在业务侧验证实际格式，相关限制见 [TD-038](../../docs/active/tech-debt-tracker.md#td-038-日志-json-脱敏)。
+
 **编程式扩展**：
 
 ```java
@@ -793,13 +795,13 @@ mimir:
 
 ```java
 log.info("用户登录：password=123456");
-// 自动输出：用户登录：password=******
+// 自动输出：用户登录：password=****
 
 log.info("手机号：13812345678");
-// 自动输出：手机号：******
+// 自动输出：手机号：****
 
 log.info("token=abc123xyz");
-// 自动输出：token=******
+// 自动输出：token=****
 ```
 
 #### 手动避免
@@ -828,8 +830,8 @@ log.debug("Complex: {}", () -> expensiveOperation());
 
 ## 技术栈
 
-- **Logback**: 1.5.18
-- **SLF4J API**: 2.0.17
+- **Logback**
+- **SLF4J API**
 - **Spring Boot**: 3.3.13+
 - **Java**: 17+
 

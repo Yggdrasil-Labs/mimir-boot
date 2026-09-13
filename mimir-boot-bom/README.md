@@ -1,21 +1,21 @@
 # Mimir Boot BOM
 
-Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理所有第三方依赖版本，确保依赖兼容性和版本一致性。
+Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明项目依赖版本，减少重复配置。BOM 提供版本来源和验证范围，不对所有坐标作运行时兼容性保证。
 
 ## 📋 概述
 
 `mimir-boot-bom` 是 Maven BOM（Bill of Materials）模块，通过 `dependencyManagement` 统一管理项目中所有第三方依赖的版本。使用 BOM 可以：
 
 - ✅ **统一版本管理**：所有依赖版本集中在一个地方管理
-- ✅ **避免版本冲突**：确保依赖版本之间的兼容性
+- ✅ **降低版本冲突风险**：集中声明版本，实际兼容性仍以支持等级和验证结果为准
 - ✅ **简化配置**：引入依赖时无需指定版本号
-- ✅ **版本同步**：与 Spring Boot BOM 版本保持一致
+- ✅ **版本基线清晰**：以 Spring Boot BOM 为基线，并显式补充或覆盖部分坐标
 
 ## 🚀 快速开始
 
 ### 1. 继承 Parent POM
 
-首先，在您的项目 `pom.xml` 中继承 `mimir-boot-parent`：
+推荐在项目 `pom.xml` 中继承 `mimir-boot-parent`；Parent 已导入 BOM，完成后可直接跳到第 3 步声明依赖：
 
 ```xml
 <parent>
@@ -25,9 +25,9 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 </parent>
 ```
 
-### 2. 引入 BOM
+### 2. 独立引入 BOM（不继承 Parent 时）
 
-在 `dependencyManagement` 中引入 `mimir-boot-bom`：
+若项目使用其他 Parent，在 `dependencyManagement` 中独立引入 `mimir-boot-bom`；与第 1 步二选一：
 
 ```xml
 <dependencyManagement>
@@ -150,6 +150,16 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中管理�
 > 做集合比对；完整 Java 17 `clean verify` 仅证明已消费模块的当前验证覆盖，不把未被直接消费的
 > 托管条目提升为“已验证”。
 
+### 当前兼容性边界
+
+下列坐标当前属于“仅管理”，不能依据 BOM 声明推断为已验证的运行时组合：
+
+- `org.mongodb:mongodb-driver-sync:4.11.5` 与 Spring Boot 管理的 MongoDB 驱动族存在版本不一致风险，详见 [TD-040](../docs/active/tech-debt-tracker.md#td-040-mongodb-驱动族)。
+- `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1` 与当前 Spring Boot 3.3 基线存在兼容性风险，详见 [TD-041](../docs/active/tech-debt-tracker.md#td-041-springdoc-boot-兼容性)。
+- `com.squareup.okhttp3:okhttp:5.5.0` 的 JVM 消费坐标仍待确认，详见 [TD-037](../docs/active/tech-debt-tracker.md#td-037-okhttp-jvm-制品)。
+
+接入方使用这些坐标前，应先完成独立的消费者编译或运行验证。
+
 ## 🔧 配置说明
 
 ### 版本继承
@@ -177,7 +187,7 @@ BOM 通过 `dependencyManagement` 管理版本，子项目继承父 POM 时自�
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.9.0</version>
+            <version>YOUR_VERSION</version>
         </dependency>
     </dependencies>
 </dependencyManagement>
@@ -211,7 +221,7 @@ BOM 通过 `dependencyManagement` 管理版本，子项目继承父 POM 时自�
 <dependency>
     <groupId>cn.hutool</groupId>
     <artifactId>hutool-all</artifactId>
-    <version>5.8.47</version>  <!-- 不推荐：版本应由 BOM 管理 -->
+    <version>YOUR_VERSION</version>  <!-- 不推荐：版本应由 BOM 管理 -->
 </dependency>
 ```
 

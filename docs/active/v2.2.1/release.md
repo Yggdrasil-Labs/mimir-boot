@@ -3,18 +3,25 @@ version: "v2.2.1"
 date: "2026-08-31"
 status: "in-progress"
 branch: "feature/foundation-quality-hardening"
+updated: "2026-09-13"
 ---
 
 # Release — v2.2.1
 
 > 2026-09-02 终审代码补丁已分阶段提交并通过干净 worktree 复验。本文不代表已推送、远程 CI 已通过或制品已正式发布。
 
+## 2026-09-13 状态复核
+
+- 本地 `v2.2.1` tag 指向 `fe3b82d`（Release Please PR #299）；后续 `1f5a4db` 已将开发版本推进到 `2.2.2-SNAPSHOT`。头部 `date`、`branch` 与下方验证记录描述当时的验收阶段。
+- 本轮未查询远程 CI 和制品仓库，发布确认状态仍待核对；不据本地 tag 推断所有发布目标均成功。
+- 后续审计发现日志 JSON 规则、Nacos 前缀删除、分页绑定和构建门禁仍有边界缺口。以下 Changelog 是该阶段的变更摘要，当前限制以[技术债台账](../tech-debt-tracker.md)的 TD-036 至 TD-046 为准。
+
 ## Changelog
 
 ### Features
 
 - 公共枚举新增 `CommonStatus.fromCodeOrNull(Integer)`、`DeleteFlag.fromCodeOrNull(Integer)` 和 `ErrorCode.fromCodeOrNull(String)`；既有 `fromCode` fallback 保持兼容。
-- 日志脱敏覆盖 JSON、已登记的 URL 编码字段名（例如 `%70assword`）及 private/secret/access key，并以不可变快照原子刷新规则。
+- 日志脱敏支持部分 JSON 字段、已登记的 URL 编码字段名（例如 `%70assword`）及 private/secret/access key，并以不可变快照原子刷新规则。
 - MyBatis 增加应用级 `cryptoContext` AAD 读取和默认关闭的 `cryptoV2WriteEnabled` 渐进写入能力。
 
 ### Fixes

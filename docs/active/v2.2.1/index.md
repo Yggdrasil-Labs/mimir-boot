@@ -1,10 +1,12 @@
 ---
 version: v2.2.1
-status: in-progress
-updated: 2026-09-02
+status: completed
+updated: 2026-09-13
 ---
 
 # v2.2.1 活跃需求
+
+两项需求已完成本地验收，目录等待版本归档。当前开发版本已推进到 `2.2.2-SNAPSHOT`；本页状态只描述需求验收，发布情况见 [release.md](./release.md)。
 
 | 需求 | 状态 | 说明 |
 |------|------|------|

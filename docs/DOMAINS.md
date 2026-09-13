@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-24
+updated: 2026-09-13
 ---
 
 # 业务领域划分
@@ -21,16 +21,18 @@ updated: 2026-06-24
 |------|----------|----------|----------|
 | 依赖管理 | 统一版本矩阵、BOM 对齐 | `mimir-boot-bom/` | Spring Boot/Cloud 版本、第三方库版本 |
 | 构建基座 | 插件版本、质量门禁、发布配置 | `mimir-boot-parent/` | Maven 插件、Profile |
-| 公共模型 | 统一异常、响应、分页、枚举等规范 | `mimir-boot-common/` | R, PageResult, BizException, BaseEnum |
-| 日志与链路 | 自动脱敏、TraceId、访问日志 | `mimir-boot-starter-log/` | LogDesensitizer, AccessLog |
-| 异常治理 | 全局异常处理、统一响应格式 | `mimir-boot-starter-exception/` | GlobalExceptionHandler |
-| Web 增强 | CORS、Trace 透传、响应增强 | `mimir-boot-starter-web/` | TraceFilter, ResponseAdvice |
-| 持久层 | 分页、审计、加密字段、Mapper 扫描 | `mimir-boot-starter-mybatis/`, `mimir-boot-starter-mybatis-processor/` | CryptoTypeHandler, AuditMetaObjectHandler |
-| 配置安全 | Nacos 配置 ENC() 加解密 | `mimir-boot-starter-nacos/` | NacosEncryptUtil, NacosConfigDecryptor |
-| RPC 治理 | Dubbo/Feign 通用治理与适配 | `mimir-boot-starter-rpc-core/`, `mimir-boot-starter-dubbo/`, `mimir-boot-starter-feign/` | RpcContext, RpcFilter |
-| 测试支持 | 测试基础设施与工具 | `mimir-boot-starter-test/` | — |
+| 公共模型 | 统一异常、响应、分页、枚举等规范 | `mimir-boot-common/` | R, PageResult, BizException, CommonStatus |
+| 日志与链路 | 自动脱敏、TraceId、访问日志 | `mimir-boot-starters/mimir-boot-starter-log/` | SensitiveDataConverter, AccessLogFilter |
+| 异常治理 | 全局异常处理、统一响应格式 | `mimir-boot-starters/mimir-boot-starter-exception/` | MimirExceptionHandler |
+| Web 增强 | CORS、Trace 透传、响应增强 | `mimir-boot-starters/mimir-boot-starter-web/` | TraceInterceptor, ResponseBodyEnhancer |
+| 持久层 | 分页、审计、加密字段、Mapper 扫描 | `mimir-boot-starters/mimir-boot-starter-mybatis/`、`mimir-boot-starters/mimir-boot-starter-mybatis-processor/` | AbstractCryptoTypeHandler, AuditMetaObjectHandler |
+| 配置安全 | Nacos 配置 ENC() 加解密 | `mimir-boot-starters/mimir-boot-starter-nacos/` | NacosEncryptUtil, NacosEncryptEnvironmentPostProcessor |
+| RPC 治理 | Dubbo/Feign 通用治理与适配 | `mimir-boot-starters/mimir-boot-starter-rpc-core/`、`mimir-boot-starters/mimir-boot-starter-dubbo/`、`mimir-boot-starters/mimir-boot-starter-feign/` | RpcCallContext, RpcHookChain |
+| 测试支持 | 测试基础设施与工具 | `mimir-boot-starters/mimir-boot-starter-test/` | — |
 
 ## 领域间关系
+
+下图箭头表示能力支撑方向（提供方 → 使用方）；Maven 依赖方向由下方通信规则描述。
 
 ```mermaid
 flowchart TD
