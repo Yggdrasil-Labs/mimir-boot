@@ -46,6 +46,11 @@ jobs:
           SONAR_PROJECT_KEY: ${{ github.event_name == 'push' && secrets.SONAR_PROJECT_KEY || '' }}
         run: bash scripts/ci-preflight.sh
 
+      - name: Verify release publication contracts
+        run: |
+          bash scripts/test-suite-consumer-contract-test.sh
+          bash scripts/verify-maven-central-public-contract-test.sh
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4

@@ -39,6 +39,8 @@ updated: 2026-08-29
 - Release Please 仅由 `main` 的 push 自动驱动；自动 tag 仅接受本仓库中由 `github-actions[bot]` 创建且标题、分支均符合约定的已合并 Release Please PR；手动打 tag 恢复必须提供版本和目标提交 SHA
 - tag 检查使用其最终 commit，已指向同一提交时幂等成功；tag 创建和开发版本回写都要求 `RELEASE_TOKEN`，确保后续 CI 能被触发
 - 瞬态发布失败应优先使用 GitHub 的“重新运行失败 job”；它复用原始 ref/SHA。手动 `Release` 是确定性补偿入口，默认不产生外部副作用，必须显式选择要补偿的仓库发布、GitHub Release 或开发版本回写；同时选择发布/收尾与回写时，只有这些被选择的操作全部成功才会推进开发版本
+- Maven Central 发布只等待 bundle 上传成功，不等待 Portal 的 `PUBLISHED` 轮询；deployment ID、Portal 观察结果和 workflow 日志会作为诊断证据保存。Portal 观察超时只告警，不单独判定发布失败
+- Central 上传后必须实际下载根 POM、代表性 Starter POM 和 JAR 并通过基础内容校验，才允许创建 GitHub Release 或回写下一开发版本；公开制品尚不可用时，阻断收尾并由手动补偿重新验证，不默认重复上传
 - 发布与打 tag 使用按目标版本/提交分组的等待队列和 job 超时，不取消正在运行或等待的同目标恢复请求；同组最多保留 100 个等待项，按开始等待时间处理，但实际启动顺序不保证
 - 开发版本回写从最新 `main` 收敛：已是目标 `-SNAPSHOT` 则幂等成功；仅允许从刚发布版本推进，其他版本明确失败而不覆盖
 - 2.2.1 MyBatis v2 rollout 先以相同 `cryptoContext` 让所有实例具备读取能力并继续写 v1，再完成列长度预检后统一开启 v2 写入；已写入 v2 后只允许回退到支持 v2 且使用相同 context 的版本。
