@@ -10,32 +10,34 @@ updated: 2026-09-14
 # Agent 文档治理与本地质量门禁 — 实施计划
 
 **Branch:** feature/docs_quality_governance_2.3.0
-**Baseline SHA:** 6275137bd17b3c5543ed852ee3abec4bb9af16fb
-**Worktree Path:** [待填充]
-**Started At:** [待填充]
-**Updated At:** 2026-09-14
+**Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
+**Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
+**Started At:** 2026-09-14T23:03:02+08:00
+**Updated At:** 2026-09-14T23:12:10+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
 **Tech Stack:** Java 17、Maven Wrapper、Spotless、Surefire/Failsafe、JaCoCo、Maven 托管 Node/markdownlint、Bash、Git。
 **Commit Mode:** per-task
-**Effective Execution Mode:** [待填充]
+**Effective Execution Mode:** serial
+**Execution Mode Reason:** 当前特性分支在主工作区执行，且未获并行 worktree 的合入授权；按任务顺序串行实施以保持隔离。
 **Ledger Mode:** controller-commits
 
 用户已批准按本计划实施。开始执行前仍需完成隔离、基线、计划结构和任务级验证；本计划不授权 push、merge、rebase 或其他历史改写。所有 Task 初始 pending 不表示存在阻塞。
 
+<!-- markdownlint-disable MD032 -->
 **Plan Verdict:**
-
 - **Status:** pending
 - **Verified At:** null
 - **Evidence:** null
 - **Blocked Tasks:** none
 - **Concerns:** none
+<!-- markdownlint-enable MD032 -->
 
 **Accepted Risks:**
 
 | Risk ID | Risk | Accepted By | Accepted At | Source |
-|---|---|---|---|---|
+|---------|------|-------------|-------------|--------|
 | none | none | none | none | none |
 
 ## 方案审查记录
@@ -62,10 +64,11 @@ updated: 2026-09-14
 
 ## Dispatch Ledger
 
-**Budget:** uninitialized; owner=start-execution; elapsed_budget=unknown; token_budget=unknown; budget_revision=initial
+**Budget:** planned_stages=14; max_active=1; max_attempts_per_stage=2; max_dispatches=28; elapsed_budget=unknown; token_budget=unknown; budget_revision=initial; owner=start-execution
 
 | objective | scope | actor_kind | role | model | started_at | finished_at | status | attempt | attempt_limit | elapsed | stop_reason | strategy_change | evidence | budget_revision |
 |-----------|-------|------------|------|-------|------------|-------------|--------|---------|---------------|---------|-------------|-----------------|----------|-----------------|
+| T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | pending | running | 1 | 2 | pending | pending | none | baseline-mvnw-Pci-clean-verify-passed-15-reactors | initial |
 
 ## Global Constraints
 
@@ -102,16 +105,18 @@ flowchart TD
 
 | Task | 依赖 | 可并行组 |
 |---|---|---|
-| T1 Maven 文档工具链与格式基线 | 无 | A |
-| T2 文档规则与可信结果模型 | T1 | B |
-| T3 Spotless、覆盖率时序和报告完整性 | T1 | B |
-| T4 共享调度器与受检快照 | T2, T3 | C |
-| T5 显式安装与 Git 提交推送门禁 | T4 | D |
-| T6 CI 统一入口与证据上传 | T4 | D |
-| T7 Agent 文档职责与目录迁移 | T2, T5, T6 | E |
-| T8 独立验收与实施交付记录 | T3, T5, T6, T7 | F |
+| T1 | 无 | A |
+| T2 | T1 | B |
+| T3 | T1 | B |
+| T4 | T2, T3 | C |
+| T5 | T4 | D |
+| T6 | T4 | D |
+| T7 | T2, T5, T6 | E |
+| T8 | T3, T5, T6, T7 | F |
 
 B 组 T2 与 T3 不共享写入文件；D 组 T5 与 T6 不共享写入文件。根 POM 由 T1 后交给 T3，CI 由 T6 独占，入口和长期文档在 T7 集中迁移。所有执行者禁止再次委派，controller 负责合并与独立验证。
+
+---
 
 ### T1: Maven 文档工具链与格式基线
 
@@ -119,9 +124,18 @@ B 组 T2 与 T3 不共享写入文件；D 组 T5 与 T6 不共享写入文件。
 
 **Files:**
 
-- Create: `tools/docs-check/package.json`、`tools/docs-check/package-lock.json`、`tools/docs-check/check.mjs`、`tools/docs-check/bootstrap.mjs`、`scripts/docs-tool.sh`
-- Modify: 根 `pom.xml`、`.gitignore`、`.markdownlint-cli2.jsonc`
-- Modify: `mimir-boot-starters/mimir-boot-starter-{rpc-core,dubbo,feign}/README.md`、`docs/active/v2.2.1/foundation-quality-hardening/plan.md`（仅 MD028/MD029 格式修复）
+- Create: `tools/docs-check/package.json`
+- Create: `tools/docs-check/package-lock.json`
+- Create: `tools/docs-check/check.mjs`
+- Create: `tools/docs-check/bootstrap.mjs`
+- Create: `scripts/docs-tool.sh`
+- Modify: `pom.xml`
+- Modify: `.gitignore`
+- Modify: `.markdownlint-cli2.jsonc`
+- Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-dubbo/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-feign/README.md`
+- Modify: `docs/active/v2.2.1/foundation-quality-hardening/plan.md`
 - Test: `tools/docs-check/test/toolchain.test.mjs`
 
 **Interfaces:**
@@ -140,11 +154,11 @@ B 组 T2 与 T3 不共享写入文件；D 组 T5 与 T6 不共享写入文件。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Dispatch Base SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
+- **Dispatch Ref:** feature/docs_quality_governance_2.3.0
+- **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** null
 - **Verify Result:** null
@@ -185,9 +199,18 @@ AC1：移除全局 Node PATH 后运行 Maven，自检报告包含精确版本和
 
 **Files:**
 
-- Modify: `tools/docs-check/check.mjs`、`tools/docs-check/package.json`、`tools/docs-check/package-lock.json`
-- Create: `tools/docs-check/{links,navigation,debt,policy,results}.mjs`、`tools/docs-check/policy.json`、`tools/docs-check/debt-id-registry.json`
-- Test: `tools/docs-check/test/docs-check.test.mjs`、`tools/docs-check/test/fixtures/`
+- Modify: `tools/docs-check/check.mjs`
+- Modify: `tools/docs-check/package.json`
+- Modify: `tools/docs-check/package-lock.json`
+- Create: `tools/docs-check/links.mjs`
+- Create: `tools/docs-check/navigation.mjs`
+- Create: `tools/docs-check/debt.mjs`
+- Create: `tools/docs-check/policy.mjs`
+- Create: `tools/docs-check/results.mjs`
+- Create: `tools/docs-check/policy.json`
+- Create: `tools/docs-check/debt-id-registry.json`
+- Test: `tools/docs-check/test/docs-check.test.mjs`
+- Test: `tools/docs-check/test/fixtures`
 
 **Interfaces:**
 
@@ -250,9 +273,12 @@ AC1/AC2：真实解析 fixture 断言 path、rule、status；AC3：结果 JSON �
 
 **Files:**
 
-- Modify: `pom.xml`、`mimir-boot-parent/pom.xml`、`scripts/ci-preflight.sh`
-- Create: `tools/docs-check/verify-reports.mjs`、`scripts/tests/java-quality-gates-test.sh`
-- Test: `scripts/tests/fixtures/java-quality/`
+- Modify: `pom.xml`
+- Modify: `mimir-boot-parent/pom.xml`
+- Modify: `scripts/ci-preflight.sh`
+- Create: `tools/docs-check/verify-reports.mjs`
+- Create: `scripts/tests/java-quality-gates-test.sh`
+- Test: `scripts/tests/fixtures/java-quality`
 
 **Interfaces:**
 
@@ -317,8 +343,11 @@ AC1：实际 Spotless 负向退出码及模块列表；AC2：真实 IT fixture X
 
 **Files:**
 
-- Create: `scripts/quality-check.sh`、`scripts/lib/quality-snapshot.sh`、`tools/docs-check/quality-result.mjs`
-- Test: `scripts/tests/quality-check-test.sh`、`scripts/tests/fixtures/quality-runner/`
+- Create: `scripts/quality-check.sh`
+- Create: `scripts/lib/quality-snapshot.sh`
+- Create: `tools/docs-check/quality-result.mjs`
+- Test: `scripts/tests/quality-check-test.sh`
+- Test: `scripts/tests/fixtures/quality-runner`
 
 **Interfaces:**
 
@@ -381,8 +410,12 @@ AC1：进程调用计数证明没有重复 test/package/verify；AC2：前后索
 
 **Files:**
 
-- Create: `.githooks/pre-commit`、`.githooks/pre-push`、`scripts/setup-dev.sh`
-- Test: `scripts/tests/setup-dev-test.sh`、`scripts/tests/pre-commit-test.sh`、`scripts/tests/pre-push-test.sh`
+- Create: `.githooks/pre-commit`
+- Create: `.githooks/pre-push`
+- Create: `scripts/setup-dev.sh`
+- Test: `scripts/tests/setup-dev-test.sh`
+- Test: `scripts/tests/pre-commit-test.sh`
+- Test: `scripts/tests/pre-push-test.sh`
 
 **Interfaces:**
 
@@ -509,12 +542,45 @@ AC1：解析 workflow 断言入口/检查映射；AC2：无凭证/有条件但�
 
 **Files:**
 
-- Modify: 本需求 `migration.md`（逐章节执行表、旧内容去向和兼容证据）
-- Modify: `AGENTS.md`、`ARCHITECTURE.md`、`README.md`、`docs/index.md`、`docs/design-docs/index.md`、`docs/design-docs/{core-beliefs,module-boundaries,documentation-governance}.md`
-- Migrate: `docs/{DOMAINS,SECURITY,RELIABILITY,PRODUCT_SENSE,QUALITY_SCORE,SONAR_QUALITY_DISCIPLINE}.md`、`docs/product-specs/{index,new-user-onboarding,starter-capabilities}.md`
-- Create: `docs/design-docs/{security,reliability}.md`、`docs/engineering/{index,development,testing,release,new-starter}.md`
-- Modify: 各模块 README 仅接入内容承接和链接；其他 Markdown 与仓库脚本仅修改实际旧路径引用。执行前输出精确受影响文件清单，不以通配范围授予源码改动。
-- Reference: 本需求 `migration.md` 逐行矩阵；`docs/design-docs/arch-docs-quality-governance.md`
+- Modify: `docs/active/v2.3.0/docs-quality-governance/migration.md`
+- Modify: `AGENTS.md`
+- Modify: `ARCHITECTURE.md`
+- Modify: `README.md`
+- Modify: `docs/index.md`
+- Modify: `docs/active/index.md`
+- Modify: `docs/design-docs/index.md`
+- Modify: `docs/design-docs/core-beliefs.md`
+- Modify: `docs/design-docs/module-boundaries.md`
+- Modify: `docs/design-docs/documentation-governance.md`
+- Modify: `docs/DOMAINS.md`
+- Modify: `docs/SECURITY.md`
+- Modify: `docs/RELIABILITY.md`
+- Modify: `docs/PRODUCT_SENSE.md`
+- Modify: `docs/QUALITY_SCORE.md`
+- Modify: `docs/SONAR_QUALITY_DISCIPLINE.md`
+- Modify: `docs/product-specs/index.md`
+- Modify: `docs/product-specs/new-user-onboarding.md`
+- Modify: `docs/product-specs/starter-capabilities.md`
+- Create: `docs/design-docs/security.md`
+- Create: `docs/design-docs/reliability.md`
+- Create: `docs/engineering/index.md`
+- Create: `docs/engineering/development.md`
+- Create: `docs/engineering/testing.md`
+- Create: `docs/engineering/release.md`
+- Create: `docs/engineering/new-starter.md`
+- Modify: `mimir-boot-bom/README.md`
+- Modify: `mimir-boot-common/README.md`
+- Modify: `mimir-boot-parent/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-dubbo/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-exception/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-feign/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-log/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-mybatis/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-nacos/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-test/README.md`
+- Modify: `mimir-boot-starters/mimir-boot-starter-web/README.md`
 
 **Interfaces:**
 
@@ -581,9 +647,14 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 
 **Files:**
 
-- Create: 本需求 `verification.md`
-- Modify: `docs/design-docs/arch-docs-quality-governance.md`、`docs/design-docs/index.md`、`tools/docs-check/debt-id-registry.json`（验收完成后同步 RFC verified 与退役编号）
-- Modify: `docs/active/tech-debt-tracker.md`（只有验证通过后处理 TD-043/TD-044）、本需求 `index.md`、`docs/active/v2.3.0/{index,release}.md`
+- Create: `docs/active/v2.3.0/docs-quality-governance/verification.md`
+- Modify: `docs/design-docs/arch-docs-quality-governance.md`
+- Modify: `docs/design-docs/index.md`
+- Modify: `tools/docs-check/debt-id-registry.json`
+- Modify: `docs/active/tech-debt-tracker.md`
+- Modify: `docs/active/v2.3.0/docs-quality-governance/index.md`
+- Modify: `docs/active/v2.3.0/index.md`
+- Modify: `docs/active/v2.3.0/release.md`
 - Controller only: 本需求 `plan.md` 执行账本，独立 ledger 提交
 
 **Interfaces:**
