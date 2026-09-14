@@ -1,3 +1,11 @@
 {
-  "ignores": ["CHANGELOG.md", ".cursor/**", "**/target/**"]
+  "config": ".markdownlint.json",
+  "ignores": [
+    "CHANGELOG.md",
+    ".cursor/**",
+    ".worktrees/**",
+    "**/node_modules/**",
+    "**/target/**",
+    "tools/docs-check/.maven-node/**"
+  ]
 }

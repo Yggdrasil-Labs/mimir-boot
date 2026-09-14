@@ -1,0 +1,16 @@
+{
+  "name": "mimir-boot-docs-check",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "scripts": {
+    "bootstrap": "node bootstrap.mjs",
+    "check": "node check.mjs",
+    "test": "node --test test/toolchain.test.mjs"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.23.2"
+  }
+}

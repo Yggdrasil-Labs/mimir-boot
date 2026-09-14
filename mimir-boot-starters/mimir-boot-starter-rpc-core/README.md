@@ -19,13 +19,13 @@ RPC 内核抽象模块，提供统一调用模型、上下文与可插拔扩展�
 
 1) 引入依赖
 
-```xml
-<dependency>
-  <groupId>io.github.yggdrasil-labs</groupId>
-  <artifactId>mimir-boot-starter-rpc-core</artifactId>
-  <version>YOUR_RELEASE_VERSION</version>
-</dependency>
-```
+    ```xml
+    <dependency>
+      <groupId>io.github.yggdrasil-labs</groupId>
+      <artifactId>mimir-boot-starter-rpc-core</artifactId>
+      <version>YOUR_RELEASE_VERSION</version>
+    </dependency>
+    ```
 
 2) （可选）实现自定义 `RpcHook` / `RpcTracerBridge` 并声明为 Spring Bean
 

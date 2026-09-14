@@ -10,7 +10,6 @@ updated: 2026-09-13
 # 底座质量强化 — 实施计划
 
 > 2026-09-13 文档巡检：头部状态与下方 COMPLETED、本地 Final Gate 及需求索引同步；历史验证时间和任务证据保持原样。后续发现见[技术债台账](../../tech-debt-tracker.md)。
-
 > Branch: feature/foundation-quality-hardening
 > Baseline SHA: 3596025c80c446eb99d58a891163bdd0f2b202ae
 > Behavior Baseline SHA: 3730dd500fb1eb974abb2b43c4ba8dc71d8efd38

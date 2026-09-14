@@ -17,13 +17,13 @@ Feign 接入层，基于 RPC Core 统一调用钩子与上下文传播，治理/
 
 1) 引入依赖
 
-```xml
-<dependency>
-  <groupId>io.github.yggdrasil-labs</groupId>
-  <artifactId>mimir-boot-starter-feign</artifactId>
-  <version>YOUR_RELEASE_VERSION</version>
-</dependency>
-```
+    ```xml
+    <dependency>
+      <groupId>io.github.yggdrasil-labs</groupId>
+      <artifactId>mimir-boot-starter-feign</artifactId>
+      <version>YOUR_RELEASE_VERSION</version>
+    </dependency>
+    ```
 
 2) 使用 `@FeignClient` 前，在应用启动类或配置类上添加 `@EnableFeignClients` 扫描 Client 接口
 
