@@ -33,23 +33,22 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
-      - name: Markdown lint
-        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
-        with:
-          globs: '**/*.md'
-
-      - name: Build and test
+      - name: Run shared quality gate
         env:
           RUN_SONAR: ${{ github.event_name == 'push' && secrets.SONAR_TOKEN != '' && secrets.SONAR_ORGANIZATION != '' && secrets.SONAR_PROJECT_KEY != '' && 'true' || 'false' }}
           SONAR_TOKEN: ${{ github.event_name == 'push' && secrets.SONAR_TOKEN || '' }}
           SONAR_ORGANIZATION: ${{ github.event_name == 'push' && secrets.SONAR_ORGANIZATION || '' }}
           SONAR_PROJECT_KEY: ${{ github.event_name == 'push' && secrets.SONAR_PROJECT_KEY || '' }}
-        run: bash scripts/ci-preflight.sh
+          QUALITY_REPORT_DIR: ${{ runner.temp }}/mimir-quality/java
+        run: bash scripts/quality-check.sh --mode full --source worktree --report "${RUNNER_TEMP}/mimir-quality/quality-report.json"
 
-      - name: Verify release publication contracts
-        run: |
-          bash scripts/test-suite-consumer-contract-test.sh
-          bash scripts/verify-maven-central-public-contract-test.sh
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: quality-report
+          path: ${{ runner.temp }}/mimir-quality
+          retention-days: 7
 
       - name: Upload test reports
         if: always()
