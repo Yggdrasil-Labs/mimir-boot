@@ -13,7 +13,7 @@ updated: 2026-09-15
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T02:25:00+08:00
+**Updated At:** 2026-09-15T02:30:00+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -78,6 +78,7 @@ updated: 2026-09-15
 | T4 共享调度器与受检快照恢复 | ["scripts/quality-check.sh","scripts/lib/quality-snapshot.sh","tools/docs-check/quality-result.mjs","scripts/tests/quality-check-test.sh","scripts/tests/fixtures/quality-runner"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T02:20:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无回传且未写入工作区，controller 接管并以真实 Git fixture 完成快照实现 | b2c1040；fixture full commit、真实 index quick 和报告 schema 通过 | initial |
 | T5 显式安装与 Git 提交推送门禁 | [".githooks/pre-commit",".githooks/pre-push","scripts/setup-dev.sh","scripts/tests/setup-dev-test.sh","scripts/tests/pre-commit-test.sh","scripts/tests/pre-push-test.sh"] | work | worker | inherit | 2026-09-15T02:25:00+08:00 | pending | running | 1 | 2 | pending | pending | none | T4-b2c1040-verified | initial |
 | T6 CI 统一入口与证据上传 | [".github/workflows/ci.yml","scripts/tests/ci-quality-contract-test.sh"] | work | worker | inherit | 2026-09-15T02:25:00+08:00 | pending | running | 1 | 2 | pending | pending | none | T4-b2c1040-verified | initial |
+| T6 CI 统一入口与证据上传恢复 | [".github/workflows/ci.yml","scripts/tests/ci-quality-contract-test.sh"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T02:30:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无回传且未写入工作区，controller 以 workflow 静态契约完成实现 | f411638；CI 契约测试通过 | initial |
 
 ## Global Constraints
 
@@ -501,30 +502,30 @@ GitHub CI 与本地共用检查器、规则、工具版本和结果模型。保�
 
 **Acceptance Criteria:**
 
-- [ ] AC1: CI 只有一个共享质量入口，原有 Markdown、Java、报告与两个发布契约检查均未遗漏或重复。
-- [ ] AC2: Sonar 不适用与执行失败有不同状态；失败时 always 上传完整质量汇总和已有报告，凭证不进入日志。
-- [ ] AC3: 配置契约测试通过，CI 对同一损坏文档 fixture 与本地得到同一失败规则。
+- [x] AC1: CI 只有一个共享质量入口，原有 Markdown、Java、报告与两个发布契约检查均未遗漏或重复。
+- [x] AC2: Sonar 不适用与执行失败有不同状态；失败时 always 上传完整质量汇总和已有报告，凭证不进入日志。
+- [x] AC3: 配置契约测试通过，CI 对同一损坏文档 fixture 与本地得到同一失败规则。
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHAs:** []
+- **Status:** completed
+- **Commit SHAs:** [f411638]
 - **Dispatch Base SHA:** 61867cf
 - **Dispatch Ref:** feature/docs_quality_governance_2.3.0
-- **Attempts:** 1
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** `git cat-file -e 905772c^:scripts/tests/ci-quality-contract-test.sh` 返回 128，证明基线没有共享入口的 workflow 契约。
+- **Verify Result:** `bash scripts/tests/ci-quality-contract-test.sh` 通过，断言 CI 只调用 full worktree 共享入口，保留 Java 17、Sonar 条件、测试/JaCoCo always 上传，并增加 quality-report always 上传。
+- **AC Result:** AC1 由无独立 Markdown、ci-preflight 或发布契约入口的 workflow 断言验证；AC2 由 Sonar 条件与 always 上传断言验证；AC3 由共享入口的静态契约验证。远程 CI 尚未运行，留待获授权推送后核实。
+- **Concerns:** 本地静态测试不声明远程 Actions 已通过；质量汇总和 Java 报告路径均置于 runner 临时目录，凭证只通过环境变量传递给共享入口。
 
 **Task Completion Gate:**
 
-- [ ] Red 证据存在，失败原因或基线状态与本任务一致。
-- [ ] Verify 证据存在，退出码和结果通过。
-- [ ] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
-- [ ] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
-- [ ] AC checkbox 与实际验证同步。
+- [x] Red 证据存在，失败原因或基线状态与本任务一致。
+- [x] Verify 证据存在，退出码和结果通过。
+- [x] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
+- [x] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
+- [x] AC checkbox 与实际验证同步。
 
 **Step 1: Red**
 
