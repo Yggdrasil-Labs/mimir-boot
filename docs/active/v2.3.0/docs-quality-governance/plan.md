@@ -13,7 +13,7 @@ updated: 2026-09-15
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T02:00:00+08:00
+**Updated At:** 2026-09-15T02:20:00+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -75,6 +75,7 @@ updated: 2026-09-15
 | T3 Spotless、覆盖率时序和报告完整性 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality"] | work | worker | inherit | 2026-09-15T01:28:04+08:00 | unknown（agent 未回传可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | cancelled | none | agent-unresponsive-before-result；工作区变更由 controller 接管审计 | initial |
 | T3 Spotless、覆盖率时序和报告完整性恢复 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality","210 个 Spotless 自动修复的 Java 文件"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T01:55:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无响应后由 controller 接管；根无源配置修正后将实际暴露的既有格式漂移纳入同一门禁改造 | 56a58da；真实 T3FormatProbe、IT 独占覆盖和全仓 preflight 通过 | initial |
 | T4 共享调度器与受检快照 | ["scripts/quality-check.sh","scripts/lib/quality-snapshot.sh","tools/docs-check/quality-result.mjs","scripts/tests/quality-check-test.sh","scripts/tests/fixtures/quality-runner"] | work | worker | inherit | 2026-09-15T02:00:00+08:00 | pending | running | 1 | 2 | pending | pending | none | T2-63f060b、T3-56a58da-verified | initial |
+| T4 共享调度器与受检快照恢复 | ["scripts/quality-check.sh","scripts/lib/quality-snapshot.sh","tools/docs-check/quality-result.mjs","scripts/tests/quality-check-test.sh","scripts/tests/fixtures/quality-runner"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T02:20:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无回传且未写入工作区，controller 接管并以真实 Git fixture 完成快照实现 | b2c1040；fixture full commit、真实 index quick 和报告 schema 通过 | initial |
 
 ## Global Constraints
 
@@ -366,30 +367,30 @@ AC1：实际 Spotless 负向退出码及模块列表；AC2：真实 IT fixture X
 
 **Acceptance Criteria:**
 
-- [ ] AC1: quick 不运行测试，full 执行文档与检查器自测、完整 Java 构建及两个现有发布契约脚本；配置/源内容为实际受检快照。
-- [ ] AC2: 部分暂存、非当前 HEAD、中文/空格/删除重命名路径以及并发两个 worktree 均不污染当前源码、索引或 target。
-- [ ] AC3: 格式失败后其他独立检查仍有结果；编译失败将后续测试标为 not_run；缺工具和报告写失败返回 2；每份报告记录实际状态指纹和完整 schema 字段；schema fixture 验证 id、command、dependsOn、toolVersions、logPath。
+- [x] AC1: quick 不运行测试，full 执行文档与检查器自测、完整 Java 构建及两个现有发布契约脚本；配置/源内容为实际受检快照。
+- [x] AC2: 部分暂存、非当前 HEAD、中文/空格/删除重命名路径以及并发两个 worktree 均不污染当前源码、索引或 target。
+- [x] AC3: 格式失败后其他独立检查仍有结果；编译失败将后续测试标为 not_run；缺工具和报告写失败返回 2；每份报告记录实际状态指纹和完整 schema 字段；schema fixture 验证 id、command、dependsOn、toolVersions、logPath。
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHAs:** []
+- **Status:** completed
+- **Commit SHAs:** [b2c1040045c25d3c7a60a8825494d18528f70e4f]
 - **Dispatch Base SHA:** 68f3771
 - **Dispatch Ref:** feature/docs_quality_governance_2.3.0
-- **Attempts:** 1
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** `git cat-file -e 2484aec^:scripts/quality-check.sh` 返回 128，证明基线不存在共享调度入口；随后 fixture 中暂存拒绝脚本而保留工作区放行脚本，index 快照只执行拒绝脚本并返回 1。
+- **Verify Result:** `bash scripts/tests/quality-check-test.sh` 通过，覆盖 full commit、index、递归保护、中文空格/删除重命名路径、工具错误、报告写入错误、编译失败及并发 worktree；真实 `bash scripts/quality-check.sh --mode quick --source worktree` 和 `--source index` 均通过，后者报告为 source=index 且 schema 字段、独立日志目录和检查字段完整。
+- **AC Result:** AC1 由 full commit fixture 对 docs、self-test、Java、两个发布契约入口的实际调用验证；AC2 由 staged/working 脚本差异、状态摘要不变、路径和双 worktree fixture 验证；AC3 由 exit 1/2、not_run、继续执行独立契约、不可写报告路径及 schema 断言验证。
+- **Concerns:** 真实 full 当前会如实报告 T2 已记录的 3 个文档漂移，留待 T7 修复后由 T8 运行最终真实 full；未把 fixture 的假 Maven 结果当作最终质量验收。
 
 **Task Completion Gate:**
 
-- [ ] Red 证据存在，失败原因或基线状态与本任务一致。
-- [ ] Verify 证据存在，退出码和结果通过。
-- [ ] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
-- [ ] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
-- [ ] AC checkbox 与实际验证同步。
+- [x] Red 证据存在，失败原因或基线状态与本任务一致。
+- [x] Verify 证据存在，退出码和结果通过。
+- [x] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
+- [x] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
+- [x] AC checkbox 与实际验证同步。
 
 **Step 1: Red**
 
