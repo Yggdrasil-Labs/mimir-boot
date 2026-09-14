@@ -208,6 +208,27 @@ MockDataBuilder.of(MyClass.class)
     .build();
 ```
 
+#### LogTestUtils
+
+提供基于 Logback `ListAppender` 的日志断言：`setupLogger`、`cleanupLogger`、`assertLogLevel`、`assertLogContains`、`assertLogStatus` 与 `getLogSize`。使用这些方法时，测试运行时需要具备 Logback；该依赖在 Starter 中标记为可选依赖。
+
+#### Servlet Mock 构建器
+
+`HttpServletRequestMockBuilder` 用于构造 `HttpServletRequest` Mock，`FilterChainMockBuilder` 用于构造可设置响应状态码的 `FilterChain` Mock。两者依赖 Jakarta Servlet API；使用它们的项目需在测试范围提供 Servlet API（Starter 中为可选依赖）。
+
+```java
+HttpServletRequest request = HttpServletRequestMockBuilder.create()
+    .uri("/users/1")
+    .method("GET")
+    .remoteAddr("192.168.1.100")
+    .defaultIpHeaders()
+    .build();
+
+FilterChain chain = FilterChainMockBuilder.create()
+    .statusCode(204)
+    .build();
+```
+
 ### 测试基类
 
 #### BaseUnitTest

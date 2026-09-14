@@ -27,6 +27,16 @@
 
 **重要**：必须使用 `provided` 作用域，因为这是编译期工具，不需要打包到运行时。
 
+处理器生成的 Mapper、Service 和 `@Service` 实现仍需要 MyBatis-Plus 与 Spring 运行时类型。请同时引入 `mimir-boot-starter-mybatis`（或提供等价的 MyBatis-Plus 与 Spring 依赖）：
+
+```xml
+<dependency>
+    <groupId>io.github.yggdrasil-labs</groupId>
+    <artifactId>mimir-boot-starter-mybatis</artifactId>
+    <version>YOUR_RELEASE_VERSION</version>
+</dependency>
+```
+
 ### 使用示例
 
 #### 1. 标注实体类

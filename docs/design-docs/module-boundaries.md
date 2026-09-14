@@ -22,7 +22,7 @@
 ### `mimir-boot-starters/*`
 
 - 每个 starter 承担一个清晰能力域
-- 通过自动装配暴露能力
+- 运行时 Starter 通过自动装配暴露能力；编译期 Starter（如 MyBatis Processor）通过注解处理器生成代码
 - 提供独立 README 说明接入方式与配置
 
 ## 2. 推荐依赖关系

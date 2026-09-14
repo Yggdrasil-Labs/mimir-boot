@@ -25,7 +25,9 @@ Feign 接入层，基于 RPC Core 统一调用钩子与上下文传播，治理/
 </dependency>
 ```
 
-1) （可选）实现 `RpcHook` / `RpcTracerBridge` Bean，自动参与调用链
+2) 使用 `@FeignClient` 前，在应用启动类或配置类上添加 `@EnableFeignClients` 扫描 Client 接口
+
+3) （可选）实现 `RpcHook` / `RpcTracerBridge` Bean，自动参与调用链
 
 ## 配置说明
 
@@ -55,7 +57,7 @@ mimir:
 
 ## 常见问题
 
-- **未生效？** 检查 `mimir.boot.feign.enabled`，并确认项目启用了 OpenFeign
+- **未生效？** 检查 `mimir.boot.feign.enabled`，确认项目已引入并启用 OpenFeign（包括 `@EnableFeignClients`）；本 Starter 只为已创建的 Feign Client 提供包装能力
 
 ## 相关文档
 

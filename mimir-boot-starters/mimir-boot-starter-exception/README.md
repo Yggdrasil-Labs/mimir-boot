@@ -143,8 +143,8 @@ POST /api/user
 
 ```json
 {
-  "code": "30001",
-  "message": "参数校验失败",
+  "code": "00004",
+  "message": "参数无效",
   "data": [
     "username: 用户名不能为空",
     "email: 邮箱格式不正确"
@@ -273,7 +273,7 @@ public R<UserVO> getUser(@PathVariable Long id) {
 
 ```json
 {
-  "code": "30001",
+  "code": "00004",
   "message": "参数类型不匹配: id，期望类型: Long",
   "data": null,
   "traceId": "a1b2c3d4e5f6"
@@ -301,7 +301,7 @@ POST /api/user
 
 ```json
 {
-  "code": "30001",
+  "code": "00004",
   "message": "请求体格式错误",
   "data": null,
   "traceId": "a1b2c3d4e5f6"
@@ -319,7 +319,7 @@ POST /api/user
 
 ```json
 {
-  "code": "30003",
+  "code": "20004",
   "message": "请求方法 POST 不支持，支持的方法: GET",
   "data": null,
   "traceId": "a1b2c3d4e5f6"
@@ -462,7 +462,7 @@ throw new RuntimeException("错误");  // 会被当作系统异常处理
 // ✅ 使用 ErrorCode 枚举（推荐）
 throw new BizException(ErrorCode.DATA_NOT_FOUND);
 
-// ✅ 自定义错误码（需要定义在 ErrorCode 枚举中）
+// ✅ 自定义错误码（建议集中定义在 ErrorCode 枚举中）
 throw new BizException("20001", "用户不存在");
 
 // ❌ 避免硬编码错误码
@@ -538,7 +538,7 @@ public class CustomExceptionHandler {
     
     @ExceptionHandler(CustomException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Void> handleCustomException(CustomException e) {
+    public R<?> handleCustomException(CustomException e) {
         return R.fail("CUSTOM_ERROR", e.getMessage());
     }
 }

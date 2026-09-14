@@ -221,34 +221,26 @@ public class UserVO extends BaseVO {
 ### 2. 使用示例
 
 ```java
-// Controller 层：Jackson 使用无参构造绑定后，需显式校验
+// Controller 层：查询参数绑定后，需显式校验
 @RestController
 public class UserController {
     @GetMapping("/users")
-    public R<PageResult<User>> getUsers(
-            @RequestBody PageRequest pageRequest) {
+    public R<PageResult<User>> getUsers(PageRequest pageRequest) {
         pageRequest.validateAndCorrect();
         PageResult<User> result = userService.list(pageRequest);
         return R.success(result);
     }
 }
 
-// Service 层
-@Service
-public class UserService {
-    public PageResult<User> list(PageRequest pageRequest) {
-        List<User> users = userMapper.selectPage(pageRequest);
-        Long totalCount = userMapper.selectCount();
-        return PageResult.of(users, totalCount, 
-            pageRequest.getPageIndex(), pageRequest.getPageSize());
-    }
-}
+// UserService 接收已校验的 PageRequest，并由持久层实现分页查询
 
 // 业务异常
 if (user == null) {
     throw new BizException(ErrorCode.DATA_NOT_FOUND);
 }
 ```
+
+接入 MyBatis-Plus 时，可使用 `mimir-boot-starter-mybatis` 的 `PageConverters.toMybatisPage` 与 `toPageResult` 完成分页对象转换。
 
 ## 开发规范
 

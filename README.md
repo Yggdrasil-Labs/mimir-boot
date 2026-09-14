@@ -215,7 +215,7 @@ logging:
 
 引入 `mimir-boot-starter-nacos`，显式绑定 `mimir.boot.nacos.encrypt`（兼容旧前缀 `mimir.nacos.encrypt`）并启用解密后提供：
 
-- Nacos 配置中 `ENC(encrypted_value)` 格式自动解密
+- Nacos 配置中匹配已配置前缀的 `prefix(encrypted_value)` 格式自动解密（默认前缀为 `ENC`）
 - 配置动态刷新时自动重新解密
 - 提供加解密工具类 `NacosEncryptUtil`
 
