@@ -26,7 +26,7 @@ Dubbo 接入层，基于 RPC Core 统一过滤调用并暴露可插拔钩子，�
 </dependency>
 ```
 
-1) （可选）实现 `RpcHook` / `RpcTracerBridge` Bean，自动参与调用链
+2) （可选）实现 `RpcHook` / `RpcTracerBridge` Bean，自动参与调用链
 
 ## 配置说明
 

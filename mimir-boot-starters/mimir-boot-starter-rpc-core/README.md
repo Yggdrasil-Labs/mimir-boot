@@ -27,7 +27,7 @@ RPC 内核抽象模块，提供统一调用模型、上下文与可插拔扩展�
 </dependency>
 ```
 
-1) （可选）实现自定义 `RpcHook` / `RpcTracerBridge` 并声明为 Spring Bean
+2) （可选）实现自定义 `RpcHook` / `RpcTracerBridge` 并声明为 Spring Bean
 
 ## 配置说明
 

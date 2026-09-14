@@ -59,8 +59,8 @@
 
 数据项目通常再增加：
 
-- `mimir-boot-starter-mybatis`
-- `mimir-boot-starter-mybatis-processor`
+- `mimir-boot-starter-mybatis`（数据访问基础能力）
+- `mimir-boot-starter-mybatis-processor`（可选；仅在需要编译期生成 Mapper、Service、ServiceImpl 时引入）
 
 RPC 项目通常再增加：
 

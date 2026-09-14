@@ -31,6 +31,15 @@ Mimir Boot Starter Exception 提供了开箱即用的全局异常处理功能：
 
 **注意**：此模块已依赖 `mimir-boot-common`，会自动引入异常体系（`BizException`、`SystemException`、`ErrorCode` 等）。
 
+如果使用下方 `@Valid`、`@NotBlank` 等 Bean Validation 注解，请在应用中额外引入 `spring-boot-starter-validation`，以提供实际的校验实现。本 Starter 仅提供 `jakarta.validation-api` 用于异常处理签名，不会自动引入校验实现。
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
+```
+
 ### 使用示例
 
 #### 业务异常
