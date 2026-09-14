@@ -13,7 +13,7 @@ updated: 2026-09-15
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T00:27:07+08:00
+**Updated At:** 2026-09-15T00:29:58+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -70,6 +70,7 @@ updated: 2026-09-15
 |-----------|-------|------------|------|-------|------------|-------------|--------|---------|---------------|---------|-------------|-----------------|----------|-----------------|
 | T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | unknown（外部 agent 未返回可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | failed | none | external-agent-502-before-commit | initial |
 | T1 Maven 文档工具链与格式基线恢复 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | controller | inherit | unknown（收到 agent 502 后接管） | 2026-09-15T00:27:07+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 由 agent 502 改为 controller 接管并以 TDD 修复真实配置问题 | 33192a3；Maven selfTest/normal/无全局 Node PATH 均通过 | initial |
+| T2 文档规则与可信结果模型 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | worker | inherit | 2026-09-15T00:29:58+08:00 | pending | running | 1 | 2 | pending | pending | none | T1-33192a3-verified | initial |
 
 ## Global Constraints
 
@@ -229,11 +230,11 @@ AC1：移除全局 Node PATH 后运行 Maven，自检报告包含精确版本和
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Dispatch Base SHA:** 158da24
+- **Dispatch Ref:** feature/docs_quality_governance_2.3.0
+- **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** null
 - **Verify Result:** null
