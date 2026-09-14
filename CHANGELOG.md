@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.2](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.1...v2.2.2) (2026-09-14)
+
+
+### 🐛 Bug Fixes
+
+* **release:** 以公开制品校验作为发布收尾门禁 ([f14a1f6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f14a1f676f4f0db32416bf36112aac325cbe610b))
+
+
+### 📝 Documentation
+
+* **tech-debt:** 系统化技术债务追踪 ([bb7b25e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bb7b25e0798ac61a02b7134cbb4b4a5d3d0fb4b8))
+* 修复文档复核问题 ([6275137](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6275137bd17b3c5543ed852ee3abec4bb9af16fb))
+* 修正文档漂移并统一维护约定 ([6cd3013](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6cd30130cee2d3fd9e2faa5bff3048ffcaf4942f))
+* 校准文档与实现边界 ([ba28c47](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ba28c47e22dccfb5379d6c6bbf9f942fdb5ba5ca))
+* 校准模块文档与实际实现 ([316393e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/316393ec70b5298dee4fd608cd54f0604dbdcd05))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.2.2-SNAPSHOT for next development cycle ([1f5a4db](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1f5a4dbefc85d197b8b39be6d89519a77f2769db))
+
 ## [2.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.0...v2.2.1) (2026-09-12)
 
 
