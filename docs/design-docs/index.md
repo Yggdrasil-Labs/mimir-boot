@@ -8,6 +8,7 @@
 | design-module-boundaries | 模块边界 | verified | — | 全仓库 | [`module-boundaries.md`](./module-boundaries.md) |
 | design-doc-governance | 文档治理 | verified | — | docs/ | [`documentation-governance.md`](./documentation-governance.md) |
 | arch-technical-debt-remediation | 技术债修复长期约束同步 RFC | verified | YoungerYang-Y | T1–T7 已验证事实的长期文档同步边界 | [`arch-technical-debt-remediation.md`](./arch-technical-debt-remediation.md) |
+| arch-docs-quality-governance | 文档体系与质量门禁治理 RFC | draft | 项目维护者 | Agent 文档职责、迁移边界和本地/CI 检查模型 | [`arch-docs-quality-governance.md`](./arch-docs-quality-governance.md) |
 
 ## status 含义
 
