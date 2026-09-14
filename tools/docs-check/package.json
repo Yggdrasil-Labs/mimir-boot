@@ -8,9 +8,10 @@
   "scripts": {
     "bootstrap": "node bootstrap.mjs",
     "check": "node check.mjs",
-    "test": "node --test test/toolchain.test.mjs"
+    "test": "node --test test/toolchain.test.mjs test/docs-check.test.mjs"
   },
   "devDependencies": {
+    "markdown-it": "14.3.0",
     "markdownlint-cli2": "0.23.2"
   }
 }

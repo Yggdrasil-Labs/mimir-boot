@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "effective": ["AGENTS.md", "README.md", "docs/index.md", "docs/**", "docs/design-docs/**", "docs/active/v2.3.0/**", "docs/active/tech-debt-tracker.md", "**/README.md"],
+  "historical": ["docs/archive/**", "docs/active/v2.1.1/**", "docs/active/v2.2.1/**", "docs/product-specs/**"],
+  "templates": ["docs/design-docs/_template.md"],
+  "formatExemptions": ["CHANGELOG.md", ".cursor/**"],
+  "navigationRoots": ["AGENTS.md", "README.md", "docs/index.md"],
+  "technicalDebtPath": "docs/active/tech-debt-tracker.md",
+  "rootReadmePath": "README.md"
+}

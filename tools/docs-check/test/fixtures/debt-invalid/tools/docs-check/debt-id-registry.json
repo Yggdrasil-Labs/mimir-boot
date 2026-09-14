@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "highWatermark": 10,
+  "entries": [
+    { "id": "TD-008", "state": "retired" },
+    { "id": "TD-009", "state": "retired" },
+    { "id": "TD-010", "state": "retired" }
+  ]
+}
