@@ -1,15 +1,16 @@
 package com.yggdrasil.labs.mybatis.annotation;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * AutoMybatis 注解测试
@@ -32,7 +33,9 @@ class AutoMybatisTest extends BaseUnitTest {
         // 验证注解只能用于类型（类、接口、枚举等）
         Target target = AutoMybatis.class.getAnnotation(Target.class);
         assertNotNull(target);
-        assertArrayEquals(new java.lang.annotation.ElementType[]{java.lang.annotation.ElementType.TYPE}, target.value());
+        assertArrayEquals(
+                new java.lang.annotation.ElementType[] {java.lang.annotation.ElementType.TYPE},
+                target.value());
     }
 
     @Test
@@ -87,4 +90,3 @@ class AutoMybatisTest extends BaseUnitTest {
         assertNotNull(annotationClass.getMethod("serviceImplSuffix"));
     }
 }
-

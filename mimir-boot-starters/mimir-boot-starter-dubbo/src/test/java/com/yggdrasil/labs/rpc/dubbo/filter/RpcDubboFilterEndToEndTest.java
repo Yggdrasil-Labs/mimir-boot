@@ -1,22 +1,7 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
-import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
-import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
-import com.yggdrasil.labs.rpc.core.hook.RpcHook;
-import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
-import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
-import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
-import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.ProtocolConfig;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.config.ServiceConfig;
-import org.apache.dubbo.config.bootstrap.DubboBootstrap;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,8 +14,24 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.ProtocolConfig;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.ServiceConfig;
+import org.apache.dubbo.config.bootstrap.DubboBootstrap;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
+import com.yggdrasil.labs.rpc.core.hook.RpcHook;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
+import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 
 class RpcDubboFilterEndToEndTest {
 
@@ -66,14 +67,16 @@ class RpcDubboFilterEndToEndTest {
         reference.setFilter("rpcDubboFilter");
 
         bootstrap = DubboBootstrap.newInstance();
-        bootstrap.application(new ApplicationConfig("rpc-dubbo-filter-integration-test"))
+        bootstrap
+                .application(new ApplicationConfig("rpc-dubbo-filter-integration-test"))
                 .protocol(protocol)
                 .service(service)
                 .reference(reference)
                 .start();
 
         assertEquals("echo:hello", reference.get().echo("hello"));
-        assertEquals(List.of(Map.of("x-trace-id", "consumer-trace")), tracerBridge.injectedCarriers());
+        assertEquals(
+                List.of(Map.of("x-trace-id", "consumer-trace")), tracerBridge.injectedCarriers());
         assertEquals(2, tracerBridge.extractedCarriers().size());
         assertEquals("consumer-trace", tracerBridge.extractedCarriers().get(0).get("x-trace-id"));
         assertEquals("consumer-trace", tracerBridge.extractedCarriers().get(1).get("x-trace-id"));
@@ -84,7 +87,8 @@ class RpcDubboFilterEndToEndTest {
         DubboProperties properties = new DubboProperties();
         properties.setEnabled(true);
         properties.setContextPropagationEnabled(true);
-        RpcDubboSupportHolder.set(new RpcHookChain(List.of()), new MdcRpcTracerBridge(), properties);
+        RpcDubboSupportHolder.set(
+                new RpcHookChain(List.of()), new MdcRpcTracerBridge(), properties);
         MdcRecordingEchoService serviceImplementation = new MdcRecordingEchoService();
 
         ProtocolConfig protocol = new ProtocolConfig("injvm");
@@ -101,7 +105,8 @@ class RpcDubboFilterEndToEndTest {
         reference.setFilter("rpcDubboFilter");
 
         bootstrap = DubboBootstrap.newInstance();
-        bootstrap.application(new ApplicationConfig("rpc-dubbo-mdc-integration-test"))
+        bootstrap
+                .application(new ApplicationConfig("rpc-dubbo-mdc-integration-test"))
                 .protocol(protocol)
                 .service(service)
                 .reference(reference)
@@ -126,14 +131,16 @@ class RpcDubboFilterEndToEndTest {
         properties.setEnabled(true);
         properties.setContextPropagationEnabled(true);
         AsyncCompletionHook hook = new AsyncCompletionHook();
-        RpcDubboSupportHolder.set(new RpcHookChain(List.of(hook)), new MdcRpcTracerBridge(), properties);
+        RpcDubboSupportHolder.set(
+                new RpcHookChain(List.of(hook)), new MdcRpcTracerBridge(), properties);
         ExecutorService completionWorker = Executors.newSingleThreadExecutor();
         AtomicReference<CompletableFuture<String>> responseFuture = new AtomicReference<>();
-        AsyncEchoService serviceImplementation = value -> {
-            CompletableFuture<String> future = new CompletableFuture<>();
-            responseFuture.set(future);
-            return future;
-        };
+        AsyncEchoService serviceImplementation =
+                value -> {
+                    CompletableFuture<String> future = new CompletableFuture<>();
+                    responseFuture.set(future);
+                    return future;
+                };
 
         ProtocolConfig protocol = new ProtocolConfig("injvm");
         ServiceConfig<AsyncEchoService> service = new ServiceConfig<>();
@@ -149,22 +156,28 @@ class RpcDubboFilterEndToEndTest {
         reference.setFilter("rpcDubboFilter");
 
         bootstrap = DubboBootstrap.newInstance();
-        bootstrap.application(new ApplicationConfig("rpc-dubbo-mdc-async-integration-test"))
+        bootstrap
+                .application(new ApplicationConfig("rpc-dubbo-mdc-async-integration-test"))
                 .protocol(protocol)
                 .service(service)
                 .reference(reference)
                 .start();
 
         try {
-            completionWorker.submit(() -> {
-                MDC.put(CommonConstants.TRACE_ID, "worker-trace-id");
-                MDC.put(CommonConstants.REQUEST_ID, "worker-request-id");
-            }).get(5, TimeUnit.SECONDS);
+            completionWorker
+                    .submit(
+                            () -> {
+                                MDC.put(CommonConstants.TRACE_ID, "worker-trace-id");
+                                MDC.put(CommonConstants.REQUEST_ID, "worker-request-id");
+                            })
+                    .get(5, TimeUnit.SECONDS);
             MDC.put(CommonConstants.TRACE_ID, "consumer-async-trace-id");
             MDC.put(CommonConstants.REQUEST_ID, "consumer-async-request-id");
 
             CompletableFuture<String> rpcResponse = reference.get().echoAsync("hello");
-            completionWorker.submit(() -> responseFuture.get().complete("echo:hello")).get(5, TimeUnit.SECONDS);
+            completionWorker
+                    .submit(() -> responseFuture.get().complete("echo:hello"))
+                    .get(5, TimeUnit.SECONDS);
 
             assertEquals("echo:hello", rpcResponse.get(5, TimeUnit.SECONDS));
             assertTrue(hook.awaitProviderCompletion(), "未在异步完成回调中观察到 Provider Trace 上下文");
@@ -172,12 +185,16 @@ class RpcDubboFilterEndToEndTest {
             assertEquals("consumer-async-request-id", hook.requestId());
             assertEquals("consumer-async-trace-id", MDC.get(CommonConstants.TRACE_ID));
             assertEquals("consumer-async-request-id", MDC.get(CommonConstants.REQUEST_ID));
-            assertEquals("worker-trace-id", completionWorker
-                    .submit(() -> MDC.get(CommonConstants.TRACE_ID))
-                    .get(5, TimeUnit.SECONDS));
-            assertEquals("worker-request-id", completionWorker
-                    .submit(() -> MDC.get(CommonConstants.REQUEST_ID))
-                    .get(5, TimeUnit.SECONDS));
+            assertEquals(
+                    "worker-trace-id",
+                    completionWorker
+                            .submit(() -> MDC.get(CommonConstants.TRACE_ID))
+                            .get(5, TimeUnit.SECONDS));
+            assertEquals(
+                    "worker-request-id",
+                    completionWorker
+                            .submit(() -> MDC.get(CommonConstants.REQUEST_ID))
+                            .get(5, TimeUnit.SECONDS));
         } finally {
             MDC.clear();
             completionWorker.shutdownNow();

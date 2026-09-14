@@ -1,15 +1,13 @@
 package com.yggdrasil.labs.common.page;
 
-import lombok.Data;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
+import lombok.Data;
+
 /**
- * 分页结果
- * 用于业务层和服务层之间的数据传递和返回
- * 同时作为 API 响应的分页数据结构
+ * 分页结果 用于业务层和服务层之间的数据传递和返回 同时作为 API 响应的分页数据结构
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -17,57 +15,39 @@ import java.util.List;
 @Data
 public class PageResult<T extends Serializable> implements Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @Serial private static final long serialVersionUID = 1L;
 
-    /**
-     * 数据列表
-     */
+    /** 数据列表 */
     private List<T> data;
 
-    /**
-     * 总记录数
-     */
+    /** 总记录数 */
     private Long totalCount;
 
-    /**
-     * 页码
-     */
+    /** 页码 */
     private Long pageIndex;
 
-    /**
-     * 页大小
-     */
+    /** 页大小 */
     private Long pageSize;
 
-    /**
-     * 总页数
-     */
+    /** 总页数 */
     private Long totalPages;
 
-    /**
-     * 是否有下一页
-     */
+    /** 是否有下一页 */
     private Boolean hasNext;
 
-    /**
-     * 是否有上一页
-     */
+    /** 是否有上一页 */
     private Boolean hasPrevious;
 
-    /**
-     * 构造方法
-     */
-    public PageResult() {
-    }
+    /** 构造方法 */
+    public PageResult() {}
 
     /**
      * 构造方法
      *
-     * @param data       数据列表
+     * @param data 数据列表
      * @param totalCount 总记录数
-     * @param pageIndex  页码
-     * @param pageSize   页大小
+     * @param pageIndex 页码
+     * @param pageSize 页大小
      */
     public PageResult(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
         validatePageParameters(totalCount, pageIndex, pageSize);
@@ -81,8 +61,12 @@ public class PageResult<T extends Serializable> implements Serializable {
     }
 
     private static void validatePageParameters(Long totalCount, Long pageIndex, Long pageSize) {
-        if (totalCount == null || pageIndex == null || pageSize == null
-                || totalCount < 0 || pageIndex < 1 || pageSize < 1) {
+        if (totalCount == null
+                || pageIndex == null
+                || pageSize == null
+                || totalCount < 0
+                || pageIndex < 1
+                || pageSize < 1) {
             throw new IllegalArgumentException("分页参数无效");
         }
     }
@@ -90,14 +74,15 @@ public class PageResult<T extends Serializable> implements Serializable {
     /**
      * 创建分页结果
      *
-     * @param data       数据列表
+     * @param data 数据列表
      * @param totalCount 总记录数
-     * @param pageIndex  页码
-     * @param pageSize   页大小
-     * @param <T>        数据类型
+     * @param pageIndex 页码
+     * @param pageSize 页大小
+     * @param <T> 数据类型
      * @return 分页结果
      */
-    public static <T extends Serializable> PageResult<T> of(List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
+    public static <T extends Serializable> PageResult<T> of(
+            List<T> data, Long totalCount, Long pageIndex, Long pageSize) {
         return new PageResult<>(data, totalCount, pageIndex, pageSize);
     }
 
@@ -105,8 +90,8 @@ public class PageResult<T extends Serializable> implements Serializable {
      * 创建空分页结果
      *
      * @param pageIndex 页码
-     * @param pageSize  页大小
-     * @param <T>       数据类型
+     * @param pageSize 页大小
+     * @param <T> 数据类型
      * @return 空分页结果
      */
     public static <T extends Serializable> PageResult<T> empty(Long pageIndex, Long pageSize) {
@@ -117,7 +102,7 @@ public class PageResult<T extends Serializable> implements Serializable {
      * 从分页请求创建空分页结果
      *
      * @param pageRequest 分页请求
-     * @param <T>         数据类型
+     * @param <T> 数据类型
      * @return 空分页结果
      */
     public static <T extends Serializable> PageResult<T> empty(PageRequest pageRequest) {

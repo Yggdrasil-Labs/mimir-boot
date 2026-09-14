@@ -5,9 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * RPC 调用元数据（接口、方法、目标、协议等）。
- */
+/** RPC 调用元数据（接口、方法、目标、协议等）。 */
 public final class RpcCallMetadata {
 
     private final String service;
@@ -21,9 +19,10 @@ public final class RpcCallMetadata {
         this.method = builder.method;
         this.protocol = builder.protocol;
         this.target = builder.target;
-        this.attachments = builder.attachments == null
-                ? Collections.emptyMap()
-                : Collections.unmodifiableMap(new HashMap<>(builder.attachments));
+        this.attachments =
+                builder.attachments == null
+                        ? Collections.emptyMap()
+                        : Collections.unmodifiableMap(new HashMap<>(builder.attachments));
     }
 
     public String getService() {
@@ -98,4 +97,3 @@ public final class RpcCallMetadata {
         }
     }
 }
-

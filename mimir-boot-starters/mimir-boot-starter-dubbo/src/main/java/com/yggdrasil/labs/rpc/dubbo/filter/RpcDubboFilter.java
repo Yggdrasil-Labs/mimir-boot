@@ -1,28 +1,30 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
-import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
-import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
-import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
-import com.yggdrasil.labs.rpc.core.hook.RpcAsyncHookInvocation;
-import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
-import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
-import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
+import org.apache.dubbo.rpc.AsyncRpcResult;
 import org.apache.dubbo.rpc.Filter;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcException;
-import org.apache.dubbo.rpc.AsyncRpcResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
+import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
+import com.yggdrasil.labs.rpc.core.hook.RpcAsyncHookInvocation;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
+import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 
 @Activate(group = {CommonConstants.CONSUMER, CommonConstants.PROVIDER})
 public class RpcDubboFilter implements Filter {
@@ -39,7 +41,9 @@ public class RpcDubboFilter implements Filter {
         if (properties == null || hookChain == null || tracerBridge == null) {
             // Spring 未初始化，降级为直通
             if (log.isDebugEnabled()) {
-                log.debug("RpcDubboFilter: Spring not initialized, bypassing filter for service={}, method={}",
+                log.debug(
+                        "RpcDubboFilter: Spring not initialized, bypassing filter for service={},"
+                                + " method={}",
                         invoker.getInterface().getName(),
                         invocation.getMethodName());
             }
@@ -47,7 +51,8 @@ public class RpcDubboFilter implements Filter {
         }
         if (!properties.isEnabled()) {
             if (log.isDebugEnabled()) {
-                log.debug("RpcDubboFilter: Filter disabled, bypassing for service={}, method={}",
+                log.debug(
+                        "RpcDubboFilter: Filter disabled, bypassing for service={}, method={}",
                         invoker.getInterface().getName(),
                         invocation.getMethodName());
             }
@@ -56,17 +61,20 @@ public class RpcDubboFilter implements Filter {
 
         Map<String, String> attachments = copyAttachments(invocation.getObjectAttachments());
 
-        RpcCallMetadata metadata = RpcCallMetadata.builder()
-                .service(invoker.getInterface().getName())
-                .method(invocation.getMethodName())
-                .protocol(invoker.getUrl().getProtocol())
-                .target(invoker.getUrl().getAddress())
-                .attachments(attachments)
-                .build();
+        RpcCallMetadata metadata =
+                RpcCallMetadata.builder()
+                        .service(invoker.getInterface().getName())
+                        .method(invocation.getMethodName())
+                        .protocol(invoker.getUrl().getProtocol())
+                        .target(invoker.getUrl().getAddress())
+                        .attachments(attachments)
+                        .build();
         RpcCallContext context = RpcCallContext.create(metadata);
 
         if (log.isDebugEnabled()) {
-            log.debug("RpcDubboFilter: Processing RPC call - service={}, method={}, protocol={}, target={}",
+            log.debug(
+                    "RpcDubboFilter: Processing RPC call - service={}, method={}, protocol={},"
+                            + " target={}",
                     metadata.getService(),
                     metadata.getMethod(),
                     metadata.getProtocol(),
@@ -76,16 +84,18 @@ public class RpcDubboFilter implements Filter {
         Instant start = Instant.now();
         RpcTraceScope traceScope = RpcTraceScope.noop();
         Throwable primaryFailure = null;
-        boolean providerSide = CommonConstants.PROVIDER_SIDE.equals(
-                invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
+        boolean providerSide =
+                CommonConstants.PROVIDER_SIDE.equals(
+                        invoker.getUrl().getParameter(CommonConstants.SIDE_KEY));
 
         try {
             RpcAsyncHookInvocation hookInvocation = hookChain.openAsync(context);
             boolean asyncInvocation = false;
             try {
                 if (properties.isContextPropagationEnabled() && providerSide) {
-                    RpcTraceScope extractedScope = tracerBridge.extractScope(
-                            context, attachments == null ? Map.of() : attachments);
+                    RpcTraceScope extractedScope =
+                            tracerBridge.extractScope(
+                                    context, attachments == null ? Map.of() : attachments);
                     traceScope = extractedScope == null ? RpcTraceScope.noop() : extractedScope;
                 }
                 hookInvocation.before();
@@ -94,7 +104,9 @@ public class RpcDubboFilter implements Filter {
                     Map<String, String> injected = tracerBridge.inject(context);
                     if (injected != null && !injected.isEmpty()) {
                         if (log.isDebugEnabled()) {
-                            log.debug("RpcDubboFilter: Injecting context propagation headers: {}", injected.keySet());
+                            log.debug(
+                                    "RpcDubboFilter: Injecting context propagation headers: {}",
+                                    injected.keySet());
                         }
                         injected.forEach(invocation::setAttachment);
                     }
@@ -104,18 +116,28 @@ public class RpcDubboFilter implements Filter {
                 if (result instanceof AsyncRpcResult) {
                     closeScope(traceScope, null);
                     traceScope = RpcTraceScope.noop();
-                    result.whenCompleteWithContext((completedResult, throwable) -> {
-                        RpcTraceScope completionScope = RpcTraceScope.noop();
-                        try {
-                            if (properties.isContextPropagationEnabled() && providerSide) {
-                                completionScope = extractCompletionScope(tracerBridge, context, attachments);
-                            }
-                            completeCall(hookInvocation, metadata, start, completedResult, throwable);
-                        } finally {
-                            closeScope(completionScope, resolveFailure(completedResult, throwable));
-                            hookInvocation.completeWithoutResult();
-                        }
-                    });
+                    result.whenCompleteWithContext(
+                            (completedResult, throwable) -> {
+                                RpcTraceScope completionScope = RpcTraceScope.noop();
+                                try {
+                                    if (properties.isContextPropagationEnabled() && providerSide) {
+                                        completionScope =
+                                                extractCompletionScope(
+                                                        tracerBridge, context, attachments);
+                                    }
+                                    completeCall(
+                                            hookInvocation,
+                                            metadata,
+                                            start,
+                                            completedResult,
+                                            throwable);
+                                } finally {
+                                    closeScope(
+                                            completionScope,
+                                            resolveFailure(completedResult, throwable));
+                                    hookInvocation.completeWithoutResult();
+                                }
+                            });
                     asyncInvocation = true;
                 } else {
                     primaryFailure = resolveFailure(result, null);
@@ -143,9 +165,10 @@ public class RpcDubboFilter implements Filter {
             Result result,
             Throwable throwable) {
         Duration duration = Duration.between(start, Instant.now());
-        Throwable error = throwable != null ? throwable : result != null && result.hasException()
-                ? result.getException()
-                : null;
+        Throwable error =
+                throwable != null
+                        ? throwable
+                        : result != null && result.hasException() ? result.getException() : null;
         if (error != null) {
             logFailure(metadata, duration, error);
             hookInvocation.completeFailure(RpcCallResult.failure(duration, error), error);
@@ -159,12 +182,14 @@ public class RpcDubboFilter implements Filter {
     private RpcTraceScope extractCompletionScope(
             RpcTracerBridge tracerBridge, RpcCallContext context, Map<String, String> attachments) {
         try {
-            RpcTraceScope extractedScope = tracerBridge.extractScope(
-                    context, attachments == null ? Map.of() : attachments);
+            RpcTraceScope extractedScope =
+                    tracerBridge.extractScope(
+                            context, attachments == null ? Map.of() : attachments);
             return extractedScope == null ? RpcTraceScope.noop() : extractedScope;
         } catch (Throwable extractionFailure) {
             log.warn(
-                    "RPC trace scope extraction failed during async completion; preserving RPC result, error={}",
+                    "RPC trace scope extraction failed during async completion; preserving RPC"
+                            + " result, error={}",
                     extractionFailure.getClass().getName());
             return RpcTraceScope.noop();
         }
@@ -172,7 +197,8 @@ public class RpcDubboFilter implements Filter {
 
     private void logSuccess(RpcCallMetadata metadata, Duration duration) {
         if (log.isDebugEnabled()) {
-            log.debug("RpcDubboFilter: RPC call succeeded - service={}, method={}, duration={}ms",
+            log.debug(
+                    "RpcDubboFilter: RPC call succeeded - service={}, method={}, duration={}ms",
                     metadata.getService(),
                     metadata.getMethod(),
                     duration.toMillis());
@@ -191,7 +217,9 @@ public class RpcDubboFilter implements Filter {
 
     private void logFailure(RpcCallMetadata metadata, Duration duration, Throwable error) {
         if (log.isDebugEnabled()) {
-            log.debug("RpcDubboFilter: RPC call failed - service={}, method={}, duration={}ms, error={}",
+            log.debug(
+                    "RpcDubboFilter: RPC call failed - service={}, method={}, duration={}ms,"
+                            + " error={}",
                     metadata.getService(),
                     metadata.getMethod(),
                     duration.toMillis(),
@@ -224,7 +252,8 @@ public class RpcDubboFilter implements Filter {
             return Map.of();
         }
         Map<String, String> copied = new LinkedHashMap<>();
-        source.forEach((key, value) -> copied.put(key, value == null ? null : String.valueOf(value)));
+        source.forEach(
+                (key, value) -> copied.put(key, value == null ? null : String.valueOf(value)));
         return copied;
     }
 }

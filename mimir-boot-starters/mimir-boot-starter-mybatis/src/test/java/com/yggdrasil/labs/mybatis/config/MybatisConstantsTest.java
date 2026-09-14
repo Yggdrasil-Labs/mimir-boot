@@ -1,13 +1,14 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * MyBatis 常量类测试
@@ -68,8 +69,7 @@ class MybatisConstantsTest extends BaseUnitTest {
     void testPaginationInterceptorClassName() {
         AssertUtils.assertEquals(
                 "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor",
-                MybatisConstants.PAGINATION_INTERCEPTOR_CLASS_NAME
-        );
+                MybatisConstants.PAGINATION_INTERCEPTOR_CLASS_NAME);
     }
 
     @Test
@@ -94,9 +94,11 @@ class MybatisConstantsTest extends BaseUnitTest {
 
     @Test
     void testConfigMapperPackages() {
-        AssertUtils.assertEquals("mimir.boot.mybatis.mapper-packages", MybatisConstants.CONFIG_MAPPER_PACKAGES);
+        AssertUtils.assertEquals(
+                "mimir.boot.mybatis.mapper-packages", MybatisConstants.CONFIG_MAPPER_PACKAGES);
         // 验证它是由 CONFIG_PREFIX 和 ".mapper-packages" 组成的
-        assertTrue(MybatisConstants.CONFIG_MAPPER_PACKAGES.startsWith(MybatisConstants.CONFIG_PREFIX));
+        assertTrue(
+                MybatisConstants.CONFIG_MAPPER_PACKAGES.startsWith(MybatisConstants.CONFIG_PREFIX));
     }
 
     @Test
@@ -122,11 +124,11 @@ class MybatisConstantsTest extends BaseUnitTest {
         java.lang.reflect.Field[] fields = MybatisConstants.class.getDeclaredFields();
 
         for (java.lang.reflect.Field field : fields) {
-            assertTrue(Modifier.isFinal(field.getModifiers()),
-                    "常量字段应该是 final 的: " + field.getName());
-            assertTrue(Modifier.isStatic(field.getModifiers()),
+            assertTrue(
+                    Modifier.isFinal(field.getModifiers()), "常量字段应该是 final 的: " + field.getName());
+            assertTrue(
+                    Modifier.isStatic(field.getModifiers()),
                     "常量字段应该是 static 的: " + field.getName());
         }
     }
 }
-

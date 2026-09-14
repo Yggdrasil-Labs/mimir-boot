@@ -1,9 +1,10 @@
 package com.yggdrasil.labs.log.web;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * 访问日志配置属性测试
@@ -46,4 +47,3 @@ class AccessLogPropertiesTest extends BaseUnitTest {
         assertEquals(5000, properties.getSlowThresholdMs());
     }
 }
-

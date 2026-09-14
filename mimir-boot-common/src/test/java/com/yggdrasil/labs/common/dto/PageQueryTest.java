@@ -1,9 +1,10 @@
 package com.yggdrasil.labs.common.dto;
 
-import com.yggdrasil.labs.common.page.PageRequest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.common.page.PageRequest;
 
 class PageQueryTest {
 
@@ -25,5 +26,3 @@ class PageQueryTest {
         assertEquals(3L, q.getPage().getPageIndex());
     }
 }
-
-

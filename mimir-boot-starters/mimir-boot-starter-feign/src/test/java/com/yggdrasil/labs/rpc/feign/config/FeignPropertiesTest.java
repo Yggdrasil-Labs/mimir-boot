@@ -32,4 +32,3 @@ class FeignPropertiesTest {
         assertTrue(properties.isContextPropagationEnabled());
     }
 }
-

@@ -1,25 +1,29 @@
 package com.yggdrasil.labs.web.interceptor;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.AsyncHandlerInterceptor;
-
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Trace 拦截器
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动生成或从请求头获取 traceId</li>
- * <li>将 traceId 设置到 MDC 和响应头</li>
+ *   <li>自动生成或从请求头获取 traceId
+ *   <li>将 traceId 设置到 MDC 和响应头
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -29,24 +33,27 @@ import java.util.regex.Pattern;
 public class TraceInterceptor implements AsyncHandlerInterceptor {
 
     public static final String TRACE_ID = CommonConstants.TRACE_ID;
-    private static final String MDC_STACK_ATTRIBUTE = TraceInterceptor.class.getName() + ".mdcStack";
+    private static final String MDC_STACK_ATTRIBUTE =
+            TraceInterceptor.class.getName() + ".mdcStack";
     private static final String TRACE_ID_ATTRIBUTE = TraceInterceptor.class.getName() + ".traceId";
-    private static final String REQUEST_ID_ATTRIBUTE = TraceInterceptor.class.getName() + ".requestId";
-    private static final Pattern TRACE_ID_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
+    private static final String REQUEST_ID_ATTRIBUTE =
+            TraceInterceptor.class.getName() + ".requestId";
+    private static final Pattern TRACE_ID_PATTERN =
+            Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
 
     /**
      * 请求处理前
-     * <p>
-     * 设置 traceId：从请求头获取或生成新的
-     * </p>
      *
-     * @param request  请求对象
+     * <p>设置 traceId：从请求头获取或生成新的
+     *
+     * @param request 请求对象
      * @param response 响应对象
-     * @param handler  处理器
+     * @param handler 处理器
      * @return 是否继续处理
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(
+            HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 获取或生成 traceId
         String traceId = getOrGenerateTraceId(request);
         String requestId = getOrGenerateRequestId(request);
@@ -56,8 +63,11 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
 
         request.setAttribute(TRACE_ID_ATTRIBUTE, traceId);
         request.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
-        mdcStack(request).push(new MdcState(
-                org.slf4j.MDC.get(TRACE_ID), org.slf4j.MDC.get(CommonConstants.REQUEST_ID)));
+        mdcStack(request)
+                .push(
+                        new MdcState(
+                                org.slf4j.MDC.get(TRACE_ID),
+                                org.slf4j.MDC.get(CommonConstants.REQUEST_ID)));
         org.slf4j.MDC.put(TRACE_ID, traceId);
         org.slf4j.MDC.put(CommonConstants.REQUEST_ID, requestId);
 
@@ -66,14 +76,13 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
 
     /**
      * 请求处理后
-     * <p>
-     * 仅恢复此拦截器写入前的 traceId 与 requestId，其他 MDC 键由其所有者负责。
-     * </p>
      *
-     * @param request  请求对象
+     * <p>仅恢复此拦截器写入前的 traceId 与 requestId，其他 MDC 键由其所有者负责。
+     *
+     * @param request 请求对象
      * @param response 响应对象
-     * @param handler  处理器
-     * @param ex       异常（如果有）
+     * @param handler 处理器
+     * @param ex 异常（如果有）
      */
     @Override
     public void afterCompletion(
@@ -86,9 +95,7 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
 
     @Override
     public void afterConcurrentHandlingStarted(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Object handler) {
+            HttpServletRequest request, HttpServletResponse response, Object handler) {
         restorePreviousMdcState(request);
     }
 
@@ -169,6 +176,5 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
         }
     }
 
-    private record MdcState(String traceId, String requestId) {
-    }
+    private record MdcState(String traceId, String requestId) {}
 }

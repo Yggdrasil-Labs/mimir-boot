@@ -1,35 +1,41 @@
 package com.yggdrasil.labs.mybatis.util;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.IdentityHashMap;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
+
 /**
  * SQL 参数脱敏工具。
  *
- * <p>根据字段上的 {@link SensitiveField} 注解和内置敏感参数名进行定向脱敏；
- * 对于基础类型与常见简单类型，直接透传。</p>
+ * <p>根据字段上的 {@link SensitiveField} 注解和内置敏感参数名进行定向脱敏； 对于基础类型与常见简单类型，直接透传。
  */
 public class SqlLogMaskUtils {
 
-    /**
-     * 最大递归深度，防止堆栈溢出
-     */
+    /** 最大递归深度，防止堆栈溢出 */
     private static final int MAX_DEPTH = 5;
 
-    private static final Set<String> SENSITIVE_PARAMETER_NAMES = Set.of(
-            "password", "passwd", "pwd", "token", "accesstoken", "refreshtoken", "idtoken",
-            "secret", "clientsecret", "authorization", "apikey");
-
+    private static final Set<String> SENSITIVE_PARAMETER_NAMES =
+            Set.of(
+                    "password",
+                    "passwd",
+                    "pwd",
+                    "token",
+                    "accesstoken",
+                    "refreshtoken",
+                    "idtoken",
+                    "secret",
+                    "clientsecret",
+                    "authorization",
+                    "apikey");
 
     private SqlLogMaskUtils() {
         throw new IllegalStateException("Utility class");
@@ -41,15 +47,13 @@ public class SqlLogMaskUtils {
         return maskParams(params, 0, new IdentityHashMap<>());
     }
 
-    /**
-     * 对 SQL 文本中的敏感赋值进行脱敏，避免常量值绕过参数对象的脱敏路径。
-     */
+    /** 对 SQL 文本中的敏感赋值进行脱敏，避免常量值绕过参数对象的脱敏路径。 */
     public static String maskSql(String sql) {
         if (sql == null || sql.isEmpty()) {
             return sql;
         }
         StringBuilder masked = new StringBuilder(sql.length());
-        for (int index = 0; index < sql.length();) {
+        for (int index = 0; index < sql.length(); ) {
             if (startsLineComment(sql, index)) {
                 int end = sql.indexOf('\n', index);
                 masked.append(sql, index, end < 0 ? sql.length() : end);
@@ -78,7 +82,8 @@ public class SqlLogMaskUtils {
                     int valueStart = skipSqlTrivia(sql, assignmentEnd);
                     int valueEnd = sqlValueEnd(sql, valueStart);
                     String identifier = sql.substring(index, identifierEnd);
-                    if (valueStart < valueEnd && isSensitiveParameterName(unquoteSqlIdentifier(identifier))) {
+                    if (valueStart < valueEnd
+                            && isSensitiveParameterName(unquoteSqlIdentifier(identifier))) {
                         masked.append(sql, index, valueStart).append(CommonConstants.MASKED);
                         index = sensitiveValueEnd(sql, valueStart, valueEnd);
                     } else {
@@ -104,7 +109,8 @@ public class SqlLogMaskUtils {
         if (sql.charAt(index) != '#') {
             return false;
         }
-        return index + 1 >= sql.length() || (sql.charAt(index + 1) != '>' && sql.charAt(index + 1) != '-');
+        return index + 1 >= sql.length()
+                || (sql.charAt(index + 1) != '>' && sql.charAt(index + 1) != '-');
     }
 
     private static boolean startsBlockComment(String sql, int index) {
@@ -278,7 +284,7 @@ public class SqlLogMaskUtils {
         }
         if (start + 1 < sql.length()
                 && ((sql.charAt(start) == ':' && sql.charAt(start + 1) == '=')
-                || (sql.charAt(start) == '=' && sql.charAt(start + 1) == '>'))) {
+                        || (sql.charAt(start) == '=' && sql.charAt(start + 1) == '>'))) {
             return start + 2;
         }
         return start;
@@ -375,51 +381,54 @@ public class SqlLogMaskUtils {
         return index;
     }
 
-    private static Object maskParams(Object params, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static Object maskParams(
+            Object params, int depth, IdentityHashMap<Object, Boolean> visited) {
         if (params == null) return null;
-        
+
         // 深度限制，防止无限递归
         if (depth >= MAX_DEPTH) {
             return getSimpleRepresentation(params);
         }
-        
+
         // 检测循环引用
         if (visited.containsKey(params)) {
             return getSimpleRepresentation(params);
         }
-        
+
         if (params instanceof Map) {
             return maskMap((Map<?, ?>) params, depth, visited);
         }
-        
+
         // 基础类型和简单类型直接返回
-        if (params.getClass().isPrimitive() 
-                || params instanceof String 
+        if (params.getClass().isPrimitive()
+                || params instanceof String
                 || params instanceof Number
                 || params instanceof Boolean
                 || params instanceof Character) {
             return params;
         }
-        
+
         // Collection 类型特殊处理
         if (params instanceof Collection) {
             return maskCollection((Collection<?>) params, depth, visited);
         }
-        
+
         // MyBatis-Plus Wrapper 类型特殊处理，避免深度递归
         if (isMyBatisPlusWrapper(params)) {
             return getSimpleRepresentation(params);
         }
-        
+
         return maskObject(params, depth, visited);
     }
 
-    private static Object maskMap(Map<?, ?> map, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static Object maskMap(
+            Map<?, ?> map, int depth, IdentityHashMap<Object, Boolean> visited) {
         // 使用 IdentityHashMap 作为结果，避免当 key/value 是 Map 时调用 hashCode() 导致的堆栈溢出
         // IdentityHashMap 使用对象引用（==）而不是 equals() 和 hashCode() 来比较键
         // 对于日志脱敏场景，使用 IdentityHashMap 是可以接受的
         Map<Object, Object> result = new IdentityHashMap<>();
-        IdentityHashMap<Object, Boolean> sensitiveParameterValues = findSensitiveParameterValues(map);
+        IdentityHashMap<Object, Boolean> sensitiveParameterValues =
+                findSensitiveParameterValues(map);
         // 创建新的 visited 集合，避免修改原始集合，并先将当前 map 标记进去以便检测自引用
         IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
         newVisited.put(map, Boolean.TRUE);
@@ -429,7 +438,8 @@ public class SqlLogMaskUtils {
             Object value = entry.getValue();
 
             Object safeKey = toSafeKey(key);
-            Object safeValue = toSafeValue(key, value, depth, visited, newVisited, sensitiveParameterValues);
+            Object safeValue =
+                    toSafeValue(key, value, depth, visited, newVisited, sensitiveParameterValues);
             result.put(safeKey, safeValue);
         }
         return result;
@@ -446,11 +456,7 @@ public class SqlLogMaskUtils {
         return sensitiveValues;
     }
 
-    /**
-     * 生成用于结果 Map 的安全 key：
-     * - 对于 Map 类型 key，使用简单字符串表示，避免调用 hashCode()/toString 导致栈溢出
-     * - 其它类型直接透传
-     */
+    /** 生成用于结果 Map 的安全 key： - 对于 Map 类型 key，使用简单字符串表示，避免调用 hashCode()/toString 导致栈溢出 - 其它类型直接透传 */
     private static Object toSafeKey(Object key) {
         if (key instanceof Map) {
             return getSimpleRepresentation(key);
@@ -458,9 +464,7 @@ public class SqlLogMaskUtils {
         return key;
     }
 
-    /**
-     * 生成用于结果 Map 的安全 value。
-     */
+    /** 生成用于结果 Map 的安全 value。 */
     private static Object toSafeValue(
             Object key,
             Object value,
@@ -481,9 +485,7 @@ public class SqlLogMaskUtils {
         return handleNonMapValue(key, value, depth, newVisited);
     }
 
-    /**
-     * 处理 Map 类型的 value，包含循环引用检测与递归脱敏。
-     */
+    /** 处理 Map 类型的 value，包含循环引用检测与递归脱敏。 */
     private static Object handleMapValue(
             Map<?, ?> value,
             int depth,
@@ -503,14 +505,9 @@ public class SqlLogMaskUtils {
         return masked;
     }
 
-    /**
-     * 处理非 Map 类型的 value，包括基于 key 的字段匹配（仅当 key 不是 Map 时）。
-     */
+    /** 处理非 Map 类型的 value，包括基于 key 的字段匹配（仅当 key 不是 Map 时）。 */
     private static Object handleNonMapValue(
-            Object key,
-            Object value,
-            int depth,
-            IdentityHashMap<Object, Boolean> newVisited) {
+            Object key, Object value, int depth, IdentityHashMap<Object, Boolean> newVisited) {
 
         // 当 key 是 Map（尤其是包含循环引用的 Map）时，调用 String.valueOf(key)
         // 会触发 Map.toString() 从而导致堆栈溢出；此时跳过基于 key 的字段匹配逻辑
@@ -531,9 +528,7 @@ public class SqlLogMaskUtils {
         if (!(key instanceof String keyName)) {
             return false;
         }
-        String normalized = keyName.toLowerCase(Locale.ROOT)
-                .replace("_", "")
-                .replace("-", "");
+        String normalized = keyName.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
         return SENSITIVE_PARAMETER_NAMES.contains(normalized);
     }
 
@@ -543,18 +538,21 @@ public class SqlLogMaskUtils {
         }
         char first = identifier.charAt(0);
         char last = identifier.charAt(identifier.length() - 1);
-        if ((first == '`' && last == '`') || (first == '\"' && last == '\"') || (first == '[' && last == ']')) {
+        if ((first == '`' && last == '`')
+                || (first == '\"' && last == '\"')
+                || (first == '[' && last == ']')) {
             return identifier.substring(1, identifier.length() - 1);
         }
         return identifier;
     }
 
-    private static Object maskCollection(Collection<?> collection, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static Object maskCollection(
+            Collection<?> collection, int depth, IdentityHashMap<Object, Boolean> visited) {
         List<Object> result = new ArrayList<>();
         // 创建新的 visited 集合，避免修改原始集合
         IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
         newVisited.put(collection, Boolean.TRUE);
-        
+
         for (Object item : collection) {
             if (item == null) {
                 result.add(null);
@@ -565,12 +563,13 @@ public class SqlLogMaskUtils {
         return result;
     }
 
-    private static Object maskObject(Object obj, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static Object maskObject(
+            Object obj, int depth, IdentityHashMap<Object, Boolean> visited) {
         try {
             // 创建新的 visited 集合，避免修改原始集合
             IdentityHashMap<Object, Boolean> newVisited = new IdentityHashMap<>(visited);
             newVisited.put(obj, Boolean.TRUE);
-            
+
             Map<String, Object> map = new HashMap<>();
             Class<?> clazz = obj.getClass();
             for (Field field : getAllFields(clazz)) {
@@ -592,10 +591,8 @@ public class SqlLogMaskUtils {
             return getSimpleRepresentation(obj);
         }
     }
-    
-    /**
-     * 判断是否为 MyBatis-Plus 的 Wrapper 类型
-     */
+
+    /** 判断是否为 MyBatis-Plus 的 Wrapper 类型 */
     private static boolean isMyBatisPlusWrapper(Object obj) {
         if (obj == null) {
             return false;
@@ -603,14 +600,15 @@ public class SqlLogMaskUtils {
         Class<?> clazz = obj.getClass();
         String className = clazz.getName();
         // 检查是否为 MyBatis-Plus 的 Wrapper 类
-        return className.contains("com.baomidou.mybatisplus") 
-                && (className.contains("Wrapper") || className.contains("QueryWrapper") || className.contains("UpdateWrapper"));
+        return className.contains("com.baomidou.mybatisplus")
+                && (className.contains("Wrapper")
+                        || className.contains("QueryWrapper")
+                        || className.contains("UpdateWrapper"));
     }
-    
+
     /**
-     * 获取对象的简单字符串表示，避免深度递归
-     * 使用 System.identityHashCode() 避免调用对象的 hashCode() 方法
-     * 因为 Map 的 hashCode() 会遍历所有 entry，如果包含循环引用会导致堆栈溢出
+     * 获取对象的简单字符串表示，避免深度递归 使用 System.identityHashCode() 避免调用对象的 hashCode() 方法 因为 Map 的 hashCode()
+     * 会遍历所有 entry，如果包含循环引用会导致堆栈溢出
      */
     private static String getSimpleRepresentation(Object obj) {
         if (obj == null) {
@@ -618,7 +616,9 @@ public class SqlLogMaskUtils {
         }
         // 使用 System.identityHashCode() 而不是 obj.hashCode()
         // 以避免当 obj 是包含循环引用的 Map 时触发堆栈溢出
-        return obj.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(obj));
+        return obj.getClass().getSimpleName()
+                + "@"
+                + Integer.toHexString(System.identityHashCode(obj));
     }
 
     private static String maskValue(String value, SensitiveField anno) {
@@ -644,7 +644,9 @@ public class SqlLogMaskUtils {
         // 常规手机号长度为11位，保留前3位和后4位；非常规长度使用更保守方案，保留前3位和后2位
         int prefixLength = 3;
         int suffixLength = len == 11 ? 4 : 2;
-        return phone.substring(0, prefixLength) + CommonConstants.MASKED + phone.substring(len - suffixLength);
+        return phone.substring(0, prefixLength)
+                + CommonConstants.MASKED
+                + phone.substring(len - suffixLength);
     }
 
     private static String maskIdCard(String idCard) {
@@ -652,7 +654,9 @@ public class SqlLogMaskUtils {
         int len = idCard.length();
         // 常规身份证长度为15位或18位，保留前6位和后4位；非常规长度使用更保守方案，保留前4位和后4位
         int prefixLength = (len == 15 || len == 18) ? 6 : 4;
-        return idCard.substring(0, prefixLength) + CommonConstants.MASKED + idCard.substring(len - 4);
+        return idCard.substring(0, prefixLength)
+                + CommonConstants.MASKED
+                + idCard.substring(len - 4);
     }
 
     private static String maskBankCard(String card) {
@@ -661,7 +665,9 @@ public class SqlLogMaskUtils {
         // 常规银行卡长度为16位或19位，保留前4位和后4位；非常规长度使用更保守方案，保留前3位和后3位
         int prefixLength = (len == 16 || len == 19) ? 4 : 3;
         int suffixLength = (len == 16 || len == 19) ? 4 : 3;
-        return card.substring(0, prefixLength) + CommonConstants.MASKED + card.substring(len - suffixLength);
+        return card.substring(0, prefixLength)
+                + CommonConstants.MASKED
+                + card.substring(len - suffixLength);
     }
 
     private static String maskEmail(String email) {

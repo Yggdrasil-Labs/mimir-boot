@@ -1,11 +1,11 @@
 package com.yggdrasil.labs.common.page;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.Serializable;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class PageResultTest {
 
@@ -22,19 +22,27 @@ class PageResultTest {
     @Test
     void validated_constructor_and_factories_reject_invalid_numeric_values() {
         assertAll(
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> new PageResult<>(SINGLE_ENTRY_DATA, null, 1L, 10L)),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, null, 10L)),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, 1L, null)),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> new PageResult<>(SINGLE_ENTRY_DATA, -1L, 1L, 10L)),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, 0L, 10L)),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> PageResult.empty(1L, 0L))
-        );
+                () ->
+                        assertThrows(
+                                IllegalArgumentException.class,
+                                () -> new PageResult<>(SINGLE_ENTRY_DATA, null, 1L, 10L)),
+                () ->
+                        assertThrows(
+                                IllegalArgumentException.class,
+                                () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, null, 10L)),
+                () ->
+                        assertThrows(
+                                IllegalArgumentException.class,
+                                () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, 1L, null)),
+                () ->
+                        assertThrows(
+                                IllegalArgumentException.class,
+                                () -> new PageResult<>(SINGLE_ENTRY_DATA, -1L, 1L, 10L)),
+                () ->
+                        assertThrows(
+                                IllegalArgumentException.class,
+                                () -> PageResult.of(SINGLE_ENTRY_DATA, 1L, 0L, 10L)),
+                () -> assertThrows(IllegalArgumentException.class, () -> PageResult.empty(1L, 0L)));
     }
 
     @Test

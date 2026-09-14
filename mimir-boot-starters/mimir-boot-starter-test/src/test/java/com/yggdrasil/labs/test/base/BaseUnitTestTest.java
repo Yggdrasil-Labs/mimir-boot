@@ -1,13 +1,14 @@
 package com.yggdrasil.labs.test.base;
 
-import com.yggdrasil.labs.test.util.TestUtils;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.slf4j.MDC;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.util.TestUtils;
 
 /**
  * BaseUnitTest 测试基类测试
@@ -17,8 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class BaseUnitTestTest extends BaseUnitTest {
 
-    @Mock
-    private List<String> mockList;
+    @Mock private List<String> mockList;
 
     private boolean setUpCalled = false;
 
@@ -75,4 +75,3 @@ class BaseUnitTestTest extends BaseUnitTest {
         // tearDown 会在测试结束后清理
     }
 }
-

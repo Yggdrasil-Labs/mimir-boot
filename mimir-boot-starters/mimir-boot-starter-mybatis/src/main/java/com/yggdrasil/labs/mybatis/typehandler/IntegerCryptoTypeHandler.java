@@ -5,8 +5,8 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 /**
  * Integer 字段加解密 TypeHandler。
  *
- * <p>注意：此 TypeHandler 不会自动注册为全局 Integer 类型处理器，
- * 需要在字段上显式使用 {@code @TableField(typeHandler = IntegerCryptoTypeHandler.class)} 才会生效。
+ * <p>注意：此 TypeHandler 不会自动注册为全局 Integer 类型处理器， 需要在字段上显式使用 {@code @TableField(typeHandler =
+ * IntegerCryptoTypeHandler.class)} 才会生效。
  */
 public class IntegerCryptoTypeHandler extends AbstractCryptoTypeHandler<Integer> {
 
@@ -18,7 +18,8 @@ public class IntegerCryptoTypeHandler extends AbstractCryptoTypeHandler<Integer>
         super(keyProvider, cryptoContext);
     }
 
-    public IntegerCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
+    public IntegerCryptoTypeHandler(
+            CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
         super(keyProvider, cryptoContext, cryptoV2WriteEnabled);
     }
 

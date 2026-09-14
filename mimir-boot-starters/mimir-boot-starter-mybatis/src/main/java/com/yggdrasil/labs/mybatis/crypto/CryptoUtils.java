@@ -1,22 +1,23 @@
 package com.yggdrasil.labs.mybatis.crypto;
 
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.util.Base64;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.util.Base64;
 
 import org.springframework.util.StringUtils;
 
 /**
  * 简单的对称加解密工具（AES）。
  *
- * <p>说明：采用 AES/GCM/NoPadding，并使用随机 12 字节 IV，密文按如下格式编码：
- * Base64( IV(12 bytes) || CIPHERTEXT )。GCM 认证标签包含在 CIPHERTEXT 中。</p>
+ * <p>说明：采用 AES/GCM/NoPadding，并使用随机 12 字节 IV，密文按如下格式编码： Base64( IV(12 bytes) || CIPHERTEXT )。GCM
+ * 认证标签包含在 CIPHERTEXT 中。
  */
 public class CryptoUtils {
 
@@ -47,8 +48,7 @@ public class CryptoUtils {
     public static String encrypt(String plaintext, String key) {
         if (plaintext == null || plaintext.isEmpty()) return plaintext;
         try {
-            SecretKeySpec secretKey = new SecretKeySpec(
-                Base64.getDecoder().decode(key), ALGORITHM);
+            SecretKeySpec secretKey = new SecretKeySpec(Base64.getDecoder().decode(key), ALGORITHM);
             byte[] iv = new byte[GCM_IV_LENGTH];
             SECURE_RANDOM.nextBytes(iv);
 
@@ -69,8 +69,7 @@ public class CryptoUtils {
     public static String decrypt(String ciphertext, String key) {
         if (ciphertext == null || ciphertext.isEmpty()) return ciphertext;
         try {
-            SecretKeySpec secretKey = new SecretKeySpec(
-                Base64.getDecoder().decode(key), ALGORITHM);
+            SecretKeySpec secretKey = new SecretKeySpec(Base64.getDecoder().decode(key), ALGORITHM);
             byte[] input = Base64.getDecoder().decode(ciphertext);
             if (input.length < GCM_IV_LENGTH + 1) {
                 throw new IllegalArgumentException("Invalid ciphertext");
@@ -93,7 +92,7 @@ public class CryptoUtils {
     /**
      * 使用应用级上下文作为 AAD 写入 v2 密文。
      *
-     * <p>应用级 AAD 仅认证密文所属应用，不提供字段或记录级绑定。</p>
+     * <p>应用级 AAD 仅认证密文所属应用，不提供字段或记录级绑定。
      */
     public static String encrypt(String plaintext, String key, String aad) {
         if (plaintext == null || plaintext.isEmpty()) return plaintext;
@@ -101,7 +100,8 @@ public class CryptoUtils {
             byte[] iv = new byte[GCM_IV_LENGTH];
             SECURE_RANDOM.nextBytes(iv);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, keySpec(key), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+            cipher.init(
+                    Cipher.ENCRYPT_MODE, keySpec(key), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             cipher.updateAAD(toApplicationAad(aad));
             byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
             byte[] output = new byte[iv.length + ciphertext.length];
@@ -113,9 +113,7 @@ public class CryptoUtils {
         }
     }
 
-    /**
-     * 读取 v1 密文或带有应用级 AAD 的 v2 密文。
-     */
+    /** 读取 v1 密文或带有应用级 AAD 的 v2 密文。 */
     public static String decrypt(String ciphertext, String key, String aad) {
         if (ciphertext == null || ciphertext.isEmpty()) return ciphertext;
         if (!ciphertext.startsWith(V2_PREFIX)) {
@@ -152,7 +150,8 @@ public class CryptoUtils {
 
     private static byte[] toApplicationAad(String context) {
         if (!StringUtils.hasText(context)) {
-            throw new IllegalArgumentException("crypto context must not be blank for v2 ciphertext");
+            throw new IllegalArgumentException(
+                    "crypto context must not be blank for v2 ciphertext");
         }
         return (V2_AAD_PREFIX + context).getBytes(StandardCharsets.UTF_8);
     }

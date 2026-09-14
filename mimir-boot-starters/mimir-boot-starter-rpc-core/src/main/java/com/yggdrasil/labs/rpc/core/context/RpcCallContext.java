@@ -6,19 +6,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * RPC 调用上下文，包含元数据、开始时间与可变附件。
- */
+/** RPC 调用上下文，包含元数据、开始时间与可变附件。 */
 public final class RpcCallContext {
 
     private final RpcCallMetadata metadata;
     private final Instant startTime;
     private final Map<String, String> mutableAttachments;
 
-    private RpcCallContext(RpcCallMetadata metadata, Instant startTime, Map<String, String> attachments) {
+    private RpcCallContext(
+            RpcCallMetadata metadata, Instant startTime, Map<String, String> attachments) {
         this.metadata = metadata;
         this.startTime = startTime;
-        this.mutableAttachments = attachments == null ? new HashMap<>() : new HashMap<>(attachments);
+        this.mutableAttachments =
+                attachments == null ? new HashMap<>() : new HashMap<>(attachments);
     }
 
     public static RpcCallContext create(RpcCallMetadata metadata) {
@@ -42,4 +42,3 @@ public final class RpcCallContext {
         this.mutableAttachments.put(key, value);
     }
 }
-

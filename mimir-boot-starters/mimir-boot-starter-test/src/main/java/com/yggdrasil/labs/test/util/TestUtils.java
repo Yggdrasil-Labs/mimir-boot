@@ -1,18 +1,19 @@
 package com.yggdrasil.labs.test.util;
 
-import org.slf4j.MDC;
-
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+
+import org.slf4j.MDC;
 
 /**
  * 测试工具类
  *
- * <p>提供测试中常用的工具方法：</p>
+ * <p>提供测试中常用的工具方法：
+ *
  * <ul>
- * <li>生成测试数据</li>
- * <li>MDC 上下文管理</li>
- * <li>测试环境清理</li>
+ *   <li>生成测试数据
+ *   <li>MDC 上下文管理
+ *   <li>测试环境清理
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -72,10 +73,7 @@ public final class TestUtils {
         ThreadLocalRandom random = ThreadLocalRandom.current();
         return String.format(
                 "%d.%d.%d.%d",
-                random.nextInt(256),
-                random.nextInt(256),
-                random.nextInt(256),
-                random.nextInt(256));
+                random.nextInt(256), random.nextInt(256), random.nextInt(256), random.nextInt(256));
     }
 
     // ========== Web 测试数据生成 ==========
@@ -106,11 +104,11 @@ public final class TestUtils {
      */
     public static String randomUserAgent() {
         String[] userAgents = {
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-                "Apache-HttpClient/4.5",
-                "curl/7.68.0"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+            "Apache-HttpClient/4.5",
+            "curl/7.68.0"
         };
         return userAgents[ThreadLocalRandom.current().nextInt(userAgents.length)];
     }
@@ -148,8 +146,8 @@ public final class TestUtils {
      * 设置测试用的 MDC 上下文
      *
      * @param traceId traceId
-     * @param userId  userId
-     * @param ip      IP 地址
+     * @param userId userId
+     * @param ip IP 地址
      */
     public static void setupMdc(String traceId, String userId, String ip) {
         if (traceId != null) {
@@ -166,15 +164,20 @@ public final class TestUtils {
     /**
      * 设置测试用的完整 MDC 上下文
      *
-     * @param traceId   traceId
+     * @param traceId traceId
      * @param requestId requestId
-     * @param userId    userId
-     * @param tenantId  tenantId
-     * @param ip        IP 地址
+     * @param userId userId
+     * @param tenantId tenantId
+     * @param ip IP 地址
      * @param operation 操作类型
      */
     public static void setupFullMdc(
-            String traceId, String requestId, String userId, String tenantId, String ip, String operation) {
+            String traceId,
+            String requestId,
+            String userId,
+            String tenantId,
+            String ip,
+            String operation) {
         if (traceId != null) {
             MDC.put("traceId", traceId);
         }
@@ -195,25 +198,19 @@ public final class TestUtils {
         }
     }
 
-    /**
-     * 清理 MDC 上下文
-     */
+    /** 清理 MDC 上下文 */
     public static void clearMdc() {
         MDC.clear();
     }
 
-    /**
-     * 设置随机测试 MDC 上下文
-     */
+    /** 设置随机测试 MDC 上下文 */
     public static void setupRandomMdc() {
         setupMdc(randomTraceId(), randomUserId(), randomIp());
     }
 
     // ========== 测试环境清理 ==========
 
-    /**
-     * 清理测试环境（MDC、ThreadLocal 等）
-     */
+    /** 清理测试环境（MDC、ThreadLocal 等） */
     public static void cleanupTestEnvironment() {
         clearMdc();
         // 可以在这里添加其他清理逻辑

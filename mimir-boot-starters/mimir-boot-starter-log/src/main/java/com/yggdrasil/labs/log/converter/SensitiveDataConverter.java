@@ -1,22 +1,24 @@
 package com.yggdrasil.labs.log.converter;
 
-import ch.qos.logback.classic.pattern.ClassicConverter;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Context;
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
+
+import ch.qos.logback.classic.pattern.ClassicConverter;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Context;
+
 /**
  * 敏感信息脱敏转换器。
  *
- * <p>配置以不可变快照整体发布，因此一次转换只会使用同一代规则和替换字符。</p>
+ * <p>配置以不可变快照整体发布，因此一次转换只会使用同一代规则和替换字符。
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -25,7 +27,8 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SensitiveDataConverter.class);
 
-    public static final String MASK_ENABLED_PATTERNS_PROPERTY = "mimir.boot.log.mask.enabledPatterns";
+    public static final String MASK_ENABLED_PATTERNS_PROPERTY =
+            "mimir.boot.log.mask.enabledPatterns";
     public static final String MASK_CUSTOM_PATTERNS_PROPERTY = "mimir.boot.log.mask.customPatterns";
     public static final String MASK_REPLACEMENT_PROPERTY = "mimir.boot.log.mask.replacement";
 
@@ -33,15 +36,13 @@ public class SensitiveDataConverter extends ClassicConverter {
     private static final Object CONFIGURATION_LOCK = new Object();
     private static final List<String> PROGRAMMATIC_PATTERNS = new ArrayList<>();
     private static final AtomicReference<Context> CONFIGURATION_CONTEXT = new AtomicReference<>();
-    private static final AtomicReference<MaskConfigurationSnapshot> configuration = new AtomicReference<>();
+    private static final AtomicReference<MaskConfigurationSnapshot> configuration =
+            new AtomicReference<>();
 
-    private record MaskConfigurationSnapshot(List<Pattern> patterns,
-                                             List<String> keyValueFieldNames,
-                                             String replacement) {
-    }
+    private record MaskConfigurationSnapshot(
+            List<Pattern> patterns, List<String> keyValueFieldNames, String replacement) {}
 
-    private record SensitiveFieldValue(int valueStart, int valueEnd) {
-    }
+    private record SensitiveFieldValue(int valueStart, int valueEnd) {}
 
     @Override
     public void start() {
@@ -57,20 +58,18 @@ public class SensitiveDataConverter extends ClassicConverter {
                 : maskSensitiveData(message, currentConfiguration());
     }
 
-    /**
-     * 原子发布完整配置。规则编译完成前不会影响正在输出的日志。
-     */
-    public static void publishConfiguration(List<String> enabledPatternNames,
-                                            List<String> customPatternExpressions,
-                                            String replacement) {
+    /** 原子发布完整配置。规则编译完成前不会影响正在输出的日志。 */
+    public static void publishConfiguration(
+            List<String> enabledPatternNames,
+            List<String> customPatternExpressions,
+            String replacement) {
         synchronized (CONFIGURATION_LOCK) {
-            configuration.set(buildConfiguration(enabledPatternNames, customPatternExpressions, replacement));
+            configuration.set(
+                    buildConfiguration(enabledPatternNames, customPatternExpressions, replacement));
         }
     }
 
-    /**
-     * 重新从 Logback 或系统属性加载配置，保留既有动态刷新入口。
-     */
+    /** 重新从 Logback 或系统属性加载配置，保留既有动态刷新入口。 */
     public static void reloadConfig() {
         synchronized (CONFIGURATION_LOCK) {
             configuration.set(null);
@@ -99,9 +98,7 @@ public class SensitiveDataConverter extends ClassicConverter {
         return names;
     }
 
-    /**
-     * 对敏感信息进行脱敏。
-     */
+    /** 对敏感信息进行脱敏。 */
     public String maskSensitiveData(String message) {
         return message == null || message.isEmpty()
                 ? message
@@ -116,29 +113,31 @@ public class SensitiveDataConverter extends ClassicConverter {
         synchronized (CONFIGURATION_LOCK) {
             current = configuration.get();
             if (current == null) {
-                current = buildConfiguration(
-                        readConfigurationAsList(MASK_ENABLED_PATTERNS_PROPERTY),
-                        readConfigurationAsList(MASK_CUSTOM_PATTERNS_PROPERTY),
-                        readConfiguration(MASK_REPLACEMENT_PROPERTY));
+                current =
+                        buildConfiguration(
+                                readConfigurationAsList(MASK_ENABLED_PATTERNS_PROPERTY),
+                                readConfigurationAsList(MASK_CUSTOM_PATTERNS_PROPERTY),
+                                readConfiguration(MASK_REPLACEMENT_PROPERTY));
                 configuration.set(current);
             }
             return current;
         }
     }
 
-    private static MaskConfigurationSnapshot buildConfiguration(List<String> enabledPatternNames,
-                                                                  List<String> customPatternExpressions,
-                                                                  String replacement) {
+    private static MaskConfigurationSnapshot buildConfiguration(
+            List<String> enabledPatternNames,
+            List<String> customPatternExpressions,
+            String replacement) {
         List<Pattern> patterns = new ArrayList<>();
         List<String> keyValueFieldNames = compilePresetPatterns(patterns, enabledPatternNames);
         compilePatterns(patterns, customPatternExpressions, "Invalid custom mask pattern: ");
         synchronized (CONFIGURATION_LOCK) {
             compilePatterns(patterns, PROGRAMMATIC_PATTERNS, "Invalid programmatic mask pattern: ");
         }
-        String resolvedReplacement = replacement == null || replacement.isEmpty()
-                ? DEFAULT_REPLACEMENT
-                : replacement;
-        return new MaskConfigurationSnapshot(List.copyOf(patterns), keyValueFieldNames, resolvedReplacement);
+        String resolvedReplacement =
+                replacement == null || replacement.isEmpty() ? DEFAULT_REPLACEMENT : replacement;
+        return new MaskConfigurationSnapshot(
+                List.copyOf(patterns), keyValueFieldNames, resolvedReplacement);
     }
 
     private static List<String> compilePresetPatterns(List<Pattern> target, List<String> names) {
@@ -159,13 +158,15 @@ public class SensitiveDataConverter extends ClassicConverter {
             if (pattern != SensitiveDataPattern.PASSWORD
                     && pattern != SensitiveDataPattern.TOKEN
                     && pattern != SensitiveDataPattern.SECRET) {
-                compilePatterns(target, List.of(pattern.getPattern()), "Invalid preset mask pattern: ");
+                compilePatterns(
+                        target, List.of(pattern.getPattern()), "Invalid preset mask pattern: ");
             }
         }
         return SensitiveDataPattern.keyValueFieldNames(selectedPatterns);
     }
 
-    private static void compilePatterns(List<Pattern> target, List<String> expressions, String errorPrefix) {
+    private static void compilePatterns(
+            List<Pattern> target, List<String> expressions, String errorPrefix) {
         if (expressions == null) {
             return;
         }
@@ -193,7 +194,8 @@ public class SensitiveDataConverter extends ClassicConverter {
     }
 
     private static String maskSensitiveData(String message, MaskConfigurationSnapshot snapshot) {
-        String result = maskKeyValueFields(message, snapshot.keyValueFieldNames(), snapshot.replacement());
+        String result =
+                maskKeyValueFields(message, snapshot.keyValueFieldNames(), snapshot.replacement());
         for (Pattern pattern : snapshot.patterns()) {
             Matcher matcher = pattern.matcher(result);
             if (!matcher.find()) {
@@ -211,7 +213,8 @@ public class SensitiveDataConverter extends ClassicConverter {
         return result;
     }
 
-    private static String maskKeyValueFields(String message, List<String> fieldNames, String replacement) {
+    private static String maskKeyValueFields(
+            String message, List<String> fieldNames, String replacement) {
         if (fieldNames.isEmpty()) {
             return message;
         }
@@ -232,11 +235,13 @@ public class SensitiveDataConverter extends ClassicConverter {
                 index = fieldValue.valueEnd();
             }
         }
-        return masked == null ? message : masked.append(message, copiedUntil, message.length()).toString();
+        return masked == null
+                ? message
+                : masked.append(message, copiedUntil, message.length()).toString();
     }
 
-    private static SensitiveFieldValue findSensitiveFieldValue(String message, int index,
-                                                               List<String> fieldNames) {
+    private static SensitiveFieldValue findSensitiveFieldValue(
+            String message, int index, List<String> fieldNames) {
         if (!isPotentialFieldInitial(message.charAt(index))) {
             return null;
         }
@@ -251,7 +256,8 @@ public class SensitiveDataConverter extends ClassicConverter {
         while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
             cursor++;
         }
-        if (cursor >= message.length() || (message.charAt(cursor) != '=' && message.charAt(cursor) != ':')) {
+        if (cursor >= message.length()
+                || (message.charAt(cursor) != '=' && message.charAt(cursor) != ':')) {
             return null;
         }
         cursor++;
@@ -263,10 +269,12 @@ public class SensitiveDataConverter extends ClassicConverter {
         return valueEnd == valueStart ? null : new SensitiveFieldValue(valueStart, valueEnd);
     }
 
-    private static void appendMaskedFieldValue(StringBuilder masked, String message, int valueStart,
-                                               String replacement) {
+    private static void appendMaskedFieldValue(
+            StringBuilder masked, String message, int valueStart, String replacement) {
         if (isQuote(message.charAt(valueStart))) {
-            masked.append(message.charAt(valueStart)).append(replacement).append(message.charAt(valueStart));
+            masked.append(message.charAt(valueStart))
+                    .append(replacement)
+                    .append(message.charAt(valueStart));
         } else {
             masked.append(replacement);
         }
@@ -338,7 +346,8 @@ public class SensitiveDataConverter extends ClassicConverter {
         String capturedPrefix = matcher.groupCount() > 0 ? matcher.group(1) : null;
         if (capturedPrefix != null && endsWithKeyValueSeparator(capturedPrefix)) {
             String suffix = matched.substring(capturedPrefix.length()).stripLeading();
-            String quote = suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
+            String quote =
+                    suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
             return capturedPrefix + quote + replacement + quote;
         }
         int equalsIndex = matched.indexOf('=');
@@ -348,7 +357,8 @@ public class SensitiveDataConverter extends ClassicConverter {
         }
         String prefix = matched.substring(0, separatorIndex + 1);
         String suffix = matched.substring(separatorIndex + 1);
-        String quote = suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
+        String quote =
+                suffix.startsWith("\"") || suffix.startsWith("'") ? suffix.substring(0, 1) : "";
         return prefix + quote + replacement + quote;
     }
 

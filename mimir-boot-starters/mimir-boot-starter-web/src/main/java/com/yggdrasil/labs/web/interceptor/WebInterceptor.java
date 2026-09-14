@@ -1,29 +1,34 @@
 package com.yggdrasil.labs.web.interceptor;
 
-import com.yggdrasil.labs.common.util.IpUtils;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.AsyncHandlerInterceptor;
-
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
+
+import com.yggdrasil.labs.common.util.IpUtils;
+
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Web 拦截器
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动设置请求上下文信息（IP 等）</li>
- * <li>清理请求上下文（防止内存泄漏）</li>
+ *   <li>自动设置请求上下文信息（IP 等）
+ *   <li>清理请求上下文（防止内存泄漏）
  * </ul>
  *
- * <p>注意：</p>
+ * <p>注意：
+ *
  * <ul>
- * <li>Trace 相关逻辑已封装在独立的 TraceInterceptor 中</li>
- * <li>此拦截器主要负责非 Trace 的上下文信息处理</li>
+ *   <li>Trace 相关逻辑已封装在独立的 TraceInterceptor 中
+ *   <li>此拦截器主要负责非 Trace 的上下文信息处理
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -32,20 +37,22 @@ import java.util.Optional;
 @Slf4j
 public class WebInterceptor implements AsyncHandlerInterceptor {
     private static final String IP = "ip";
-    private static final String IP_MDC_STACK_ATTRIBUTE = WebInterceptor.class.getName() + ".ipMdcStack";
+    private static final String IP_MDC_STACK_ATTRIBUTE =
+            WebInterceptor.class.getName() + ".ipMdcStack";
+
     /**
      * 请求处理前
-     * <p>
-     * 设置请求上下文信息：IP 等
-     * </p>
      *
-     * @param request  请求对象
+     * <p>设置请求上下文信息：IP 等
+     *
+     * @param request 请求对象
      * @param response 响应对象
-     * @param handler  处理器
+     * @param handler 处理器
      * @return 是否继续处理
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(
+            HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 提取并设置客户端 IP
         String clientIp = getClientIp(request);
         ipMdcStack(request).push(Optional.ofNullable(org.slf4j.MDC.get(IP)));
@@ -58,14 +65,13 @@ public class WebInterceptor implements AsyncHandlerInterceptor {
 
     /**
      * 请求处理后
-     * <p>
-     * 仅恢复此拦截器写入前的 IP，防止影响无关 MDC 上下文。
-     * </p>
      *
-     * @param request  请求对象
+     * <p>仅恢复此拦截器写入前的 IP，防止影响无关 MDC 上下文。
+     *
+     * @param request 请求对象
      * @param response 响应对象
-     * @param handler  处理器
-     * @param ex       异常（如果有）
+     * @param handler 处理器
+     * @param ex 异常（如果有）
      */
     @Override
     public void afterCompletion(
@@ -78,9 +84,7 @@ public class WebInterceptor implements AsyncHandlerInterceptor {
 
     @Override
     public void afterConcurrentHandlingStarted(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Object handler) {
+            HttpServletRequest request, HttpServletResponse response, Object handler) {
         restorePreviousIp(request);
     }
 

@@ -1,9 +1,10 @@
 package com.yggdrasil.labs.exception.config;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * 异常处理配置属性测试
@@ -31,4 +32,3 @@ class ExceptionPropertiesTest extends BaseUnitTest {
         assertTrue(properties.isEnabled());
     }
 }
-

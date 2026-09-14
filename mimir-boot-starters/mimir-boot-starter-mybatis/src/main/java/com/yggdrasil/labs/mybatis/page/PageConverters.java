@@ -1,17 +1,16 @@
 package com.yggdrasil.labs.mybatis.page;
 
+import java.io.Serializable;
+import java.util.List;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yggdrasil.labs.common.page.PageRequest;
 import com.yggdrasil.labs.common.page.PageResult;
 
-import java.io.Serializable;
-import java.util.List;
-
 public final class PageConverters {
 
-    private PageConverters() {
-    }
+    private PageConverters() {}
 
     public static <T> Page<T> toMybatisPage(PageRequest request) {
         if (request == null) {
@@ -31,5 +30,3 @@ public final class PageConverters {
         return new PageResult<>(records, total, current, size);
     }
 }
-
-

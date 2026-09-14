@@ -1,7 +1,9 @@
 package com.yggdrasil.labs.nacos.decrypt;
 
-import com.yggdrasil.labs.nacos.config.NacosEncryptProperties;
-import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -9,18 +11,18 @@ import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
 
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.yggdrasil.labs.nacos.config.NacosEncryptProperties;
+import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 
 /**
  * 配置解密处理器
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动检测配置值中的 ENC(encrypted_value) 格式</li>
- * <li>提取加密内容并解密</li>
- * <li>替换为解密后的明文值</li>
+ *   <li>自动检测配置值中的 ENC(encrypted_value) 格式
+ *   <li>提取加密内容并解密
+ *   <li>替换为解密后的明文值
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -43,10 +45,10 @@ public class ConfigDecryptProcessor {
             throw new IllegalArgumentException("Nacos 加密前缀不能为空");
         }
         this.encryptMarkerPattern = Pattern.compile("(?i)" + Pattern.quote(prefix) + "\\(");
-        this.encryptPattern = Pattern.compile(
-                "(?i)" + Pattern.quote(prefix) + "\\(" + "([^)]+)" + "\\)",
-                Pattern.CASE_INSENSITIVE
-        );
+        this.encryptPattern =
+                Pattern.compile(
+                        "(?i)" + Pattern.quote(prefix) + "\\(" + "([^)]+)" + "\\)",
+                        Pattern.CASE_INSENSITIVE);
     }
 
     /**
@@ -92,16 +94,11 @@ public class ConfigDecryptProcessor {
         for (PropertySource<?> propertySource : propertySources) {
             if (propertySource instanceof EnumerablePropertySource<?> enumerablePropertySource) {
                 Map<String, Object> decryptedProperties = new HashMap<>();
-                processPropertySource(
-                        enumerablePropertySource,
-                        decryptedProperties,
-                        key
-                );
+                processPropertySource(enumerablePropertySource, decryptedProperties, key);
                 if (!decryptedProperties.isEmpty()) {
-                    decryptedPropertySources.add(new DecryptedPropertySource(
-                            propertySource.getName(),
-                            decryptedProperties
-                    ));
+                    decryptedPropertySources.add(
+                            new DecryptedPropertySource(
+                                    propertySource.getName(), decryptedProperties));
                     decryptedCount += decryptedProperties.size();
                 }
             }
@@ -118,13 +115,14 @@ public class ConfigDecryptProcessor {
             List<DecryptedPropertySource> decryptedPropertySources) {
         removeDecryptedPropertySources(environment);
         for (DecryptedPropertySource decryptedPropertySource : decryptedPropertySources) {
-            environment.getPropertySources().addBefore(
-                    decryptedPropertySource.sourceName(),
-                    new MapPropertySource(
-                            DECRYPTED_PROPERTIES_PREFIX + decryptedPropertySource.sourceName(),
-                            decryptedPropertySource.properties()
-                    )
-            );
+            environment
+                    .getPropertySources()
+                    .addBefore(
+                            decryptedPropertySource.sourceName(),
+                            new MapPropertySource(
+                                    DECRYPTED_PROPERTIES_PREFIX
+                                            + decryptedPropertySource.sourceName(),
+                                    decryptedPropertySource.properties()));
         }
     }
 
@@ -147,7 +145,8 @@ public class ConfigDecryptProcessor {
             if (propertySource instanceof EnumerablePropertySource<?> enumerablePropertySource) {
                 for (String propertyName : enumerablePropertySource.getPropertyNames()) {
                     Object propertyValue = enumerablePropertySource.getProperty(propertyName);
-                    if (propertyValue instanceof String value && encryptMarkerPattern.matcher(value).find()) {
+                    if (propertyValue instanceof String value
+                            && encryptMarkerPattern.matcher(value).find()) {
                         return true;
                     }
                 }
@@ -159,9 +158,9 @@ public class ConfigDecryptProcessor {
     /**
      * 处理单个属性源
      *
-     * @param propertySource      属性源
+     * @param propertySource 属性源
      * @param decryptedProperties 解密后的属性集合
-     * @param key                 加密密钥
+     * @param key 加密密钥
      */
     private void processPropertySource(
             EnumerablePropertySource<?> propertySource,
@@ -187,8 +186,8 @@ public class ConfigDecryptProcessor {
      * 解密配置值
      *
      * @param propertyName 配置属性名
-     * @param value     配置值
-     * @param key       加密密钥
+     * @param value 配置值
+     * @param key 加密密钥
      * @return 解密后的值，如果不是加密格式则返回原值
      */
     private String decryptValue(String propertyName, String value, String key) {
@@ -221,6 +220,5 @@ public class ConfigDecryptProcessor {
         }
     }
 
-    private record DecryptedPropertySource(String sourceName, Map<String, Object> properties) {
-    }
+    private record DecryptedPropertySource(String sourceName, Map<String, Object> properties) {}
 }

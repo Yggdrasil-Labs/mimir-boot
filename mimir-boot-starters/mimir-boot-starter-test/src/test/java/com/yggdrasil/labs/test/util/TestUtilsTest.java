@@ -1,15 +1,15 @@
 package com.yggdrasil.labs.test.util;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 /**
  * TestUtils 工具类测试
@@ -43,7 +43,8 @@ class TestUtilsTest {
         assertNotEquals(uuid1, uuid2, "两次生成的 UUID 应该不同");
         assertFalse(uuid1.isEmpty(), "UUID 长度应大于 0");
         // UUID 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-        assertTrue(uuid1.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"),
+        assertTrue(
+                uuid1.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"),
                 "UUID 格式应正确");
     }
 
@@ -87,10 +88,12 @@ class TestUtilsTest {
     @Test
     void testRandomIp() {
         // IP 地址正则表达式：0.0.0.0 - 255.255.255.255
-        Pattern ipPattern = Pattern.compile("^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
-                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
-                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
-                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
+        Pattern ipPattern =
+                Pattern.compile(
+                        "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
+                                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
+                                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
+                                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
 
         // 生成多个 IP 地址进行测试
         for (int i = 0; i < 100; i++) {
@@ -192,10 +195,12 @@ class TestUtilsTest {
         assertTrue(userId.startsWith("user-"), "userId 应以 'user-' 开头");
 
         // 验证 IP 格式
-        Pattern ipPattern = Pattern.compile("^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
-                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
-                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
-                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
+        Pattern ipPattern =
+                Pattern.compile(
+                        "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
+                                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
+                                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\."
+                                + "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
         assertTrue(ipPattern.matcher(ip).matches(), "IP 地址格式应正确");
     }
 
@@ -234,11 +239,11 @@ class TestUtilsTest {
     @Test
     void testRandomUserAgent() {
         String[] validUserAgents = {
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-                "Apache-HttpClient/4.5",
-                "curl/7.68.0"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+            "Apache-HttpClient/4.5",
+            "curl/7.68.0"
         };
 
         // 生成多个 User-Agent 进行测试
@@ -285,8 +290,7 @@ class TestUtilsTest {
 
             // 验证格式：key1=value1&key2=value2&...
             String[] params = queryString.split("&");
-            assertTrue(params.length >= 1 && params.length <= 3,
-                    "参数数量应在 1-3 之间: " + params.length);
+            assertTrue(params.length >= 1 && params.length <= 3, "参数数量应在 1-3 之间: " + params.length);
 
             for (String param : params) {
                 assertTrue(param.contains("="), "每个参数应包含 '=': " + param);
@@ -303,7 +307,8 @@ class TestUtilsTest {
         String queryString = TestUtils.randomQueryString();
 
         // 验证格式正确性
-        assertTrue(queryString.matches("key\\d+=value\\d+(&key\\d+=value\\d+)*"),
+        assertTrue(
+                queryString.matches("key\\d+=value\\d+(&key\\d+=value\\d+)*"),
                 "查询字符串格式应正确: " + queryString);
     }
 

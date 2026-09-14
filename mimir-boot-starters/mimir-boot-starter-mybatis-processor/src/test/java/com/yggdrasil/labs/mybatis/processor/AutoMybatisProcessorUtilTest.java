@@ -1,17 +1,18 @@
 package com.yggdrasil.labs.mybatis.processor;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * AutoMybatisProcessor 工具方法测试
  *
- * <p>测试 joinPackage 等辅助方法的逻辑</p>
+ * <p>测试 joinPackage 等辅助方法的逻辑
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -21,7 +22,9 @@ class AutoMybatisProcessorUtilTest extends BaseUnitTest {
     // 使用反射调用 private static 方法进行测试
     private static String testJoinPackage(String base, String sub) {
         try {
-            Method method = AutoMybatisProcessor.class.getDeclaredMethod("joinPackage", String.class, String.class);
+            Method method =
+                    AutoMybatisProcessor.class.getDeclaredMethod(
+                            "joinPackage", String.class, String.class);
             method.setAccessible(true);
             return (String) method.invoke(null, base, sub);
         } catch (Exception e) {
@@ -33,7 +36,8 @@ class AutoMybatisProcessorUtilTest extends BaseUnitTest {
     void testJoinPackageWithBothNonEmpty() {
         AssertUtils.assertEquals("com.example.mapper", testJoinPackage("com.example", "mapper"));
         AssertUtils.assertEquals("com.example.service", testJoinPackage("com.example", "service"));
-        AssertUtils.assertEquals("com.example.service.impl", testJoinPackage("com.example", "service.impl"));
+        AssertUtils.assertEquals(
+                "com.example.service.impl", testJoinPackage("com.example", "service.impl"));
     }
 
     @Test
@@ -66,10 +70,12 @@ class AutoMybatisProcessorUtilTest extends BaseUnitTest {
 
     @Test
     void testJoinPackageWithComplexPackages() {
-        AssertUtils.assertEquals("com.yggdrasil.labs.mybatis.mapper", 
-                     testJoinPackage("com.yggdrasil.labs.mybatis", "mapper"));
-        AssertUtils.assertEquals("com.yggdrasil.labs.mybatis.service.impl", 
-                     testJoinPackage("com.yggdrasil.labs.mybatis", "service.impl"));
+        AssertUtils.assertEquals(
+                "com.yggdrasil.labs.mybatis.mapper",
+                testJoinPackage("com.yggdrasil.labs.mybatis", "mapper"));
+        AssertUtils.assertEquals(
+                "com.yggdrasil.labs.mybatis.service.impl",
+                testJoinPackage("com.yggdrasil.labs.mybatis", "service.impl"));
     }
 
     @Test
@@ -87,7 +93,8 @@ class AutoMybatisProcessorUtilTest extends BaseUnitTest {
     // 使用反射调用 private static 方法进行测试
     private static String testRemoveDoSuffix(String className) {
         try {
-            Method method = AutoMybatisProcessor.class.getDeclaredMethod("removeDoSuffix", String.class);
+            Method method =
+                    AutoMybatisProcessor.class.getDeclaredMethod("removeDoSuffix", String.class);
             method.setAccessible(true);
             return (String) method.invoke(null, className);
         } catch (Exception e) {
@@ -133,4 +140,3 @@ class AutoMybatisProcessorUtilTest extends BaseUnitTest {
         AssertUtils.assertEquals("User", testRemoveDoSuffix("UserDO"));
     }
 }
-

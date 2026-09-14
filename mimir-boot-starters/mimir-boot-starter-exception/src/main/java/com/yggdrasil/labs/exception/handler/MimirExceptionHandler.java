@@ -1,21 +1,19 @@
 package com.yggdrasil.labs.exception.handler;
 
-import com.fasterxml.jackson.core.JsonLocation;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.yggdrasil.labs.common.exception.*;
-import com.yggdrasil.labs.common.response.R;
-import com.yggdrasil.labs.common.util.LogSanitizer;
-import jakarta.validation.ConstraintViolationException;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.ConstraintViolationException;
+
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.HttpMediaTypeNotAcceptableException;
-import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
@@ -24,20 +22,24 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.yggdrasil.labs.common.exception.*;
+import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.common.util.LogSanitizer;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Mimir 全局异常处理器
  *
- * <p>统一处理应用程序中的所有异常，通过 {@link ExceptionResponseFactory} 构建响应体。</p>
+ * <p>统一处理应用程序中的所有异常，通过 {@link ExceptionResponseFactory} 构建响应体。
  *
  * @author Yggdrasil Labs
  * @since 2.1.0
@@ -60,7 +62,8 @@ public class MimirExceptionHandler {
     @ExceptionHandler(BizException.class)
     @ResponseStatus(HttpStatus.OK)
     public Object handleBizException(BizException e, HttpServletRequest request) {
-        log.warn("业务异常: code={}, message={}, uri={}",
+        log.warn(
+                "业务异常: code={}, message={}, uri={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()));
@@ -77,7 +80,8 @@ public class MimirExceptionHandler {
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleSystemException(SystemException e, HttpServletRequest request) {
-        log.error("系统异常: code={}, message={}, uri={}, type={}",
+        log.error(
+                "系统异常: code={}, message={}, uri={}, type={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()),
@@ -95,7 +99,8 @@ public class MimirExceptionHandler {
     @ExceptionHandler(BaseException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleBaseException(BaseException e, HttpServletRequest request) {
-        log.error("框架异常: code={}, message={}, uri={}, type={}",
+        log.error(
+                "框架异常: code={}, message={}, uri={}, type={}",
                 sanitizeForLog(e.getCode()),
                 sanitizeForLog(e.getMessage()),
                 sanitizeForLog(request.getRequestURI()),
@@ -114,15 +119,19 @@ public class MimirExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
-        ArrayList<String> responseErrors = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.toCollection(ArrayList::new));
-        ArrayList<String> logErrors = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> sanitizeForLog(error.getField()) + ": " + sanitizeForLog(error.getDefaultMessage()))
-                .collect(Collectors.toCollection(ArrayList::new));
-        log.warn("参数校验异常: errors={}, uri={}",
-                logErrors,
-                sanitizeForLog(request.getRequestURI()));
+        ArrayList<String> responseErrors =
+                e.getBindingResult().getFieldErrors().stream()
+                        .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                        .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> logErrors =
+                e.getBindingResult().getFieldErrors().stream()
+                        .map(
+                                error ->
+                                        sanitizeForLog(error.getField())
+                                                + ": "
+                                                + sanitizeForLog(error.getDefaultMessage()))
+                        .collect(Collectors.toCollection(ArrayList::new));
+        log.warn("参数校验异常: errors={}, uri={}", logErrors, sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
         try {
@@ -136,15 +145,15 @@ public class MimirExceptionHandler {
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleBindException(BindException e, HttpServletRequest request) {
-        ArrayList<String> responseErrors = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getDefaultMessage())
-                .collect(Collectors.toCollection(ArrayList::new));
-        ArrayList<String> logErrors = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> sanitizeForLog(error.getDefaultMessage()))
-                .collect(Collectors.toCollection(ArrayList::new));
-        log.warn("参数绑定异常: errors={}, uri={}",
-                logErrors,
-                sanitizeForLog(request.getRequestURI()));
+        ArrayList<String> responseErrors =
+                e.getBindingResult().getFieldErrors().stream()
+                        .map(error -> error.getDefaultMessage())
+                        .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> logErrors =
+                e.getBindingResult().getFieldErrors().stream()
+                        .map(error -> sanitizeForLog(error.getDefaultMessage()))
+                        .collect(Collectors.toCollection(ArrayList::new));
+        log.warn("参数绑定异常: errors={}, uri={}", logErrors, sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
         try {
@@ -161,7 +170,8 @@ public class MimirExceptionHandler {
             MissingServletRequestParameterException e, HttpServletRequest request) {
         String sanitizedParamName = sanitizeForLog(e.getParameterName());
         String message = String.format("缺少必需参数: %s", sanitizedParamName);
-        log.warn("缺少请求参数异常: {}, uri={}",
+        log.warn(
+                "缺少请求参数异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_MISSING.getCode();
@@ -177,27 +187,38 @@ public class MimirExceptionHandler {
     public Object handleHandlerMethodValidationException(
             HandlerMethodValidationException e, HttpServletRequest request) {
         boolean returnValueValidation = e.isForReturnValue();
-        String code = returnValueValidation ? ErrorCode.SYSTEM_ERROR.getCode() : ErrorCode.PARAM_INVALID.getCode();
-        String message = returnValueValidation ? ErrorCode.SYSTEM_ERROR.getMessage() : ErrorCode.PARAM_INVALID.getMessage();
-        HttpStatus status = returnValueValidation ? HttpStatus.INTERNAL_SERVER_ERROR : HttpStatus.BAD_REQUEST;
-        log.warn("方法校验异常: returnValue={}, uri={}",
+        String code =
+                returnValueValidation
+                        ? ErrorCode.SYSTEM_ERROR.getCode()
+                        : ErrorCode.PARAM_INVALID.getCode();
+        String message =
+                returnValueValidation
+                        ? ErrorCode.SYSTEM_ERROR.getMessage()
+                        : ErrorCode.PARAM_INVALID.getMessage();
+        HttpStatus status =
+                returnValueValidation ? HttpStatus.INTERNAL_SERVER_ERROR : HttpStatus.BAD_REQUEST;
+        log.warn(
+                "方法校验异常: returnValue={}, uri={}",
                 returnValueValidation,
                 sanitizeForLog(request.getRequestURI()));
         return createResponse(status, code, message);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public Object handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {
+    public Object handleConstraintViolationException(
+            ConstraintViolationException e, HttpServletRequest request) {
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
-        log.warn("约束校验异常: violations={}, uri={}",
+        log.warn(
+                "约束校验异常: violations={}, uri={}",
                 e.getConstraintViolations().size(),
                 sanitizeForLog(request.getRequestURI()));
         return createResponse(HttpStatus.BAD_REQUEST, code, message);
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
-    public Object handleMissingRequestHeaderException(MissingRequestHeaderException e, HttpServletRequest request) {
+    public Object handleMissingRequestHeaderException(
+            MissingRequestHeaderException e, HttpServletRequest request) {
         String headerName = sanitizeForLog(e.getHeaderName());
         String code = ErrorCode.PARAM_MISSING.getCode();
         String message = String.format("缺少必需请求头: %s", headerName);
@@ -206,10 +227,12 @@ public class MimirExceptionHandler {
     }
 
     @ExceptionHandler(MissingPathVariableException.class)
-    public Object handleMissingPathVariableException(MissingPathVariableException e, HttpServletRequest request) {
+    public Object handleMissingPathVariableException(
+            MissingPathVariableException e, HttpServletRequest request) {
         String code = ErrorCode.SYSTEM_ERROR.getCode();
         String message = ErrorCode.SYSTEM_ERROR.getMessage();
-        log.error("缺少路径变量异常: variable={}, uri={}",
+        log.error(
+                "缺少路径变量异常: variable={}, uri={}",
                 sanitizeForLog(e.getVariableName()),
                 sanitizeForLog(request.getRequestURI()));
         return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, code, message);
@@ -234,7 +257,8 @@ public class MimirExceptionHandler {
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public Object handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e, HttpServletRequest request) {
+    public Object handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException e, HttpServletRequest request) {
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
         log.warn("上传大小超限: uri={}", sanitizeForLog(request.getRequestURI()));
@@ -242,10 +266,12 @@ public class MimirExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public Object handleNoResourceFoundException(NoResourceFoundException e, HttpServletRequest request) {
+    public Object handleNoResourceFoundException(
+            NoResourceFoundException e, HttpServletRequest request) {
         String code = ErrorCode.DATA_NOT_FOUND.getCode();
         String message = ErrorCode.DATA_NOT_FOUND.getMessage();
-        log.warn("静态资源未找到: path={}, uri={}",
+        log.warn(
+                "静态资源未找到: path={}, uri={}",
                 sanitizeForLog(e.getResourcePath()),
                 sanitizeForLog(request.getRequestURI()));
         return createResponse(HttpStatus.NOT_FOUND, code, message);
@@ -256,9 +282,11 @@ public class MimirExceptionHandler {
     public Object handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         String sanitizedParamName = sanitizeForLog(e.getName());
-        String expectedType = e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "unknown";
+        String expectedType =
+                e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "unknown";
         String message = String.format("参数类型不匹配: %s，期望类型: %s", sanitizedParamName, expectedType);
-        log.warn("参数类型不匹配异常: {}, uri={}",
+        log.warn(
+                "参数类型不匹配异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
@@ -276,13 +304,15 @@ public class MimirExceptionHandler {
             HttpMessageNotReadableException e, HttpServletRequest request) {
         String uri = sanitizeForLog(request.getRequestURI());
         String exceptionType = e.getClass().getSimpleName();
-        JsonLocation location = e.getCause() instanceof JsonProcessingException jsonException
-                ? jsonException.getLocation()
-                : null;
+        JsonLocation location =
+                e.getCause() instanceof JsonProcessingException jsonException
+                        ? jsonException.getLocation()
+                        : null;
         if (location == null) {
             log.warn("HTTP 消息不可读异常: type={}, uri={}", exceptionType, uri);
         } else {
-            log.warn("HTTP 消息不可读异常: type={}, line={}, column={}, uri={}",
+            log.warn(
+                    "HTTP 消息不可读异常: type={}, line={}, column={}, uri={}",
                     exceptionType,
                     location.getLineNr(),
                     location.getColumnNr(),
@@ -304,9 +334,11 @@ public class MimirExceptionHandler {
             HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
         String sanitizedMethod = sanitizeForLog(e.getMethod());
         String[] supported = e.getSupportedMethods();
-        String supportedMethods = supported != null ? sanitizeForLog(String.join(", ", supported)) : "";
+        String supportedMethods =
+                supported != null ? sanitizeForLog(String.join(", ", supported)) : "";
         String message = String.format("请求方法 %s 不支持，支持的方法: %s", sanitizedMethod, supportedMethods);
-        log.warn("HTTP 请求方法不支持异常: {}, uri={}",
+        log.warn(
+                "HTTP 请求方法不支持异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.OPERATION_NOT_ALLOWED.getCode();
@@ -325,7 +357,8 @@ public class MimirExceptionHandler {
         String sanitizedMethod = sanitizeForLog(e.getHttpMethod());
         String sanitizedUrl = sanitizeForLog(e.getRequestURL());
         String message = String.format("未找到请求路径: %s %s", sanitizedMethod, sanitizedUrl);
-        log.warn("处理器未找到异常: {}, uri={}",
+        log.warn(
+                "处理器未找到异常: {}, uri={}",
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.DATA_NOT_FOUND.getCode();
@@ -341,7 +374,8 @@ public class MimirExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleException(Exception e, HttpServletRequest request) {
         if (e instanceof IException ie) {
-            log.error("框架异常（未捕获）: code={}, message={}, uri={}, type={}",
+            log.error(
+                    "框架异常（未捕获）: code={}, message={}, uri={}, type={}",
                     sanitizeForLog(ie.getCode()),
                     sanitizeForLog(ie.getMessage()),
                     sanitizeForLog(request.getRequestURI()),
@@ -356,9 +390,7 @@ public class MimirExceptionHandler {
             }
         }
 
-        log.error("未捕获的异常: uri={}",
-                sanitizeForLog(request.getRequestURI()),
-                e);
+        log.error("未捕获的异常: uri={}", sanitizeForLog(request.getRequestURI()), e);
         String code = ErrorCode.SYSTEM_ERROR.getCode();
         String message = ErrorCode.SYSTEM_ERROR.getMessage();
         try {

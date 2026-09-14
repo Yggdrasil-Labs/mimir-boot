@@ -1,7 +1,6 @@
 package com.yggdrasil.labs.mybatis.crypto;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -12,7 +11,9 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * 加密工具类测试
@@ -70,8 +71,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         // 8字节的Base64编码是12个字符，解码后只有8字节 < 13
         String invalidCiphertext = "YWJjZGVmZ2g="; // "abcdefgh" in Base64, length = 8 bytes < 13
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.decrypt(invalidCiphertext, key));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.decrypt(invalidCiphertext, key));
     }
 
     @Test
@@ -81,8 +82,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         // 4字节的Base64编码是8个字符，解码后只有4字节 < 13
         String invalidCiphertext = "YWJjZA=="; // "abcd" in Base64, length = 4 bytes < 13
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.decrypt(invalidCiphertext, key));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.decrypt(invalidCiphertext, key));
     }
 
     @Test
@@ -108,8 +109,7 @@ class CryptoUtilsTest extends BaseUnitTest {
         // 无效的Base64字符串
         String invalidBase64 = "!!!invalid!!!";
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.decrypt(invalidBase64, key));
+        assertThrows(IllegalStateException.class, () -> CryptoUtils.decrypt(invalidBase64, key));
     }
 
     @Test
@@ -123,8 +123,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         chars[chars.length / 2] = (char) (chars[chars.length / 2] ^ 1);
         String corruptedCiphertext = new String(chars);
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.decrypt(corruptedCiphertext, key));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.decrypt(corruptedCiphertext, key));
     }
 
     @Test
@@ -132,8 +132,7 @@ class CryptoUtilsTest extends BaseUnitTest {
         // 无效的Base64密钥
         String invalidKey = "!!!invalid!!!";
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.encrypt("test", invalidKey));
+        assertThrows(IllegalStateException.class, () -> CryptoUtils.encrypt("test", invalidKey));
     }
 
     @Test
@@ -143,8 +142,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         String key = CryptoUtils.generateKey();
         String ciphertext = CryptoUtils.encrypt("test", key);
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.decrypt(ciphertext, invalidKey));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.decrypt(ciphertext, invalidKey));
     }
 
     @Test
@@ -152,8 +151,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         // Base64编码的密钥长度不正确（不是128位/16字节）
         String wrongLengthKey = "YWJjZGVmZ2hpams="; // "abcdefghij" (10 bytes, not 16)
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.encrypt("test", wrongLengthKey));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.encrypt("test", wrongLengthKey));
     }
 
     @Test
@@ -163,8 +162,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         String key = CryptoUtils.generateKey();
         String ciphertext = CryptoUtils.encrypt("test", key);
 
-        assertThrows(IllegalStateException.class, () ->
-                CryptoUtils.decrypt(ciphertext, wrongLengthKey));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.decrypt(ciphertext, wrongLengthKey));
     }
 
     @Test
@@ -173,8 +172,8 @@ class CryptoUtilsTest extends BaseUnitTest {
         Constructor<CryptoUtils> constructor = CryptoUtils.class.getDeclaredConstructor();
         constructor.setAccessible(true);
 
-        InvocationTargetException exception = assertThrows(InvocationTargetException.class,
-                constructor::newInstance);
+        InvocationTargetException exception =
+                assertThrows(InvocationTargetException.class, constructor::newInstance);
 
         assertTrue(exception.getCause() instanceof IllegalStateException);
         assertEquals("Utility class", exception.getCause().getMessage());
@@ -185,17 +184,17 @@ class CryptoUtilsTest extends BaseUnitTest {
         String key = CryptoUtils.generateKey();
 
         String[] plaintexts = {
-                "a",
-                "A",
-                "1234567890",
-                "!@#$%^&*()",
-                "Hello World",
-                "测试中文",
-                "🚀🎉💯",
-                "A".repeat(1000),
-                "Multi\nLine\nText",
-                "  spaces  ",
-                "null\0byte"
+            "a",
+            "A",
+            "1234567890",
+            "!@#$%^&*()",
+            "Hello World",
+            "测试中文",
+            "🚀🎉💯",
+            "A".repeat(1000),
+            "Multi\nLine\nText",
+            "  spaces  ",
+            "null\0byte"
         };
 
         for (String plaintext : plaintexts) {
@@ -239,7 +238,8 @@ class CryptoUtilsTest extends BaseUnitTest {
     }
 
     @Test
-    void decrypt_v1_fixture_and_v2_context_ciphertext_follow_the_compatibility_contract() throws Exception {
+    void decrypt_v1_fixture_and_v2_context_ciphertext_follow_the_compatibility_contract()
+            throws Exception {
         String key = "MDEyMzQ1Njc4OWFiY2RlZg==";
         String v1Fixture = fixedV1Ciphertext("legacy-value", key);
 
@@ -248,8 +248,10 @@ class CryptoUtilsTest extends BaseUnitTest {
         String v2 = CryptoUtils.encrypt("v2-value", key, "application-a");
         assertTrue(v2.startsWith("v2:"));
         assertEquals("v2-value", CryptoUtils.decrypt(v2, key, "application-a"));
-        IllegalStateException wrongContext = assertThrows(IllegalStateException.class,
-                () -> CryptoUtils.decrypt(v2, key, "application-b"));
+        IllegalStateException wrongContext =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> CryptoUtils.decrypt(v2, key, "application-b"));
         assertEquals("Decryption failed", wrongContext.getMessage());
     }
 
@@ -257,11 +259,14 @@ class CryptoUtilsTest extends BaseUnitTest {
     void decrypt_v2_never_falls_back_to_v1_when_prefix_or_payload_is_invalid() {
         String key = CryptoUtils.generateKey();
         for (String ciphertext : new String[] {"v2:", "v2:not-base64", "v2:YWJjZA=="}) {
-            IllegalStateException exception = assertThrows(IllegalStateException.class,
-                    () -> CryptoUtils.decrypt(ciphertext, key, "application-a"));
+            IllegalStateException exception =
+                    assertThrows(
+                            IllegalStateException.class,
+                            () -> CryptoUtils.decrypt(ciphertext, key, "application-a"));
             assertEquals("Decryption failed", exception.getMessage());
         }
-        assertThrows(IllegalStateException.class, () -> CryptoUtils.decrypt("v2:YWJjZA==", key, " "));
+        assertThrows(
+                IllegalStateException.class, () -> CryptoUtils.decrypt("v2:YWJjZA==", key, " "));
     }
 
     @Test
@@ -277,7 +282,9 @@ class CryptoUtilsTest extends BaseUnitTest {
     private static String fixedV1Ciphertext(String plaintext, String key) throws Exception {
         byte[] iv = "fixed-v1-iv!".getBytes(StandardCharsets.UTF_8);
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Base64.getDecoder().decode(key), "AES"),
+        cipher.init(
+                Cipher.ENCRYPT_MODE,
+                new SecretKeySpec(Base64.getDecoder().decode(key), "AES"),
                 new GCMParameterSpec(128, iv));
         byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
         byte[] payload = new byte[iv.length + ciphertext.length];

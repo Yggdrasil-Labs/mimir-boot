@@ -16,33 +16,21 @@ import java.lang.annotation.*;
 @Documented
 public @interface Loggable {
 
-    /**
-     * 操作模块
-     */
+    /** 操作模块 */
     String module() default "";
 
-    /**
-     * 操作类型（如：INSERT, UPDATE, DELETE等）
-     */
+    /** 操作类型（如：INSERT, UPDATE, DELETE等） */
     String type() default "";
 
-    /**
-     * 操作描述
-     */
+    /** 操作描述 */
     String description() default "";
 
-    /**
-     * 是否记录请求参数
-     */
+    /** 是否记录请求参数 */
     boolean logRequest() default true;
 
-    /**
-     * 是否记录响应结果
-     */
+    /** 是否记录响应结果 */
     boolean logResponse() default true;
 
-    /**
-     * 是否记录执行时间
-     */
+    /** 是否记录执行时间 */
     boolean logExecutionTime() default true;
 }

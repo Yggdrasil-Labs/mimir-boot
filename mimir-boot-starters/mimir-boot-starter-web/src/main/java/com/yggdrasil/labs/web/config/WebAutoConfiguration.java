@@ -1,8 +1,5 @@
 package com.yggdrasil.labs.web.config;
 
-import com.yggdrasil.labs.web.advice.ResponseBodyEnhancer;
-import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
-import com.yggdrasil.labs.web.interceptor.WebInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -11,14 +8,19 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
+import com.yggdrasil.labs.web.advice.ResponseBodyEnhancer;
+import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
+import com.yggdrasil.labs.web.interceptor.WebInterceptor;
+
 /**
  * Web 层自动配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动配置 Web 层通用特性</li>
- * <li>注册响应体增强器、拦截器等组件</li>
- * <li>支持通过配置文件控制功能开关</li>
+ *   <li>自动配置 Web 层通用特性
+ *   <li>注册响应体增强器、拦截器等组件
+ *   <li>支持通过配置文件控制功能开关
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -30,8 +32,7 @@ import org.springframework.context.annotation.Import;
         prefix = "mimir.boot.web",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = true
-)
+        matchIfMissing = true)
 @EnableConfigurationProperties(WebProperties.class)
 @Import({JacksonConfig.class, CorsConfig.class, WebMvcConfig.class})
 public class WebAutoConfiguration {
@@ -53,15 +54,17 @@ public class WebAutoConfiguration {
      *
      * @param responseBodyEnhancer 响应体增强器
      * @return MVC 响应 advice
-    */
+     */
     @Bean
-    ResponseBodyEnhancerAdviceFactory.MvcResponseBodyEnhancer responseBodyEnhancerAdvice(ResponseBodyEnhancer responseBodyEnhancer) {
+    ResponseBodyEnhancerAdviceFactory.MvcResponseBodyEnhancer responseBodyEnhancerAdvice(
+            ResponseBodyEnhancer responseBodyEnhancer) {
         return new ResponseBodyEnhancerAdviceFactory().create(responseBodyEnhancer);
     }
 
     /**
      * 注册 Trace 拦截器
-     * <p>如果应用已提供同类型 Bean，则不创建默认实现。</p>
+     *
+     * <p>如果应用已提供同类型 Bean，则不创建默认实现。
      *
      * @return Trace 拦截器
      */
@@ -81,5 +84,4 @@ public class WebAutoConfiguration {
     public WebInterceptor webInterceptor() {
         return new WebInterceptor();
     }
-
 }

@@ -1,16 +1,17 @@
 package com.yggdrasil.labs.mybatis.audit;
 
-import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import java.time.LocalDateTime;
+
 import org.apache.ibatis.reflection.MetaObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 
 /**
  * 通用审计字段自动填充处理器。
  *
- * <p>支持字段：createBy、createTime、updateBy、updateTime。</p>
+ * <p>支持字段：createBy、createTime、updateBy、updateTime。
  */
 public class AuditMetaObjectHandler implements MetaObjectHandler {
 

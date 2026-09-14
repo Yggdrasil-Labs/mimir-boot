@@ -1,15 +1,16 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
-import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import java.sql.ResultSet;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
+import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * Integer 加密 TypeHandler 测试
@@ -46,7 +47,7 @@ class IntegerCryptoTypeHandlerTest extends BaseUnitTest {
     void testGetNullableResult() throws Exception {
         ResultSet rs = mock(ResultSet.class);
         String encrypted = CryptoUtils.encrypt("12345", testKey);
-        
+
         when(rs.getString("column_name")).thenReturn(encrypted);
 
         Integer result = handler.getNullableResult(rs, "column_name");
@@ -97,14 +98,14 @@ class IntegerCryptoTypeHandlerTest extends BaseUnitTest {
     @Test
     void testRoundTrip() throws Exception {
         Integer originalValue = 999999;
-        
+
         // 加密存储
         String encrypted = CryptoUtils.encrypt(String.valueOf(originalValue), testKey);
-        
+
         // 解密读取
         ResultSet rs = mock(ResultSet.class);
         when(rs.getString("column_name")).thenReturn(encrypted);
-        
+
         Integer decrypted = handler.getNullableResult(rs, "column_name");
         assertEquals(originalValue, decrypted);
     }
@@ -113,7 +114,7 @@ class IntegerCryptoTypeHandlerTest extends BaseUnitTest {
     void testGetNullableResultFromCallableStatement() throws Exception {
         java.sql.CallableStatement cs = mock(java.sql.CallableStatement.class);
         String encrypted = CryptoUtils.encrypt("12345", testKey);
-        
+
         when(cs.getString(1)).thenReturn(encrypted);
 
         Integer result = handler.getNullableResult(cs, 1);

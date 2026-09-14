@@ -5,14 +5,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "mimir.boot.feign")
 public class FeignProperties {
 
-    /**
-     * 是否启用 Feign 增强，默认开启。
-     */
+    /** 是否启用 Feign 增强，默认开启。 */
     private boolean enabled = true;
 
-    /**
-     * 是否启用上下文传播（Trace/Span/Request-Id 等），默认开启。
-     */
+    /** 是否启用上下文传播（Trace/Span/Request-Id 等），默认开启。 */
     private boolean contextPropagationEnabled = true;
 
     public boolean isEnabled() {
@@ -31,4 +27,3 @@ public class FeignProperties {
         this.contextPropagationEnabled = contextPropagationEnabled;
     }
 }
-

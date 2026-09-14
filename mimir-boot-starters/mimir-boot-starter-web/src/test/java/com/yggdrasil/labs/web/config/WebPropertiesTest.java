@@ -1,22 +1,25 @@
 package com.yggdrasil.labs.web.config;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import java.util.Arrays;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * Web 配置属性测试
  *
- * <p>测试 WebProperties 的默认值和配置：</p>
+ * <p>测试 WebProperties 的默认值和配置：
+ *
  * <ul>
- * <li>默认配置值</li>
- * <li>CORS 配置</li>
- * <li>序列化配置</li>
- * <li>安全配置</li>
- * <li>响应配置</li>
+ *   <li>默认配置值
+ *   <li>CORS 配置
+ *   <li>序列化配置
+ *   <li>安全配置
+ *   <li>响应配置
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -33,9 +36,7 @@ class WebPropertiesTest extends BaseUnitTest {
         webProperties = new WebProperties();
     }
 
-    /**
-     * 测试默认配置值
-     */
+    /** 测试默认配置值 */
     @Test
     void testDefaultValues() {
         assertTrue(webProperties.isEnabled());
@@ -44,9 +45,7 @@ class WebPropertiesTest extends BaseUnitTest {
         assertNotNull(webProperties.getResponse());
     }
 
-    /**
-     * 测试 CORS 默认配置
-     */
+    /** 测试 CORS 默认配置 */
     @Test
     void testCorsDefaultValues() {
         WebProperties.Cors cors = webProperties.getCors();
@@ -64,9 +63,7 @@ class WebPropertiesTest extends BaseUnitTest {
         assertEquals(3600, cors.getMaxAge().getSeconds());
     }
 
-    /**
-     * 测试序列化默认配置
-     */
+    /** 测试序列化默认配置 */
     @Test
     void testSerializationDefaultValues() {
         WebProperties.Serialization serialization = webProperties.getSerialization();
@@ -82,15 +79,18 @@ class WebPropertiesTest extends BaseUnitTest {
 
     @Test
     void shouldKeepDeprecatedSecurityApiForCompatibility() {
-        var securityField = Arrays.stream(WebProperties.class.getDeclaredFields())
-                .filter(field -> field.getName().equals("security"))
-                .findFirst();
-        var securityClass = Arrays.stream(WebProperties.class.getDeclaredClasses())
-                .filter(WebProperties.Security.class::equals)
-                .findFirst();
-        var securityGetter = Arrays.stream(WebProperties.class.getDeclaredMethods())
-                .filter(method -> method.getName().equals("getSecurity"))
-                .findFirst();
+        var securityField =
+                Arrays.stream(WebProperties.class.getDeclaredFields())
+                        .filter(field -> field.getName().equals("security"))
+                        .findFirst();
+        var securityClass =
+                Arrays.stream(WebProperties.class.getDeclaredClasses())
+                        .filter(WebProperties.Security.class::equals)
+                        .findFirst();
+        var securityGetter =
+                Arrays.stream(WebProperties.class.getDeclaredMethods())
+                        .filter(method -> method.getName().equals("getSecurity"))
+                        .findFirst();
 
         assertTrue(securityField.isPresent(), "应保留 security 字段以兼容既有绑定和 Java API");
         assertTrue(securityField.orElseThrow().isAnnotationPresent(Deprecated.class));
@@ -98,13 +98,15 @@ class WebPropertiesTest extends BaseUnitTest {
         assertTrue(securityClass.orElseThrow().isAnnotationPresent(Deprecated.class));
         assertTrue(securityGetter.isPresent(), "应保留 getSecurity() 方法");
         assertTrue(securityGetter.orElseThrow().isAnnotationPresent(Deprecated.class));
-        assertTrue(securityGetter.orElseThrow().isAnnotationPresent(
-                org.springframework.boot.context.properties.DeprecatedConfigurationProperty.class));
+        assertTrue(
+                securityGetter
+                        .orElseThrow()
+                        .isAnnotationPresent(
+                                org.springframework.boot.context.properties
+                                        .DeprecatedConfigurationProperty.class));
     }
 
-    /**
-     * 测试响应默认配置
-     */
+    /** 测试响应默认配置 */
     @Test
     void testResponseDefaultValues() {
         WebProperties.Response response = webProperties.getResponse();
@@ -113,9 +115,7 @@ class WebPropertiesTest extends BaseUnitTest {
         assertTrue(response.isAutoFillTraceId());
     }
 
-    /**
-     * 测试 CORS 配置修改
-     */
+    /** 测试 CORS 配置修改 */
     @Test
     void testCorsConfigurationModification() {
         WebProperties.Cors cors = webProperties.getCors();
@@ -131,9 +131,7 @@ class WebPropertiesTest extends BaseUnitTest {
         assertTrue(cors.getAllowedOrigins().contains("https://example.com"));
     }
 
-    /**
-     * 测试序列化配置修改
-     */
+    /** 测试序列化配置修改 */
     @Test
     void testSerializationConfigurationModification() {
         WebProperties.Serialization serialization = webProperties.getSerialization();

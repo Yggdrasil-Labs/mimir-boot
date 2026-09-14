@@ -1,8 +1,49 @@
 package com.yggdrasil.labs.exception.handler;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingPathVariableException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -11,49 +52,10 @@ import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 import com.yggdrasil.labs.test.util.TestUtils;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.servlet.http.HttpServletRequest;
-import java.lang.reflect.Method;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.springframework.core.MethodParameter;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.HttpMediaTypeNotAcceptableException;
-import org.springframework.web.HttpMediaTypeNotSupportedException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.validation.BindException;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.HttpRequestMethodNotSupportedException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingPathVariableException;
-import org.springframework.web.bind.MissingRequestHeaderException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import org.springframework.web.servlet.NoHandlerFoundException;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.slf4j.LoggerFactory;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * MimirExceptionHandler 测试
@@ -65,8 +67,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     private MimirExceptionHandler handler;
 
-    @Mock
-    private HttpServletRequest request;
+    @Mock private HttpServletRequest request;
 
     @Override
     @BeforeEach
@@ -117,8 +118,11 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     @Test
     void shouldNotLogThrowableChainForSystemException() {
         String sensitiveValue = "system-exception-secret-4c72";
-        SystemException exception = new SystemException(
-                "SYS_001", "系统错误", new IllegalStateException("downstream unavailable: " + sensitiveValue));
+        SystemException exception =
+                new SystemException(
+                        "SYS_001",
+                        "系统错误",
+                        new IllegalStateException("downstream unavailable: " + sensitiveValue));
         Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
@@ -127,10 +131,13 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         try {
             handler.handleSystemException(exception, request);
 
-            ILoggingEvent event = appender.list.stream()
-                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().startsWith("系统异常:"))
-                    .findFirst()
-                    .orElseThrow();
+            ILoggingEvent event =
+                    appender.list.stream()
+                            .filter(
+                                    loggingEvent ->
+                                            loggingEvent.getFormattedMessage().startsWith("系统异常:"))
+                            .findFirst()
+                            .orElseThrow();
             assertFalse(event.getFormattedMessage().contains(sensitiveValue));
             assertNull(event.getThrowableProxy());
         } finally {
@@ -165,8 +172,9 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     @Test
     void shouldNotLogThrowableChainForBaseException() {
-        BaseException exception = new BaseException(
-                "BASE_001", "基础异常", new IllegalStateException("dependency failure")) {};
+        BaseException exception =
+                new BaseException(
+                        "BASE_001", "基础异常", new IllegalStateException("dependency failure")) {};
         Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
@@ -175,10 +183,13 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         try {
             handler.handleBaseException(exception, request);
 
-            ILoggingEvent event = appender.list.stream()
-                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().startsWith("框架异常:"))
-                    .findFirst()
-                    .orElseThrow();
+            ILoggingEvent event =
+                    appender.list.stream()
+                            .filter(
+                                    loggingEvent ->
+                                            loggingEvent.getFormattedMessage().startsWith("框架异常:"))
+                            .findFirst()
+                            .orElseThrow();
             assertNull(event.getThrowableProxy());
         } finally {
             logger.detachAppender(appender);
@@ -220,19 +231,27 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         String maliciousField = "user\nname";
         String maliciousMessage = "用户名不能为空\n<script>alert('xss')</script>";
         BindingResult bindingResult = mock(BindingResult.class);
-        when(bindingResult.getFieldErrors()).thenReturn(List.of(new FieldError("test", maliciousField, maliciousMessage)));
-        MethodArgumentNotValidException exception = new MethodArgumentNotValidException(mock(MethodParameter.class), bindingResult);
+        when(bindingResult.getFieldErrors())
+                .thenReturn(List.of(new FieldError("test", maliciousField, maliciousMessage)));
+        MethodArgumentNotValidException exception =
+                new MethodArgumentNotValidException(mock(MethodParameter.class), bindingResult);
         Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
 
         try {
-            R<?> response = (R<?>) handler.handleMethodArgumentNotValidException(exception, request);
+            R<?> response =
+                    (R<?>) handler.handleMethodArgumentNotValidException(exception, request);
 
             assertEquals(List.of(maliciousField + ": " + maliciousMessage), response.getData());
-            assertTrue(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
-                    .noneMatch(message -> message.contains(maliciousField) || message.contains(maliciousMessage)));
+            assertTrue(
+                    appender.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .noneMatch(
+                                    message ->
+                                            message.contains(maliciousField)
+                                                    || message.contains(maliciousMessage)));
         } finally {
             logger.detachAppender(appender);
             appender.stop();
@@ -254,7 +273,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     @Test
     void testHandleMethodArgumentTypeMismatchException() {
-        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        MethodArgumentTypeMismatchException exception =
+                mock(MethodArgumentTypeMismatchException.class);
         when(exception.getName()).thenReturn("userId");
         when(exception.getRequiredType()).thenAnswer(invocation -> Integer.class);
 
@@ -286,9 +306,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     void shouldNotLogRawRequestValueFromJacksonParseError() throws JsonProcessingException {
         String sensitiveValue = "password-from-request-7f4b9a";
         String malformedJson = "{\"password\": \"" + sensitiveValue + "\", \"profile\":}";
-        JsonMapper mapper = JsonMapper.builder()
-                .enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION)
-                .build();
+        JsonMapper mapper =
+                JsonMapper.builder().enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION).build();
         JsonProcessingException parseException;
         try {
             mapper.readTree(malformedJson);
@@ -312,16 +331,20 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
             R<?> result = (R<?>) response;
             assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
             assertEquals("请求体格式错误", result.getMessage());
-            List<ILoggingEvent> events = appender.list.stream()
-                    .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
-                    .toList();
+            List<ILoggingEvent> events =
+                    appender.list.stream()
+                            .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
+                            .toList();
             assertEquals(1, events.size());
             ILoggingEvent event = events.get(0);
             String formattedMessage = event.getFormattedMessage();
             assertTrue(formattedMessage.contains("type=HttpMessageNotReadableException"));
             assertTrue(formattedMessage.contains("uri=" + request.getRequestURI()));
-            assertTrue(formattedMessage.contains("line=" + parseException.getLocation().getLineNr()));
-            assertTrue(formattedMessage.contains("column=" + parseException.getLocation().getColumnNr()));
+            assertTrue(
+                    formattedMessage.contains("line=" + parseException.getLocation().getLineNr()));
+            assertTrue(
+                    formattedMessage.contains(
+                            "column=" + parseException.getLocation().getColumnNr()));
             assertFalse(formattedMessage.contains(sensitiveValue));
             assertFalse(formattedMessage.contains(parseException.getMessage()));
             assertNull(event.getThrowableProxy());
@@ -337,7 +360,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         String sensitiveValue = "opaque-secret-from-request-3c9d2e";
         String rawMessage = "request body decoder rejected value=" + sensitiveValue;
         IllegalStateException cause = new IllegalStateException("decoder detail=" + sensitiveValue);
-        HttpMessageNotReadableException exception = new HttpMessageNotReadableException(rawMessage, cause);
+        HttpMessageNotReadableException exception =
+                new HttpMessageNotReadableException(rawMessage, cause);
         Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
@@ -350,9 +374,10 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
             R<?> result = (R<?>) response;
             assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
             assertEquals("请求体格式错误", result.getMessage());
-            List<ILoggingEvent> events = appender.list.stream()
-                    .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
-                    .toList();
+            List<ILoggingEvent> events =
+                    appender.list.stream()
+                            .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
+                            .toList();
             assertEquals(1, events.size());
             ILoggingEvent event = events.get(0);
             String formattedMessage = event.getFormattedMessage();
@@ -370,9 +395,10 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     @Test
     void testHandleHttpRequestMethodNotSupportedException() {
-        HttpRequestMethodNotSupportedException exception = mock(HttpRequestMethodNotSupportedException.class);
+        HttpRequestMethodNotSupportedException exception =
+                mock(HttpRequestMethodNotSupportedException.class);
         when(exception.getMethod()).thenReturn("DELETE");
-        when(exception.getSupportedMethods()).thenReturn(new String[]{"GET", "POST"});
+        when(exception.getSupportedMethods()).thenReturn(new String[] {"GET", "POST"});
 
         Object response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
 
@@ -412,8 +438,9 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     @Test
     void shouldNotLogThrowableChainForUnhandledIException() {
-        IException exception = new BaseException(
-                "BASE_002", "未捕获框架异常", new IllegalStateException("unexpected state")) {};
+        IException exception =
+                new BaseException(
+                        "BASE_002", "未捕获框架异常", new IllegalStateException("unexpected state")) {};
         Logger logger = (Logger) LoggerFactory.getLogger(MimirExceptionHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
@@ -422,10 +449,15 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         try {
             handler.handleException((Exception) exception, request);
 
-            ILoggingEvent event = appender.list.stream()
-                    .filter(loggingEvent -> loggingEvent.getFormattedMessage().startsWith("框架异常（未捕获）:"))
-                    .findFirst()
-                    .orElseThrow();
+            ILoggingEvent event =
+                    appender.list.stream()
+                            .filter(
+                                    loggingEvent ->
+                                            loggingEvent
+                                                    .getFormattedMessage()
+                                                    .startsWith("框架异常（未捕获）:"))
+                            .findFirst()
+                            .orElseThrow();
             assertNull(event.getThrowableProxy());
         } finally {
             logger.detachAppender(appender);
@@ -462,10 +494,11 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         when(request.getRequestURI()).thenReturn("/test/api\n<script>alert('xss')</script>");
         BizException exception = new BizException("20001", "正常消息");
 
-        assertDoesNotThrow(() -> {
-            Object response = handler.handleBizException(exception, request);
-            assertNotNull(response);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    Object response = handler.handleBizException(exception, request);
+                    assertNotNull(response);
+                });
     }
 
     @Test
@@ -495,14 +528,13 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         assertTrue(((ArrayList<?>) r.getData()).isEmpty());
     }
 
-    /**
-     * 测试自定义 factory 被正确调用
-     */
+    /** 测试自定义 factory 被正确调用 */
     @Test
     void shouldDelegateToCustomFactory() {
         ExceptionResponseFactory mockFactory = mock(ExceptionResponseFactory.class);
         Object customResponse = "custom-response";
-        when(mockFactory.createResponse(anyString(), anyString(), any())).thenReturn(customResponse);
+        when(mockFactory.createResponse(anyString(), anyString(), any()))
+                .thenReturn(customResponse);
 
         MimirExceptionHandler customHandler = new MimirExceptionHandler(mockFactory);
         BizException exception = new BizException("20001", "测试");
@@ -518,8 +550,10 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         HandlerMethodValidationException exception = mock(HandlerMethodValidationException.class);
         when(exception.isForReturnValue()).thenReturn(false);
 
-        assertResponseEntity(handler.handleHandlerMethodValidationException(exception, request),
-                HttpStatus.BAD_REQUEST, ErrorCode.PARAM_INVALID.getCode());
+        assertResponseEntity(
+                handler.handleHandlerMethodValidationException(exception, request),
+                HttpStatus.BAD_REQUEST,
+                ErrorCode.PARAM_INVALID.getCode());
     }
 
     @Test
@@ -527,93 +561,144 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         HandlerMethodValidationException exception = mock(HandlerMethodValidationException.class);
         when(exception.isForReturnValue()).thenReturn(true);
 
-        assertResponseEntity(handler.handleHandlerMethodValidationException(exception, request),
-                HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.SYSTEM_ERROR.getCode());
+        assertResponseEntity(
+                handler.handleHandlerMethodValidationException(exception, request),
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ErrorCode.SYSTEM_ERROR.getCode());
     }
 
     @Test
     void shouldMapConstraintViolationToBadRequest() throws Exception {
-        assertResponseCode(handler.handleConstraintViolationException(new ConstraintViolationException(Collections.emptySet()), request),
+        assertResponseCode(
+                handler.handleConstraintViolationException(
+                        new ConstraintViolationException(Collections.emptySet()), request),
                 ErrorCode.PARAM_INVALID.getCode());
-        assertResponseStatus("handleConstraintViolationException", ConstraintViolationException.class, HttpStatus.BAD_REQUEST);
+        assertResponseStatus(
+                "handleConstraintViolationException",
+                ConstraintViolationException.class,
+                HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void shouldMapMissingRequestHeaderToBadRequest() throws Exception {
-        assertResponseCode(handler.handleMissingRequestHeaderException(
-                new MissingRequestHeaderException("X-Request-Id", mock(MethodParameter.class)), request),
+        assertResponseCode(
+                handler.handleMissingRequestHeaderException(
+                        new MissingRequestHeaderException(
+                                "X-Request-Id", mock(MethodParameter.class)),
+                        request),
                 ErrorCode.PARAM_MISSING.getCode());
-        assertResponseStatus("handleMissingRequestHeaderException", MissingRequestHeaderException.class, HttpStatus.BAD_REQUEST);
+        assertResponseStatus(
+                "handleMissingRequestHeaderException",
+                MissingRequestHeaderException.class,
+                HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void shouldMapMissingPathVariableToInternalServerError() throws Exception {
-        assertResponseCode(handler.handleMissingPathVariableException(
-                new MissingPathVariableException("id", mock(MethodParameter.class)), request),
+        assertResponseCode(
+                handler.handleMissingPathVariableException(
+                        new MissingPathVariableException("id", mock(MethodParameter.class)),
+                        request),
                 ErrorCode.SYSTEM_ERROR.getCode());
-        assertResponseStatus("handleMissingPathVariableException", MissingPathVariableException.class,
+        assertResponseStatus(
+                "handleMissingPathVariableException",
+                MissingPathVariableException.class,
                 HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
     void shouldMapNotAcceptableMediaType() throws Exception {
-        assertResponseCode(handler.handleHttpMediaTypeNotAcceptableException(
-                new HttpMediaTypeNotAcceptableException(Collections.emptyList()), request),
+        assertResponseCode(
+                handler.handleHttpMediaTypeNotAcceptableException(
+                        new HttpMediaTypeNotAcceptableException(Collections.emptyList()), request),
                 ErrorCode.OPERATION_NOT_ALLOWED.getCode());
-        assertResponseStatus("handleHttpMediaTypeNotAcceptableException", HttpMediaTypeNotAcceptableException.class,
+        assertResponseStatus(
+                "handleHttpMediaTypeNotAcceptableException",
+                HttpMediaTypeNotAcceptableException.class,
                 HttpStatus.NOT_ACCEPTABLE);
     }
 
     @Test
     void shouldMapUnsupportedMediaType() throws Exception {
-        assertResponseCode(handler.handleHttpMediaTypeNotSupportedException(
-                new HttpMediaTypeNotSupportedException("unsupported"), request),
+        assertResponseCode(
+                handler.handleHttpMediaTypeNotSupportedException(
+                        new HttpMediaTypeNotSupportedException("unsupported"), request),
                 ErrorCode.OPERATION_NOT_ALLOWED.getCode());
-        assertResponseStatus("handleHttpMediaTypeNotSupportedException", HttpMediaTypeNotSupportedException.class,
+        assertResponseStatus(
+                "handleHttpMediaTypeNotSupportedException",
+                HttpMediaTypeNotSupportedException.class,
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE);
     }
 
     @Test
     void shouldMapMaxUploadSize() throws Exception {
-        assertResponseCode(handler.handleMaxUploadSizeExceededException(new MaxUploadSizeExceededException(1024), request),
+        assertResponseCode(
+                handler.handleMaxUploadSizeExceededException(
+                        new MaxUploadSizeExceededException(1024), request),
                 ErrorCode.PARAM_INVALID.getCode());
-        assertResponseStatus("handleMaxUploadSizeExceededException", MaxUploadSizeExceededException.class,
+        assertResponseStatus(
+                "handleMaxUploadSizeExceededException",
+                MaxUploadSizeExceededException.class,
                 HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
     @Test
     void shouldMapNoResourceFound() throws Exception {
-        assertResponseCode(handler.handleNoResourceFoundException(
-                new NoResourceFoundException(HttpMethod.GET, "missing.js"), request),
+        assertResponseCode(
+                handler.handleNoResourceFoundException(
+                        new NoResourceFoundException(HttpMethod.GET, "missing.js"), request),
                 ErrorCode.DATA_NOT_FOUND.getCode());
-        assertResponseStatus("handleNoResourceFoundException", NoResourceFoundException.class, HttpStatus.NOT_FOUND);
+        assertResponseStatus(
+                "handleNoResourceFoundException",
+                NoResourceFoundException.class,
+                HttpStatus.NOT_FOUND);
     }
 
     @Test
     void shouldDelegateAllSpringSixMappingsToResponseFactory() {
         ExceptionResponseFactory responseFactory = mock(ExceptionResponseFactory.class);
-        when(responseFactory.createResponse(anyString(), anyString(), any())).thenReturn("custom-response");
+        when(responseFactory.createResponse(anyString(), anyString(), any()))
+                .thenReturn("custom-response");
         MimirExceptionHandler customHandler = new MimirExceptionHandler(responseFactory);
-        HandlerMethodValidationException validationException = mock(HandlerMethodValidationException.class);
+        HandlerMethodValidationException validationException =
+                mock(HandlerMethodValidationException.class);
         when(validationException.isForReturnValue()).thenReturn(false);
 
-        Object validationResponse = customHandler.handleHandlerMethodValidationException(validationException, request);
+        Object validationResponse =
+                customHandler.handleHandlerMethodValidationException(validationException, request);
         assertInstanceOf(ResponseEntity.class, validationResponse);
         assertEquals("custom-response", ((ResponseEntity<?>) validationResponse).getBody());
-        assertResponseEntityBody(customHandler.handleConstraintViolationException(
-                new ConstraintViolationException(Collections.emptySet()), request), HttpStatus.BAD_REQUEST);
-        assertResponseEntityBody(customHandler.handleMissingRequestHeaderException(
-                new MissingRequestHeaderException("X-Request-Id", mock(MethodParameter.class)), request), HttpStatus.BAD_REQUEST);
-        assertResponseEntityBody(customHandler.handleMissingPathVariableException(
-                new MissingPathVariableException("id", mock(MethodParameter.class)), request), HttpStatus.INTERNAL_SERVER_ERROR);
-        assertResponseEntityBody(customHandler.handleHttpMediaTypeNotAcceptableException(
-                new HttpMediaTypeNotAcceptableException(Collections.emptyList()), request), HttpStatus.NOT_ACCEPTABLE);
-        assertResponseEntityBody(customHandler.handleHttpMediaTypeNotSupportedException(
-                new HttpMediaTypeNotSupportedException("unsupported"), request), HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-        assertResponseEntityBody(customHandler.handleMaxUploadSizeExceededException(
-                new MaxUploadSizeExceededException(1024), request), HttpStatus.PAYLOAD_TOO_LARGE);
-        assertResponseEntityBody(customHandler.handleNoResourceFoundException(
-                new NoResourceFoundException(HttpMethod.GET, "missing.js"), request), HttpStatus.NOT_FOUND);
+        assertResponseEntityBody(
+                customHandler.handleConstraintViolationException(
+                        new ConstraintViolationException(Collections.emptySet()), request),
+                HttpStatus.BAD_REQUEST);
+        assertResponseEntityBody(
+                customHandler.handleMissingRequestHeaderException(
+                        new MissingRequestHeaderException(
+                                "X-Request-Id", mock(MethodParameter.class)),
+                        request),
+                HttpStatus.BAD_REQUEST);
+        assertResponseEntityBody(
+                customHandler.handleMissingPathVariableException(
+                        new MissingPathVariableException("id", mock(MethodParameter.class)),
+                        request),
+                HttpStatus.INTERNAL_SERVER_ERROR);
+        assertResponseEntityBody(
+                customHandler.handleHttpMediaTypeNotAcceptableException(
+                        new HttpMediaTypeNotAcceptableException(Collections.emptyList()), request),
+                HttpStatus.NOT_ACCEPTABLE);
+        assertResponseEntityBody(
+                customHandler.handleHttpMediaTypeNotSupportedException(
+                        new HttpMediaTypeNotSupportedException("unsupported"), request),
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertResponseEntityBody(
+                customHandler.handleMaxUploadSizeExceededException(
+                        new MaxUploadSizeExceededException(1024), request),
+                HttpStatus.PAYLOAD_TOO_LARGE);
+        assertResponseEntityBody(
+                customHandler.handleNoResourceFoundException(
+                        new NoResourceFoundException(HttpMethod.GET, "missing.js"), request),
+                HttpStatus.NOT_FOUND);
 
         verify(responseFactory, times(8)).createResponse(anyString(), anyString(), isNull());
     }
@@ -621,32 +706,40 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     // ========== fallback 测试：factory 抛异常时降级返回 R.fail ==========
 
     private MimirExceptionHandler createHandlerWithFailingFactory() {
-        ExceptionResponseFactory failingFactory = (code, message, data) -> {
-            throw new RuntimeException("factory error");
-        };
+        ExceptionResponseFactory failingFactory =
+                (code, message, data) -> {
+                    throw new RuntimeException("factory error");
+                };
         return new MimirExceptionHandler(failingFactory);
     }
 
     @Test
     void shouldPreserveStatusAndFallbackWhenNewHandlerFactoryFails() {
         MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
-        HandlerMethodValidationException validationException = mock(HandlerMethodValidationException.class);
+        HandlerMethodValidationException validationException =
+                mock(HandlerMethodValidationException.class);
         when(validationException.isForReturnValue()).thenReturn(true);
 
-        assertResponseEntity(failHandler.handleHandlerMethodValidationException(validationException, request),
-                HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.SYSTEM_ERROR.getCode());
-        assertResponseEntity(failHandler.handleNoResourceFoundException(
-                new NoResourceFoundException(HttpMethod.GET, "missing.js"), request),
-                HttpStatus.NOT_FOUND, ErrorCode.DATA_NOT_FOUND.getCode());
+        assertResponseEntity(
+                failHandler.handleHandlerMethodValidationException(validationException, request),
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ErrorCode.SYSTEM_ERROR.getCode());
+        assertResponseEntity(
+                failHandler.handleNoResourceFoundException(
+                        new NoResourceFoundException(HttpMethod.GET, "missing.js"), request),
+                HttpStatus.NOT_FOUND,
+                ErrorCode.DATA_NOT_FOUND.getCode());
     }
 
     @Test
     void shouldPreserveStaticStatusInMvcWhenFactoryReturnsResponseEntity() throws Exception {
         reset(request);
-        ExceptionResponseFactory factory = (code, message, data) -> ResponseEntity.ok("factory-response");
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ThrowingController())
-                .setControllerAdvice(new MimirExceptionHandler(factory))
-                .build();
+        ExceptionResponseFactory factory =
+                (code, message, data) -> ResponseEntity.ok("factory-response");
+        MockMvc mvc =
+                MockMvcBuilders.standaloneSetup(new ThrowingController())
+                        .setControllerAdvice(new MimirExceptionHandler(factory))
+                        .build();
 
         mvc.perform(get("/missing-resource"))
                 .andExpect(status().isNotFound())
@@ -708,7 +801,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         MissingServletRequestParameterException exception =
                 new MissingServletRequestParameterException("userId", "String");
 
-        Object result = failHandler.handleMissingServletRequestParameterException(exception, request);
+        Object result =
+                failHandler.handleMissingServletRequestParameterException(exception, request);
 
         assertInstanceOf(R.class, result);
         R<?> r = (R<?>) result;
@@ -743,7 +837,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     @Test
     void testHandleHttpRequestMethodNotSupportedExceptionWithNullSupportedMethods() {
-        HttpRequestMethodNotSupportedException exception = mock(HttpRequestMethodNotSupportedException.class);
+        HttpRequestMethodNotSupportedException exception =
+                mock(HttpRequestMethodNotSupportedException.class);
         when(exception.getMethod()).thenReturn("DELETE");
         when(exception.getSupportedMethods()).thenReturn(null);
 
@@ -757,7 +852,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
     @Test
     void testHandleMethodArgumentTypeMismatchExceptionWithNullRequiredType() {
-        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        MethodArgumentTypeMismatchException exception =
+                mock(MethodArgumentTypeMismatchException.class);
         when(exception.getName()).thenReturn("userId");
         when(exception.getRequiredType()).thenReturn(null);
 
@@ -787,7 +883,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     @Test
     void shouldFallbackToRFailWhenFactoryThrowsOnMethodArgumentTypeMismatch() {
         MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
-        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        MethodArgumentTypeMismatchException exception =
+                mock(MethodArgumentTypeMismatchException.class);
         when(exception.getName()).thenReturn("userId");
         when(exception.getRequiredType()).thenAnswer(invocation -> Integer.class);
 
@@ -815,11 +912,13 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     @Test
     void shouldFallbackToRFailWhenFactoryThrowsOnHttpRequestMethodNotSupported() {
         MimirExceptionHandler failHandler = createHandlerWithFailingFactory();
-        HttpRequestMethodNotSupportedException exception = mock(HttpRequestMethodNotSupportedException.class);
+        HttpRequestMethodNotSupportedException exception =
+                mock(HttpRequestMethodNotSupportedException.class);
         when(exception.getMethod()).thenReturn("DELETE");
-        when(exception.getSupportedMethods()).thenReturn(new String[]{"GET", "POST"});
+        when(exception.getSupportedMethods()).thenReturn(new String[] {"GET", "POST"});
 
-        Object result = failHandler.handleHttpRequestMethodNotSupportedException(exception, request);
+        Object result =
+                failHandler.handleHttpRequestMethodNotSupportedException(exception, request);
 
         assertInstanceOf(R.class, result);
         R<?> r = (R<?>) result;
@@ -901,17 +1000,21 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         }
     }
 
-    private void assertResponseStatus(String methodName, Class<? extends Exception> exceptionType, HttpStatus status)
+    private void assertResponseStatus(
+            String methodName, Class<? extends Exception> exceptionType, HttpStatus status)
             throws NoSuchMethodException {
-        Method method = MimirExceptionHandler.class.getMethod(methodName, exceptionType, HttpServletRequest.class);
+        Method method =
+                MimirExceptionHandler.class.getMethod(
+                        methodName, exceptionType, HttpServletRequest.class);
         assertNull(method.getAnnotation(ResponseStatus.class));
     }
 
     @Test
     void shouldFallbackToRFailWhenFactoryThrowsException() {
-        ExceptionResponseFactory failingFactory = (code, message, data) -> {
-            throw new RuntimeException("factory error");
-        };
+        ExceptionResponseFactory failingFactory =
+                (code, message, data) -> {
+                    throw new RuntimeException("factory error");
+                };
         MimirExceptionHandler failHandler = new MimirExceptionHandler(failingFactory);
 
         BizException bizException = new BizException("BIZ_001", "业务错误");

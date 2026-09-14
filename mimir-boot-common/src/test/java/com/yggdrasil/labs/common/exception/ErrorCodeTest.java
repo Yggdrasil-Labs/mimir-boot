@@ -1,8 +1,8 @@
 package com.yggdrasil.labs.common.exception;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 class ErrorCodeTest {
 
@@ -22,4 +22,3 @@ class ErrorCodeTest {
         assertNull(ErrorCode.fromCodeOrNull(null));
     }
 }
-

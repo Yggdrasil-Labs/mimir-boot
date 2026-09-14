@@ -1,18 +1,19 @@
 package com.yggdrasil.labs.test.util;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 
 /**
  * HttpServletRequest Mock 构建器
  *
- * <p>提供链式 API 简化 HttpServletRequest 的 mock 设置，减少重复代码。</p>
+ * <p>提供链式 API 简化 HttpServletRequest 的 mock 设置，减少重复代码。
  *
- * <p>使用示例：</p>
+ * <p>使用示例：
+ *
  * <pre>{@code
  * HttpServletRequest request = HttpServletRequestMockBuilder.create()
  *     .uri("/api/user/123")
@@ -111,7 +112,7 @@ public class HttpServletRequestMockBuilder {
     /**
      * 设置请求头
      *
-     * @param name  请求头名称
+     * @param name 请求头名称
      * @param value 请求头值
      * @return 构建器实例
      */
@@ -123,14 +124,14 @@ public class HttpServletRequestMockBuilder {
     /**
      * 设置所有 IP 相关请求头
      *
-     * @param xForwardedFor   X-Forwarded-For
-     * @param xRealIp         X-Real-IP
-     * @param proxyClientIp   Proxy-Client-IP
+     * @param xForwardedFor X-Forwarded-For
+     * @param xRealIp X-Real-IP
+     * @param proxyClientIp Proxy-Client-IP
      * @param wlProxyClientIp WL-Proxy-Client-IP
      * @return 构建器实例
      */
-    public HttpServletRequestMockBuilder ipHeaders(String xForwardedFor, String xRealIp,
-                                                   String proxyClientIp, String wlProxyClientIp) {
+    public HttpServletRequestMockBuilder ipHeaders(
+            String xForwardedFor, String xRealIp, String proxyClientIp, String wlProxyClientIp) {
         this.xForwardedFor = xForwardedFor;
         this.xRealIp = xRealIp;
         this.proxyClientIp = proxyClientIp;
@@ -178,10 +179,10 @@ public class HttpServletRequestMockBuilder {
             when(request.getHeader(HttpHeaderConstants.X_FORWARDED_FOR)).thenReturn(xForwardedFor);
             when(request.getHeader(HttpHeaderConstants.X_REAL_IP)).thenReturn(xRealIp);
             when(request.getHeader(HttpHeaderConstants.PROXY_CLIENT_IP)).thenReturn(proxyClientIp);
-            when(request.getHeader(HttpHeaderConstants.WL_PROXY_CLIENT_IP)).thenReturn(wlProxyClientIp);
+            when(request.getHeader(HttpHeaderConstants.WL_PROXY_CLIENT_IP))
+                    .thenReturn(wlProxyClientIp);
         }
 
         return request;
     }
 }
-

@@ -5,8 +5,8 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 /**
  * Long 字段加解密 TypeHandler。
  *
- * <p>注意：此 TypeHandler 不会自动注册为全局 Long 类型处理器，
- * 需要在字段上显式使用 {@code @TableField(typeHandler = LongCryptoTypeHandler.class)} 才会生效。
+ * <p>注意：此 TypeHandler 不会自动注册为全局 Long 类型处理器， 需要在字段上显式使用 {@code @TableField(typeHandler =
+ * LongCryptoTypeHandler.class)} 才会生效。
  */
 public class LongCryptoTypeHandler extends AbstractCryptoTypeHandler<Long> {
 
@@ -18,7 +18,8 @@ public class LongCryptoTypeHandler extends AbstractCryptoTypeHandler<Long> {
         super(keyProvider, cryptoContext);
     }
 
-    public LongCryptoTypeHandler(CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
+    public LongCryptoTypeHandler(
+            CryptoKeyProvider keyProvider, String cryptoContext, boolean cryptoV2WriteEnabled) {
         super(keyProvider, cryptoContext, cryptoV2WriteEnabled);
     }
 

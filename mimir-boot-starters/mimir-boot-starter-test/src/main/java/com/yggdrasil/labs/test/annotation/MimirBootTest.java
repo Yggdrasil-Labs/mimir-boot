@@ -1,21 +1,23 @@
 package com.yggdrasil.labs.test.annotation;
 
+import java.lang.annotation.*;
+
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.lang.annotation.*;
-
 /**
  * Mimir Boot 测试注解
  *
- * <p>简化 Spring Boot 测试配置，自动应用常用配置：</p>
+ * <p>简化 Spring Boot 测试配置，自动应用常用配置：
+ *
  * <ul>
- * <li>使用 test profile</li>
- * <li>配置 Spring Boot 测试环境</li>
+ *   <li>使用 test profile
+ *   <li>配置 Spring Boot 测试环境
  * </ul>
  *
- * <p>使用示例：</p>
+ * <p>使用示例：
+ *
  * <pre>{@code
  * @MimirBootTest
  * class MyServiceTest {

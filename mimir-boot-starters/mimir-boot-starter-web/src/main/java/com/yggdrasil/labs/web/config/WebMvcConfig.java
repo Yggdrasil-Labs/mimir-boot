@@ -1,21 +1,23 @@
 package com.yggdrasil.labs.web.config;
 
-import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
-import com.yggdrasil.labs.web.interceptor.WebInterceptor;
+import java.util.Optional;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.util.Optional;
+import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
+import com.yggdrasil.labs.web.interceptor.WebInterceptor;
 
 /**
  * Web MVC 配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>注册 Web 拦截器和 Trace 拦截器</li>
- * <li>配置拦截器路径规则</li>
+ *   <li>注册 Web 拦截器和 Trace 拦截器
+ *   <li>配置拦截器路径规则
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -34,7 +36,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
      * @param webInterceptor Web 拦截器（必需）
      * @param traceInterceptor Trace 拦截器（可选，如果存在则注入，不存在则忽略）
      */
-    public WebMvcConfig(WebInterceptor webInterceptor, Optional<TraceInterceptor> traceInterceptor) {
+    public WebMvcConfig(
+            WebInterceptor webInterceptor, Optional<TraceInterceptor> traceInterceptor) {
         this.webInterceptor = webInterceptor;
         this.traceInterceptor = traceInterceptor;
     }
@@ -48,22 +51,21 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册 Trace 拦截器（如果存在）
         // 优先级：TraceInterceptor 应该在 WebInterceptor 之前执行
-        traceInterceptor.ifPresent(interceptor ->
-                registry.addInterceptor(interceptor)
-                        .addPathPatterns("/**")
-                        .excludePathPatterns(
-                                // 排除静态资源
-                                "/favicon.ico",
-                                "/error",
-                                // 排除健康检查端点
-                                "/actuator/**",
-                                // 排除 Swagger 相关路径（如果使用）
-                                "/swagger-ui/**",
-                                "/swagger-resources/**",
-                                "/v3/api-docs/**",
-                                "/doc.html"
-                        )
-        );
+        traceInterceptor.ifPresent(
+                interceptor ->
+                        registry.addInterceptor(interceptor)
+                                .addPathPatterns("/**")
+                                .excludePathPatterns(
+                                        // 排除静态资源
+                                        "/favicon.ico",
+                                        "/error",
+                                        // 排除健康检查端点
+                                        "/actuator/**",
+                                        // 排除 Swagger 相关路径（如果使用）
+                                        "/swagger-ui/**",
+                                        "/swagger-resources/**",
+                                        "/v3/api-docs/**",
+                                        "/doc.html"));
 
         // 注册 Web 拦截器
         registry.addInterceptor(webInterceptor)
@@ -78,8 +80,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/swagger-ui/**",
                         "/swagger-resources/**",
                         "/v3/api-docs/**",
-                        "/doc.html"
-                );
+                        "/doc.html");
     }
 }
-

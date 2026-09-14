@@ -1,50 +1,51 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.yggdrasil.labs.mybatis.util.MapperPackageDetector;
-import org.junit.jupiter.api.io.TempDir;
-import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.datasource.unpooled.UnpooledDataSource;
-import org.apache.ibatis.mapping.Environment;
-import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
-import org.mybatis.spring.mapper.MapperScannerConfigurer;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import org.springframework.context.support.GenericApplicationContext;
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.util.List;
+import org.apache.ibatis.datasource.unpooled.UnpooledDataSource;
+import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
+import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
+import org.junit.jupiter.api.io.TempDir;
+import org.mybatis.spring.mapper.MapperScannerConfigurer;
+import org.springframework.context.support.GenericApplicationContext;
+
+import com.yggdrasil.labs.mybatis.util.MapperPackageDetector;
 
 class MapperScannerConfigurerJarIntegrationTest {
 
-    @TempDir
-    Path temporaryDirectory;
+    @TempDir Path temporaryDirectory;
 
     @org.junit.jupiter.api.Test
     void discoversMapperFromExecutableJarAndRegistersBean() throws Exception {
         Path jarFile = createMapperJar();
         ClassLoader previousClassLoader = Thread.currentThread().getContextClassLoader();
-        try (URLClassLoader jarClassLoader = new URLClassLoader(
-                new URL[] {jarFile.toUri().toURL()}, previousClassLoader)) {
+        try (URLClassLoader jarClassLoader =
+                new URLClassLoader(new URL[] {jarFile.toUri().toURL()}, previousClassLoader)) {
             Thread.currentThread().setContextClassLoader(jarClassLoader);
 
             Set<String> detectedPackages = MapperPackageDetector.detectMapperPackages();
@@ -57,11 +58,15 @@ class MapperScannerConfigurerJarIntegrationTest {
             GenericApplicationContext context = new GenericApplicationContext();
             context.setClassLoader(jarClassLoader);
             try {
-                Configuration configuration = new Configuration(new Environment("test",
-                        new JdbcTransactionFactory(), new UnpooledDataSource()));
+                Configuration configuration =
+                        new Configuration(
+                                new Environment(
+                                        "test",
+                                        new JdbcTransactionFactory(),
+                                        new UnpooledDataSource()));
                 SqlSessionFactory sqlSessionFactory = new DefaultSqlSessionFactory(configuration);
-                MapperScannerConfigurer configurer = new MybatisPlusAutoConfiguration()
-                        .mapperScannerConfigurer(properties);
+                MapperScannerConfigurer configurer =
+                        new MybatisPlusAutoConfiguration().mapperScannerConfigurer(properties);
                 configurer.setSqlSessionFactory(sqlSessionFactory);
                 configurer.setApplicationContext(context);
                 configurer.setBeanName("orderMapperScanner");
@@ -71,7 +76,8 @@ class MapperScannerConfigurerJarIntegrationTest {
                 configurer.postProcessBeanDefinitionRegistry(context);
                 context.refresh();
 
-                Class<?> mapperType = Class.forName("org.example.order.mapper.OrderMapper", true, jarClassLoader);
+                Class<?> mapperType =
+                        Class.forName("org.example.order.mapper.OrderMapper", true, jarClassLoader);
                 Object mapper = context.getBean(mapperType);
                 assertTrue(context.containsBean("orderMapper"));
                 assertEquals("ok", mapperType.getMethod("probe").invoke(mapper));
@@ -86,8 +92,9 @@ class MapperScannerConfigurerJarIntegrationTest {
     private Path createMapperJar() throws IOException {
         Path compiledClasses = temporaryDirectory.resolve("compiled-classes");
         compileMapper(compiledClasses);
-        byte[] mapperClass = Files.readAllBytes(
-                compiledClasses.resolve("org/example/order/mapper/OrderMapper.class"));
+        byte[] mapperClass =
+                Files.readAllBytes(
+                        compiledClasses.resolve("org/example/order/mapper/OrderMapper.class"));
         Path jarFile = temporaryDirectory.resolve("order-mappers.jar");
         try (JarOutputStream outputStream = new JarOutputStream(Files.newOutputStream(jarFile))) {
             writeDirectoryEntry(outputStream, "org/");
@@ -95,7 +102,10 @@ class MapperScannerConfigurerJarIntegrationTest {
             writeDirectoryEntry(outputStream, "org/example/order/");
             writeDirectoryEntry(outputStream, "org/example/order/mapper/");
             writeEntry(outputStream, "org/example/order/mapper/OrderMapper.class", mapperClass);
-            writeEntry(outputStream, "BOOT-INF/classes/org/example/order/mapper/OrderMapper.class", mapperClass);
+            writeEntry(
+                    outputStream,
+                    "BOOT-INF/classes/org/example/order/mapper/OrderMapper.class",
+                    mapperClass);
         }
         return jarFile;
     }
@@ -104,23 +114,36 @@ class MapperScannerConfigurerJarIntegrationTest {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "当前 JDK 必须提供 JavaCompiler");
         Files.createDirectories(compiledClasses);
-        JavaFileObject source = new SimpleJavaFileObject(
-                URI.create("string:///org/example/order/mapper/OrderMapper.java"), JavaFileObject.Kind.SOURCE) {
-            @Override
-            public CharSequence getCharContent(boolean ignoreEncodingErrors) {
-                return "package org.example.order.mapper;"
-                        + "import org.apache.ibatis.annotations.Mapper;"
-                        + "@Mapper public interface OrderMapper { default String probe() { return \"ok\"; } }";
-            }
-        };
-        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
-            fileManager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(compiledClasses));
-            assertTrue(compiler.getTask(null, fileManager, null,
-                    List.of("-classpath", System.getProperty("java.class.path")), null, List.of(source)).call());
+        JavaFileObject source =
+                new SimpleJavaFileObject(
+                        URI.create("string:///org/example/order/mapper/OrderMapper.java"),
+                        JavaFileObject.Kind.SOURCE) {
+                    @Override
+                    public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                        return "package org.example.order.mapper;import"
+                                + " org.apache.ibatis.annotations.Mapper;@Mapper public"
+                                + " interface OrderMapper { default String probe() { return"
+                                + " \"ok\"; } }";
+                    }
+                };
+        try (StandardJavaFileManager fileManager =
+                compiler.getStandardFileManager(null, null, null)) {
+            fileManager.setLocationFromPaths(
+                    StandardLocation.CLASS_OUTPUT, List.of(compiledClasses));
+            assertTrue(
+                    compiler.getTask(
+                                    null,
+                                    fileManager,
+                                    null,
+                                    List.of("-classpath", System.getProperty("java.class.path")),
+                                    null,
+                                    List.of(source))
+                            .call());
         }
     }
 
-    private void writeEntry(JarOutputStream outputStream, String name, byte[] content) throws IOException {
+    private void writeEntry(JarOutputStream outputStream, String name, byte[] content)
+            throws IOException {
         outputStream.putNextEntry(new JarEntry(name));
         outputStream.write(content);
         outputStream.closeEntry();

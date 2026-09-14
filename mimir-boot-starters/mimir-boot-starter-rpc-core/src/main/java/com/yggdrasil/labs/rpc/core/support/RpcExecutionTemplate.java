@@ -1,21 +1,23 @@
 package com.yggdrasil.labs.rpc.core.support;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.Callable;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * 简单的执行模板，用于在调用两侧调度 Hook 与上下文传递。
  *
- * <p>注意：模板不负责具体协议调用，仅调度扩展点。</p>
+ * <p>注意：模板不负责具体协议调用，仅调度扩展点。
  */
 public class RpcExecutionTemplate {
 
@@ -25,29 +27,33 @@ public class RpcExecutionTemplate {
     private final RpcTracerBridge tracerBridge;
     private final boolean contextPropagationEnabled;
 
-    public RpcExecutionTemplate(RpcHookChain hookChain, RpcTracerBridge tracerBridge, boolean contextPropagationEnabled) {
+    public RpcExecutionTemplate(
+            RpcHookChain hookChain,
+            RpcTracerBridge tracerBridge,
+            boolean contextPropagationEnabled) {
         this.hookChain = hookChain;
         this.tracerBridge = tracerBridge;
         this.contextPropagationEnabled = contextPropagationEnabled;
-        log.debug("RpcExecutionTemplate initialized, contextPropagationEnabled={}", contextPropagationEnabled);
+        log.debug(
+                "RpcExecutionTemplate initialized, contextPropagationEnabled={}",
+                contextPropagationEnabled);
     }
 
-    /**
-     * 执行调用（无返回值）。
-     */
+    /** 执行调用（无返回值）。 */
     public void execute(RpcCallContext context, Runnable runnable) {
-        execute(context, () -> {
-            runnable.run();
-            return null;
-        });
+        execute(
+                context,
+                () -> {
+                    runnable.run();
+                    return null;
+                });
     }
 
-    /**
-     * 执行调用（有返回值）。
-     */
+    /** 执行调用（有返回值）。 */
     public <T> T execute(RpcCallContext context, Callable<T> callable) {
         if (log.isDebugEnabled()) {
-            log.debug("Executing RPC call: service={}, method={}, contextPropagationEnabled={}",
+            log.debug(
+                    "Executing RPC call: service={}, method={}, contextPropagationEnabled={}",
                     context.getMetadata().getService(),
                     context.getMetadata().getMethod(),
                     contextPropagationEnabled);
@@ -60,7 +66,8 @@ public class RpcExecutionTemplate {
             T result = callable.call();
             Duration duration = Duration.between(start, Instant.now());
             if (log.isDebugEnabled()) {
-                log.debug("RPC call succeeded: service={}, method={}, duration={}ms",
+                log.debug(
+                        "RPC call succeeded: service={}, method={}, duration={}ms",
                         context.getMetadata().getService(),
                         context.getMetadata().getMethod(),
                         duration.toMillis());
@@ -70,7 +77,8 @@ public class RpcExecutionTemplate {
         } catch (Throwable throwable) {
             Duration duration = Duration.between(start, Instant.now());
             if (log.isDebugEnabled()) {
-                log.debug("RPC call failed: service={}, method={}, duration={}ms, error={}",
+                log.debug(
+                        "RPC call failed: service={}, method={}, duration={}ms, error={}",
                         context.getMetadata().getService(),
                         context.getMetadata().getMethod(),
                         duration.toMillis(),

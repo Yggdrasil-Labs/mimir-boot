@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+quality_directory=""
+quality_expected=""
+
 require_java_17() {
   local java_major
   java_major="$(java -version 2>&1 | sed -nE '1{s/.*version "([0-9]+).*/\1/p;}')"
@@ -39,41 +43,36 @@ build_maven_args() {
   esac
 }
 
-find_report_files() {
-  local report_pattern="$1"
-
-  find . \
-    \( -path './.git' -o -path './.worktrees' \) -prune -o \
-    -path "$report_pattern" -type f -size +0c -print0
+prepare_quality_matrix() {
+  local run_id
+  run_id="java-quality-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  if [[ -n "${QUALITY_REPORT_DIR:-}" ]]; then
+    quality_directory="$QUALITY_REPORT_DIR"
+  else
+    quality_directory="$(mktemp -d "${TMPDIR:-/tmp}/mimir-java-quality.XXXXXX")"
+  fi
+  mkdir -p "$quality_directory"
+  quality_expected="$quality_directory/build-manifest.json"
+  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --generate-expected "$quality_expected" --run-id "$run_id"
+  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --clean-expected "$quality_expected"
 }
 
-verify_test_reports() {
-  local -a surefire_reports=()
-  local -a failsafe_reports=()
-
-  mapfile -d '' surefire_reports < <(find_report_files '*/target/surefire-reports/TEST-*.xml')
-  test "${#surefire_reports[@]}" -gt 0
-  ! grep -E 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${surefire_reports[@]}"
-  ! grep -E 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${surefire_reports[@]}"
-  mapfile -d '' failsafe_reports < <(find_report_files '*/target/failsafe-reports/TEST-*.xml')
-  test "${#failsafe_reports[@]}" -gt 0
-  ! grep -E 'failures="[1-9][0-9]*"|errors="[1-9][0-9]*"' "${failsafe_reports[@]}"
-  ! grep -E 'skipped="[1-9][0-9]*"|<skipped([[:space:]/>])' "${failsafe_reports[@]}"
-}
-
-verify_jacoco_reports() {
-  local -a jacoco_reports=()
-
-  mapfile -d '' jacoco_reports < <(find_report_files '*/target/site/jacoco/jacoco.xml')
-  test "${#jacoco_reports[@]}" -gt 0
+initialize_managed_docs_tool() {
+  ./mvnw -N -Pdocs-check process-resources
 }
 
 main() {
+  cd "$project_root"
   require_java_17
   build_maven_args
+  initialize_managed_docs_tool
+  local report
+  prepare_quality_matrix
+  report="$quality_directory/java-quality-report.json"
   ./mvnw "${MAVEN_ARGS[@]}"
-  verify_test_reports
-  verify_jacoco_reports
+  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --record-artifacts "$quality_expected"
+  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --expected "$quality_expected" --report "$report"
+  echo "Java quality report: $report"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

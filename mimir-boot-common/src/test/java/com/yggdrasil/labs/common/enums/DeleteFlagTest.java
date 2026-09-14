@@ -1,8 +1,8 @@
 package com.yggdrasil.labs.common.enums;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 class DeleteFlagTest {
 
@@ -32,4 +32,3 @@ class DeleteFlagTest {
         assertNull(DeleteFlag.fromCodeOrNull(null));
     }
 }
-

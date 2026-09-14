@@ -1,27 +1,30 @@
 package com.yggdrasil.labs.log.web;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import jakarta.servlet.Filter;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * 访问日志自动配置测试
  *
- * <p>测试配置属性的基本功能</p>
+ * <p>测试配置属性的基本功能
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
 class AccessLogAutoConfigurationTest extends BaseUnitTest {
 
-    private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(AccessLogAutoConfiguration.class));
+    private final WebApplicationContextRunner runner =
+            new WebApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(AccessLogAutoConfiguration.class));
 
     private AccessLogAutoConfiguration configuration;
 
@@ -33,17 +36,13 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
         configuration = new AccessLogAutoConfiguration(properties);
     }
 
-    /**
-     * 测试配置类的默认值
-     */
+    /** 测试配置类的默认值 */
     @Test
     void testConfigurationWithDefaultSettings() {
         assertNotNull(configuration);
     }
 
-    /**
-     * 测试配置类的自定义值
-     */
+    /** 测试配置类的自定义值 */
     @Test
     void testConfigurationWithCustomSettings() {
         AccessLogProperties properties = new AccessLogProperties();
@@ -57,9 +56,7 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
         assertEquals(2000, properties.getSlowThresholdMs());
     }
 
-    /**
-     * 测试配置禁用
-     */
+    /** 测试配置禁用 */
     @Test
     void testConfigurationDisabled() {
         AccessLogProperties properties = new AccessLogProperties();
@@ -71,9 +68,7 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
         assertFalse(properties.isEnabled());
     }
 
-    /**
-     * 测试创建 Filter Bean
-     */
+    /** 测试创建 Filter Bean */
     @Test
     void testAccessLogFilterCreation() {
         FilterRegistrationBean<?> filter = configuration.accessLogFilter();
@@ -92,14 +87,20 @@ class AccessLogAutoConfigurationTest extends BaseUnitTest {
 
     @Test
     void customAccessLogFilterByReservedNameOverridesDefault() {
-        runner.withBean("accessLogFilter", FilterRegistrationBean.class,
-                        () -> new FilterRegistrationBean<>(new AccessLogFilter(500, java.util.List.of())))
-                .run(ctx -> assertEquals(1, ctx.getBeansOfType(FilterRegistrationBean.class).size()));
+        runner.withBean(
+                        "accessLogFilter",
+                        FilterRegistrationBean.class,
+                        () ->
+                                new FilterRegistrationBean<>(
+                                        new AccessLogFilter(500, java.util.List.of())))
+                .run(
+                        ctx ->
+                                assertEquals(
+                                        1,
+                                        ctx.getBeansOfType(FilterRegistrationBean.class).size()));
     }
 
-    /**
-     * 测试配置不同的慢接口阈值
-     */
+    /** 测试配置不同的慢接口阈值 */
     @Test
     void testDifferentSlowThresholds() {
         int[] thresholds = {500, 1000, 2000, 5000, 10000};

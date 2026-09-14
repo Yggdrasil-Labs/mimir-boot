@@ -1,15 +1,15 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
-import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
-import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
-import com.yggdrasil.labs.rpc.core.hook.RpcHook;
-import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
-import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
-import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
-import org.apache.dubbo.common.constants.CommonConstants;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.rpc.AppResponse;
 import org.apache.dubbo.rpc.AsyncRpcResult;
 import org.apache.dubbo.rpc.Invocation;
@@ -21,13 +21,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.Mockito.*;
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
+import com.yggdrasil.labs.rpc.core.hook.RpcHook;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
+import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 
 class RpcDubboFilterTest {
 
@@ -77,9 +78,11 @@ class RpcDubboFilterTest {
         Result actual = filter.invoke(invoker, invocation);
 
         assertSame(result, actual);
-        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        ArgumentCaptor<RpcCallContext> contextCaptor =
+                ArgumentCaptor.forClass(RpcCallContext.class);
         InOrder inOrder = inOrder(tracerBridge, hook, invoker);
-        inOrder.verify(tracerBridge).extractScope(contextCaptor.capture(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(tracerBridge)
+                .extractScope(contextCaptor.capture(), eq(Map.of("x-trace-id", "upstream-trace")));
         inOrder.verify(hook).before(contextCaptor.getValue());
         inOrder.verify(invoker).invoke(invocation);
         verify(tracerBridge, never()).inject(any());
@@ -101,7 +104,8 @@ class RpcDubboFilterTest {
 
         assertSame(result, actual);
         InOrder inOrder = inOrder(tracerBridge, hook, invoker, scope);
-        inOrder.verify(tracerBridge).extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(tracerBridge)
+                .extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
         inOrder.verify(hook).before(any());
         inOrder.verify(invoker).invoke(invocation);
         inOrder.verify(scope).close();
@@ -149,8 +153,9 @@ class RpcDubboFilterTest {
         RuntimeException ex = new RuntimeException("boom");
         when(invoker.invoke(invocation)).thenThrow(ex);
 
-        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
-                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+        RuntimeException thrown =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        RuntimeException.class, () -> filter.invoke(invoker, invocation));
 
         assertSame(ex, thrown);
         ArgumentCaptor<RpcCallContext> ctxCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
@@ -158,7 +163,8 @@ class RpcDubboFilterTest {
         verify(hook).onError(any(), any(RpcCallResult.class));
         verify(hook).cleanup(any());
         verify(tracerBridge).inject(any());
-        org.junit.jupiter.api.Assertions.assertEquals("123", ctxCaptor.getValue().getMetadata().getAttachments().get("k1"));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "123", ctxCaptor.getValue().getMetadata().getAttachments().get("k1"));
     }
 
     @Test
@@ -175,7 +181,8 @@ class RpcDubboFilterTest {
 
         assertSame(result, filter.invoke(invoker, invocation));
 
-        ArgumentCaptor<RpcCallContext> contextCaptor = ArgumentCaptor.forClass(RpcCallContext.class);
+        ArgumentCaptor<RpcCallContext> contextCaptor =
+                ArgumentCaptor.forClass(RpcCallContext.class);
         verify(hook).before(contextCaptor.capture());
         verify(hook, times(1)).after(any(), any(RpcCallResult.class));
         verify(hook, never()).onError(any(), any());
@@ -196,8 +203,9 @@ class RpcDubboFilterTest {
         when(invoker.invoke(invocation)).thenThrow(primary);
         when(tracerBridge.inject(any())).thenReturn(Map.of());
 
-        AssertionError thrown = org.junit.jupiter.api.Assertions.assertThrows(
-                AssertionError.class, () -> filter.invoke(invoker, invocation));
+        AssertionError thrown =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        AssertionError.class, () -> filter.invoke(invoker, invocation));
 
         assertSame(primary, thrown);
         verify(hook).before(any());
@@ -214,12 +222,14 @@ class RpcDubboFilterTest {
         when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
         when(invoker.invoke(invocation)).thenThrow(ex);
 
-        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
-                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+        RuntimeException thrown =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        RuntimeException.class, () -> filter.invoke(invoker, invocation));
 
         assertSame(ex, thrown);
         InOrder inOrder = inOrder(tracerBridge, hook, invoker);
-        inOrder.verify(tracerBridge).extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        inOrder.verify(tracerBridge)
+                .extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
         inOrder.verify(hook).before(any());
         inOrder.verify(invoker).invoke(invocation);
         inOrder.verify(hook).onError(any(), any(RpcCallResult.class));
@@ -297,7 +307,8 @@ class RpcDubboFilterTest {
 
         responseFuture.complete(new AppResponse("ok"));
 
-        verify(tracerBridge, times(2)).extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
+        verify(tracerBridge, times(2))
+                .extractScope(any(), eq(Map.of("x-trace-id", "upstream-trace")));
         verify(scope, times(2)).close();
         verify(hook, times(1)).after(any(), any(RpcCallResult.class));
         verify(hook, never()).onError(any(), any());
@@ -422,7 +433,8 @@ class RpcDubboFilterTest {
         assertSame(result, filter.invoke(invoker, invocation));
 
         org.junit.jupiter.api.Assertions.assertEquals(1, primary.getSuppressed().length);
-        org.junit.jupiter.api.Assertions.assertEquals("scope close failure", primary.getSuppressed()[0].getMessage());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "scope close failure", primary.getSuppressed()[0].getMessage());
     }
 
     @Test
@@ -459,8 +471,9 @@ class RpcDubboFilterTest {
         when(invocation.getObjectAttachments()).thenReturn(Map.of("x-trace-id", "upstream-trace"));
         doThrow(ex).when(tracerBridge).extractScope(any(), any());
 
-        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
-                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+        RuntimeException thrown =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        RuntimeException.class, () -> filter.invoke(invoker, invocation));
 
         assertSame(ex, thrown);
         verifyNoInteractions(hook);
@@ -634,7 +647,8 @@ class RpcDubboFilterTest {
         verify(hook).before(ctxCaptor.capture());
         verify(hook).after(any(), any(RpcCallResult.class));
         verify(hook).cleanup(any());
-        Map<String, String> metadataAttachments = ctxCaptor.getValue().getMetadata().getAttachments();
+        Map<String, String> metadataAttachments =
+                ctxCaptor.getValue().getMetadata().getAttachments();
         org.junit.jupiter.api.Assertions.assertEquals("v1", metadataAttachments.get("k1"));
         org.junit.jupiter.api.Assertions.assertEquals("123", metadataAttachments.get("k2"));
         org.junit.jupiter.api.Assertions.assertEquals("true", metadataAttachments.get("k3"));
@@ -643,18 +657,20 @@ class RpcDubboFilterTest {
     @Test
     void shouldNotInvokeBusinessWhenBeforeFailsAndShouldCleanUp() {
         RuntimeException beforeFailure = new RuntimeException("before failure");
-        java.util.concurrent.atomic.AtomicInteger cleanupCalls = new java.util.concurrent.atomic.AtomicInteger();
-        RpcHook failingHook = new RpcHook() {
-            @Override
-            public void before(RpcCallContext context) {
-                throw beforeFailure;
-            }
+        java.util.concurrent.atomic.AtomicInteger cleanupCalls =
+                new java.util.concurrent.atomic.AtomicInteger();
+        RpcHook failingHook =
+                new RpcHook() {
+                    @Override
+                    public void before(RpcCallContext context) {
+                        throw beforeFailure;
+                    }
 
-            @Override
-            public void cleanup(RpcCallContext context) {
-                cleanupCalls.incrementAndGet();
-            }
-        };
+                    @Override
+                    public void cleanup(RpcCallContext context) {
+                        cleanupCalls.incrementAndGet();
+                    }
+                };
         RpcDubboSupportHolder.set(new RpcHookChain(List.of(failingHook)), tracerBridge, properties);
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker();
@@ -662,8 +678,9 @@ class RpcDubboFilterTest {
         when(invocation.getObjectAttachments()).thenReturn(Map.of());
         when(tracerBridge.inject(any())).thenReturn(Map.of());
 
-        RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
-                RuntimeException.class, () -> filter.invoke(invoker, invocation));
+        RuntimeException thrown =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        RuntimeException.class, () -> filter.invoke(invoker, invocation));
 
         assertSame(beforeFailure, thrown);
         verify(invoker, never()).invoke(any());

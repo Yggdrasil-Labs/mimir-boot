@@ -3,20 +3,15 @@ package com.yggdrasil.labs.common.util;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * 日志内容清理工具，防止日志注入攻击。
- */
+/** 日志内容清理工具，防止日志注入攻击。 */
 public final class LogSanitizer {
 
-    private LogSanitizer() {
-    }
+    private LogSanitizer() {}
 
     /**
      * 日志安全清理（白名单策略）。
-     * <p>
-     * 仅保留可打印 ASCII 字符 [\x20-\x7E]，删除其它所有字符（包括换行、回车、制表符、
-     * 以及所有非打印/控制类 Unicode 字符），防止通过特殊字符伪造日志条目。
-     * </p>
+     *
+     * <p>仅保留可打印 ASCII 字符 [\x20-\x7E]，删除其它所有字符（包括换行、回车、制表符、 以及所有非打印/控制类 Unicode 字符），防止通过特殊字符伪造日志条目。
      *
      * @param input 原始输入
      * @return 清理后的字符串，null 返回 "null"
@@ -28,9 +23,7 @@ public final class LogSanitizer {
         return input.replaceAll("[^\\x20-\\x7E]", "");
     }
 
-    /**
-     * 对集合进行批量清理。
-     */
+    /** 对集合进行批量清理。 */
     public static List<String> sanitize(Collection<String> inputs) {
         if (inputs == null) {
             return List.of();
@@ -38,24 +31,17 @@ public final class LogSanitizer {
         return inputs.stream().map(LogSanitizer::sanitize).toList();
     }
 
-    /**
-     * 将控制字符转义为可见文本，例如换行符转义为 "\\n"。适合访问日志等场景。
-     */
+    /** 将控制字符转义为可见文本，例如换行符转义为 "\\n"。适合访问日志等场景。 */
     public static String escapeControls(String input) {
         if (input == null) {
             return null;
         }
-        String escaped = input
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        String escaped = input.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
         // 其余不可见控制字符直接移除
         return escaped.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "").trim();
     }
 
-    /**
-     * 批量转义控制字符。
-     */
+    /** 批量转义控制字符。 */
     public static List<String> escapeControls(Collection<String> inputs) {
         if (inputs == null) {
             return List.of();
@@ -63,5 +49,3 @@ public final class LogSanitizer {
         return inputs.stream().map(LogSanitizer::escapeControls).toList();
     }
 }
-
-

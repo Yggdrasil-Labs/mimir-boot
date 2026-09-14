@@ -1,17 +1,17 @@
 package com.yggdrasil.labs.rpc.core.hook;
 
-import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
-import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 单次 RPC 调用的内部 Hook 生命周期状态机。
- */
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
+
+/** 单次 RPC 调用的内部 Hook 生命周期状态机。 */
 final class RpcHookLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(RpcHookInvocation.class);
@@ -31,7 +31,8 @@ final class RpcHookLifecycle {
     void before() {
         synchronized (lifecycleMonitor) {
             if (state.get() != State.NEW) {
-                throw new IllegalStateException("RPC Hook invocation before phase is already running or completed");
+                throw new IllegalStateException(
+                        "RPC Hook invocation before phase is already running or completed");
             }
             state.set(State.BEFORE_RUNNING);
             beforeThread = Thread.currentThread();
@@ -116,7 +117,8 @@ final class RpcHookLifecycle {
             try {
                 while (state.get() == State.BEFORE_RUNNING) {
                     if (beforeThread == Thread.currentThread()) {
-                        throw new IllegalStateException("RPC Hook invocation cannot complete from its before phase");
+                        throw new IllegalStateException(
+                                "RPC Hook invocation cannot complete from its before phase");
                     }
                     try {
                         lifecycleMonitor.wait();

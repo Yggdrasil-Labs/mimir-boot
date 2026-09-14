@@ -49,4 +49,3 @@ public final class MybatisConstants {
     /** Mapper 包配置属性名 */
     public static final String CONFIG_MAPPER_PACKAGES = CONFIG_PREFIX + ".mapper-packages";
 }
-

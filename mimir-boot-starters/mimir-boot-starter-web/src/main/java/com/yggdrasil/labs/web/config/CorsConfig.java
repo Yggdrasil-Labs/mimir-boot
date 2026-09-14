@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.web.config;
 
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,19 +9,20 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 /**
  * CORS 跨域配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>统一配置跨域资源共享策略</li>
- * <li>支持通过配置文件自定义跨域规则</li>
- * <li>提供合理的默认配置</li>
+ *   <li>统一配置跨域资源共享策略
+ *   <li>支持通过配置文件自定义跨域规则
+ *   <li>提供合理的默认配置
  * </ul>
  *
- * <p>Source: https://docs.spring.io/spring-framework/reference/web/webmvc-cors.html</p>
+ * <p>Source: https://docs.spring.io/spring-framework/reference/web/webmvc-cors.html
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -31,8 +33,7 @@ import java.util.List;
         prefix = "mimir.boot.web.cors",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = false
-)
+        matchIfMissing = false)
 public class CorsConfig {
 
     private final WebProperties webProperties;
@@ -55,8 +56,9 @@ public class CorsConfig {
 
         // 设置允许的 HTTP 方法
         if (corsConfig.getAllowedMethods() != null && !corsConfig.getAllowedMethods().isEmpty()) {
-            corsConfig.getAllowedMethods().forEach(method -> 
-                    configuration.addAllowedMethod(method.toUpperCase()));
+            corsConfig
+                    .getAllowedMethods()
+                    .forEach(method -> configuration.addAllowedMethod(method.toUpperCase()));
         }
 
         // 设置允许的请求头

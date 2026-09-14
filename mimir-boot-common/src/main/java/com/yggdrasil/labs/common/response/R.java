@@ -1,10 +1,11 @@
 package com.yggdrasil.labs.common.response;
 
-import com.yggdrasil.labs.common.exception.ErrorCode;
-import lombok.Data;
-
 import java.io.Serial;
 import java.io.Serializable;
+
+import com.yggdrasil.labs.common.exception.ErrorCode;
+
+import lombok.Data;
 
 /**
  * 统一响应结果
@@ -15,37 +16,24 @@ import java.io.Serializable;
 @Data
 public class R<T extends Serializable> implements Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @Serial private static final long serialVersionUID = 1L;
 
-    /**
-     * 响应码
-     */
+    /** 响应码 */
     private String code;
 
-    /**
-     * 响应信息
-     */
+    /** 响应信息 */
     private String message;
 
-    /**
-     * 响应数据
-     */
+    /** 响应数据 */
     private T data;
 
-    /**
-     * 时间戳
-     */
+    /** 时间戳 */
     private Long timestamp;
 
-    /**
-     * 请求追踪ID
-     */
+    /** 请求追踪ID */
     private String traceId;
 
-    /**
-     * 构造方法
-     */
+    /** 构造方法 */
     public R() {
         this.timestamp = System.currentTimeMillis();
     }
@@ -53,9 +41,9 @@ public class R<T extends Serializable> implements Serializable {
     /**
      * 构造方法
      *
-     * @param code    响应码
+     * @param code 响应码
      * @param message 响应信息
-     * @param data    响应数据
+     * @param data 响应数据
      */
     public R(String code, String message, T data) {
         this();
@@ -78,7 +66,7 @@ public class R<T extends Serializable> implements Serializable {
      * 成功响应
      *
      * @param data 数据
-     * @param <T>  数据类型
+     * @param <T> 数据类型
      * @return 成功响应
      */
     public static <T extends Serializable> R<T> success(T data) {
@@ -89,8 +77,8 @@ public class R<T extends Serializable> implements Serializable {
      * 成功响应
      *
      * @param message 消息
-     * @param data    数据
-     * @param <T>     数据类型
+     * @param data 数据
+     * @param <T> 数据类型
      * @return 成功响应
      */
     public static <T extends Serializable> R<T> success(String message, T data) {
@@ -100,9 +88,9 @@ public class R<T extends Serializable> implements Serializable {
     /**
      * 失败响应
      *
-     * @param code    错误码
+     * @param code 错误码
      * @param message 错误信息
-     * @param <T>     数据类型
+     * @param <T> 数据类型
      * @return 失败响应
      */
     public static <T extends Serializable> R<T> fail(String code, String message) {
@@ -113,7 +101,7 @@ public class R<T extends Serializable> implements Serializable {
      * 失败响应
      *
      * @param message 错误信息
-     * @param <T>     数据类型
+     * @param <T> 数据类型
      * @return 失败响应
      */
     public static <T extends Serializable> R<T> fail(String message) {
@@ -138,4 +126,3 @@ public class R<T extends Serializable> implements Serializable {
         return !isSuccess();
     }
 }
-

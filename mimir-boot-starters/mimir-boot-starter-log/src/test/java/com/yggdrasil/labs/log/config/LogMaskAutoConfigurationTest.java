@@ -1,22 +1,24 @@
 package com.yggdrasil.labs.log.config;
 
-import ch.qos.logback.classic.LoggerContext;
-import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
-import org.slf4j.ILoggerFactory;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.support.GenericApplicationContext;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.ILoggerFactory;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.support.GenericApplicationContext;
+
+import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+
+import ch.qos.logback.classic.LoggerContext;
 
 /**
  * 日志脱敏自动配置测试
@@ -57,9 +59,7 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         super.tearDown();
     }
 
-    /**
-     * 测试默认配置（空配置）
-     */
+    /** 测试默认配置（空配置） */
     @Test
     void testDefaultConfiguration() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -69,13 +69,12 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         configuration.transferConfig(event);
 
         // 默认配置下，Logback context 中不应该有这些属性
-        assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
+        assertNull(
+                loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
         assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY));
     }
 
-    /**
-     * 测试启用预置脱敏规则
-     */
+    /** 测试启用预置脱敏规则 */
     @Test
     void testEnabledPatterns() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -85,14 +84,13 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
         configuration.transferConfig(event);
 
-        String enabledPatterns = loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY);
+        String enabledPatterns =
+                loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY);
         assertNotNull(enabledPatterns);
         assertEquals("password,token,secret", enabledPatterns);
     }
 
-    /**
-     * 测试自定义脱敏规则
-     */
+    /** 测试自定义脱敏规则 */
     @Test
     void testCustomPatterns() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -102,14 +100,13 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
         configuration.transferConfig(event);
 
-        String customPatterns = loggerContext.getProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY);
+        String customPatterns =
+                loggerContext.getProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY);
         assertNotNull(customPatterns);
         assertEquals("\\d{4}-\\d{4}-\\d{4}-\\d{4},\\d{11}", customPatterns);
     }
 
-    /**
-     * 测试替换字符
-     */
+    /** 测试替换字符 */
     @Test
     void testReplacement() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -119,14 +116,13 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
         configuration.transferConfig(event);
 
-        String replacement = loggerContext.getProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY);
+        String replacement =
+                loggerContext.getProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY);
         assertNotNull(replacement);
         assertEquals("***MASKED***", replacement);
     }
 
-    /**
-     * 测试所有配置组合
-     */
+    /** 测试所有配置组合 */
     @Test
     void testAllPropertiesTogether() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -138,17 +134,18 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
         configuration.transferConfig(event);
 
-        assertEquals("password,api_key",
+        assertEquals(
+                "password,api_key",
                 loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
-        assertEquals("\\d{16}",
+        assertEquals(
+                "\\d{16}",
                 loggerContext.getProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY));
-        assertEquals("****",
+        assertEquals(
+                "****",
                 loggerContext.getProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY));
     }
 
-    /**
-     * 测试空列表配置
-     */
+    /** 测试空列表配置 */
     @Test
     void testEmptyLists() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -160,13 +157,12 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         configuration.transferConfig(event);
 
         // 空列表不应该设置属性
-        assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
+        assertNull(
+                loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
         assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY));
     }
 
-    /**
-     * 测试 null 值配置
-     */
+    /** 测试 null 值配置 */
     @Test
     void testNullValues() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -179,14 +175,13 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         configuration.transferConfig(event);
 
         // null 值不应该设置属性
-        assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
+        assertNull(
+                loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
         assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY));
         assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY));
     }
 
-    /**
-     * 测试多次调用 transferConfig
-     */
+    /** 测试多次调用 transferConfig */
     @Test
     void testMultipleTransferConfig() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -197,13 +192,15 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
 
         // 第一次调用
         configuration.transferConfig(event);
-        assertEquals("password",
+        assertEquals(
+                "password",
                 loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
 
         // 更新配置并再次调用
         properties.setEnabledPatterns(Arrays.asList("token", "secret"));
         configuration.transferConfig(event);
-        assertEquals("token,secret",
+        assertEquals(
+                "token,secret",
                 loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
     }
 
@@ -224,13 +221,14 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         configuration.transferConfig(event);
         SensitiveDataConverter.reloadConfig();
 
-        assertNull(loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
-        assertEquals("password=sample-password", converter.maskSensitiveData("password=sample-password"));
+        assertNull(
+                loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
+        assertEquals(
+                "password=sample-password",
+                converter.maskSensitiveData("password=sample-password"));
     }
 
-    /**
-     * 测试单个模式
-     */
+    /** 测试单个模式 */
     @Test
     void testSinglePattern() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -240,13 +238,12 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
         configuration.transferConfig(event);
 
-        assertEquals("password",
+        assertEquals(
+                "password",
                 loggerContext.getProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY));
     }
 
-    /**
-     * 测试配置对象的创建
-     */
+    /** 测试配置对象的创建 */
     @Test
     void testConfigurationCreation() {
         LogMaskProperties properties = new LogMaskProperties();
@@ -261,7 +258,8 @@ class LogMaskAutoConfigurationTest extends BaseUnitTest {
         configuration = new LogMaskAutoConfiguration(properties);
         ILoggerFactory nonLogbackFactory = mock(ILoggerFactory.class);
 
-        try (org.mockito.MockedStatic<LoggerFactory> loggerFactory = mockStatic(LoggerFactory.class)) {
+        try (org.mockito.MockedStatic<LoggerFactory> loggerFactory =
+                mockStatic(LoggerFactory.class)) {
             loggerFactory.when(LoggerFactory::getILoggerFactory).thenReturn(nonLogbackFactory);
             ContextRefreshedEvent event = new ContextRefreshedEvent(applicationContext);
 

@@ -1,6 +1,8 @@
 package com.yggdrasil.labs.common.util;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -9,9 +11,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 class IpUtilsTest {
 
@@ -25,31 +25,38 @@ class IpUtilsTest {
     @Test
     @SuppressWarnings("deprecation")
     void deprecatedResolveClientIpIgnoresForwardedHeaders() {
-        assertEquals("198.51.100.10", IpUtils.resolveClientIp(
-                header -> "203.0.113.10",
-                () -> "198.51.100.10"));
+        assertEquals(
+                "198.51.100.10",
+                IpUtils.resolveClientIp(header -> "203.0.113.10", () -> "198.51.100.10"));
     }
 
     @Test
     @SuppressWarnings("deprecation")
     void deprecatedResolveClientIpIgnoresForgedProxyClientHeaders() {
-        assertEquals("198.51.100.10", IpUtils.resolveClientIp(
-                header -> switch (header) {
-                    case "Proxy-Client-IP" -> "203.0.113.12";
-                    case "WL-Proxy-Client-IP" -> "203.0.113.13";
-                    default -> null;
-                },
-                () -> "198.51.100.10"));
+        assertEquals(
+                "198.51.100.10",
+                IpUtils.resolveClientIp(
+                        header ->
+                                switch (header) {
+                                    case "Proxy-Client-IP" -> "203.0.113.12";
+                                    case "WL-Proxy-Client-IP" -> "203.0.113.13";
+                                    default -> null;
+                                },
+                        () -> "198.51.100.10"));
     }
 
     @Test
     void forwardedResolutionDoesNotReadHeadersForUntrustedDirectPeer() {
         AtomicBoolean headerRead = new AtomicBoolean();
 
-        String resolved = resolveForwardedClientIp(header -> {
-            headerRead.set(true);
-            throw new AssertionError("直连不可信时不得读取转发头");
-        }, () -> "198.51.100.10", TRUSTED_PRIVATE_PROXY);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> {
+                            headerRead.set(true);
+                            throw new AssertionError("直连不可信时不得读取转发头");
+                        },
+                        () -> "198.51.100.10",
+                        TRUSTED_PRIVATE_PROXY);
 
         assertEquals("198.51.100.10", resolved);
         assertFalse(headerRead.get());
@@ -57,72 +64,77 @@ class IpUtilsTest {
 
     @Test
     void forwardedResolutionSkipsTrustedProxiesFromRightToLeft() {
-        String resolved = resolveForwardedClientIp(
-                header -> "198.51.100.20, 10.0.0.7, 10.0.0.8",
-                () -> "10.0.0.9",
-                TRUSTED_PRIVATE_PROXY);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> "198.51.100.20, 10.0.0.7, 10.0.0.8",
+                        () -> "10.0.0.9",
+                        TRUSTED_PRIVATE_PROXY);
 
         assertEquals("198.51.100.20", resolved);
     }
 
     @Test
     void forwardedResolutionIgnoresUnknownAndEmptyTokens() {
-        String resolved = resolveForwardedClientIp(
-                header -> " unknown, , 198.51.100.21 , 10.0.0.8, UNKNOWN ",
-                () -> "10.0.0.9",
-                TRUSTED_PRIVATE_PROXY);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> " unknown, , 198.51.100.21 , 10.0.0.8, UNKNOWN ",
+                        () -> "10.0.0.9",
+                        TRUSTED_PRIVATE_PROXY);
 
         assertEquals("198.51.100.21", resolved);
     }
 
     @Test
     void forwardedResolutionRetainsIpv6TokenWithoutNormalizingIt() {
-        String resolved = resolveForwardedClientIp(
-                header -> "2001:db8::10, 2001:db8::ff",
-                () -> "2001:db8::ff",
-                "2001:db8::ff"::equals);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> "2001:db8::10, 2001:db8::ff",
+                        () -> "2001:db8::ff",
+                        "2001:db8::ff"::equals);
 
         assertEquals("2001:db8::10", resolved);
     }
 
     @Test
     void forwardedResolutionRetainsBracketedIpv6TokenWithoutNormalizingIt() {
-        String resolved = resolveForwardedClientIp(
-                header -> "[fd00:fefe:1::4], 10.0.0.8",
-                () -> "10.0.0.9",
-                TRUSTED_PRIVATE_PROXY);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> "[fd00:fefe:1::4], 10.0.0.8",
+                        () -> "10.0.0.9",
+                        TRUSTED_PRIVATE_PROXY);
 
         assertEquals("[fd00:fefe:1::4]", resolved);
     }
 
     @Test
     void forwardedResolutionRetainsPortQualifiedTokenWithoutNormalizingIt() {
-        String resolved = resolveForwardedClientIp(
-                header -> "198.51.100.8:1234, 10.0.0.8",
-                () -> "10.0.0.9",
-                TRUSTED_PRIVATE_PROXY);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> "198.51.100.8:1234, 10.0.0.8",
+                        () -> "10.0.0.9",
+                        TRUSTED_PRIVATE_PROXY);
 
         assertEquals("198.51.100.8:1234", resolved);
     }
 
     @Test
     void forwardedResolutionFallsBackToDirectPeerWhenAllTokensAreTrusted() {
-        String resolved = resolveForwardedClientIp(
-                header -> "10.0.0.7, 10.0.0.8",
-                () -> "10.0.0.9",
-                TRUSTED_PRIVATE_PROXY);
+        String resolved =
+                resolveForwardedClientIp(
+                        header -> "10.0.0.7, 10.0.0.8", () -> "10.0.0.9", TRUSTED_PRIVATE_PROXY);
 
         assertEquals("10.0.0.9", resolved);
     }
 
     @Test
     void forwardedResolutionRejectsNullCollaborators() {
-        assertThrows(NullPointerException.class,
+        assertThrows(
+                NullPointerException.class,
                 () -> resolveForwardedClientIp(null, () -> "10.0.0.9", TRUSTED_PRIVATE_PROXY));
     }
 
     private static String resolveClientIp(Supplier<String> remoteAddrSupplier) {
-        return invoke("resolveClientIp", new Class<?>[]{Supplier.class}, remoteAddrSupplier);
+        return invoke("resolveClientIp", new Class<?>[] {Supplier.class}, remoteAddrSupplier);
     }
 
     private static String resolveForwardedClientIp(
@@ -131,13 +143,14 @@ class IpUtilsTest {
             Predicate<String> trustedProxyPredicate) {
         return invoke(
                 "resolveForwardedClientIp",
-                new Class<?>[]{UnaryOperator.class, Supplier.class, Predicate.class},
+                new Class<?>[] {UnaryOperator.class, Supplier.class, Predicate.class},
                 headerGetter,
                 remoteAddrSupplier,
                 trustedProxyPredicate);
     }
 
-    private static String invoke(String methodName, Class<?>[] parameterTypes, Object... arguments) {
+    private static String invoke(
+            String methodName, Class<?>[] parameterTypes, Object... arguments) {
         try {
             Method method = IpUtils.class.getMethod(methodName, parameterTypes);
             return (String) method.invoke(null, arguments);

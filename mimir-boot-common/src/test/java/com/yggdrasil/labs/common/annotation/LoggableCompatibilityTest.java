@@ -12,11 +12,13 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+
 import org.junit.jupiter.api.Test;
 
 class LoggableCompatibilityTest {
@@ -47,27 +49,43 @@ class LoggableCompatibilityTest {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         Path directory = Files.createTempDirectory("loggable-compat-");
         Path source = directory.resolve("Consumer.java");
-        Files.writeString(source, "import com.yggdrasil.labs.common.annotation.Loggable; @Loggable class Consumer {}");
+        Files.writeString(
+                source,
+                "import com.yggdrasil.labs.common.annotation.Loggable; @Loggable class Consumer"
+                        + " {}");
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        String classpath = Path.of(Loggable.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toString();
+        String classpath =
+                Path.of(Loggable.class.getProtectionDomain().getCodeSource().getLocation().toURI())
+                        .toString();
 
-        boolean compiled = compiler.getTask(
-                        null,
-                        null,
-                        diagnostics,
-                        List.of("-classpath", classpath, "-Xlint:deprecation", "-d", directory.toString()),
-                        null,
-                        compiler.getStandardFileManager(diagnostics, null, null).getJavaFileObjects(source.toFile()))
-                .call();
+        boolean compiled =
+                compiler.getTask(
+                                null,
+                                null,
+                                diagnostics,
+                                List.of(
+                                        "-classpath",
+                                        classpath,
+                                        "-Xlint:deprecation",
+                                        "-d",
+                                        directory.toString()),
+                                null,
+                                compiler.getStandardFileManager(diagnostics, null, null)
+                                        .getJavaFileObjects(source.toFile()))
+                        .call();
 
         assertTrue(compiled);
-        assertTrue(diagnostics.getDiagnostics().stream().anyMatch(diagnostic -> diagnostic.getMessage(null).contains("Loggable")));
+        assertTrue(
+                diagnostics.getDiagnostics().stream()
+                        .anyMatch(diagnostic -> diagnostic.getMessage(null).contains("Loggable")));
     }
 
     @Test
     void documentsDeprecationMigrationWithoutRuntimePromise() throws Exception {
-        String source = Files.readString(
-                Path.of("src/main/java/com/yggdrasil/labs/common/annotation/Loggable.java"));
+        String source =
+                Files.readString(
+                        Path.of(
+                                "src/main/java/com/yggdrasil/labs/common/annotation/Loggable.java"));
         String readme = Files.readString(Path.of("README.md"));
 
         assertTrue(source.contains("当前无内置运行时消费者"));
@@ -87,27 +105,38 @@ class LoggableCompatibilityTest {
         Path sourceRoot = directory.resolve("sources");
         Path classes = directory.resolve("classes");
         Path annotation = sourceRoot.resolve("com/yggdrasil/labs/common/annotation/Loggable.java");
-        Path consumer = sourceRoot.resolve("com/yggdrasil/labs/common/compat/PrecompiledLoggableConsumer.java");
+        Path consumer =
+                sourceRoot.resolve(
+                        "com/yggdrasil/labs/common/compat/PrecompiledLoggableConsumer.java");
         copyFixture("com/yggdrasil/labs/common/annotation/Loggable.java", annotation);
         copyFixture("com/yggdrasil/labs/common/compat/PrecompiledLoggableConsumer.java", consumer);
 
         Files.createDirectories(classes);
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null)) {
-            boolean compiled = compiler.getTask(
-                            null,
-                            fileManager,
-                            diagnostics,
-                            List.of("-d", classes.toString()),
-                            null,
-                            fileManager.getJavaFileObjects(annotation.toFile(), consumer.toFile()))
-                    .call();
+        try (StandardJavaFileManager fileManager =
+                compiler.getStandardFileManager(diagnostics, null, null)) {
+            boolean compiled =
+                    compiler.getTask(
+                                    null,
+                                    fileManager,
+                                    diagnostics,
+                                    List.of("-d", classes.toString()),
+                                    null,
+                                    fileManager.getJavaFileObjects(
+                                            annotation.toFile(), consumer.toFile()))
+                            .call();
             assertTrue(compiled, diagnostics.getDiagnostics().toString());
         }
         Files.delete(classes.resolve("com/yggdrasil/labs/common/annotation/Loggable.class"));
 
-        try (URLClassLoader loader = new URLClassLoader(new URL[] {classes.toUri().toURL()}, Loggable.class.getClassLoader())) {
-            Class<?> consumerType = Class.forName("com.yggdrasil.labs.common.compat.PrecompiledLoggableConsumer", true, loader);
+        try (URLClassLoader loader =
+                new URLClassLoader(
+                        new URL[] {classes.toUri().toURL()}, Loggable.class.getClassLoader())) {
+            Class<?> consumerType =
+                    Class.forName(
+                            "com.yggdrasil.labs.common.compat.PrecompiledLoggableConsumer",
+                            true,
+                            loader);
             Object legacyConsumer = consumerType.getDeclaredConstructor().newInstance();
 
             assertEquals("legacy", consumerType.getMethod("module").invoke(legacyConsumer));
@@ -116,7 +145,9 @@ class LoggableCompatibilityTest {
 
     private static void copyFixture(String resourcePath, Path destination) throws IOException {
         Files.createDirectories(destination.getParent());
-        try (InputStream input = LoggableCompatibilityTest.class.getResourceAsStream(LEGACY_FIXTURE_ROOT + resourcePath)) {
+        try (InputStream input =
+                LoggableCompatibilityTest.class.getResourceAsStream(
+                        LEGACY_FIXTURE_ROOT + resourcePath)) {
             assertNotNull(input, "缺少兼容性 fixture: " + resourcePath);
             Files.copy(input, destination);
         }

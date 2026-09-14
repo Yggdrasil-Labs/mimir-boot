@@ -1,17 +1,18 @@
 package com.yggdrasil.labs.web.config;
 
-import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
-import com.yggdrasil.labs.web.interceptor.WebInterceptor;
-import org.junit.jupiter.api.Test;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.handler.MappedInterceptor;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.handler.MappedInterceptor;
+
+import com.yggdrasil.labs.web.interceptor.TraceInterceptor;
+import com.yggdrasil.labs.web.interceptor.WebInterceptor;
 
 /**
  * Web MVC 拦截器注册测试。
@@ -34,9 +35,18 @@ class WebMvcConfigTest {
 
         MappedInterceptor traceMapping = (MappedInterceptor) interceptors.get(0);
         assertSame(traceInterceptor, traceMapping.getInterceptor());
-        assertArrayEquals(new String[]{"/**"}, traceMapping.getIncludePathPatterns());
-        assertArrayEquals(new String[]{"/favicon.ico", "/error", "/actuator/**", "/swagger-ui/**",
-                "/swagger-resources/**", "/v3/api-docs/**", "/doc.html"}, traceMapping.getExcludePathPatterns());
+        assertArrayEquals(new String[] {"/**"}, traceMapping.getIncludePathPatterns());
+        assertArrayEquals(
+                new String[] {
+                    "/favicon.ico",
+                    "/error",
+                    "/actuator/**",
+                    "/swagger-ui/**",
+                    "/swagger-resources/**",
+                    "/v3/api-docs/**",
+                    "/doc.html"
+                },
+                traceMapping.getExcludePathPatterns());
 
         MappedInterceptor webMapping = (MappedInterceptor) interceptors.get(1);
         assertSame(webInterceptor, webMapping.getInterceptor());

@@ -1,14 +1,14 @@
 package com.yggdrasil.labs.log.util;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.TestUtils;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * MDC 工具类测试

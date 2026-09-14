@@ -1,18 +1,19 @@
 package com.yggdrasil.labs.test.base;
 
-import com.yggdrasil.labs.test.config.TestConfiguration;
-import com.yggdrasil.labs.test.util.TestUtils;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.config.TestConfiguration;
+import com.yggdrasil.labs.test.util.TestUtils;
 
 /**
  * BaseWebTest 测试基类测试
  *
- * <p>注意：这是一个集成测试，需要 Spring 上下文和 MockMvc</p>
+ * <p>注意：这是一个集成测试，需要 Spring 上下文和 MockMvc
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -74,7 +75,9 @@ class BaseWebTestTest extends BaseWebTest {
 
     @Test
     void testBaseWebTest_ReusesIntegrationLifecycle() {
-        assertEquals(BaseIntegrationTest.class, BaseWebTest.class.getSuperclass(),
+        assertEquals(
+                BaseIntegrationTest.class,
+                BaseWebTest.class.getSuperclass(),
                 "Web 测试基类应复用统一的 setup/teardown 生命周期");
     }
 }

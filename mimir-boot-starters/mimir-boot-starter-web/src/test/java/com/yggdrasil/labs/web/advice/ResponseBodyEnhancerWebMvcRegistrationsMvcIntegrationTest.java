@@ -1,7 +1,9 @@
 package com.yggdrasil.labs.web.advice;
 
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
-import com.yggdrasil.labs.common.response.R;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -17,9 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.common.response.R;
 
 /**
  * 验证下游定制 WebMvcRegistrations 时响应增强器仍会接入默认 MVC 处理器。
@@ -35,13 +36,13 @@ class ResponseBodyEnhancerWebMvcRegistrationsMvcIntegrationTest {
 
     private static final String TRACE_ID = "mvc-registrations-trace";
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
     @Test
     void preservesResponseEnhancementWhenApplicationSuppliesWebMvcRegistrations() throws Exception {
-        mockMvc.perform(get("/response-enhancer-registrations/success")
-                        .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+        mockMvc.perform(
+                        get("/response-enhancer-registrations/success")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.traceId").value(TRACE_ID));
     }
@@ -49,8 +50,7 @@ class ResponseBodyEnhancerWebMvcRegistrationsMvcIntegrationTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({ResponseController.class, CustomWebMvcRegistrationsConfiguration.class})
-    static class TestApplication {
-    }
+    static class TestApplication {}
 
     @RestController
     static class ResponseController {
@@ -67,8 +67,7 @@ class ResponseBodyEnhancerWebMvcRegistrationsMvcIntegrationTest {
         @Bean
         @Primary
         WebMvcRegistrations applicationWebMvcRegistrations() {
-            return new WebMvcRegistrations() {
-            };
+            return new WebMvcRegistrations() {};
         }
     }
 }

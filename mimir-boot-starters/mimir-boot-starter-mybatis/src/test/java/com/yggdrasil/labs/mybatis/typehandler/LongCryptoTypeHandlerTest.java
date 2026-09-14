@@ -1,15 +1,16 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
-import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import java.sql.ResultSet;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
+import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * Long 加密 TypeHandler 测试
@@ -46,7 +47,7 @@ class LongCryptoTypeHandlerTest extends BaseUnitTest {
     void testGetNullableResult() throws Exception {
         ResultSet rs = mock(ResultSet.class);
         String encrypted = CryptoUtils.encrypt("12345", testKey);
-        
+
         when(rs.getString("column_name")).thenReturn(encrypted);
 
         Long result = handler.getNullableResult(rs, "column_name");
@@ -97,14 +98,14 @@ class LongCryptoTypeHandlerTest extends BaseUnitTest {
     @Test
     void testRoundTrip() throws Exception {
         Long originalValue = 999999L;
-        
+
         // 加密存储
         String encrypted = CryptoUtils.encrypt(String.valueOf(originalValue), testKey);
-        
+
         // 解密读取
         ResultSet rs = mock(ResultSet.class);
         when(rs.getString("column_name")).thenReturn(encrypted);
-        
+
         Long decrypted = handler.getNullableResult(rs, "column_name");
         assertEquals(originalValue, decrypted);
     }

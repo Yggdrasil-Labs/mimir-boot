@@ -1,16 +1,17 @@
 package com.yggdrasil.labs.test.util;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * LogTestUtils 测试
@@ -82,18 +83,20 @@ class LogTestUtilsTest {
     @Test
     void testCleanupLogger_WithNullAppender() {
         // 不应抛出异常
-        assertDoesNotThrow(() -> {
-            LogTestUtils.cleanupLogger(logger, null);
-            LogTestUtils.cleanupLogger("test.logger", null);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    LogTestUtils.cleanupLogger(logger, null);
+                    LogTestUtils.cleanupLogger("test.logger", null);
+                });
     }
 
     @Test
     void testCleanupLogger_WithNullLogger() {
         ListAppender<ILoggingEvent> testAppender = LogTestUtils.setupLogger("test.null.logger");
-        assertDoesNotThrow(() -> {
-            LogTestUtils.cleanupLogger((Logger) null, testAppender);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    LogTestUtils.cleanupLogger((Logger) null, testAppender);
+                });
         LogTestUtils.cleanupLogger("test.null.logger", testAppender);
     }
 
@@ -101,18 +104,22 @@ class LogTestUtilsTest {
     void testAssertLogLevel_Success() {
         logger.info("Test message");
 
-        assertDoesNotThrow(() -> {
-            LogTestUtils.assertLogLevel(appender, 0, Level.INFO);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    LogTestUtils.assertLogLevel(appender, 0, Level.INFO);
+                });
     }
 
     @Test
     void testAssertLogLevel_Failure() {
         logger.info("Test message");
 
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogLevel(appender, 0, Level.ERROR);
-        }, "日志级别不匹配应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogLevel(appender, 0, Level.ERROR);
+                },
+                "日志级别不匹配应抛出异常");
     }
 
     @Test
@@ -132,71 +139,91 @@ class LogTestUtilsTest {
 
     @Test
     void testAssertLogLevel_NullAppender() {
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogLevel(null, 0, Level.INFO);
-        }, "null appender 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogLevel(null, 0, Level.INFO);
+                },
+                "null appender 应抛出异常");
     }
 
     @Test
     void testAssertLogLevel_IndexOutOfRange() {
         logger.info("Test message");
 
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogLevel(appender, 1, Level.INFO);
-        }, "索引超出范围应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogLevel(appender, 1, Level.INFO);
+                },
+                "索引超出范围应抛出异常");
     }
 
     @Test
     void testAssertLogContains_Success() {
         logger.info("Test message with Status=[200]");
 
-        assertDoesNotThrow(() -> {
-            LogTestUtils.assertLogContains(appender, 0, "Status=[200]");
-            LogTestUtils.assertLogContains(appender, 0, "Test message");
-        });
+        assertDoesNotThrow(
+                () -> {
+                    LogTestUtils.assertLogContains(appender, 0, "Status=[200]");
+                    LogTestUtils.assertLogContains(appender, 0, "Test message");
+                });
     }
 
     @Test
     void testAssertLogContains_Failure() {
         logger.info("Test message");
 
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogContains(appender, 0, "Not found");
-        }, "日志不包含指定文本应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogContains(appender, 0, "Not found");
+                },
+                "日志不包含指定文本应抛出异常");
     }
 
     @Test
     void testAssertLogContains_NullAppender() {
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogContains(null, 0, "test");
-        }, "null appender 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogContains(null, 0, "test");
+                },
+                "null appender 应抛出异常");
     }
 
     @Test
     void testAssertLogContains_IndexOutOfRange() {
         logger.info("Test message");
 
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogContains(appender, 1, "test");
-        }, "索引超出范围应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogContains(appender, 1, "test");
+                },
+                "索引超出范围应抛出异常");
     }
 
     @Test
     void testAssertLogStatus_Success() {
         logger.info("Request completed with Status=[200]");
 
-        assertDoesNotThrow(() -> {
-            LogTestUtils.assertLogStatus(appender, 0, 200);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    LogTestUtils.assertLogStatus(appender, 0, 200);
+                });
     }
 
     @Test
     void testAssertLogStatus_Failure() {
         logger.info("Request completed with Status=[200]");
 
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.assertLogStatus(appender, 0, 404);
-        }, "状态码不匹配应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.assertLogStatus(appender, 0, 404);
+                },
+                "状态码不匹配应抛出异常");
     }
 
     @Test
@@ -223,18 +250,24 @@ class LogTestUtilsTest {
 
     @Test
     void testGetLogEvent_NullAppender() {
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.getLogEvent(null, 0);
-        }, "null appender 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.getLogEvent(null, 0);
+                },
+                "null appender 应抛出异常");
     }
 
     @Test
     void testGetLogEvent_IndexOutOfRange() {
         logger.info("Test message");
 
-        assertThrows(AssertionError.class, () -> {
-            LogTestUtils.getLogEvent(appender, 1);
-        }, "索引超出范围应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    LogTestUtils.getLogEvent(appender, 1);
+                },
+                "索引超出范围应抛出异常");
     }
 
     @Test

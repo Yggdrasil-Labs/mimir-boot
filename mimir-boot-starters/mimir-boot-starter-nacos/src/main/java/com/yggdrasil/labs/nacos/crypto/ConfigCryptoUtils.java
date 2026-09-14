@@ -1,26 +1,28 @@
 package com.yggdrasil.labs.nacos.crypto;
 
-import com.yggdrasil.labs.common.exception.ErrorCode;
-import com.yggdrasil.labs.common.exception.SystemException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Base64;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.SystemException;
 
 /**
  * 配置加解密工具类。
  *
- * <p>新密文采用 {@code v1:&lt;iv&gt;:&lt;ciphertext&gt;} 格式和 AES-GCM。无版本旧 AES 密文只能通过显式的
- * 已弃用迁移 API 读取，不能用于应用配置自动解密。</p>
+ * <p>新密文采用 {@code v1:&lt;iv&gt;:&lt;ciphertext&gt;} 格式和 AES-GCM。无版本旧 AES 密文只能通过显式的 已弃用迁移 API
+ * 读取，不能用于应用配置自动解密。
  *
- * <p>Source: https://docs.oracle.com/en/java/javase/17/docs/api/java.base/javax/crypto/Cipher.html</p>
+ * <p>Source: https://docs.oracle.com/en/java/javase/17/docs/api/java.base/javax/crypto/Cipher.html
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -70,7 +72,7 @@ public class ConfigCryptoUtils {
      * 使用 AES-GCM 加密配置值。
      *
      * @param plaintext 明文
-     * @param key       Base64 编码的 AES 密钥
+     * @param key Base64 编码的 AES 密钥
      * @return 带版本和随机 IV 的密文
      */
     public static String encrypt(String plaintext, String key) {
@@ -81,9 +83,13 @@ public class ConfigCryptoUtils {
             byte[] iv = new byte[GCM_IV_LENGTH];
             SECURE_RANDOM.nextBytes(iv);
             Cipher cipher = Cipher.getInstance(DEFAULT_ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, toAesKey(key), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+            cipher.init(
+                    Cipher.ENCRYPT_MODE, toAesKey(key), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             byte[] encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
-            return VERSION + ":" + Base64.getEncoder().encodeToString(iv) + ":"
+            return VERSION
+                    + ":"
+                    + Base64.getEncoder().encodeToString(iv)
+                    + ":"
                     + Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception e) {
             throw new SystemException(ErrorCode.SYSTEM_ERROR.getCode(), "加密失败", e);
@@ -111,7 +117,7 @@ public class ConfigCryptoUtils {
      * 解密认证的 v1 AES-GCM 配置值。
      *
      * @param ciphertext 密文
-     * @param key        Base64 编码的 AES 密钥
+     * @param key Base64 编码的 AES 密钥
      * @return 明文
      */
     public static String decrypt(String ciphertext, String key) {
@@ -132,7 +138,7 @@ public class ConfigCryptoUtils {
      * 使用指定算法解密配置值。
      *
      * @deprecated 新配置请使用 {@link #decrypt(String, String)}。该重载仅供离线迁移读取旧 AES 密文，
-     * 不提供篡改检测，不能用于应用配置自动解密。
+     *     不提供篡改检测，不能用于应用配置自动解密。
      */
     @Deprecated(since = "2.1.1", forRemoval = false)
     public static String decrypt(String ciphertext, String key, String algorithm) {
@@ -197,17 +203,23 @@ public class ConfigCryptoUtils {
         }
         try {
             Cipher cipher = Cipher.getInstance(algorithm);
-            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Base64.getDecoder().decode(key), algorithm));
-            return Base64.getEncoder().encodeToString(cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8)));
+            cipher.init(
+                    Cipher.ENCRYPT_MODE,
+                    new SecretKeySpec(Base64.getDecoder().decode(key), algorithm));
+            return Base64.getEncoder()
+                    .encodeToString(cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
             throw new SystemException(ErrorCode.SYSTEM_ERROR.getCode(), "加密失败", e);
         }
     }
 
-    private static String decryptLegacy(String ciphertext, String key, String algorithm) throws Exception {
+    private static String decryptLegacy(String ciphertext, String key, String algorithm)
+            throws Exception {
         Cipher cipher = Cipher.getInstance(algorithm);
-        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(Base64.getDecoder().decode(key), algorithm));
-        return new String(cipher.doFinal(Base64.getDecoder().decode(ciphertext)), StandardCharsets.UTF_8);
+        cipher.init(
+                Cipher.DECRYPT_MODE, new SecretKeySpec(Base64.getDecoder().decode(key), algorithm));
+        return new String(
+                cipher.doFinal(Base64.getDecoder().decode(ciphertext)), StandardCharsets.UTF_8);
     }
 
     private static SecretKeySpec toAesKey(String key) {

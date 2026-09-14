@@ -1,13 +1,13 @@
 package com.yggdrasil.labs.mybatis.util;
 
-import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
-import com.yggdrasil.labs.mybatis.config.MybatisConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.yggdrasil.labs.mybatis.config.MybatisConstants;
+
 /**
- * 反射工具类。
- * 用于通过反射创建对象，主要用于兼容不同版本的依赖。
+ * 反射工具类。 用于通过反射创建对象，主要用于兼容不同版本的依赖。
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -21,8 +21,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * 尝试创建分页拦截器。
-     * 为了兼容不同版本的 MyBatis-Plus，通过反射可选加载分页拦截器。
+     * 尝试创建分页拦截器。 为了兼容不同版本的 MyBatis-Plus，通过反射可选加载分页拦截器。
      *
      * @return 分页拦截器实例，如果无法创建则返回 null
      */
@@ -48,4 +47,3 @@ public final class ReflectionUtils {
         }
     }
 }
-

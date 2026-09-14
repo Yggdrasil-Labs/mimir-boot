@@ -1,12 +1,15 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
-import com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler;
-import com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler;
-import com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -14,15 +17,13 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
+import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
+import com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler;
+import com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler;
+import com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * MyBatis-Plus 加解密配置测试
@@ -34,8 +35,9 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
 
     private static final String CUSTOM_CRYPTO_KEY = CryptoUtils.generateKey();
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(MybatisPlusCryptoConfiguration.class));
+    private final ApplicationContextRunner runner =
+            new ApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(MybatisPlusCryptoConfiguration.class));
 
     private MybatisPlusCryptoConfiguration configuration;
     private MybatisProperties properties;
@@ -62,7 +64,8 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
     void shouldFailWhenCryptoKeyIsEmpty() {
         properties.setCryptoKey("");
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> configuration.defaultCryptoKeyProvider(properties));
     }
 
@@ -70,7 +73,8 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
     void shouldFailWhenCryptoKeyIsMissing() {
         properties.setCryptoKey(null);
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> configuration.defaultCryptoKeyProvider(properties));
     }
 
@@ -78,7 +82,8 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
     void shouldFailWhenCryptoKeyIsNotBase64Encoded() {
         properties.setCryptoKey("not-base64");
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> configuration.defaultCryptoKeyProvider(properties));
     }
 
@@ -86,18 +91,20 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
     void shouldFailWhenCryptoKeyHasInvalidAesLength() {
         properties.setCryptoKey("dGVzdA==");
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> configuration.defaultCryptoKeyProvider(properties));
     }
 
     @Test
     void shouldFailToStartWhenCryptoIsEnabledWithoutKey() {
         runner.withPropertyValues("mimir.boot.mybatis.crypto-enabled=true")
-                .run(context -> {
-                    org.assertj.core.api.Assertions.assertThat(context).hasFailed();
-                    org.assertj.core.api.Assertions.assertThat(context.getStartupFailure())
-                            .hasRootCauseInstanceOf(IllegalStateException.class);
-                });
+                .run(
+                        context -> {
+                            org.assertj.core.api.Assertions.assertThat(context).hasFailed();
+                            org.assertj.core.api.Assertions.assertThat(context.getStartupFailure())
+                                    .hasRootCauseInstanceOf(IllegalStateException.class);
+                        });
     }
 
     @Test
@@ -105,24 +112,27 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
         runner.withPropertyValues(
                         "mimir.boot.mybatis.crypto-enabled=true",
                         "mimir.boot.mybatis.crypto-key=dGVzdA==")
-                .run(context -> {
-                    org.assertj.core.api.Assertions.assertThat(context).hasFailed();
-                    org.assertj.core.api.Assertions.assertThat(context.getStartupFailure())
-                            .hasRootCauseInstanceOf(IllegalStateException.class);
-                });
+                .run(
+                        context -> {
+                            org.assertj.core.api.Assertions.assertThat(context).hasFailed();
+                            org.assertj.core.api.Assertions.assertThat(context.getStartupFailure())
+                                    .hasRootCauseInstanceOf(IllegalStateException.class);
+                        });
     }
 
     @Test
     void shouldStartWithCustomCryptoKeyProviderWhenCryptoKeyIsMissing() {
         runner.withUserConfiguration(CustomCryptoKeyProviderConfiguration.class)
                 .withPropertyValues("mimir.boot.mybatis.crypto-enabled=true")
-                .run(context -> {
-                    org.assertj.core.api.Assertions.assertThat(context).hasNotFailed();
-                    org.assertj.core.api.Assertions.assertThat(context)
-                            .hasSingleBean(CryptoKeyProvider.class);
-                    AssertUtils.assertEquals(
-                            CUSTOM_CRYPTO_KEY, context.getBean(CryptoKeyProvider.class).getKey());
-                });
+                .run(
+                        context -> {
+                            org.assertj.core.api.Assertions.assertThat(context).hasNotFailed();
+                            org.assertj.core.api.Assertions.assertThat(context)
+                                    .hasSingleBean(CryptoKeyProvider.class);
+                            AssertUtils.assertEquals(
+                                    CUSTOM_CRYPTO_KEY,
+                                    context.getBean(CryptoKeyProvider.class).getKey());
+                        });
     }
 
     @Test
@@ -133,27 +143,34 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
         runner.withPropertyValues(
                         "mimir.boot.mybatis.crypto-enabled=true",
                         "mimir.boot.mybatis.crypto-key=" + key)
-                .run(firstContext -> {
-                    StringCryptoTypeHandler writer = firstContext.getBean(StringCryptoTypeHandler.class);
-                    PreparedStatement statement = mock(PreparedStatement.class);
+                .run(
+                        firstContext -> {
+                            StringCryptoTypeHandler writer =
+                                    firstContext.getBean(StringCryptoTypeHandler.class);
+                            PreparedStatement statement = mock(PreparedStatement.class);
 
-                    writer.setNonNullParameter(statement, 1, "persisted-secret", null);
+                            writer.setNonNullParameter(statement, 1, "persisted-secret", null);
 
-                    org.mockito.ArgumentCaptor<String> ciphertext = org.mockito.ArgumentCaptor.forClass(String.class);
-                    verify(statement).setString(eq(1), ciphertext.capture());
-                    persistedValue.set(ciphertext.getValue());
-                });
+                            org.mockito.ArgumentCaptor<String> ciphertext =
+                                    org.mockito.ArgumentCaptor.forClass(String.class);
+                            verify(statement).setString(eq(1), ciphertext.capture());
+                            persistedValue.set(ciphertext.getValue());
+                        });
 
         runner.withPropertyValues(
                         "mimir.boot.mybatis.crypto-enabled=true",
                         "mimir.boot.mybatis.crypto-key=" + key)
-                .run(secondContext -> {
-                    StringCryptoTypeHandler reader = secondContext.getBean(StringCryptoTypeHandler.class);
-                    ResultSet resultSet = mock(ResultSet.class);
-                    when(resultSet.getString("secret")).thenReturn(persistedValue.get());
+                .run(
+                        secondContext -> {
+                            StringCryptoTypeHandler reader =
+                                    secondContext.getBean(StringCryptoTypeHandler.class);
+                            ResultSet resultSet = mock(ResultSet.class);
+                            when(resultSet.getString("secret")).thenReturn(persistedValue.get());
 
-                    assertEquals("persisted-secret", reader.getNullableResult(resultSet, "secret"));
-                });
+                            assertEquals(
+                                    "persisted-secret",
+                                    reader.getNullableResult(resultSet, "secret"));
+                        });
     }
 
     @Test
@@ -191,17 +208,26 @@ class MybatisPlusCryptoConfigurationTest extends BaseUnitTest {
                         "mimir.boot.mybatis.crypto-key=" + key,
                         "mimir.boot.mybatis.crypto-context=orders",
                         "mimir.boot.mybatis.crypto-v2-write-enabled=true")
-                .run(context -> {
-                    assertInstanceOf(StringCryptoTypeHandler.class, context.getBean("stringCryptoTypeHandler"));
-                    assertInstanceOf(LongCryptoTypeHandler.class, context.getBean("longCryptoTypeHandler"));
-                    assertInstanceOf(IntegerCryptoTypeHandler.class, context.getBean("integerCryptoTypeHandler"));
-                    PreparedStatement statement = mock(PreparedStatement.class);
-                    StringCryptoTypeHandler handler = context.getBean(StringCryptoTypeHandler.class);
-                    handler.setNonNullParameter(statement, 1, "secret", null);
-                    org.mockito.ArgumentCaptor<String> ciphertext = org.mockito.ArgumentCaptor.forClass(String.class);
-                    verify(statement).setString(eq(1), ciphertext.capture());
-                    assertTrue(ciphertext.getValue().startsWith("v2:"));
-                });
+                .run(
+                        context -> {
+                            assertInstanceOf(
+                                    StringCryptoTypeHandler.class,
+                                    context.getBean("stringCryptoTypeHandler"));
+                            assertInstanceOf(
+                                    LongCryptoTypeHandler.class,
+                                    context.getBean("longCryptoTypeHandler"));
+                            assertInstanceOf(
+                                    IntegerCryptoTypeHandler.class,
+                                    context.getBean("integerCryptoTypeHandler"));
+                            PreparedStatement statement = mock(PreparedStatement.class);
+                            StringCryptoTypeHandler handler =
+                                    context.getBean(StringCryptoTypeHandler.class);
+                            handler.setNonNullParameter(statement, 1, "secret", null);
+                            org.mockito.ArgumentCaptor<String> ciphertext =
+                                    org.mockito.ArgumentCaptor.forClass(String.class);
+                            verify(statement).setString(eq(1), ciphertext.capture());
+                            assertTrue(ciphertext.getValue().startsWith("v2:"));
+                        });
     }
 
     @Test

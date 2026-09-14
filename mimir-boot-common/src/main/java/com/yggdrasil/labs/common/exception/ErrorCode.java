@@ -5,14 +5,14 @@ import lombok.Getter;
 
 /**
  * 错误码枚举
- * 
+ *
  * @author Yggdrasil Labs
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
 public enum ErrorCode {
-    
+
     // ==================== 通用错误码 ====================
 
     /** 操作成功 */
@@ -80,20 +80,16 @@ public enum ErrorCode {
     THIRD_PARTY_TIMEOUT("50001", "第三方服务超时"),
     /** 第三方服务不可用 */
     THIRD_PARTY_UNAVAILABLE("50002", "第三方服务不可用");
-    
-    /**
-     * 错误码
-     */
+
+    /** 错误码 */
     private final String code;
-    
-    /**
-     * 错误信息
-     */
+
+    /** 错误信息 */
     private final String message;
-    
+
     /**
      * 根据错误码获取错误码枚举
-     * 
+     *
      * @param code 错误码
      * @return 错误码枚举
      */

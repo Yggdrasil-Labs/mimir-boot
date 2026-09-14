@@ -1,15 +1,16 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * MyBatis 配置属性测试
@@ -38,7 +39,8 @@ class MybatisPropertiesTest extends BaseUnitTest {
     }
 
     @Test
-    void effectiveMapperPackages_are_deduplicated_and_legacy_query_is_deprecated() throws Exception {
+    void effectiveMapperPackages_are_deduplicated_and_legacy_query_is_deprecated()
+            throws Exception {
         properties.setMapperPackages(Arrays.asList("com.example.mapper", "com.example.mapper"));
 
         String effective = properties.getEffectiveMapperPackages();
@@ -46,8 +48,10 @@ class MybatisPropertiesTest extends BaseUnitTest {
         assertTrue(effective.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
         assertTrue(effective.contains("com.example.mapper"));
         assertEquals(effective, properties.getFinalMapperPackages());
-        Deprecated deprecated = MybatisProperties.class.getMethod("getFinalMapperPackages")
-                .getAnnotation(Deprecated.class);
+        Deprecated deprecated =
+                MybatisProperties.class
+                        .getMethod("getFinalMapperPackages")
+                        .getAnnotation(Deprecated.class);
         assertNotNull(deprecated);
         assertEquals("2.2.1", deprecated.since());
         assertFalse(deprecated.forRemoval());
@@ -83,7 +87,6 @@ class MybatisPropertiesTest extends BaseUnitTest {
         properties.setMapperPackages(null);
         assertNull(properties.getMapperPackages());
     }
-
 
     @Test
     void testEnableJsonSqlLog() {
@@ -151,13 +154,16 @@ class MybatisPropertiesTest extends BaseUnitTest {
         List<String> packages = Arrays.asList("com.example.mapper", "com.example.other.mapper");
         properties.setMapperPackages(packages);
         String finalPackages = properties.getFinalMapperPackages();
-        
+
         // 应该包含默认包和自定义包，默认包在前
         assertTrue(finalPackages.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
         assertTrue(finalPackages.contains("com.example.mapper"));
         assertTrue(finalPackages.contains("com.example.other.mapper"));
         // 验证格式：默认包,自定义包1,自定义包2
-        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper,com.example.other.mapper"));
+        assertTrue(
+                finalPackages.startsWith(
+                        MybatisProperties.DEFAULT_MAPPER_PACKAGE
+                                + ",com.example.mapper,com.example.other.mapper"));
     }
 
     @Test
@@ -165,18 +171,24 @@ class MybatisPropertiesTest extends BaseUnitTest {
         // 设置单个自定义包
         properties.setMapperPackages(Collections.singletonList("com.example.mapper"));
         String finalPackages = properties.getFinalMapperPackages();
-        
-        assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper"));
+
+        assertTrue(
+                finalPackages.startsWith(
+                        MybatisProperties.DEFAULT_MAPPER_PACKAGE + ",com.example.mapper"));
     }
 
     @Test
     void testGetFinalMapperPackages_WithDuplicatePackages() {
         // 测试去重功能：如果用户配置的包与默认包相同，应该去重
-        properties.setMapperPackages(Collections.singletonList(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        properties.setMapperPackages(
+                Collections.singletonList(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
         String finalPackages = properties.getFinalMapperPackages();
-        
+
         // 应该只包含一个默认包（去重后）
         assertTrue(finalPackages.startsWith(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
-        assertFalse(finalPackages.substring(MybatisProperties.DEFAULT_MAPPER_PACKAGE.length()).contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
+        assertFalse(
+                finalPackages
+                        .substring(MybatisProperties.DEFAULT_MAPPER_PACKAGE.length())
+                        .contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
     }
 }

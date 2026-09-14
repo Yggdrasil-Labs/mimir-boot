@@ -1,11 +1,12 @@
 package com.yggdrasil.labs.exception.handler;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
 import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * DefaultExceptionResponseFactory 单元测试
@@ -52,7 +53,8 @@ class DefaultExceptionResponseFactoryTest extends BaseUnitTest {
 
     @Test
     void shouldReturnRWithArrayListData() {
-        java.util.ArrayList<String> errors = new java.util.ArrayList<>(java.util.List.of("field1: 不能为空", "field2: 格式错误"));
+        java.util.ArrayList<String> errors =
+                new java.util.ArrayList<>(java.util.List.of("field1: 不能为空", "field2: 格式错误"));
         Object result = factory.createResponse("PARAM_001", "参数校验失败", errors);
 
         assertInstanceOf(R.class, result);

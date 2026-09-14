@@ -1,18 +1,18 @@
 package com.yggdrasil.labs.mybatis.page;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.yggdrasil.labs.common.page.PageRequest;
-import com.yggdrasil.labs.common.page.PageResult;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yggdrasil.labs.common.page.PageRequest;
+import com.yggdrasil.labs.common.page.PageResult;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * 分页转换器测试
@@ -47,8 +47,8 @@ class PageConvertersTest extends BaseUnitTest {
     @Test
     void testToMybatisPageWithInvalidRequest() {
         PageRequest request = new PageRequest();
-        request.setPageIndex(0L);  // 无效页码
-        request.setPageSize(-1L);   // 无效页大小
+        request.setPageIndex(0L); // 无效页码
+        request.setPageSize(-1L); // 无效页大小
 
         Page<String> page = PageConverters.toMybatisPage(request);
 
@@ -140,4 +140,3 @@ class PageConvertersTest extends BaseUnitTest {
         AssertUtils.assertEquals(1000, result.getData().size());
     }
 }
-

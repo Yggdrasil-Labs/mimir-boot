@@ -1,11 +1,12 @@
 package com.yggdrasil.labs.common.page;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.common.enums.OrderDirection;
-import lombok.Data;
-
 import java.io.Serial;
 import java.io.Serializable;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.enums.OrderDirection;
+
+import lombok.Data;
 
 /**
  * 分页请求参数
@@ -16,32 +17,21 @@ import java.io.Serializable;
 @Data
 public class PageRequest implements Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @Serial private static final long serialVersionUID = 1L;
 
-    /**
-     * 页码（从1开始）
-     */
+    /** 页码（从1开始） */
     private Long pageIndex = CommonConstants.DEFAULT_PAGE_NUMBER;
 
-    /**
-     * 页大小
-     */
+    /** 页大小 */
     private Long pageSize = CommonConstants.DEFAULT_PAGE_SIZE;
 
-    /**
-     * 排序字段
-     */
+    /** 排序字段 */
     private String orderBy;
 
-    /**
-     * 排序方向
-     */
+    /** 排序方向 */
     private String orderDirection = OrderDirection.ASC.getCode();
 
-    /**
-     * 构造方法
-     */
+    /** 构造方法 */
     public PageRequest() {
         // 默认值已在字段初始化时设置，无需额外处理
     }
@@ -50,7 +40,7 @@ public class PageRequest implements Serializable {
      * 构造方法
      *
      * @param pageIndex 页码（从1开始）
-     * @param pageSize  页大小
+     * @param pageSize 页大小
      */
     public PageRequest(Long pageIndex, Long pageSize) {
         this.pageIndex = pageIndex;
@@ -61,9 +51,9 @@ public class PageRequest implements Serializable {
     /**
      * 构造方法
      *
-     * @param pageIndex      页码（从1开始）
-     * @param pageSize       页大小
-     * @param orderBy        排序字段
+     * @param pageIndex 页码（从1开始）
+     * @param pageSize 页大小
+     * @param orderBy 排序字段
      * @param orderDirection 排序方向
      */
     public PageRequest(Long pageIndex, Long pageSize, String orderBy, String orderDirection) {
@@ -90,12 +80,13 @@ public class PageRequest implements Serializable {
 
     /**
      * 验证并修正分页参数
-     * 
+     *
      * <p>自动校验分页参数的有效性，如果参数无效则修正为默认值：
+     *
      * <ul>
-     *   <li>页码必须 >= 1，默认 1</li>
-     *   <li>每页大小必须在 1 到 MAX_PAGE_SIZE 之间，默认 10</li>
-     *   <li>排序方向必须是 ASC 或 DESC，默认 ASC</li>
+     *   <li>页码必须 >= 1，默认 1
+     *   <li>每页大小必须在 1 到 MAX_PAGE_SIZE 之间，默认 10
+     *   <li>排序方向必须是 ASC 或 DESC，默认 ASC
      * </ul>
      */
     public void validateAndCorrect() {
@@ -109,7 +100,9 @@ public class PageRequest implements Serializable {
             this.pageSize = CommonConstants.MAX_PAGE_SIZE;
         }
         // 验证排序方向，使用枚举进行校验
-        if (this.orderDirection == null || (!OrderDirection.isAsc(this.orderDirection) && !OrderDirection.isDesc(this.orderDirection))) {
+        if (this.orderDirection == null
+                || (!OrderDirection.isAsc(this.orderDirection)
+                        && !OrderDirection.isDesc(this.orderDirection))) {
             this.orderDirection = OrderDirection.ASC.getCode();
         }
     }
@@ -118,7 +111,7 @@ public class PageRequest implements Serializable {
      * 创建分页请求（自动校验）
      *
      * @param pageIndex 页码（从1开始）
-     * @param pageSize  页大小
+     * @param pageSize 页大小
      * @return 分页请求（已校验）
      */
     public static PageRequest of(Long pageIndex, Long pageSize) {
@@ -128,13 +121,14 @@ public class PageRequest implements Serializable {
     /**
      * 创建分页请求（自动校验）
      *
-     * @param pageIndex      页码（从1开始）
-     * @param pageSize       页大小
-     * @param orderBy        排序字段
+     * @param pageIndex 页码（从1开始）
+     * @param pageSize 页大小
+     * @param orderBy 排序字段
      * @param orderDirection 排序方向
      * @return 分页请求（已校验）
      */
-    public static PageRequest of(Long pageIndex, Long pageSize, String orderBy, String orderDirection) {
+    public static PageRequest of(
+            Long pageIndex, Long pageSize, String orderBy, String orderDirection) {
         return new PageRequest(pageIndex, pageSize, orderBy, orderDirection);
     }
 }

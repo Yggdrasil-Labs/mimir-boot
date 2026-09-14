@@ -1,14 +1,15 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import com.yggdrasil.labs.mybatis.audit.AuditorProvider;
-import com.yggdrasil.labs.mybatis.audit.AuditMetaObjectHandler;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import com.yggdrasil.labs.mybatis.audit.AuditMetaObjectHandler;
+import com.yggdrasil.labs.mybatis.audit.AuditorProvider;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * MyBatis-Plus 审计配置测试
@@ -58,4 +59,3 @@ class MybatisPlusAuditConfigurationTest extends BaseUnitTest {
         // 但在 Spring 容器中，@Bean 方法会确保单例行为
     }
 }
-

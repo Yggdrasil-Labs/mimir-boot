@@ -1,21 +1,24 @@
 package com.yggdrasil.labs.test.util;
 
-import com.yggdrasil.labs.common.exception.ErrorCode;
-import com.yggdrasil.labs.common.exception.SystemException;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.HttpServletResponse;
-import org.mockito.stubbing.Answer;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.mockito.stubbing.Answer;
+
+import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.SystemException;
+
 /**
  * FilterChain Mock 构建器
  *
- * <p>提供链式 API 简化 FilterChain 的 mock 设置，特别是状态码设置。</p>
+ * <p>提供链式 API 简化 FilterChain 的 mock 设置，特别是状态码设置。
  *
- * <p>使用示例：</p>
+ * <p>使用示例：
+ *
  * <pre>{@code
  * FilterChain chain = FilterChainMockBuilder.create()
  *     .statusCode(404)
@@ -62,15 +65,19 @@ public class FilterChainMockBuilder {
      */
     public FilterChain build() {
         try {
-            doAnswer((Answer<Void>) invocation -> {
-                HttpServletResponse resp = invocation.getArgument(1);
-                resp.setStatus(statusCode);
-                return null;
-            }).when(chain).doFilter(any(), any());
+            doAnswer(
+                            (Answer<Void>)
+                                    invocation -> {
+                                        HttpServletResponse resp = invocation.getArgument(1);
+                                        resp.setStatus(statusCode);
+                                        return null;
+                                    })
+                    .when(chain)
+                    .doFilter(any(), any());
         } catch (Exception e) {
-            throw new SystemException(ErrorCode.SYSTEM_ERROR.getCode(), "Failed to setup FilterChain mock", e);
+            throw new SystemException(
+                    ErrorCode.SYSTEM_ERROR.getCode(), "Failed to setup FilterChain mock", e);
         }
         return chain;
     }
 }
-

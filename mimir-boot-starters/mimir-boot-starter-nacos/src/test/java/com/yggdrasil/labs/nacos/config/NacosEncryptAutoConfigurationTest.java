@@ -1,29 +1,29 @@
 package com.yggdrasil.labs.nacos.config;
 
-import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
-import com.yggdrasil.labs.test.base.BaseIntegrationTest;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * Nacos 配置加密自动配置测试
@@ -81,11 +81,14 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         String plaintext = "startup-secret";
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, testKey);
         SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
-        application.setDefaultProperties(Map.of(
-                "mimir.boot.nacos.encrypt.key", testKey,
-                "app.secret", "ENC(" + encrypted + ")",
-                "spring.cloud.nacos.config.import-check.enabled", "false"
-        ));
+        application.setDefaultProperties(
+                Map.of(
+                        "mimir.boot.nacos.encrypt.key",
+                        testKey,
+                        "app.secret",
+                        "ENC(" + encrypted + ")",
+                        "spring.cloud.nacos.config.import-check.enabled",
+                        "false"));
 
         try (ConfigurableApplicationContext context = application.run()) {
             assertEquals(plaintext, context.getBean("startupSecret", String.class));
@@ -95,10 +98,10 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     @Test
     void shouldKeepEncTextWhenNoEncryptPrefixIsBound() {
         SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
-        application.setDefaultProperties(Map.of(
-                "app.secret", "ENC(ordinary-text)",
-                "spring.cloud.nacos.config.import-check.enabled", "false"
-        ));
+        application.setDefaultProperties(
+                Map.of(
+                        "app.secret", "ENC(ordinary-text)",
+                        "spring.cloud.nacos.config.import-check.enabled", "false"));
 
         try (ConfigurableApplicationContext context = application.run()) {
             assertEquals("ENC(ordinary-text)", context.getBean("startupSecret", String.class));
@@ -110,11 +113,14 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         String plaintext = "legacy-startup-secret";
         String encrypted = ConfigCryptoUtils.encrypt(plaintext, testKey);
         SpringApplication application = new SpringApplication(StartupTestConfiguration.class);
-        application.setDefaultProperties(Map.of(
-                "mimir.nacos.encrypt.key", testKey,
-                "app.secret", "ENC(" + encrypted + ")",
-                "spring.cloud.nacos.config.import-check.enabled", "false"
-        ));
+        application.setDefaultProperties(
+                Map.of(
+                        "mimir.nacos.encrypt.key",
+                        testKey,
+                        "app.secret",
+                        "ENC(" + encrypted + ")",
+                        "spring.cloud.nacos.config.import-check.enabled",
+                        "false"));
 
         try (ConfigurableApplicationContext context = application.run()) {
             assertEquals(plaintext, context.getBean("startupSecret", String.class));
@@ -124,11 +130,19 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     @Test
     void shouldPreferCurrentPrefixWhenBothPrefixesAreConfigured() {
         String legacyKey = ConfigCryptoUtils.generateKey();
-        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "mimir.boot.nacos.encrypt.key", testKey,
-                "mimir.nacos.encrypt.key", legacyKey,
-                "app.secret", "ENC(" + ConfigCryptoUtils.encrypt("current-secret", testKey) + ")"
-        )));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "test",
+                                Map.of(
+                                        "mimir.boot.nacos.encrypt.key", testKey,
+                                        "mimir.nacos.encrypt.key", legacyKey,
+                                        "app.secret",
+                                                "ENC("
+                                                        + ConfigCryptoUtils.encrypt(
+                                                                "current-secret", testKey)
+                                                        + ")")));
 
         configuration.processDecrypt(environment);
 
@@ -137,11 +151,15 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
 
     @Test
     void shouldNotFallbackToLegacyPrefixWhenCurrentPrefixIsIncomplete() {
-        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "mimir.boot.nacos.encrypt.enabled", "true",
-                "mimir.nacos.encrypt.key", testKey,
-                "app.secret", "ENC(invalid-ciphertext)"
-        )));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "test",
+                                Map.of(
+                                        "mimir.boot.nacos.encrypt.enabled", "true",
+                                        "mimir.nacos.encrypt.key", testKey,
+                                        "app.secret", "ENC(invalid-ciphertext)")));
 
         assertThrows(IllegalStateException.class, () -> configuration.processDecrypt(environment));
     }
@@ -255,7 +273,9 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
         environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
         configuration.processDecrypt(environment);
 
-        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("refreshed-secret", testKey) + ")");
+        props.put(
+                "app.secret",
+                "ENC(" + ConfigCryptoUtils.encrypt("refreshed-secret", testKey) + ")");
         ApplicationContext context = applicationContext(environment);
         configuration.setApplicationContext(context);
 
@@ -267,7 +287,9 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     @Test
     void shouldNotDecryptOnEnvironmentChangeWhenNoEncryptPrefixIsBound() {
         String encrypted = "ENC(" + ConfigCryptoUtils.encrypt("refresh-secret", testKey) + ")";
-        environment.getPropertySources().addFirst(new MapPropertySource("nacos", Map.of("app.secret", encrypted)));
+        environment
+                .getPropertySources()
+                .addFirst(new MapPropertySource("nacos", Map.of("app.secret", encrypted)));
         ApplicationContext context = applicationContext(environment);
         configuration.setApplicationContext(context);
 
@@ -317,7 +339,8 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
 
     @Test
     void shouldRegisterHighestPrecedenceEnvironmentChangeListener() {
-        ApplicationListener<EnvironmentChangeEvent> listener = configuration.nacosEncryptRefreshListener();
+        ApplicationListener<EnvironmentChangeEvent> listener =
+                configuration.nacosEncryptRefreshListener();
 
         assertInstanceOf(Ordered.class, listener);
         assertEquals(Ordered.HIGHEST_PRECEDENCE, ((Ordered) listener).getOrder());

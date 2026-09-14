@@ -1,11 +1,12 @@
 package com.yggdrasil.labs.log.converter;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * 敏感数据模式测试
@@ -177,7 +178,9 @@ class SensitiveDataPatternTest extends BaseUnitTest {
         SensitiveDataPattern[] patterns = SensitiveDataPattern.values();
         for (int i = 0; i < patterns.length; i++) {
             for (int j = i + 1; j < patterns.length; j++) {
-                assertNotEquals(patterns[i].getName(), patterns[j].getName(),
+                assertNotEquals(
+                        patterns[i].getName(),
+                        patterns[j].getName(),
                         "Duplicate pattern name found: " + patterns[i].getName());
             }
         }

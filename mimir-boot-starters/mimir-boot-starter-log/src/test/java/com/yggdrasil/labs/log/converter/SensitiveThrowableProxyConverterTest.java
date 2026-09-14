@@ -1,22 +1,5 @@
 package com.yggdrasil.labs.log.converter;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.PatternLayout;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.spi.LoggingEvent;
-import ch.qos.logback.classic.spi.ThrowableProxy;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.lang.reflect.Field;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -24,6 +7,25 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.PatternLayout;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.LoggingEvent;
+import ch.qos.logback.classic.spi.ThrowableProxy;
 
 class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
 
@@ -36,7 +38,8 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
         converter = new SensitiveThrowableProxyConverter();
         converter.setContext((LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory());
         converter.start();
-        SensitiveDataConverter.publishConfiguration(List.of("password", "token"), List.of(), "****");
+        SensitiveDataConverter.publishConfiguration(
+                List.of("password", "token"), List.of(), "****");
     }
 
     @Override
@@ -74,7 +77,8 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
 
     @Test
     void registersDedicatedThrowableConverterAndUsesItInEveryPattern() throws Exception {
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("logback-spring.xml")) {
+        try (InputStream input =
+                getClass().getClassLoader().getResourceAsStream("logback-spring.xml")) {
             String xml = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 
             assertTrue(xml.contains("conversionWord=\"maskThrowable\""));
@@ -93,8 +97,9 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
         assertNotNull(firstConverter);
 
         ILoggingEvent event = mock(ILoggingEvent.class);
-        when(event.getThrowableProxy()).thenReturn(new ThrowableProxy(
-                new IllegalStateException("password=throwable-secret")));
+        when(event.getThrowableProxy())
+                .thenReturn(
+                        new ThrowableProxy(new IllegalStateException("password=throwable-secret")));
 
         SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "FIRST");
         String first = converter.convert(event);
@@ -112,22 +117,37 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
         LoggerContext context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
         layout.setContext(context);
         layout.getInstanceConverterMap().put("mask", SensitiveDataConverter::new);
-        layout.getInstanceConverterMap().put("maskThrowable", SensitiveThrowableProxyConverter::new);
+        layout.getInstanceConverterMap()
+                .put("maskThrowable", SensitiveThrowableProxyConverter::new);
         layout.setPattern("%mask%n%maskThrowable");
         layout.start();
         try {
             Logger logger = context.getLogger("THROWABLE_PATTERN_TEST");
-            ILoggingEvent withoutThrowable = new LoggingEvent(
-                    SensitiveThrowableProxyConverterTest.class.getName(), logger, Level.ERROR,
-                    "message", null, null);
+            ILoggingEvent withoutThrowable =
+                    new LoggingEvent(
+                            SensitiveThrowableProxyConverterTest.class.getName(),
+                            logger,
+                            Level.ERROR,
+                            "message",
+                            null,
+                            null);
             assertEquals("message" + System.lineSeparator(), layout.doLayout(withoutThrowable));
 
-            ILoggingEvent withThrowable = new LoggingEvent(
-                    SensitiveThrowableProxyConverterTest.class.getName(), logger, Level.ERROR,
-                    "message", new IllegalStateException("password=throwable-secret"), null);
+            ILoggingEvent withThrowable =
+                    new LoggingEvent(
+                            SensitiveThrowableProxyConverterTest.class.getName(),
+                            logger,
+                            Level.ERROR,
+                            "message",
+                            new IllegalStateException("password=throwable-secret"),
+                            null);
             String rendered = layout.doLayout(withThrowable);
-            assertTrue(rendered.startsWith("message" + System.lineSeparator()
-                    + IllegalStateException.class.getName() + ": "));
+            assertTrue(
+                    rendered.startsWith(
+                            "message"
+                                    + System.lineSeparator()
+                                    + IllegalStateException.class.getName()
+                                    + ": "));
             assertFalse(rendered.contains("message" + IllegalStateException.class.getName()));
             assertFalse(rendered.contains("password=throwable-secret"));
             assertFalse(rendered.contains(System.lineSeparator() + System.lineSeparator()));

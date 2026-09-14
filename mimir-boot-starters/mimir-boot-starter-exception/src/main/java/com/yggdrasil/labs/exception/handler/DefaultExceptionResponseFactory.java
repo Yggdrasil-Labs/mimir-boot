@@ -1,13 +1,13 @@
 package com.yggdrasil.labs.exception.handler;
 
-import com.yggdrasil.labs.common.response.R;
-
 import java.io.Serializable;
+
+import com.yggdrasil.labs.common.response.R;
 
 /**
  * 默认异常响应工厂实现
  *
- * <p>返回 {@link R} 统一响应格式，作为框架默认行为。</p>
+ * <p>返回 {@link R} 统一响应格式，作为框架默认行为。
  *
  * @author Yggdrasil Labs
  * @since 2.1.0

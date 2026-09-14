@@ -1,6 +1,5 @@
 package com.yggdrasil.labs.nacos.config;
 
-import com.yggdrasil.labs.nacos.decrypt.ConfigDecryptProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -14,15 +13,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 
+import com.yggdrasil.labs.nacos.decrypt.ConfigDecryptProcessor;
+
 /**
  * Nacos 配置加密自动配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动处理 Nacos 配置中的加密值</li>
- * <li>支持 ENC(encrypted_value) 格式的配置解密</li>
- * <li>在应用启动早期阶段进行配置解密</li>
- * <li>支持配置动态刷新时的解密</li>
+ *   <li>自动处理 Nacos 配置中的加密值
+ *   <li>支持 ENC(encrypted_value) 格式的配置解密
+ *   <li>在应用启动早期阶段进行配置解密
+ *   <li>支持配置动态刷新时的解密
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -53,7 +55,9 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
      * @param event 环境变更事件
      */
     void onEnvironmentChange(EnvironmentChangeEvent event) {
-        if (applicationContext != null && applicationContext.getEnvironment() instanceof ConfigurableEnvironment environment) {
+        if (applicationContext != null
+                && applicationContext.getEnvironment()
+                        instanceof ConfigurableEnvironment environment) {
             if (!NacosEncryptPropertiesResolver.isAnyPrefixBound(environment)) {
                 log.debug("检测到配置变更但未配置 Nacos 加密前缀，跳过配置解密，变更的配置键: {}", event.getKeys());
                 return;
@@ -79,7 +83,8 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
      * @param environment Spring 环境配置
      */
     void processDecrypt(ConfigurableEnvironment environment) {
-        NacosEncryptProperties activeProperties = NacosEncryptPropertiesResolver.resolve(environment, properties);
+        NacosEncryptProperties activeProperties =
+                NacosEncryptPropertiesResolver.resolve(environment, properties);
         log.debug("开始处理 Nacos 配置解密");
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(activeProperties);
         processor.process(environment);

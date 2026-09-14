@@ -1,22 +1,24 @@
 package com.yggdrasil.labs.log.converter;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 
 /**
  * 敏感数据转换器测试
@@ -115,21 +117,20 @@ class SensitiveDataConverterTest extends BaseUnitTest {
 
     @Test
     void testConstants() {
-        assertEquals("mimir.boot.log.mask.enabledPatterns",
+        assertEquals(
+                "mimir.boot.log.mask.enabledPatterns",
                 SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY);
-        assertEquals("mimir.boot.log.mask.customPatterns",
+        assertEquals(
+                "mimir.boot.log.mask.customPatterns",
                 SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY);
-        assertEquals("mimir.boot.log.mask.replacement",
+        assertEquals(
+                "mimir.boot.log.mask.replacement",
                 SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY);
     }
 
     @Test
     void testConvertWithMultipleMessages() {
-        String[] messages = {
-                "用户登录成功",
-                "订单创建完成",
-                "查询用户信息"
-        };
+        String[] messages = {"用户登录成功", "订单创建完成", "查询用户信息"};
 
         for (String message : messages) {
             ILoggingEvent event = mock(ILoggingEvent.class);
@@ -155,15 +156,13 @@ class SensitiveDataConverterTest extends BaseUnitTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({
-            "password,'登录信息: password=123456','password=','123456'",
-            "token,'token=abc123xyz','token=','abc123xyz'",
-            "phone,'手机号: phone=13812345678','phone=','13812345678'",
-            "email,'邮箱: email=test@example.com','email=','test@example.com'"
+        "password,'登录信息: password=123456','password=','123456'",
+        "token,'token=abc123xyz','token=','abc123xyz'",
+        "phone,'手机号: phone=13812345678','phone=','13812345678'",
+        "email,'邮箱: email=test@example.com','email=','test@example.com'"
     })
-    void testMaskSensitiveDataWithEnabledPatterns(String enabledPattern,
-                                                  String message,
-                                                  String keyPrefix,
-                                                  String secret) {
+    void testMaskSensitiveDataWithEnabledPatterns(
+            String enabledPattern, String message, String keyPrefix, String secret) {
         context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPattern);
         SensitiveDataConverter.reloadConfig();
 
@@ -192,7 +191,8 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     @Test
     void testMaskSensitiveDataWithMultiplePatterns() {
         // 启用多个规则
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password,token,phone");
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password,token,phone");
         SensitiveDataConverter.reloadConfig();
 
         String message = "登录信息: password=123456, token=abc123, phone=13812345678";
@@ -263,7 +263,8 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     @Test
     void testMaskSensitiveDataWithIdCardNumber() {
         // 启用身份证号规则（纯数字）
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "id_card_number");
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "id_card_number");
         SensitiveDataConverter.reloadConfig();
 
         String message = "身份证号: 110101199001011234";
@@ -303,7 +304,8 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     @Test
     void testMaskSensitiveDataWithBankCardNumber() {
         // 启用银行卡号规则
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "bank_card_number");
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "bank_card_number");
         SensitiveDataConverter.reloadConfig();
 
         String message = "银行卡号: 6222021234567890123";
@@ -371,16 +373,18 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         SensitiveDataConverter.reloadConfig();
 
         String message = "测试消息";
-        assertDoesNotThrow(() -> {
-            String result = converter.maskSensitiveData(message);
-            assertEquals(message, result);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    String result = converter.maskSensitiveData(message);
+                    assertEquals(message, result);
+                });
     }
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.MethodSource("provideInvalidOrEmptyEnabledPatterns")
     void testEnabledPatterns_invalid_or_empty_are_ignored(String enabledPatternsValue) {
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPatternsValue);
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPatternsValue);
         SensitiveDataConverter.reloadConfig();
 
         String message = "测试消息";
@@ -388,18 +392,19 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         assertEquals(message, result);
     }
 
-    private static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> provideInvalidOrEmptyEnabledPatterns() {
+    private static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments>
+            provideInvalidOrEmptyEnabledPatterns() {
         return java.util.stream.Stream.of(
                 org.junit.jupiter.params.provider.Arguments.of("invalid_pattern_name"),
                 org.junit.jupiter.params.provider.Arguments.of(""),
-                org.junit.jupiter.params.provider.Arguments.of((String) null)
-        );
+                org.junit.jupiter.params.provider.Arguments.of((String) null));
     }
 
     @Test
     void testConfigAsListWithCommaSeparated() {
         // 测试逗号分隔的配置值
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password,token,phone");
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password,token,phone");
         SensitiveDataConverter.reloadConfig();
 
         String message = "password=123, token=abc, phone=138";
@@ -512,11 +517,12 @@ class SensitiveDataConverterTest extends BaseUnitTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.MethodSource("provideMaskValueCases")
-    void testMaskValueCases(String enabledPattern,
-                            String message,
-                            String expectContains,
-                            String secret,
-                            String expectedExact) {
+    void testMaskValueCases(
+            String enabledPattern,
+            String message,
+            String expectContains,
+            String secret,
+            String expectedExact) {
         context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, enabledPattern);
         SensitiveDataConverter.reloadConfig();
 
@@ -535,25 +541,21 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         }
     }
 
-    private static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> provideMaskValueCases() {
+    private static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments>
+            provideMaskValueCases() {
         return java.util.stream.Stream.of(
                 // 带等号，无引号
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "password", "password=123456", "password=", "123456", null
-                ),
+                        "password", "password=123456", "password=", "123456", null),
                 // 带双引号（使用包含断言，避免实现差异引起的引号重复问题）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "password", "password=\"123456\"", "password=\"****\"", null, null
-                ),
+                        "password", "password=\"123456\"", "password=\"****\"", null, null),
                 // 带单引号（使用包含断言）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "password", "password='123456'", "password='****'", null, null
-                ),
+                        "password", "password='123456'", "password='****'", null, null),
                 // 不带等号（纯数字匹配）
                 org.junit.jupiter.params.provider.Arguments.of(
-                        "id_card_number", "110101199001011234", null, null, "****"
-                )
-        );
+                        "id_card_number", "110101199001011234", null, null, "****"));
     }
 
     @Test
@@ -597,18 +599,20 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         List<Future<?>> futures = new java.util.ArrayList<>();
 
         for (int i = 0; i < threadCount; i++) {
-            futures.add(executor.submit(() -> {
-                try {
-                    for (int j = 0; j < iterations; j++) {
-                        String message = "password=123456" + j;
-                        String result = converter.maskSensitiveData(message);
-                        assertNotNull(result);
-                        assertTrue(result.contains("****"));
-                    }
-                } finally {
-                    latch.countDown();
-                }
-            }));
+            futures.add(
+                    executor.submit(
+                            () -> {
+                                try {
+                                    for (int j = 0; j < iterations; j++) {
+                                        String message = "password=123456" + j;
+                                        String result = converter.maskSensitiveData(message);
+                                        assertNotNull(result);
+                                        assertTrue(result.contains("****"));
+                                    }
+                                } finally {
+                                    latch.countDown();
+                                }
+                            }));
         }
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
@@ -628,17 +632,20 @@ class SensitiveDataConverterTest extends BaseUnitTest {
 
         for (int i = 0; i < threadCount; i++) {
             final int patternId = i;
-            futures.add(executor.submit(() -> {
-                try {
-                    SensitiveDataConverter.addCustomPattern("pattern" + patternId + "\\d+");
-                    SensitiveDataConverter.reloadConfig();
-                    String message = "pattern" + patternId + "123";
-                    String result = converter.maskSensitiveData(message);
-                    assertNotNull(result);
-                } finally {
-                    latch.countDown();
-                }
-            }));
+            futures.add(
+                    executor.submit(
+                            () -> {
+                                try {
+                                    SensitiveDataConverter.addCustomPattern(
+                                            "pattern" + patternId + "\\d+");
+                                    SensitiveDataConverter.reloadConfig();
+                                    String message = "pattern" + patternId + "123";
+                                    String result = converter.maskSensitiveData(message);
+                                    assertNotNull(result);
+                                } finally {
+                                    latch.countDown();
+                                }
+                            }));
         }
 
         assertTrue(latch.await(10, TimeUnit.SECONDS));
@@ -657,7 +664,8 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     @Test
     void testMultiplePatternsInOneMessage() {
         // 测试一条消息中包含多个敏感信息
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password,token,phone");
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "password,token,phone");
         SensitiveDataConverter.reloadConfig();
 
         String message = "用户登录 password=123456 token=abc789 phone=13812345678";
@@ -674,7 +682,8 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     @Test
     void testPatternWithWhitespace() {
         // 测试带空格的配置
-        context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, " password , token ");
+        context.putProperty(
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, " password , token ");
         SensitiveDataConverter.reloadConfig();
 
         String message = "password=123";
@@ -729,9 +738,10 @@ class SensitiveDataConverterTest extends BaseUnitTest {
     void masksPrivateSecretAndAccessKeysButLeavesPublicKeyVisible() {
         SensitiveDataConverter.publishConfiguration(List.of("secret"), List.of(), "****");
 
-        String result = converter.maskSensitiveData(
-                "privateKey=sample-private-value secretKey=sample-secret-value "
-                        + "accessKey=sample-access-value publicKey=public-information");
+        String result =
+                converter.maskSensitiveData(
+                        "privateKey=sample-private-value secretKey=sample-secret-value "
+                                + "accessKey=sample-access-value publicKey=public-information");
 
         assertFalse(result.contains("sample-private-value"));
         assertFalse(result.contains("sample-secret-value"));
@@ -751,32 +761,42 @@ class SensitiveDataConverterTest extends BaseUnitTest {
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Future<String> firstResult = executor.submit(
-                    () -> first.maskSensitiveData("password=sample-password token=sample-token"));
+            Future<String> firstResult =
+                    executor.submit(
+                            () ->
+                                    first.maskSensitiveData(
+                                            "password=sample-password token=sample-token"));
             SensitiveDataConverter.publishConfiguration(List.of("token"), List.of(), "[new]");
-            Future<String> secondResult = executor.submit(
-                    () -> second.maskSensitiveData("password=sample-password token=sample-token"));
+            Future<String> secondResult =
+                    executor.submit(
+                            () ->
+                                    second.maskSensitiveData(
+                                            "password=sample-password token=sample-token"));
 
-            assertTrue(List.of(
-                            "password=[old] token=sample-token",
-                            "password=sample-password token=[new]")
-                    .contains(firstResult.get(5, TimeUnit.SECONDS)));
-            assertEquals("password=sample-password token=[new]", secondResult.get(5, TimeUnit.SECONDS));
+            assertTrue(
+                    List.of(
+                                    "password=[old] token=sample-token",
+                                    "password=sample-password token=[new]")
+                            .contains(firstResult.get(5, TimeUnit.SECONDS)));
+            assertEquals(
+                    "password=sample-password token=[new]", secondResult.get(5, TimeUnit.SECONDS));
         } finally {
             executor.shutdownNow();
         }
     }
+
     @Test
     void masksEscapedQuotedValueAndPreservesTail() {
         SensitiveDataConverter.publishConfiguration(List.of("password"), List.of(), "****");
 
-        String escapedQuote = converter.maskSensitiveData("password=\"secret\\\"still-secret\", tail=sentinel");
-        String escapedBackslash = converter.maskSensitiveData("password=\"secret\\\\\", tail=sentinel");
+        String escapedQuote =
+                converter.maskSensitiveData("password=\"secret\\\"still-secret\", tail=sentinel");
+        String escapedBackslash =
+                converter.maskSensitiveData("password=\"secret\\\\\", tail=sentinel");
 
         assertEquals("password=\"****\", tail=sentinel", escapedQuote);
         assertEquals("password=\"****\", tail=sentinel", escapedBackslash);
         assertFalse(escapedQuote.contains("secret"));
         assertFalse(escapedBackslash.contains("secret"));
     }
-
 }

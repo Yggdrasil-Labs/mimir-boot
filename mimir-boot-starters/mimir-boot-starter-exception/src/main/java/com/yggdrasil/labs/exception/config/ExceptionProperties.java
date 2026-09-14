@@ -1,7 +1,8 @@
 package com.yggdrasil.labs.exception.config;
 
-import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import lombok.Data;
 
 /**
  * 异常处理配置属性
@@ -13,9 +14,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "mimir.boot.exception")
 public class ExceptionProperties {
 
-    /**
-     * 是否启用全局异常处理
-     */
+    /** 是否启用全局异常处理 */
     private boolean enabled = true;
 }
-

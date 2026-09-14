@@ -1,11 +1,7 @@
 package com.yggdrasil.labs.rpc.core.config;
 
-import com.yggdrasil.labs.rpc.core.hook.RpcHook;
-import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
-import com.yggdrasil.labs.rpc.core.support.RpcExecutionTemplate;
-import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -14,9 +10,19 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
+import com.yggdrasil.labs.rpc.core.hook.RpcHook;
+import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.support.RpcExecutionTemplate;
+import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+
 @AutoConfiguration
 @EnableConfigurationProperties(RpcCoreProperties.class)
-@ConditionalOnProperty(prefix = "mimir.boot.rpc.core", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+        prefix = "mimir.boot.rpc.core",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = true)
 public class RpcCoreAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(RpcCoreAutoConfiguration.class);
@@ -39,8 +45,10 @@ public class RpcCoreAutoConfiguration {
     @ConditionalOnMissingBean
     public RpcExecutionTemplate rpcExecutionTemplate(
             RpcHookChain hookChain, RpcTracerBridge tracerBridge, RpcCoreProperties properties) {
-        log.debug("Creating RpcExecutionTemplate with contextPropagationEnabled={}",
+        log.debug(
+                "Creating RpcExecutionTemplate with contextPropagationEnabled={}",
                 properties.isContextPropagationEnabled());
-        return new RpcExecutionTemplate(hookChain, tracerBridge, properties.isContextPropagationEnabled());
+        return new RpcExecutionTemplate(
+                hookChain, tracerBridge, properties.isContextPropagationEnabled());
     }
 }

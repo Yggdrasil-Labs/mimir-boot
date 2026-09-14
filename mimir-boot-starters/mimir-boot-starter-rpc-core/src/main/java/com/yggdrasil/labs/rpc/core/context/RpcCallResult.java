@@ -3,9 +3,7 @@ package com.yggdrasil.labs.rpc.core.context;
 import java.time.Duration;
 import java.util.Optional;
 
-/**
- * RPC 调用结果信息，用于 Hook 回调。
- */
+/** RPC 调用结果信息，用于 Hook 回调。 */
 public final class RpcCallResult {
 
     private final boolean success;
@@ -38,4 +36,3 @@ public final class RpcCallResult {
         return Optional.ofNullable(error);
     }
 }
-

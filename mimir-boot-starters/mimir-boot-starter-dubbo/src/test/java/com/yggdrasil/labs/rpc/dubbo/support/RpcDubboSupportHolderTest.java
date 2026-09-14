@@ -1,15 +1,12 @@
 package com.yggdrasil.labs.rpc.dubbo.support;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
-import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
-import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
-import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 import java.lang.reflect.Field;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -17,9 +14,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
+import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
 
 class RpcDubboSupportHolderTest {
 
@@ -109,29 +111,38 @@ class RpcDubboSupportHolderTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         RpcDubboSupportHolder.set(firstHookChain, firstTracerBridge, firstProperties);
         try {
-            var writer = executor.submit(() -> {
-                await(start);
-                for (int index = 0; index < 10_000; index++) {
-                    RpcDubboSupportHolder.set(firstHookChain, firstTracerBridge, firstProperties);
-                    RpcDubboSupportHolder.set(secondHookChain, secondTracerBridge, secondProperties);
-                }
-            });
-            var reader = executor.submit(() -> {
-                await(start);
-                for (int index = 0; index < 10_000; index++) {
-                    RpcDubboSupportHolder.Snapshot snapshot = RpcDubboSupportHolder.current();
-                    boolean firstGeneration = snapshot.hookChain() == firstHookChain
-                            && snapshot.tracerBridge() == firstTracerBridge
-                            && snapshot.properties() == firstProperties;
-                    boolean secondGeneration = snapshot.hookChain() == secondHookChain
-                            && snapshot.tracerBridge() == secondTracerBridge
-                            && snapshot.properties() == secondProperties;
-                    if (!firstGeneration && !secondGeneration) {
-                        mixedGeneration.set(true);
-                        return;
-                    }
-                }
-            });
+            var writer =
+                    executor.submit(
+                            () -> {
+                                await(start);
+                                for (int index = 0; index < 10_000; index++) {
+                                    RpcDubboSupportHolder.set(
+                                            firstHookChain, firstTracerBridge, firstProperties);
+                                    RpcDubboSupportHolder.set(
+                                            secondHookChain, secondTracerBridge, secondProperties);
+                                }
+                            });
+            var reader =
+                    executor.submit(
+                            () -> {
+                                await(start);
+                                for (int index = 0; index < 10_000; index++) {
+                                    RpcDubboSupportHolder.Snapshot snapshot =
+                                            RpcDubboSupportHolder.current();
+                                    boolean firstGeneration =
+                                            snapshot.hookChain() == firstHookChain
+                                                    && snapshot.tracerBridge() == firstTracerBridge
+                                                    && snapshot.properties() == firstProperties;
+                                    boolean secondGeneration =
+                                            snapshot.hookChain() == secondHookChain
+                                                    && snapshot.tracerBridge() == secondTracerBridge
+                                                    && snapshot.properties() == secondProperties;
+                                    if (!firstGeneration && !secondGeneration) {
+                                        mixedGeneration.set(true);
+                                        return;
+                                    }
+                                }
+                            });
             start.countDown();
             writer.get(5, TimeUnit.SECONDS);
             reader.get(5, TimeUnit.SECONDS);

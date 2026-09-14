@@ -1,27 +1,11 @@
 package com.yggdrasil.labs.log.web;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import com.yggdrasil.labs.test.util.FilterChainMockBuilder;
-import com.yggdrasil.labs.test.util.LogTestUtils;
-import jakarta.servlet.AsyncContext;
-import jakarta.servlet.AsyncEvent;
-import jakarta.servlet.AsyncListener;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.slf4j.LoggerFactory;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,12 +17,31 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
+import com.yggdrasil.labs.test.util.FilterChainMockBuilder;
+import com.yggdrasil.labs.test.util.LogTestUtils;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * 访问日志过滤器测试
@@ -70,9 +73,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         super.tearDown();
     }
 
-    /**
-     * 测试正常请求（2xx）
-     */
+    /** 测试正常请求（2xx） */
     @Test
     void testSuccessRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -81,9 +82,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
         MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain chain = FilterChainMockBuilder.create()
-                .statusCode(200)
-                .build();
+        FilterChain chain = FilterChainMockBuilder.create().statusCode(200).build();
 
         filter.doFilter(request, response, chain);
 
@@ -92,8 +91,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         String message = event.getFormattedMessage();
         assertTrue(message.contains("Outcome=[COMPLETED]"));
         assertTrue(message.contains("ErrorType=[-]"));
-        assertTrue(message.matches(".*Duration=\\[[0-9]+ms\\].*"),
-                "访问日志应包含毫秒耗时字段: " + message);
+        assertTrue(message.matches(".*Duration=\\[[0-9]+ms\\].*"), "访问日志应包含毫秒耗时字段: " + message);
         AssertUtils.assertLogLevel(event, Level.INFO);
         AssertUtils.assertLogStatus(event, 200);
         AssertUtils.assertLogContains(event, "GET");
@@ -134,8 +132,8 @@ class AccessLogFilterTest extends BaseUnitTest {
         AssertionError failure = new AssertionError("boom");
         doThrow(failure).when(chain).doFilter(any(), any());
 
-        AssertionError propagated = assertThrows(AssertionError.class,
-                () -> filter.doFilter(request, response, chain));
+        AssertionError propagated =
+                assertThrows(AssertionError.class, () -> filter.doFilter(request, response, chain));
 
         assertSame(failure, propagated);
         AssertUtils.assertLogSize(listAppender, 1);
@@ -143,7 +141,6 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(message.contains("Outcome=[ERROR]"));
         assertTrue(message.contains("ErrorType=[java.lang.AssertionError]"));
     }
-
 
     @Test
     void defersUntilAsyncComplete() throws Exception {
@@ -157,10 +154,13 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext asyncContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(asyncContext);
         FilterChain chain = mock(FilterChain.class);
-        doAnswer(invocation -> {
-            ((HttpServletResponse) invocation.getArgument(1)).setStatus(201);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            ((HttpServletResponse) invocation.getArgument(1)).setStatus(201);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -191,10 +191,13 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(asyncResponse.getStatus()).thenReturn(202);
         when(asyncContext.getResponse()).thenReturn(asyncResponse);
         FilterChain chain = mock(FilterChain.class);
-        doAnswer(invocation -> {
-            ((HttpServletResponse) invocation.getArgument(1)).setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            ((HttpServletResponse) invocation.getArgument(1)).setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -221,7 +224,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext secondContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(firstContext);
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> firstCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(firstContext).addListener(firstCaptor.capture());
@@ -256,7 +259,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext asyncContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(asyncContext);
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(asyncContext).addListener(listenerCaptor.capture());
@@ -283,7 +286,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext asyncContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(asyncContext);
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(asyncContext).addListener(listenerCaptor.capture());
@@ -310,7 +313,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext asyncContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(asyncContext);
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(asyncContext).addListener(listenerCaptor.capture());
@@ -336,9 +339,10 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext asyncContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(asyncContext);
         doThrow(new IllegalStateException("completed"))
-                .when(asyncContext).addListener(any(AsyncListener.class));
+                .when(asyncContext)
+                .addListener(any(AsyncListener.class));
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         AssertUtils.assertLogSize(listAppender, 1);
         String message = listAppender.list.get(0).getFormattedMessage();
@@ -359,9 +363,10 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext secondContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(firstContext);
         doThrow(new IllegalStateException("completed"))
-                .when(secondContext).addListener(any(AsyncListener.class));
+                .when(secondContext)
+                .addListener(any(AsyncListener.class));
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(firstContext).addListener(listenerCaptor.capture());
@@ -393,9 +398,10 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(restartedContext.getResponse()).thenReturn(restartedResponse);
         when(restartedResponse.getStatus()).thenReturn(202);
         doThrow(new IllegalStateException("completed"))
-                .when(restartedContext).addListener(any(AsyncListener.class));
+                .when(restartedContext)
+                .addListener(any(AsyncListener.class));
 
-        filter.doFilter(request, initialResponse, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, initialResponse, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(initialContext).addListener(listenerCaptor.capture());
@@ -403,7 +409,8 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         AssertUtils.assertLogSize(listAppender, 1);
         String message = listAppender.list.get(0).getFormattedMessage();
-        assertTrue(message.contains("Status=[202]"),
+        assertTrue(
+                message.contains("Status=[202]"),
                 "重启异步周期注册失败应使用当前 AsyncContext response 的状态码: " + message);
         assertTrue(message.contains("Outcome=[REGISTRATION_ERROR]"));
     }
@@ -419,7 +426,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getAsyncContext()).thenThrow(new IllegalStateException("completed"));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         AssertUtils.assertLogSize(listAppender, 1);
         String message = listAppender.list.get(0).getFormattedMessage();
@@ -440,7 +447,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         AsyncContext secondContext = mock(AsyncContext.class);
         when(request.getAsyncContext()).thenReturn(firstContext);
 
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> { });
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(firstContext).addListener(listenerCaptor.capture());
@@ -451,22 +458,25 @@ class AccessLogFilterTest extends BaseUnitTest {
             CountDownLatch registrationStart = new CountDownLatch(1);
             Future<?>[] registrations = new Future<?>[3];
             for (int index = 0; index < registrations.length; index++) {
-                registrations[index] = executor.submit(() -> {
-                    registrationReady.countDown();
-                    awaitLatch(registrationStart);
-                    try {
-                        listener.onStartAsync(new AsyncEvent(secondContext));
-                    } catch (IOException e) {
-                        throw new AssertionError(e);
-                    }
-                });
+                registrations[index] =
+                        executor.submit(
+                                () -> {
+                                    registrationReady.countDown();
+                                    awaitLatch(registrationStart);
+                                    try {
+                                        listener.onStartAsync(new AsyncEvent(secondContext));
+                                    } catch (IOException e) {
+                                        throw new AssertionError(e);
+                                    }
+                                });
             }
             assertTrue(registrationReady.await(5, TimeUnit.SECONDS));
             registrationStart.countDown();
             for (Future<?> registration : registrations) {
                 registration.get();
             }
-            ArgumentCaptor<AsyncListener> secondCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+            ArgumentCaptor<AsyncListener> secondCaptor =
+                    ArgumentCaptor.forClass(AsyncListener.class);
             verify(secondContext).addListener(secondCaptor.capture());
             AsyncListener currentListener = secondCaptor.getValue();
 
@@ -474,33 +484,42 @@ class AccessLogFilterTest extends BaseUnitTest {
 
             CountDownLatch terminalReady = new CountDownLatch(3);
             CountDownLatch terminalStart = new CountDownLatch(1);
-            Future<?> complete = executor.submit(() -> {
-                terminalReady.countDown();
-                awaitLatch(terminalStart);
-                try {
-                    currentListener.onComplete(new AsyncEvent(secondContext));
-                } catch (IOException e) {
-                    throw new AssertionError(e);
-                }
-            });
-            Future<?> timeout = executor.submit(() -> {
-                terminalReady.countDown();
-                awaitLatch(terminalStart);
-                try {
-                    currentListener.onTimeout(new AsyncEvent(secondContext));
-                } catch (IOException e) {
-                    throw new AssertionError(e);
-                }
-            });
-            Future<?> error = executor.submit(() -> {
-                terminalReady.countDown();
-                awaitLatch(terminalStart);
-                try {
-                    currentListener.onError(new AsyncEvent(secondContext, new IllegalStateException("boom")));
-                } catch (IOException e) {
-                    throw new AssertionError(e);
-                }
-            });
+            Future<?> complete =
+                    executor.submit(
+                            () -> {
+                                terminalReady.countDown();
+                                awaitLatch(terminalStart);
+                                try {
+                                    currentListener.onComplete(new AsyncEvent(secondContext));
+                                } catch (IOException e) {
+                                    throw new AssertionError(e);
+                                }
+                            });
+            Future<?> timeout =
+                    executor.submit(
+                            () -> {
+                                terminalReady.countDown();
+                                awaitLatch(terminalStart);
+                                try {
+                                    currentListener.onTimeout(new AsyncEvent(secondContext));
+                                } catch (IOException e) {
+                                    throw new AssertionError(e);
+                                }
+                            });
+            Future<?> error =
+                    executor.submit(
+                            () -> {
+                                terminalReady.countDown();
+                                awaitLatch(terminalStart);
+                                try {
+                                    currentListener.onError(
+                                            new AsyncEvent(
+                                                    secondContext,
+                                                    new IllegalStateException("boom")));
+                                } catch (IOException e) {
+                                    throw new AssertionError(e);
+                                }
+                            });
             assertTrue(terminalReady.await(5, TimeUnit.SECONDS));
             terminalStart.countDown();
             complete.get();
@@ -522,9 +541,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         }
     }
 
-    /**
-     * 测试客户端错误（4xx）
-     */
+    /** 测试客户端错误（4xx） */
     @Test
     void testClientErrorRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -536,28 +553,30 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(404);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(404);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
         String message = event.getFormattedMessage();
-        assertTrue(message.contains("Status=[404]"),
-                "日志消息应该包含 Status=[404]，但实际是: " + message);
-        assertEquals(Level.WARN, event.getLevel(),
+        assertTrue(message.contains("Status=[404]"), "日志消息应该包含 Status=[404]，但实际是: " + message);
+        assertEquals(
+                Level.WARN,
+                event.getLevel(),
                 "4xx 状态码应该记录为 WARN 级别，但实际是: " + event.getLevel() + ", 消息: " + message);
         assertTrue(message.contains("Outcome=[COMPLETED]"));
         assertTrue(message.contains("ErrorType=[-]"));
     }
 
-    /**
-     * 测试服务器错误（5xx）
-     */
+    /** 测试服务器错误（5xx） */
     @Test
     void testServerErrorRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -569,11 +588,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(500);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(500);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -585,9 +607,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(event.getFormattedMessage().contains("ErrorType=[-]"));
     }
 
-    /**
-     * 测试慢接口（超过阈值）
-     */
+    /** 测试慢接口（超过阈值） */
     @Test
     void testSlowRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -599,11 +619,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Apache-HttpClient/4.5");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -613,9 +636,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(event.getFormattedMessage().contains("Status=[200]"));
     }
 
-    /**
-     * 测试带查询参数的请求
-     */
+    /** 测试带查询参数的请求 */
     @Test
     void testRequestWithQueryStringDoesNotLogQueryParameters() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/search");
@@ -625,11 +646,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -644,14 +668,15 @@ class AccessLogFilterTest extends BaseUnitTest {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/events");
         request.addHeader("User-Agent", "EventSource");
         MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain chain = (servletRequest, servletResponse) -> {
-            HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
-            assertSame(response, chainResponse);
-            chainResponse.getWriter().write("data: ready\n\n");
-            chainResponse.flushBuffer();
+        FilterChain chain =
+                (servletRequest, servletResponse) -> {
+                    HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
+                    assertSame(response, chainResponse);
+                    chainResponse.getWriter().write("data: ready\n\n");
+                    chainResponse.flushBuffer();
 
-            assertEquals("data: ready\n\n", response.getContentAsString());
-        };
+                    assertEquals("data: ready\n\n", response.getContentAsString());
+                };
 
         filter.doFilter(request, response, chain);
 
@@ -663,15 +688,17 @@ class AccessLogFilterTest extends BaseUnitTest {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/export");
         MockHttpServletResponse response = new MockHttpServletResponse();
         byte[] content = "export-content".getBytes();
-        FilterChain chain = (servletRequest, servletResponse) -> {
-            HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
-            assertSame(response, chainResponse);
-            chainResponse.setHeader("Content-Disposition", "attachment; filename=report.csv");
-            chainResponse.getOutputStream().write(content);
-            chainResponse.flushBuffer();
+        FilterChain chain =
+                (servletRequest, servletResponse) -> {
+                    HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
+                    assertSame(response, chainResponse);
+                    chainResponse.setHeader(
+                            "Content-Disposition", "attachment; filename=report.csv");
+                    chainResponse.getOutputStream().write(content);
+                    chainResponse.flushBuffer();
 
-            assertArrayEquals(content, response.getContentAsByteArray());
-        };
+                    assertArrayEquals(content, response.getContentAsByteArray());
+                };
 
         filter.doFilter(request, response, chain);
 
@@ -686,23 +713,22 @@ class AccessLogFilterTest extends BaseUnitTest {
         byte[] content = new byte[1024 * 1024];
         content[0] = 1;
         content[content.length - 1] = 2;
-        FilterChain chain = (servletRequest, servletResponse) -> {
-            HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
-            assertSame(response, chainResponse);
-            chainResponse.getOutputStream().write(content);
-            chainResponse.flushBuffer();
+        FilterChain chain =
+                (servletRequest, servletResponse) -> {
+                    HttpServletResponse chainResponse = (HttpServletResponse) servletResponse;
+                    assertSame(response, chainResponse);
+                    chainResponse.getOutputStream().write(content);
+                    chainResponse.flushBuffer();
 
-            assertArrayEquals(content, response.getContentAsByteArray());
-        };
+                    assertArrayEquals(content, response.getContentAsByteArray());
+                };
 
         filter.doFilter(request, response, chain);
 
         assertArrayEquals(content, response.getContentAsByteArray());
     }
 
-    /**
-     * 测试默认仅信任直连地址，不信任伪造的 X-Forwarded-For。
-     */
+    /** 测试默认仅信任直连地址，不信任伪造的 X-Forwarded-For。 */
     @Test
     void testUsesDirectRemoteAddressInsteadOfForwardedFor() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -715,11 +741,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         request.addHeader("X-Forwarded-For", "203.0.113.1");
         request.setRemoteAddr("198.51.100.10");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -728,9 +757,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(event.getFormattedMessage().contains("IP=[198.51.100.10]"));
     }
 
-    /**
-     * 测试默认仅信任直连地址，不信任伪造的 X-Real-IP。
-     */
+    /** 测试默认仅信任直连地址，不信任伪造的 X-Real-IP。 */
     @Test
     void testUsesDirectRemoteAddressInsteadOfRealIp() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -743,11 +770,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         request.addHeader("X-Real-IP", "203.0.113.2");
         request.setRemoteAddr("198.51.100.11");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -756,9 +786,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(event.getFormattedMessage().contains("IP=[198.51.100.11]"));
     }
 
-    /**
-     * 测试重定向请求（3xx）
-     */
+    /** 测试重定向请求（3xx） */
     @Test
     void testRedirectRequest() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -770,11 +798,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(302);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(302);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -784,17 +815,24 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertTrue(event.getFormattedMessage().contains("Status=[302]"));
     }
 
-    /**
-     * 测试多种状态码的日志级别
-     */
+    /** 测试多种状态码的日志级别 */
     @Test
     void testVariousStatusCodes() throws Exception {
         int[] statusCodes = {200, 201, 204, 301, 302, 304, 400, 401, 403, 404, 500, 502, 503};
         Level[] expectedLevels = {
-                Level.INFO, Level.INFO, Level.INFO,  // 2xx
-                Level.INFO, Level.INFO, Level.INFO,  // 3xx
-                Level.WARN, Level.WARN, Level.WARN, Level.WARN,  // 4xx
-                Level.ERROR, Level.ERROR, Level.ERROR  // 5xx
+            Level.INFO,
+            Level.INFO,
+            Level.INFO, // 2xx
+            Level.INFO,
+            Level.INFO,
+            Level.INFO, // 3xx
+            Level.WARN,
+            Level.WARN,
+            Level.WARN,
+            Level.WARN, // 4xx
+            Level.ERROR,
+            Level.ERROR,
+            Level.ERROR // 5xx
         };
 
         for (int i = 0; i < statusCodes.length; i++) {
@@ -811,28 +849,28 @@ class AccessLogFilterTest extends BaseUnitTest {
             when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
             final int finalStatusCode = statusCode;
-            doAnswer(invocation -> {
-                HttpServletResponse resp = invocation.getArgument(1);
-                resp.setStatus(finalStatusCode);
-                return null;
-            }).when(chain).doFilter(any(), any());
+            doAnswer(
+                            invocation -> {
+                                HttpServletResponse resp = invocation.getArgument(1);
+                                resp.setStatus(finalStatusCode);
+                                return null;
+                            })
+                    .when(chain)
+                    .doFilter(any(), any());
 
             filter.doFilter(request, response, chain);
 
             assertEquals(1, listAppender.list.size());
             ILoggingEvent event = listAppender.list.get(0);
-            assertEquals(expectedLevel, event.getLevel(),
-                    "状态码 " + statusCode + " 应该是 " + expectedLevel);
+            assertEquals(
+                    expectedLevel, event.getLevel(), "状态码 " + statusCode + " 应该是 " + expectedLevel);
             assertTrue(event.getFormattedMessage().contains("Status=[" + statusCode + "]"));
 
             listAppender.list.clear();
         }
     }
 
-    /**
-     * 测试日志注入防护
-     * 验证恶意输入（包含换行符等特殊字符）不会被用来伪造日志条目
-     */
+    /** 测试日志注入防护 验证恶意输入（包含换行符等特殊字符）不会被用来伪造日志条目 */
     @Test
     void testLogInjectionPrevention() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -844,11 +882,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0\r\n伪造的日志");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -860,9 +901,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertEquals(1, listAppender.list.size(), "应该只有一条日志，不应该被注入额外的日志条目");
     }
 
-    /**
-     * 测试包含制表符的输入
-     */
+    /** 测试包含制表符的输入 */
     @Test
     void testTabCharacterInInput() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -874,11 +913,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(invocation -> {
-            HttpServletResponse resp = invocation.getArgument(1);
-            resp.setStatus(200);
-            return null;
-        }).when(chain).doFilter(any(), any());
+        doAnswer(
+                        invocation -> {
+                            HttpServletResponse resp = invocation.getArgument(1);
+                            resp.setStatus(200);
+                            return null;
+                        })
+                .when(chain)
+                .doFilter(any(), any());
 
         filter.doFilter(request, response, chain);
 
@@ -892,14 +934,16 @@ class AccessLogFilterTest extends BaseUnitTest {
     @Test
     void readmeExamplesDocumentTerminalOutcomeFields() throws Exception {
         String readme = Files.readString(Path.of("README.md"));
-        List<String> examples = readme.lines()
-                .filter(line -> line.contains("Status=["))
-                .toList();
+        List<String> examples = readme.lines().filter(line -> line.contains("Status=[")).toList();
 
         assertEquals(4, examples.size());
-        assertTrue(examples.stream().allMatch(line -> line.contains("Outcome=[")
-                && line.contains("ErrorType=[")
-                && line.contains("Duration=[")));
+        assertTrue(
+                examples.stream()
+                        .allMatch(
+                                line ->
+                                        line.contains("Outcome=[")
+                                                && line.contains("ErrorType=[")
+                                                && line.contains("Duration=[")));
         assertTrue(readme.contains("HTTP 5xx 只决定日志级别，不等于处理链异常"));
     }
 }

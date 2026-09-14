@@ -1,18 +1,19 @@
 package com.yggdrasil.labs.test.base;
 
-import com.yggdrasil.labs.test.config.TestConfiguration;
-import com.yggdrasil.labs.test.util.TestUtils;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.config.TestConfiguration;
+import com.yggdrasil.labs.test.util.TestUtils;
 
 /**
  * BaseIntegrationTest 测试基类测试
  *
- * <p>注意：这是一个集成测试，需要 Spring 上下文</p>
+ * <p>注意：这是一个集成测试，需要 Spring 上下文
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -67,7 +68,9 @@ class BaseIntegrationTestTest extends BaseIntegrationTest {
 
     @Test
     void testBaseIntegrationTest_ReusesUnitLifecycle() {
-        assertEquals(BaseUnitTest.class, BaseIntegrationTest.class.getSuperclass(),
+        assertEquals(
+                BaseUnitTest.class,
+                BaseIntegrationTest.class.getSuperclass(),
                 "集成测试基类应复用统一的 setup/teardown 生命周期");
     }
 }

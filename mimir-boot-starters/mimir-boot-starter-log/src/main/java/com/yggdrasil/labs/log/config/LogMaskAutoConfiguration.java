@@ -1,8 +1,5 @@
 package com.yggdrasil.labs.log.config;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.pattern.ClassicConverter;
-import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,14 +9,20 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 
+import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.pattern.ClassicConverter;
+
 /**
  * 日志脱敏自动配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动注册敏感信息脱敏转换器</li>
- * <li>支持通过配置文件自定义脱敏规则</li>
- * <li>提供日志脱敏的开关控制</li>
+ *   <li>自动注册敏感信息脱敏转换器
+ *   <li>支持通过配置文件自定义脱敏规则
+ *   <li>提供日志脱敏的开关控制
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -41,9 +44,9 @@ public class LogMaskAutoConfiguration {
 
     /**
      * 将 Spring 配置传递给 Logback
-     * <p>
-     * 注意：Logback 初始化在 Spring 之前，所以需要延迟传递配置
-     * 使用 @EventListener(ContextRefreshedEvent.class) 确保在 Spring 完全初始化后再传递配置
+     *
+     * <p>注意：Logback 初始化在 Spring 之前，所以需要延迟传递配置 使用 @EventListener(ContextRefreshedEvent.class) 确保在
+     * Spring 完全初始化后再传递配置
      */
     @EventListener(ContextRefreshedEvent.class)
     public void transferConfig(ContextRefreshedEvent event) {
@@ -53,23 +56,33 @@ public class LogMaskAutoConfiguration {
             return;
         }
 
-        putListProperty(loggerContext, SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY,
+        putListProperty(
+                loggerContext,
+                SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY,
                 properties.getEnabledPatterns());
-        putListProperty(loggerContext, SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY,
+        putListProperty(
+                loggerContext,
+                SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY,
                 properties.getCustomPatterns());
-        loggerContext.putProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, properties.getReplacement());
+        loggerContext.putProperty(
+                SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, properties.getReplacement());
         SensitiveDataConverter.publishConfiguration(
-                properties.getEnabledPatterns(), properties.getCustomPatterns(), properties.getReplacement());
+                properties.getEnabledPatterns(),
+                properties.getCustomPatterns(),
+                properties.getReplacement());
     }
 
-    private static void putListProperty(LoggerContext loggerContext, String key, java.util.List<String> values) {
-        loggerContext.putProperty(key, values == null || values.isEmpty() ? null : String.join(",", values));
+    private static void putListProperty(
+            LoggerContext loggerContext, String key, java.util.List<String> values) {
+        loggerContext.putProperty(
+                key, values == null || values.isEmpty() ? null : String.join(",", values));
     }
 
     private synchronized void warnNonLogbackOnce(ContextRefreshedEvent event) {
         if (!nonLogbackWarningRecorded) {
             nonLogbackWarningRecorded = true;
-            LOGGER.warn("ApplicationContext [{}] 未使用 Logback，跳过日志脱敏转换器注册",
+            LOGGER.warn(
+                    "ApplicationContext [{}] 未使用 Logback，跳过日志脱敏转换器注册",
                     event.getApplicationContext().getId());
         }
     }

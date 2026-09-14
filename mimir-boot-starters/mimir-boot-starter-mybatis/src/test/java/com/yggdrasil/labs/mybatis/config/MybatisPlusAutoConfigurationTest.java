@@ -1,11 +1,12 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
-import com.baomidou.mybatisplus.core.MybatisConfiguration;
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -16,12 +17,12 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
 
 /**
  * MyBatis-Plus 自动配置测试
@@ -31,72 +32,77 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(MybatisPlusAutoConfiguration.class));
+    private final ApplicationContextRunner runner =
+            new ApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(MybatisPlusAutoConfiguration.class));
 
     @Test
     void customMybatisPlusInterceptorOverridesDefault() {
         runner.withBean(MybatisPlusInterceptor.class, MybatisPlusInterceptor::new)
-                .run(ctx -> assertEquals(1, ctx.getBeansOfType(MybatisPlusInterceptor.class).size()));
+                .run(
+                        ctx ->
+                                assertEquals(
+                                        1,
+                                        ctx.getBeansOfType(MybatisPlusInterceptor.class).size()));
     }
 
-    /**
-     * 创建 MybatisPlusAutoConfiguration 实例的辅助方法
-     * 使用无参构造函数，Spring 会自动注入依赖
-     */
+    /** 创建 MybatisPlusAutoConfiguration 实例的辅助方法 使用无参构造函数，Spring 会自动注入依赖 */
     private MybatisPlusAutoConfiguration createConfiguration() {
         return new MybatisPlusAutoConfiguration();
     }
 
-    /**
-     * 创建带自定义拦截器的 ListableBeanFactory mock
-     */
-    private ListableBeanFactory createBeanFactoryWithInterceptors(List<InnerInterceptor> interceptors) {
+    /** 创建带自定义拦截器的 ListableBeanFactory mock */
+    private ListableBeanFactory createBeanFactoryWithInterceptors(
+            List<InnerInterceptor> interceptors) {
         ListableBeanFactory beanFactory = Mockito.mock(ListableBeanFactory.class);
         if (interceptors != null && !interceptors.isEmpty()) {
             String[] beanNames = new String[interceptors.size()];
             for (int i = 0; i < interceptors.size(); i++) {
                 beanNames[i] = "interceptor" + i;
                 // 使用 lenient() 避免不必要的 stubbing 警告
-                Mockito.lenient().when(beanFactory.getBean("interceptor" + i, InnerInterceptor.class))
+                Mockito.lenient()
+                        .when(beanFactory.getBean("interceptor" + i, InnerInterceptor.class))
                         .thenReturn(interceptors.get(i));
             }
-            Mockito.lenient().when(beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false))
+            Mockito.lenient()
+                    .when(beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false))
                     .thenReturn(beanNames);
         } else {
-            Mockito.lenient().when(beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false))
+            Mockito.lenient()
+                    .when(beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false))
                     .thenReturn(new String[0]);
         }
         return beanFactory;
     }
 
-    /**
-     * 创建空的 ListableBeanFactory mock（没有拦截器）
-     */
+    /** 创建空的 ListableBeanFactory mock（没有拦截器） */
     private ListableBeanFactory createEmptyBeanFactory() {
         ListableBeanFactory beanFactory = Mockito.mock(ListableBeanFactory.class);
         // 使用 lenient() 避免不必要的 stubbing 警告（某些测试可能不调用 mybatisPlusInterceptor）
-        Mockito.lenient().when(beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false))
+        Mockito.lenient()
+                .when(beanFactory.getBeanNamesForType(InnerInterceptor.class, false, false))
                 .thenReturn(new String[0]);
         return beanFactory;
     }
 
     /**
-     * 创建带自定义拦截器的 MybatisPlusAutoConfiguration 实例
-     * 注意：此方法仅用于创建配置对象，beanFactory 需要单独创建并传入 mybatisPlusInterceptor 方法
-     * 
+     * 创建带自定义拦截器的 MybatisPlusAutoConfiguration 实例 注意：此方法仅用于创建配置对象，beanFactory 需要单独创建并传入
+     * mybatisPlusInterceptor 方法
+     *
      * @param interceptors 拦截器列表（已废弃，保留以兼容现有测试）
      * @return 配置对象
      */
     @SuppressWarnings("unused")
-    private MybatisPlusAutoConfiguration createConfigurationWithInterceptors(@SuppressWarnings("unused") List<InnerInterceptor> interceptors) {
+    private MybatisPlusAutoConfiguration createConfigurationWithInterceptors(
+            @SuppressWarnings("unused") List<InnerInterceptor> interceptors) {
         // 这个方法现在只返回配置对象，beanFactory 在调用 mybatisPlusInterceptor 时传入
         return new MybatisPlusAutoConfiguration();
     }
 
     @ParameterizedTest
     @MethodSource("provideInterceptorTestCases")
-    void mybatisPlusInterceptor_with_various_configurations(List<InnerInterceptor> interceptors, String description) {
+    void mybatisPlusInterceptor_with_various_configurations(
+            List<InnerInterceptor> interceptors, String description) {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(interceptors);
         MybatisProperties props = new MybatisProperties();
@@ -108,9 +114,10 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     private static Stream<Arguments> provideInterceptorTestCases() {
         return Stream.of(
                 Arguments.of(null, "no custom interceptors"),
-                Arguments.of(Collections.singletonList(Mockito.mock(InnerInterceptor.class)), "single custom interceptor"),
-                Arguments.of(Collections.emptyList(), "empty custom interceptors list")
-        );
+                Arguments.of(
+                        Collections.singletonList(Mockito.mock(InnerInterceptor.class)),
+                        "single custom interceptor"),
+                Arguments.of(Collections.emptyList(), "empty custom interceptors list"));
     }
 
     @Test
@@ -173,9 +180,9 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         customizer.customize(configuration);
         // MyBatis 永远使用 slf4j
-        AssertUtils.assertEquals(org.apache.ibatis.logging.slf4j.Slf4jImpl.class, configuration.getLogImpl());
+        AssertUtils.assertEquals(
+                org.apache.ibatis.logging.slf4j.Slf4jImpl.class, configuration.getLogImpl());
     }
-
 
     @Test
     void constructor_with_beanFactory() {
@@ -185,7 +192,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
     @Test
     void createConfigurationWithInterceptors_with_present_list() {
-        List<InnerInterceptor> interceptors = Collections.singletonList(Mockito.mock(InnerInterceptor.class));
+        List<InnerInterceptor> interceptors =
+                Collections.singletonList(Mockito.mock(InnerInterceptor.class));
         MybatisPlusAutoConfiguration cfg = createConfigurationWithInterceptors(interceptors);
         assertNotNull(cfg);
     }
@@ -195,10 +203,12 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
 
-        assertDoesNotThrow(() -> {
-            MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
-            assertNotNull(interceptor);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    MybatisPlusInterceptor interceptor =
+                            cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
+                    assertNotNull(interceptor);
+                });
     }
 
     @Test
@@ -206,25 +216,26 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
 
-        assertDoesNotThrow(() -> {
-            MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
-            assertNotNull(configurer);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
+                    assertNotNull(configurer);
+                });
     }
 
     @Test
     void configurationCustomizer_does_not_throw_exception() {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
 
-        assertDoesNotThrow(() -> {
-            ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer();
-            assertNotNull(customizer);
+        assertDoesNotThrow(
+                () -> {
+                    ConfigurationCustomizer customizer = cfg.mybatisConfigurationCustomizer();
+                    assertNotNull(customizer);
 
-            MybatisConfiguration configuration = new MybatisConfiguration();
-            customizer.customize(configuration);
-        });
+                    MybatisConfiguration configuration = new MybatisConfiguration();
+                    customizer.customize(configuration);
+                });
     }
-
 
     @Test
     void testMapperScannerConfigurerWithDefaultProperties() {
@@ -243,7 +254,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(List.of("test.package"));
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor =
+                cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
         assertNotNull(interceptor);
         // properties 参数在 mybatisPlusInterceptor 方法中未使用，这是正常的
     }
@@ -254,10 +266,10 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor =
+                cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
         assertNotNull(interceptor);
     }
-
 
     @Test
     void testInnerInterceptorsIfPresentWithNonEmptyList() {
@@ -320,8 +332,9 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 测试 mybatisPlusInterceptor 方法在各种情况下都返回非空
         MybatisPlusAutoConfiguration cfg1 = createConfiguration();
         MybatisPlusAutoConfiguration cfg2 = createConfiguration();
-        ListableBeanFactory beanFactory2 = createBeanFactoryWithInterceptors(
-                Collections.singletonList(Mockito.mock(InnerInterceptor.class)));
+        ListableBeanFactory beanFactory2 =
+                createBeanFactoryWithInterceptors(
+                        Collections.singletonList(Mockito.mock(InnerInterceptor.class)));
 
         MybatisProperties props = new MybatisProperties();
 
@@ -335,7 +348,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor =
+                cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
 
         // 通过反射获取内部拦截器列表（尝试多个可能的字段名）
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -344,23 +358,28 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertFalse(innerInterceptors.isEmpty());
 
         // 验证乐观锁拦截器存在
-        boolean hasOptimisticLocker = innerInterceptors.stream()
-                .anyMatch(i -> i instanceof com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor);
+        boolean hasOptimisticLocker =
+                innerInterceptors.stream()
+                        .anyMatch(
+                                i ->
+                                        i
+                                                instanceof
+                                                com.baomidou.mybatisplus.extension.plugins.inner
+                                                        .OptimisticLockerInnerInterceptor);
         assertTrue(hasOptimisticLocker, "乐观锁拦截器应该总是被添加");
     }
 
-    /**
-     * 通过反射获取 MybatisPlusInterceptor 的内部拦截器列表
-     * 尝试多个可能的字段名以兼容不同版本
-     */
+    /** 通过反射获取 MybatisPlusInterceptor 的内部拦截器列表 尝试多个可能的字段名以兼容不同版本 */
     @SuppressWarnings("unchecked")
-    private List<InnerInterceptor> getInnerInterceptors(MybatisPlusInterceptor interceptor) throws Exception {
+    private List<InnerInterceptor> getInnerInterceptors(MybatisPlusInterceptor interceptor)
+            throws Exception {
         // 尝试常见的字段名
         String[] possibleFieldNames = {"interceptors", "interceptorList", "innerInterceptors"};
 
         for (String fieldName : possibleFieldNames) {
             try {
-                java.lang.reflect.Field field = MybatisPlusInterceptor.class.getDeclaredField(fieldName);
+                java.lang.reflect.Field field =
+                        MybatisPlusInterceptor.class.getDeclaredField(fieldName);
                 field.setAccessible(true);
                 Object value = field.get(interceptor);
                 if (value instanceof List) {
@@ -395,7 +414,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
 
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor =
+                cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
 
         // 通过反射获取内部拦截器列表
         List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
@@ -408,27 +428,32 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 先尝试加载分页拦截器类，如果存在则使用 instanceof 检查
         Class<?> paginationClass;
         try {
-            paginationClass = Class.forName("com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor");
+            paginationClass =
+                    Class.forName(
+                            "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor");
         } catch (ClassNotFoundException e) {
             // 分页拦截器类不存在于类路径中，这是正常的
             paginationClass = null;
         }
 
         final Class<?> finalPaginationClass = paginationClass;
-        final boolean hasPagination = finalPaginationClass != null && innerInterceptors.stream()
-                .anyMatch(finalPaginationClass::isInstance);
+        final boolean hasPagination =
+                finalPaginationClass != null
+                        && innerInterceptors.stream().anyMatch(finalPaginationClass::isInstance);
 
         // 分页拦截器可能存在也可能不存在（取决于类路径），但至少应该不抛异常
-        assertDoesNotThrow(() -> {
-            // 如果分页拦截器存在，验证其类型
-            if (hasPagination && finalPaginationClass != null) {
-                InnerInterceptor paginationInterceptor = innerInterceptors.stream()
-                        .filter(finalPaginationClass::isInstance)
-                        .findFirst()
-                        .orElse(null);
-                assertNotNull(paginationInterceptor);
-            }
-        });
+        assertDoesNotThrow(
+                () -> {
+                    // 如果分页拦截器存在，验证其类型
+                    if (hasPagination && finalPaginationClass != null) {
+                        InnerInterceptor paginationInterceptor =
+                                innerInterceptors.stream()
+                                        .filter(finalPaginationClass::isInstance)
+                                        .findFirst()
+                                        .orElse(null);
+                        assertNotNull(paginationInterceptor);
+                    }
+                });
     }
 
     @Test
@@ -477,7 +502,10 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 查找乐观锁拦截器的位置
         int optimisticLockerIndex = -1;
         for (int i = 0; i < innerInterceptors.size(); i++) {
-            if (innerInterceptors.get(i) instanceof com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor) {
+            if (innerInterceptors.get(i)
+                    instanceof
+                    com.baomidou.mybatisplus.extension.plugins.inner
+                            .OptimisticLockerInnerInterceptor) {
                 optimisticLockerIndex = i;
                 break;
             }
@@ -509,7 +537,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -532,7 +561,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -554,7 +584,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -575,7 +606,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -596,7 +628,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -619,7 +652,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -628,10 +662,11 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE));
         // basePackage 可能包含自动检测到的包（取决于 classpath 中是否有 mapper）
         // 验证方法能正常执行，不会抛出异常
-        assertDoesNotThrow(() -> {
-            String[] packages = basePackage.split(",");
-            assertTrue(packages.length >= 1, "应该至少包含默认包");
-        });
+        assertDoesNotThrow(
+                () -> {
+                    String[] packages = basePackage.split(",");
+                    assertTrue(packages.length >= 1, "应该至少包含默认包");
+                });
     }
 
     @Test
@@ -645,7 +680,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertNotNull(configurer);
 
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
 
@@ -661,7 +697,8 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     void testEmptyCustomInterceptorsListIsSkipped() throws Exception {
         // 验证空的自定义拦截器列表会被跳过
         MybatisPlusAutoConfiguration cfg = createConfiguration();
-        ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(Collections.emptyList());
+        ListableBeanFactory beanFactory =
+                createBeanFactoryWithInterceptors(Collections.emptyList());
         MybatisProperties props = new MybatisProperties();
 
         MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
@@ -702,14 +739,13 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     @Test
     void testGetInterceptorsFromBeanFactoryWithList() {
         // 测试从 BeanFactory 获取拦截器（用于 Spring 自动注入）
-        List<InnerInterceptor> interceptors = Arrays.asList(
-            Mockito.mock(InnerInterceptor.class),
-            Mockito.mock(InnerInterceptor.class)
-        );
+        List<InnerInterceptor> interceptors =
+                Arrays.asList(
+                        Mockito.mock(InnerInterceptor.class), Mockito.mock(InnerInterceptor.class));
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(interceptors);
         assertNotNull(cfg);
-        
+
         // 验证拦截器被正确使用
         MybatisProperties props = new MybatisProperties();
         MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
@@ -721,10 +757,11 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 测试 BeanFactory 中没有拦截器的情况（Spring 自动注入时可能为 null）
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         assertNotNull(cfg);
-        
+
         // 验证可以正常工作
         MybatisProperties props = new MybatisProperties();
-        MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
+        MybatisPlusInterceptor interceptor =
+                cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
         assertNotNull(interceptor);
     }
 
@@ -732,9 +769,10 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
     void testGetInterceptorsFromBeanFactoryWithEmptyList() {
         // 测试 BeanFactory 返回空数组的情况
         MybatisPlusAutoConfiguration cfg = createConfiguration();
-        ListableBeanFactory beanFactory = createBeanFactoryWithInterceptors(Collections.emptyList());
+        ListableBeanFactory beanFactory =
+                createBeanFactoryWithInterceptors(Collections.emptyList());
         assertNotNull(cfg);
-        
+
         // 验证可以正常工作
         MybatisProperties props = new MybatisProperties();
         MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
@@ -750,24 +788,24 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(Arrays.asList("com.custom.mapper", "com.other.mapper"));
-        
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
-        
+
         assertNotNull(basePackage);
         // 应该包含默认包
-        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
-            "应该包含默认包: " + basePackage);
+        assertTrue(
+                basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+                "应该包含默认包: " + basePackage);
         // 应该包含用户配置的包
-        assertTrue(basePackage.contains("com.custom.mapper"),
-            "应该包含用户配置的包: " + basePackage);
-        assertTrue(basePackage.contains("com.other.mapper"),
-            "应该包含用户配置的包: " + basePackage);
+        assertTrue(basePackage.contains("com.custom.mapper"), "应该包含用户配置的包: " + basePackage);
+        assertTrue(basePackage.contains("com.other.mapper"), "应该包含用户配置的包: " + basePackage);
         // 可能还包含自动检测到的包（取决于 classpath）
     }
 
@@ -777,19 +815,21 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         // 不设置任何用户配置的包
-        
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
-        
+
         assertNotNull(basePackage);
         // 应该始终包含默认包
-        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
-            "应该始终包含默认包: " + basePackage);
+        assertTrue(
+                basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+                "应该始终包含默认包: " + basePackage);
     }
 
     @Test
@@ -798,28 +838,25 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(Arrays.asList("com.user1.mapper", "com.user2.mapper"));
-        
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
-        
+
         assertNotNull(basePackage);
         // 验证所有包都被包含
-        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
-            "应该包含默认包");
-        assertTrue(basePackage.contains("com.user1.mapper"),
-            "应该包含用户配置的包1");
-        assertTrue(basePackage.contains("com.user2.mapper"),
-            "应该包含用户配置的包2");
-        
+        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE), "应该包含默认包");
+        assertTrue(basePackage.contains("com.user1.mapper"), "应该包含用户配置的包1");
+        assertTrue(basePackage.contains("com.user2.mapper"), "应该包含用户配置的包2");
+
         // 验证包之间用逗号分隔
         String[] packages = basePackage.split(",");
-        assertTrue(packages.length >= 3, 
-            "应该至少包含默认包和2个用户配置的包，可能还有自动检测的包");
+        assertTrue(packages.length >= 3, "应该至少包含默认包和2个用户配置的包，可能还有自动检测的包");
     }
 
     @Test
@@ -828,19 +865,21 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(null);
-        
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
-        
+
         assertNotNull(basePackage);
         // 应该至少包含默认包
-        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
-            "应该包含默认包，即使用户配置为 null");
+        assertTrue(
+                basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+                "应该包含默认包，即使用户配置为 null");
     }
 
     @Test
@@ -851,19 +890,21 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         props.setMapperPackages(Collections.emptyList());
-        
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
-        
+
         assertNotNull(basePackage);
         // 应该至少包含默认包
-        assertTrue(basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
-            "应该包含默认包，即使用户配置为空列表");
+        assertTrue(
+                basePackage.contains(MybatisProperties.DEFAULT_MAPPER_PACKAGE),
+                "应该包含默认包，即使用户配置为空列表");
         // 验证自动检测功能被调用（basePackage 可能包含自动检测的包）
         // 注意：自动检测的包取决于 classpath，所以这里只验证方法能正常执行
     }
@@ -874,22 +915,23 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
         // 添加重复的包
-        props.setMapperPackages(Arrays.asList("com.example.mapper", "com.example.mapper", "com.other.mapper"));
-        
+        props.setMapperPackages(
+                Arrays.asList("com.example.mapper", "com.example.mapper", "com.other.mapper"));
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 basePackage
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("basePackage");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("basePackage");
         field.setAccessible(true);
         String basePackage = (String) field.get(configurer);
-        
+
         assertNotNull(basePackage);
         // 验证重复的包被去重
         String[] packages = basePackage.split(",");
-        long count = Arrays.stream(packages)
-            .filter(p -> p.trim().equals("com.example.mapper"))
-            .count();
+        long count =
+                Arrays.stream(packages).filter(p -> p.trim().equals("com.example.mapper")).count();
         assertEquals(1, count, "重复的包应该被去重");
     }
 
@@ -898,16 +940,19 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         // 验证 MapperScannerConfigurer 设置了正确的 annotationClass
         MybatisPlusAutoConfiguration cfg = createConfiguration();
         MybatisProperties props = new MybatisProperties();
-        
+
         MapperScannerConfigurer configurer = cfg.mapperScannerConfigurer(props);
         assertNotNull(configurer);
-        
+
         // 通过反射获取 annotationClass
-        java.lang.reflect.Field field = MapperScannerConfigurer.class.getDeclaredField("annotationClass");
+        java.lang.reflect.Field field =
+                MapperScannerConfigurer.class.getDeclaredField("annotationClass");
         field.setAccessible(true);
         Class<?> annotationClass = (Class<?>) field.get(configurer);
-        
-        assertEquals(org.apache.ibatis.annotations.Mapper.class, annotationClass,
-            "annotationClass 应该设置为 @Mapper");
+
+        assertEquals(
+                org.apache.ibatis.annotations.Mapper.class,
+                annotationClass,
+                "annotationClass 应该设置为 @Mapper");
     }
 }

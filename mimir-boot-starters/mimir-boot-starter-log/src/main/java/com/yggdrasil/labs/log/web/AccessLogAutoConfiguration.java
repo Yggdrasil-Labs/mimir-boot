@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.log.web;
 
 import jakarta.servlet.Filter;
+
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -12,11 +13,12 @@ import org.springframework.context.annotation.Bean;
 /**
  * 访问日志自动配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动注册访问日志过滤器</li>
- * <li>支持通过配置文件自定义慢接口阈值</li>
- * <li>可控制是否启用访问日志功能</li>
+ *   <li>自动注册访问日志过滤器
+ *   <li>支持通过配置文件自定义慢接口阈值
+ *   <li>可控制是否启用访问日志功能
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -28,8 +30,7 @@ import org.springframework.context.annotation.Bean;
         prefix = "mimir.boot.log.access",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = true
-)
+        matchIfMissing = true)
 @EnableConfigurationProperties(AccessLogProperties.class)
 public class AccessLogAutoConfiguration {
 
@@ -39,15 +40,14 @@ public class AccessLogAutoConfiguration {
         this.properties = properties;
     }
 
-    /**
-     * 注册访问日志过滤器
-     */
+    /** 注册访问日志过滤器 */
     @Bean
     @ConditionalOnMissingBean(name = "accessLogFilter")
     public FilterRegistrationBean<Filter> accessLogFilter() {
-        FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<>(
-                new AccessLogFilter(properties.getSlowThresholdMs(), properties.getExcludePaths())
-        );
+        FilterRegistrationBean<Filter> registrationBean =
+                new FilterRegistrationBean<>(
+                        new AccessLogFilter(
+                                properties.getSlowThresholdMs(), properties.getExcludePaths()));
 
         registrationBean.setName("accessLogFilter");
         registrationBean.addUrlPatterns("/*");

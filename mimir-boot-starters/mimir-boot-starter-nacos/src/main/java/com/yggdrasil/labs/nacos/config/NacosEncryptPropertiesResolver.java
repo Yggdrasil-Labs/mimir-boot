@@ -16,34 +16,37 @@ final class NacosEncryptPropertiesResolver {
 
     private static final Logger log = LoggerFactory.getLogger(NacosEncryptPropertiesResolver.class);
 
-    private NacosEncryptPropertiesResolver() {
-    }
+    private NacosEncryptPropertiesResolver() {}
 
     static boolean isAnyPrefixBound(ConfigurableEnvironment environment) {
         Binder binder = Binder.get(environment);
         return binder.bind(NacosEncryptProperties.PREFIX, NacosEncryptProperties.class).isBound()
-                || binder.bind(NacosEncryptProperties.LEGACY_PREFIX, NacosEncryptProperties.class).isBound();
+                || binder.bind(NacosEncryptProperties.LEGACY_PREFIX, NacosEncryptProperties.class)
+                        .isBound();
     }
 
     static NacosEncryptProperties resolve(
-            ConfigurableEnvironment environment,
-            NacosEncryptProperties fallbackProperties) {
+            ConfigurableEnvironment environment, NacosEncryptProperties fallbackProperties) {
         Binder binder = Binder.get(environment);
-        BindResult<NacosEncryptProperties> current = binder.bind(NacosEncryptProperties.PREFIX,
-                NacosEncryptProperties.class);
-        BindResult<NacosEncryptProperties> legacy = binder.bind(NacosEncryptProperties.LEGACY_PREFIX,
-                NacosEncryptProperties.class);
+        BindResult<NacosEncryptProperties> current =
+                binder.bind(NacosEncryptProperties.PREFIX, NacosEncryptProperties.class);
+        BindResult<NacosEncryptProperties> legacy =
+                binder.bind(NacosEncryptProperties.LEGACY_PREFIX, NacosEncryptProperties.class);
 
         if (current.isBound()) {
             if (legacy.isBound()) {
-                log.warn("检测到已弃用的配置前缀 {}，已忽略并使用 {}",
-                        NacosEncryptProperties.LEGACY_PREFIX, NacosEncryptProperties.PREFIX);
+                log.warn(
+                        "检测到已弃用的配置前缀 {}，已忽略并使用 {}",
+                        NacosEncryptProperties.LEGACY_PREFIX,
+                        NacosEncryptProperties.PREFIX);
             }
             return current.get();
         }
         if (legacy.isBound()) {
-            log.warn("配置前缀 {} 已弃用，请迁移到 {}",
-                    NacosEncryptProperties.LEGACY_PREFIX, NacosEncryptProperties.PREFIX);
+            log.warn(
+                    "配置前缀 {} 已弃用，请迁移到 {}",
+                    NacosEncryptProperties.LEGACY_PREFIX,
+                    NacosEncryptProperties.PREFIX);
             return legacy.get();
         }
         return fallbackProperties;

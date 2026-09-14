@@ -1,10 +1,11 @@
 package com.yggdrasil.labs.common.page;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.common.enums.OrderDirection;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.enums.OrderDirection;
 
 class PageRequestTest {
 
@@ -77,8 +78,9 @@ class PageRequestTest {
         long pageSize = CommonConstants.MAX_PAGE_SIZE;
         PageRequest request = PageRequest.of(Long.MAX_VALUE / pageSize + 2, pageSize);
 
-        IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                IllegalArgumentException.class, request::getOffset);
+        IllegalArgumentException exception =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        IllegalArgumentException.class, request::getOffset);
         assertEquals("分页偏移量超出 Long 范围", exception.getMessage());
     }
 }

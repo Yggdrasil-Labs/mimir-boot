@@ -1,12 +1,13 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
-import com.yggdrasil.labs.mybatis.log.JsonSqlLogInnerInterceptor;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.StandardEnvironment;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.yggdrasil.labs.mybatis.log.JsonSqlLogInnerInterceptor;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * MyBatis-Plus 日志配置测试
@@ -200,11 +201,12 @@ class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
         StandardEnvironment env = new StandardEnvironment();
 
         MybatisPlusLoggingConfiguration cfg = new MybatisPlusLoggingConfiguration(props, env);
-        assertDoesNotThrow(() -> {
-            InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
-            // 验证方法调用不会抛出异常即可
-            assertNotNull(interceptor);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    InnerInterceptor interceptor = cfg.jsonSqlLogInnerInterceptor();
+                    // 验证方法调用不会抛出异常即可
+                    assertNotNull(interceptor);
+                });
     }
 
     @Test
@@ -221,4 +223,3 @@ class MybatisPlusLoggingConfigurationTest extends BaseUnitTest {
         assertInstanceOf(JsonSqlLogInnerInterceptor.class, interceptor);
     }
 }
-

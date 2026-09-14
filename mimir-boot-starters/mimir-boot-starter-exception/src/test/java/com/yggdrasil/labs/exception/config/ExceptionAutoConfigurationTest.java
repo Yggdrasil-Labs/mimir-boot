@@ -1,19 +1,19 @@
 package com.yggdrasil.labs.exception.config;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import com.yggdrasil.labs.exception.handler.DefaultExceptionResponseFactory;
 import com.yggdrasil.labs.exception.handler.ExceptionResponseFactory;
 import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * 异常处理自动配置测试
  *
- * <p>测试自动配置的基本功能</p>
+ * <p>测试自动配置的基本功能
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -29,17 +29,13 @@ class ExceptionAutoConfigurationTest extends BaseUnitTest {
         configuration = new ExceptionAutoConfiguration();
     }
 
-    /**
-     * 测试配置类的默认值
-     */
+    /** 测试配置类的默认值 */
     @Test
     void testConfigurationWithDefaultSettings() {
         assertNotNull(configuration);
     }
 
-    /**
-     * 测试创建 ExceptionResponseFactory Bean
-     */
+    /** 测试创建 ExceptionResponseFactory Bean */
     @Test
     void testExceptionResponseFactoryCreation() {
         ExceptionResponseFactory factory = configuration.exceptionResponseFactory();
@@ -48,9 +44,7 @@ class ExceptionAutoConfigurationTest extends BaseUnitTest {
         assertInstanceOf(DefaultExceptionResponseFactory.class, factory);
     }
 
-    /**
-     * 测试创建 MimirExceptionHandler Bean
-     */
+    /** 测试创建 MimirExceptionHandler Bean */
     @Test
     void testMimirExceptionHandlerCreation() {
         ExceptionResponseFactory factory = configuration.exceptionResponseFactory();
@@ -60,9 +54,7 @@ class ExceptionAutoConfigurationTest extends BaseUnitTest {
         assertInstanceOf(MimirExceptionHandler.class, handler);
     }
 
-    /**
-     * 测试多次调用返回不同的实例
-     */
+    /** 测试多次调用返回不同的实例 */
     @Test
     void testMultipleHandlerCreation() {
         ExceptionResponseFactory factory = configuration.exceptionResponseFactory();
@@ -74,4 +66,3 @@ class ExceptionAutoConfigurationTest extends BaseUnitTest {
         assertNotSame(handler1, handler2);
     }
 }
-

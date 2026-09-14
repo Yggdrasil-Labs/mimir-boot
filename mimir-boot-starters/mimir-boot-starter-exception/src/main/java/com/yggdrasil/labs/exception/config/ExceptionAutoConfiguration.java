@@ -1,8 +1,5 @@
 package com.yggdrasil.labs.exception.config;
 
-import com.yggdrasil.labs.exception.handler.DefaultExceptionResponseFactory;
-import com.yggdrasil.labs.exception.handler.ExceptionResponseFactory;
-import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -10,14 +7,19 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
+import com.yggdrasil.labs.exception.handler.DefaultExceptionResponseFactory;
+import com.yggdrasil.labs.exception.handler.ExceptionResponseFactory;
+import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
+
 /**
  * 全局异常处理自动配置
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动注册全局异常处理器</li>
- * <li>支持通过配置文件控制异常处理行为</li>
- * <li>统一处理业务异常、系统异常、参数校验异常等</li>
+ *   <li>自动注册全局异常处理器
+ *   <li>支持通过配置文件控制异常处理行为
+ *   <li>统一处理业务异常、系统异常、参数校验异常等
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -29,8 +31,7 @@ import org.springframework.context.annotation.Bean;
         prefix = "mimir.boot.exception",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = true
-)
+        matchIfMissing = true)
 @EnableConfigurationProperties(ExceptionProperties.class)
 public class ExceptionAutoConfiguration {
 
@@ -57,4 +58,3 @@ public class ExceptionAutoConfiguration {
         return new MimirExceptionHandler(responseFactory);
     }
 }
-

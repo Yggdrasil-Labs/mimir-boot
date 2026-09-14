@@ -5,14 +5,16 @@ import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 /**
  * Nacos 配置加密工具类
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>生成加密密钥</li>
- * <li>加密配置值</li>
- * <li>生成 ENC() 格式的配置值</li>
+ *   <li>生成加密密钥
+ *   <li>加密配置值
+ *   <li>生成 ENC() 格式的配置值
  * </ul>
  *
- * <p>使用示例：</p>
+ * <p>使用示例：
+ *
  * <pre>{@code
  * // 1. 生成密钥
  * String key = NacosEncryptUtil.generateKey();
@@ -60,7 +62,7 @@ public class NacosEncryptUtil {
      * 加密配置值
      *
      * @param plaintext 明文
-     * @param key       Base64 编码的密钥
+     * @param key Base64 编码的密钥
      * @return 带版本和随机 IV 的密文
      */
     public static String encrypt(String plaintext, String key) {
@@ -71,7 +73,7 @@ public class NacosEncryptUtil {
      * 使用指定算法加密配置值
      *
      * @param plaintext 明文
-     * @param key       Base64 编码的密钥
+     * @param key Base64 编码的密钥
      * @param algorithm 加密算法
      * @return 旧格式 Base64 密文
      * @deprecated 新配置请使用 {@link #encrypt(String, String)}。该重载仅保留旧 AES 密文迁移兼容。
@@ -96,7 +98,7 @@ public class NacosEncryptUtil {
      * 将加密值包装为自定义前缀格式，如 ENC(encrypted_value)
      *
      * @param encryptedValue 加密后的值
-     * @param prefix         前缀，默认 ENC
+     * @param prefix 前缀，默认 ENC
      * @return prefix(encrypted_value) 格式的字符串
      */
     public static String wrapWithEnc(String encryptedValue, String prefix) {
@@ -110,7 +112,7 @@ public class NacosEncryptUtil {
      * 解密配置值
      *
      * @param ciphertext 带版本的 AES-GCM 密文
-     * @param key        Base64 编码的密钥
+     * @param key Base64 编码的密钥
      * @return 明文
      */
     public static String decrypt(String ciphertext, String key) {
@@ -121,8 +123,8 @@ public class NacosEncryptUtil {
      * 使用指定算法解密配置值
      *
      * @param ciphertext 旧 Base64 AES 密文
-     * @param key        Base64 编码的密钥
-     * @param algorithm  加密算法
+     * @param key Base64 编码的密钥
+     * @param algorithm 加密算法
      * @return 明文
      * @deprecated 新配置请使用 {@link #decrypt(String, String)}。该重载仅保留旧 AES 密文迁移兼容。
      */

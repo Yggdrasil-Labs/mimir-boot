@@ -1,6 +1,10 @@
 package com.yggdrasil.labs.mybatis.util;
 
-import com.yggdrasil.labs.mybatis.config.MybatisConstants;
+import java.io.IOException;
+import java.net.URL;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -8,14 +12,10 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.util.StringUtils;
 
-import java.net.URL;
-import java.io.IOException;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import com.yggdrasil.labs.mybatis.config.MybatisConstants;
 
 /**
- * Mapper 包自动检测工具类。
- * 用于自动检测 classpath 中所有以 ".mapper" 结尾的包，主要用于检测 processor 生成的 mapper。
+ * Mapper 包自动检测工具类。 用于自动检测 classpath 中所有以 ".mapper" 结尾的包，主要用于检测 processor 生成的 mapper。
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -29,13 +29,10 @@ public final class MapperPackageDetector {
     }
 
     /**
-     * 自动检测 classpath 中所有以 ".mapper" 结尾的包。
-     * 主要用于检测 processor 生成的 mapper，因为 processor 默认生成的 mapper 包路径
-     * 是 "实体类包名.mapper"，所以通过检测所有 ".mapper" 结尾的包可以自动发现这些 mapper。
-     * 注意：此方法只检测包路径，不加载类，性能较好。
-     * 
-     * 优化：如果检测到的包已经在默认包（com.yggdrasil.labs.**.mapper）的覆盖范围内，
-     * 则不会重复添加，因为默认包的通配符已经可以匹配到这些包。
+     * 自动检测 classpath 中所有以 ".mapper" 结尾的包。 主要用于检测 processor 生成的 mapper，因为 processor 默认生成的 mapper 包路径
+     * 是 "实体类包名.mapper"，所以通过检测所有 ".mapper" 结尾的包可以自动发现这些 mapper。 注意：此方法只检测包路径，不加载类，性能较好。
+     *
+     * <p>优化：如果检测到的包已经在默认包（com.yggdrasil.labs.**.mapper）的覆盖范围内， 则不会重复添加，因为默认包的通配符已经可以匹配到这些包。
      * 只添加不在默认包覆盖范围内的包（如其他组织或项目的 mapper 包）。
      *
      * @return 检测到的 mapper 包集合（使用通配符模式，如 "com.example.mapper.**"）
@@ -43,8 +40,9 @@ public final class MapperPackageDetector {
     public static Set<String> detectMapperPackages() {
         try {
             ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
-                    MybatisConstants.MAPPER_SCAN_PATTERN;
+            String packageSearchPath =
+                    ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX
+                            + MybatisConstants.MAPPER_SCAN_PATTERN;
             Resource[] resources = resolver.getResources(packageSearchPath);
 
             if (LOGGER.isDebugEnabled()) {
@@ -52,11 +50,15 @@ public final class MapperPackageDetector {
             }
             return detectMapperPackages(resources);
         } catch (IOException e) {
-            LOGGER.warn("自动检测 Mapper 包时发生 IO 异常，将跳过自动检测。用户可通过配置 {} 手动指定",
-                    MybatisConstants.CONFIG_MAPPER_PACKAGES, e);
+            LOGGER.warn(
+                    "自动检测 Mapper 包时发生 IO 异常，将跳过自动检测。用户可通过配置 {} 手动指定",
+                    MybatisConstants.CONFIG_MAPPER_PACKAGES,
+                    e);
         } catch (Exception e) {
-            LOGGER.warn("自动检测 Mapper 包时发生未知异常，将跳过自动检测。用户可通过配置 {} 手动指定",
-                    MybatisConstants.CONFIG_MAPPER_PACKAGES, e);
+            LOGGER.warn(
+                    "自动检测 Mapper 包时发生未知异常，将跳过自动检测。用户可通过配置 {} 手动指定",
+                    MybatisConstants.CONFIG_MAPPER_PACKAGES,
+                    e);
         }
 
         return new LinkedHashSet<>();
@@ -103,11 +105,15 @@ public final class MapperPackageDetector {
             if (resource.isReadable()) {
                 return extractPackageFromResource(resource);
             }
-            LOGGER.warn("跳过不可读的 Mapper 资源 resource={}, reason=resource is not readable",
+            LOGGER.warn(
+                    "跳过不可读的 Mapper 资源 resource={}, reason=resource is not readable",
                     resourceDescription);
         } catch (Exception e) {
-            LOGGER.warn("跳过无法处理的 Mapper 资源 resource={}, reason={}",
-                    resourceDescription, messageOf(e), e);
+            LOGGER.warn(
+                    "跳过无法处理的 Mapper 资源 resource={}, reason={}",
+                    resourceDescription,
+                    messageOf(e),
+                    e);
         }
         return null;
     }
@@ -139,7 +145,8 @@ public final class MapperPackageDetector {
         try {
             URL resourceUrl = resource.getURL();
             if (resourceUrl == null) {
-                LOGGER.warn("跳过无法解析的 Mapper 资源 resource={}, reason=resource URL is null",
+                LOGGER.warn(
+                        "跳过无法解析的 Mapper 资源 resource={}, reason=resource URL is null",
                         resourceDescription);
                 return null;
             }
@@ -147,26 +154,32 @@ public final class MapperPackageDetector {
             String url = resourceUrl.toExternalForm();
             String packageName = extractPackageFromUrl(url);
             if (!StringUtils.hasText(packageName)) {
-                LOGGER.warn("跳过无法解析的 Mapper 资源 resource={}, reason=缺少合法 !/、classes 根目录或 Mapper 包路径",
+                LOGGER.warn(
+                        "跳过无法解析的 Mapper 资源 resource={}, reason=缺少合法 !/、classes 根目录或 Mapper 包路径",
                         resourceDescription);
             }
             return packageName;
         } catch (IOException e) {
-            LOGGER.warn("跳过无法读取的 Mapper 资源 resource={}, reason={}",
-                    resourceDescription, messageOf(e), e);
+            LOGGER.warn(
+                    "跳过无法读取的 Mapper 资源 resource={}, reason={}",
+                    resourceDescription,
+                    messageOf(e),
+                    e);
             return null;
         } catch (Exception e) {
-            LOGGER.warn("跳过无法处理的 Mapper 资源 resource={}, reason={}",
-                    resourceDescription, messageOf(e), e);
+            LOGGER.warn(
+                    "跳过无法处理的 Mapper 资源 resource={}, reason={}",
+                    resourceDescription,
+                    messageOf(e),
+                    e);
             return null;
         }
     }
 
     /**
-     * 从资源 URL 中提取包名。
-     * 支持多种 URL 格式：
-     * - file:/path/to/target/classes/com/example/mapper/UserMapper.class
-     * - jar:file:/path/to/app.jar!/com/example/mapper/UserMapper.class
+     * 从资源 URL 中提取包名。 支持多种 URL 格式： -
+     * file:/path/to/target/classes/com/example/mapper/UserMapper.class -
+     * jar:file:/path/to/app.jar!/com/example/mapper/UserMapper.class
      *
      * @param url 资源 URL
      * @return 包名，如果无法提取则返回 null
@@ -200,7 +213,7 @@ public final class MapperPackageDetector {
     /**
      * 从 URL 中提取 "/mapper/" 之前的部分，处理 jar 包格式。
      *
-     * @param url         完整 URL
+     * @param url 完整 URL
      * @param mapperIndex "/mapper/" 在 URL 中的索引位置
      * @return 提取的路径，如果无法提取则返回 null
      */
@@ -233,7 +246,8 @@ public final class MapperPackageDetector {
     }
 
     private static String messageOf(Exception exception) {
-        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : exception.getClass().getSimpleName();
+        return StringUtils.hasText(exception.getMessage())
+                ? exception.getMessage()
+                : exception.getClass().getSimpleName();
     }
-
 }

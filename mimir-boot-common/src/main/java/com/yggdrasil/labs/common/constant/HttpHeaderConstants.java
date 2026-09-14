@@ -8,8 +8,7 @@ package com.yggdrasil.labs.common.constant;
  */
 public final class HttpHeaderConstants {
 
-    private HttpHeaderConstants() {
-    }
+    private HttpHeaderConstants() {}
 
     // 业务相关请求头
     public static final String TRACE_ID_HEADER = "X-Trace-Id";
@@ -27,4 +26,3 @@ public final class HttpHeaderConstants {
     public static final String PROXY_CLIENT_IP = "Proxy-Client-IP";
     public static final String WL_PROXY_CLIENT_IP = "WL-Proxy-Client-IP";
 }
-

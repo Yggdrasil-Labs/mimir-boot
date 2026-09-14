@@ -1,11 +1,12 @@
 package com.yggdrasil.labs.mybatis.config;
 
-import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import com.yggdrasil.labs.mybatis.audit.AuditMetaObjectHandler;
-import com.yggdrasil.labs.mybatis.audit.AuditorProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import com.yggdrasil.labs.mybatis.audit.AuditMetaObjectHandler;
+import com.yggdrasil.labs.mybatis.audit.AuditorProvider;
 
 @AutoConfiguration
 public class MybatisPlusAuditConfiguration {
@@ -22,5 +23,3 @@ public class MybatisPlusAuditConfiguration {
         return new AuditMetaObjectHandler(auditorProvider);
     }
 }
-
-

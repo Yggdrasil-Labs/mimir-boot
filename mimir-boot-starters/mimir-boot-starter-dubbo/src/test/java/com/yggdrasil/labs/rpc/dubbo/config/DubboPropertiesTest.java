@@ -32,4 +32,3 @@ class DubboPropertiesTest {
         assertTrue(properties.isContextPropagationEnabled());
     }
 }
-

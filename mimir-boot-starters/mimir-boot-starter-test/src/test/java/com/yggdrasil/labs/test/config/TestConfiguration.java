@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ComponentScan;
 /**
  * 测试配置类
  *
- * <p>用于测试基类的 Spring Boot 测试配置</p>
+ * <p>用于测试基类的 Spring Boot 测试配置
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -18,4 +18,3 @@ import org.springframework.context.annotation.ComponentScan;
 public class TestConfiguration {
     // 空的配置类，用于 Spring Boot 测试
 }
-

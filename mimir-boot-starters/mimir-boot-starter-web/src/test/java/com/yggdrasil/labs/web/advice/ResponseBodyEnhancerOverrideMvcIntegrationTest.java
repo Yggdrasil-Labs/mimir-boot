@@ -5,11 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
-import com.yggdrasil.labs.common.response.R;
-import com.yggdrasil.labs.web.config.WebProperties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +27,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.web.config.WebProperties;
+
 /**
  * 验证下游替换响应增强器后，MVC advice 链仍委托到替换实现。
  *
@@ -43,11 +45,9 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
 
     private static final String TRACE_ID = "mvc-custom-response-trace";
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private ResponseBodyEnhancer responseBodyEnhancer;
+    @Autowired private ResponseBodyEnhancer responseBodyEnhancer;
 
     @AfterEach
     void resetResponseBodyEnhancer() {
@@ -59,13 +59,15 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
 
     @Test
     void delegatesMvcAdviceToCustomResponseBodyEnhancer() throws Exception {
-        mockMvc.perform(get("/response-enhancer-override/success")
-                        .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+        mockMvc.perform(
+                        get("/response-enhancer-override/success")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.traceId").value(TRACE_ID));
 
         assertThat(responseBodyEnhancer).isInstanceOf(CountingResponseBodyEnhancer.class);
-        assertThat(((CountingResponseBodyEnhancer) responseBodyEnhancer).invocationCount()).isEqualTo(1);
+        assertThat(((CountingResponseBodyEnhancer) responseBodyEnhancer).invocationCount())
+                .isEqualTo(1);
     }
 
     @Test
@@ -74,8 +76,9 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
                 (CountingResponseBodyEnhancer) responseBodyEnhancer;
         countingResponseBodyEnhancer.setSupportsResponse(false);
 
-        mockMvc.perform(get("/response-enhancer-override/success")
-                        .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+        mockMvc.perform(
+                        get("/response-enhancer-override/success")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
                 .andExpect(status().isOk());
 
         assertThat(countingResponseBodyEnhancer.invocationCount()).isZero();
@@ -84,8 +87,7 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({ResponseController.class, CustomResponseBodyEnhancerConfiguration.class})
-    static class TestApplication {
-    }
+    static class TestApplication {}
 
     @RestController
     static class ResponseController {
@@ -116,7 +118,9 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
         }
 
         @Override
-        public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
+        public boolean supports(
+                MethodParameter returnType,
+                Class<? extends HttpMessageConverter<?>> converterType) {
             return supportsResponse.get() && super.supports(returnType, converterType);
         }
 
@@ -130,7 +134,12 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
                 ServerHttpResponse response) {
             invocationCount.incrementAndGet();
             return super.beforeBodyWrite(
-                    body, returnType, selectedContentType, selectedConverterType, request, response);
+                    body,
+                    returnType,
+                    selectedContentType,
+                    selectedConverterType,
+                    request,
+                    response);
         }
 
         private int invocationCount() {

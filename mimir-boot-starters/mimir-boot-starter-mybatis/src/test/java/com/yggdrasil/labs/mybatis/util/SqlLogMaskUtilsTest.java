@@ -1,13 +1,6 @@
 package com.yggdrasil.labs.mybatis.util;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -15,7 +8,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.mybatis.annotation.SensitiveField;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * SQL 日志脱敏工具测试
@@ -66,49 +67,72 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     @Test
     void maskSql_masksSensitiveAssignmentsAndPreservesOtherAssignments() {
-        String sql = "UPDATE user SET password='secret', access_token = \"token-value\", nickname='alice' "
-                + "WHERE api-key=plain-key";
+        String sql =
+                "UPDATE user SET password='secret', access_token = \"token-value\","
+                        + " nickname='alice' WHERE api-key=plain-key";
 
-        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED
-                        + ", access_token = " + CommonConstants.MASKED + ", nickname='alice' WHERE api-key="
+        assertEquals(
+                "UPDATE user SET password="
+                        + CommonConstants.MASKED
+                        + ", access_token = "
+                        + CommonConstants.MASKED
+                        + ", nickname='alice' WHERE api-key="
                         + CommonConstants.MASKED,
                 SqlLogMaskUtils.maskSql(sql));
     }
 
     @Test
     void maskSql_preservesEscapedValuesAndLiteralOrCommentText() {
-        String sql = "UPDATE t SET password='a''b', nickname='password=secret' -- password=secret\n"
-                + "/* password=secret */ WHERE api_key='key''value'";
+        String sql =
+                "UPDATE t SET password='a''b', nickname='password=secret' -- password=secret\n"
+                        + "/* password=secret */ WHERE api_key='key''value'";
 
-        assertEquals("UPDATE t SET password=" + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE t SET password="
+                        + CommonConstants.MASKED
                         + ", nickname='password=secret' -- password=secret\n"
-                        + "/* password=secret */ WHERE api_key=" + CommonConstants.MASKED,
+                        + "/* password=secret */ WHERE api_key="
+                        + CommonConstants.MASKED,
                 SqlLogMaskUtils.maskSql(sql));
     }
 
     @Test
     void maskSql_masksSensitiveAssignmentsWithQuotedIdentifiers() {
-        String sql = "UPDATE user SET `password`='secret', \"api_key\" = 'key-value', `nickname`='alice'";
+        String sql =
+                "UPDATE user SET `password`='secret', \"api_key\" = 'key-value',"
+                        + " `nickname`='alice'";
 
-        assertEquals("UPDATE user SET `password`=" + CommonConstants.MASKED
-                        + ", \"api_key\" = " + CommonConstants.MASKED + ", `nickname`='alice'",
+        assertEquals(
+                "UPDATE user SET `password`="
+                        + CommonConstants.MASKED
+                        + ", \"api_key\" = "
+                        + CommonConstants.MASKED
+                        + ", `nickname`='alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
 
     @Test
     void maskSql_masksWholeSensitiveFunctionExpression() {
-        String sql = "UPDATE user SET password=CONCAT('alpha', 'beta-secret'), nickname='alice' WHERE id=1";
+        String sql =
+                "UPDATE user SET password=CONCAT('alpha', 'beta-secret'), nickname='alice' WHERE"
+                        + " id=1";
 
-        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE user SET password="
+                        + CommonConstants.MASKED
                         + ", nickname='alice' WHERE id=1",
                 SqlLogMaskUtils.maskSql(sql));
     }
 
     @Test
     void maskSql_masksWholePostgreSqlDollarQuotedSensitiveValue() {
-        String sql = "UPDATE user SET password=$tag$alpha, beta-secret$tag$, nickname='alice' WHERE id=1";
+        String sql =
+                "UPDATE user SET password=$tag$alpha, beta-secret$tag$, nickname='alice' WHERE"
+                        + " id=1";
 
-        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE user SET password="
+                        + CommonConstants.MASKED
                         + ", nickname='alice' WHERE id=1",
                 SqlLogMaskUtils.maskSql(sql));
     }
@@ -116,10 +140,14 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     @Test
     void maskSql_masksSensitiveConditionNestedInANonSensitiveExpression() {
         String secret = "nested-secret";
-        String sql = "UPDATE user SET nickname=CASE WHEN password='" + secret
-                + "' THEN 'redacted' ELSE 'visible' END, updated_at=CURRENT_TIMESTAMP";
+        String sql =
+                "UPDATE user SET nickname=CASE WHEN password='"
+                        + secret
+                        + "' THEN 'redacted' ELSE 'visible' END, updated_at=CURRENT_TIMESTAMP";
 
-        assertEquals("UPDATE user SET nickname=CASE WHEN password=" + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE user SET nickname=CASE WHEN password="
+                        + CommonConstants.MASKED
                         + " THEN 'redacted' ELSE 'visible' END, updated_at=CURRENT_TIMESTAMP",
                 SqlLogMaskUtils.maskSql(sql));
     }
@@ -168,7 +196,9 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void maskSql_masksSensitiveAssignmentWithBlockCommentBetweenIdentifierAndEquals() {
         String sql = "UPDATE user SET password /* comment */ = 'secret', nickname='alice'";
 
-        assertEquals("UPDATE user SET password /* comment */ = " + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE user SET password /* comment */ = "
+                        + CommonConstants.MASKED
                         + ", nickname='alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
@@ -177,7 +207,9 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void maskSql_masksSensitiveAssignmentWithBlockCommentBetweenEqualsAndValue() {
         String sql = "UPDATE user SET password=/* comment */'secret', nickname='alice'";
 
-        assertEquals("UPDATE user SET password=/* comment */" + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE user SET password=/* comment */"
+                        + CommonConstants.MASKED
                         + ", nickname='alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
@@ -186,17 +218,22 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void maskSql_masksDoubleQuotedValueWithBackslashEscapedQuote() {
         String sql = "UPDATE user SET password=\"a\\\"secret\", nickname='alice'";
 
-        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
+        assertEquals(
+                "UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
 
     @Test
     void maskSql_masksSensitiveAssignmentAcrossLineAndHashComments() {
-        String sql = "UPDATE user SET password -- identifier comment\n"
-                + " = # equals comment\n'secret', nickname /* keep */ = /* value */ 'alice'";
+        String sql =
+                "UPDATE user SET password -- identifier comment\n"
+                        + " = # equals comment\n"
+                        + "'secret', nickname /* keep */ = /* value */ 'alice'";
 
-        assertEquals("UPDATE user SET password -- identifier comment\n"
-                        + " = # equals comment\n" + CommonConstants.MASKED
+        assertEquals(
+                "UPDATE user SET password -- identifier comment\n"
+                        + " = # equals comment\n"
+                        + CommonConstants.MASKED
                         + ", nickname /* keep */ = /* value */ 'alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
@@ -205,7 +242,8 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void maskSql_masksQuotedIdentifierAndDoubleQuotedValueWithDoubledQuote() {
         String sql = "UPDATE user SET \"password\" /* identifier */ = /* value */ \"a\"\"secret\"";
 
-        assertEquals("UPDATE user SET \"password\" /* identifier */ = /* value */ "
+        assertEquals(
+                "UPDATE user SET \"password\" /* identifier */ = /* value */ "
                         + CommonConstants.MASKED,
                 SqlLogMaskUtils.maskSql(sql));
     }
@@ -214,7 +252,8 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void maskSql_masksWholeMySqlBackslashEscapedSensitiveValue() {
         String sql = "UPDATE user SET password='safe\\'secret', nickname='alice'";
 
-        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
+        assertEquals(
+                "UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
 
@@ -222,7 +261,8 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void maskSql_endsMySqlStringAfterEscapedQuote() {
         String sql = "UPDATE user SET password='safe\\'', nickname='alice'";
 
-        assertEquals("UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
+        assertEquals(
+                "UPDATE user SET password=" + CommonConstants.MASKED + ", nickname='alice'",
                 SqlLogMaskUtils.maskSql(sql));
     }
 
@@ -263,7 +303,14 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     @Test
     void mask_object_fields_with_annotations_and_nested_map() {
-        User user = new User("13800138000", "110105199001010015", "6222021234567890", "user@example.com", "abcd", "Alice");
+        User user =
+                new User(
+                        "13800138000",
+                        "110105199001010015",
+                        "6222021234567890",
+                        "user@example.com",
+                        "abcd",
+                        "Alice");
         Map<String, Object> wrapper = new HashMap<>();
         wrapper.put("user", user);
         wrapper.put("extra", "keep");
@@ -333,6 +380,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class TestObj {
             @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
             String sensitive = null;
+
             final String normal = null;
         }
         Object masked = SqlLogMaskUtils.maskParams(new TestObj());
@@ -370,8 +418,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     @Test
     void mask_value_strategy_all_defaults_to_masked() {
         class Holder {
-            @SensitiveField
-            String secret = "x";
+            @SensitiveField String secret = "x";
         }
         Object out = SqlLogMaskUtils.maskParams(new Holder());
         Map<?, ?> m = (Map<?, ?>) out;
@@ -381,8 +428,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     @Test
     void mask_value_with_null_annotation() {
         class Holder {
-            @SensitiveField
-            String secret = "test";
+            @SensitiveField String secret = "test";
         }
         // 通过反射测试 maskValue 的 null 注解分支
         Object out = SqlLogMaskUtils.maskParams(new Holder());
@@ -415,7 +461,8 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     @ParameterizedTest
     @MethodSource("provideShortValueTestCases")
-    void mask_value_strategy_short_values(SensitiveField.MaskStrategy maskStrategy, String testValue, String fieldName) {
+    void mask_value_strategy_short_values(
+            SensitiveField.MaskStrategy maskStrategy, String testValue, String fieldName) {
         Object holder = createHolderWithStrategy(maskStrategy, testValue);
         Object out = SqlLogMaskUtils.maskParams(holder);
         Map<?, ?> m = (Map<?, ?>) out;
@@ -424,36 +471,46 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     private Object createHolderWithStrategy(SensitiveField.MaskStrategy strategy, String value) {
         return switch (strategy) {
-            case PHONE -> new Object() {
-                @SensitiveField(strategy = SensitiveField.MaskStrategy.PHONE)
-                String maskedField = value;
-            };
-            case ID_CARD -> new Object() {
-                @SensitiveField(strategy = SensitiveField.MaskStrategy.ID_CARD)
-                String maskedField = value;
-            };
-            case BANK_CARD -> new Object() {
-                @SensitiveField(strategy = SensitiveField.MaskStrategy.BANK_CARD)
-                String maskedField = value;
-            };
-            default -> new Object() {
-                @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
-                String maskedField = value;
-            };
+            case PHONE ->
+                    new Object() {
+                        @SensitiveField(strategy = SensitiveField.MaskStrategy.PHONE)
+                        String maskedField = value;
+                    };
+            case ID_CARD ->
+                    new Object() {
+                        @SensitiveField(strategy = SensitiveField.MaskStrategy.ID_CARD)
+                        String maskedField = value;
+                    };
+            case BANK_CARD ->
+                    new Object() {
+                        @SensitiveField(strategy = SensitiveField.MaskStrategy.BANK_CARD)
+                        String maskedField = value;
+                    };
+            default ->
+                    new Object() {
+                        @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
+                        String maskedField = value;
+                    };
         };
     }
 
     private static Stream<Arguments> provideShortValueTestCases() {
         return Stream.of(
                 Arguments.of(SensitiveField.MaskStrategy.PHONE, "12345", "maskedField"), // 长度 < 7
-                Arguments.of(SensitiveField.MaskStrategy.ID_CARD, "123456789", "maskedField"), // 长度 < 10
-                Arguments.of(SensitiveField.MaskStrategy.BANK_CARD, "1234567", "maskedField") // 长度 < 8
-        );
+                Arguments.of(
+                        SensitiveField.MaskStrategy.ID_CARD, "123456789", "maskedField"), // 长度 < 10
+                Arguments.of(
+                        SensitiveField.MaskStrategy.BANK_CARD, "1234567", "maskedField") // 长度 < 8
+                );
     }
 
     @ParameterizedTest
     @MethodSource("provideStandardMaskingTestCases")
-    void mask_value_strategy_standard_cases(SensitiveField.MaskStrategy maskStrategy, String testValue, String fieldName, String expected) {
+    void mask_value_strategy_standard_cases(
+            SensitiveField.MaskStrategy maskStrategy,
+            String testValue,
+            String fieldName,
+            String expected) {
         Object holder = createHolderWithStrategy(maskStrategy, testValue);
         Object out = SqlLogMaskUtils.maskParams(holder);
         Map<?, ?> m = (Map<?, ?>) out;
@@ -462,10 +519,22 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     private static Stream<Arguments> provideStandardMaskingTestCases() {
         return Stream.of(
-                Arguments.of(SensitiveField.MaskStrategy.ID_CARD, "110105199001010015", "maskedField", "110105****0015"), // 18位身份证
-                Arguments.of(SensitiveField.MaskStrategy.ID_CARD, "110105199001015", "maskedField", "110105****1015"), // 15位身份证
-                Arguments.of(SensitiveField.MaskStrategy.BANK_CARD, "6222021234567890", "maskedField", "6222****7890") // 银行卡
-        );
+                Arguments.of(
+                        SensitiveField.MaskStrategy.ID_CARD,
+                        "110105199001010015",
+                        "maskedField",
+                        "110105****0015"), // 18位身份证
+                Arguments.of(
+                        SensitiveField.MaskStrategy.ID_CARD,
+                        "110105199001015",
+                        "maskedField",
+                        "110105****1015"), // 15位身份证
+                Arguments.of(
+                        SensitiveField.MaskStrategy.BANK_CARD,
+                        "6222021234567890",
+                        "maskedField",
+                        "6222****7890") // 银行卡
+                );
     }
 
     @Test
@@ -494,7 +563,9 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     @Test
     void mask_value_strategy_custom() {
         class Holder {
-            @SensitiveField(strategy = SensitiveField.MaskStrategy.CUSTOM, replacement = "***CUSTOM***")
+            @SensitiveField(
+                    strategy = SensitiveField.MaskStrategy.CUSTOM,
+                    replacement = "***CUSTOM***")
             String token = "secret-token";
         }
         Object out = SqlLogMaskUtils.maskParams(new Holder());
@@ -587,8 +658,8 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Constructor<SqlLogMaskUtils> constructor = SqlLogMaskUtils.class.getDeclaredConstructor();
         constructor.setAccessible(true);
 
-        InvocationTargetException exception = assertThrows(InvocationTargetException.class,
-                constructor::newInstance);
+        InvocationTargetException exception =
+                assertThrows(InvocationTargetException.class, constructor::newInstance);
 
         assertInstanceOf(IllegalStateException.class, exception.getCause());
         assertEquals("Utility class", exception.getCause().getMessage());
@@ -700,7 +771,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void mask_map_with_null_key() {
         Map<Object, Object> map = new HashMap<>();
         map.put(null, "value");
-        
+
         Object masked = SqlLogMaskUtils.maskParams(map);
         Map<?, ?> result = (Map<?, ?>) masked;
         assertNotNull(result);
@@ -712,7 +783,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class TestObj {
             @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
             private String field = "test";
-            
+
             // 通过反射访问私有字段时不应该抛出异常
         }
         Object masked = SqlLogMaskUtils.maskParams(new TestObj());
@@ -729,7 +800,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         TestObj obj = new TestObj();
         Map<String, Object> map = new HashMap<>();
         map.put("nonExistentField", obj);
-        
+
         Object masked = SqlLogMaskUtils.maskParams(map);
         Map<?, ?> result = (Map<?, ?>) masked;
         // 找不到字段时，应该递归处理对象
@@ -741,6 +812,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class TestObj {
             @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
             String field1 = null;
+
             String field2 = null;
         }
         Object masked = SqlLogMaskUtils.maskParams(new TestObj());
@@ -754,7 +826,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Map<String, Object> map = new HashMap<>();
         map.put("number", 123);
         map.put("string", "text");
-        
+
         Object masked = SqlLogMaskUtils.maskParams(map);
         Map<?, ?> result = (Map<?, ?>) masked;
         assertEquals(123, result.get("number"));
@@ -765,11 +837,11 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
     void mask_object_with_nested_map() {
         Map<String, Object> innerMap = new HashMap<>();
         innerMap.put("key", "value");
-        
+
         class Outer {
             final Map<String, Object> inner = innerMap;
         }
-        
+
         Object masked = SqlLogMaskUtils.maskParams(new Outer());
         Map<?, ?> result = (Map<?, ?>) masked;
         assertInstanceOf(Map.class, result.get("inner"));
@@ -787,7 +859,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
             @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
             String childField = "child";
         }
-        
+
         Object masked = SqlLogMaskUtils.maskParams(new Child());
         Map<?, ?> result = (Map<?, ?>) masked;
         assertEquals("grandparent", result.get("grandParentField"));
@@ -806,7 +878,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         map.put("PASSWORD", obj); // 大写
         map.put("Password", obj); // 混合大小写
         map.put("passWord", obj); // 驼峰
-        
+
         Object masked = SqlLogMaskUtils.maskParams(map);
         Map<?, ?> result = (Map<?, ?>) masked;
         // 所有变体都应该匹配到 password 字段
@@ -838,6 +910,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class Node {
             @SuppressWarnings("unused")
             String value;
+
             @SuppressWarnings("unused")
             Node next;
 
@@ -864,6 +937,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class DeepNode {
             @SuppressWarnings("unused")
             String value;
+
             @SuppressWarnings("unused")
             DeepNode child;
 
@@ -895,6 +969,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class MockWrapper {
             @SuppressWarnings("unused")
             private final Object internal = new Object();
+
             @SuppressWarnings("unused")
             private final java.util.List<Object> conditions = new java.util.ArrayList<>();
 
@@ -905,7 +980,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         }
 
         MockWrapper wrapper = new MockWrapper();
-        
+
         // 不应该抛出堆栈溢出异常
         Object masked = SqlLogMaskUtils.maskParams(wrapper);
         assertNotNull(masked);
@@ -936,6 +1011,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class Item {
             @SuppressWarnings("unused")
             String name;
+
             @SensitiveField(strategy = SensitiveField.MaskStrategy.ALL)
             String secret;
 
@@ -1033,6 +1109,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         class Node {
             @SuppressWarnings("unused")
             String value;
+
             Map<String, Object> refs = new HashMap<>();
 
             Node(String value) {
@@ -1097,6 +1174,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         // 测试对象中包含 Collection
         class Container {
             java.util.List<String> items = new java.util.ArrayList<>();
+
             @SuppressWarnings("unused")
             String name;
 
@@ -1159,11 +1237,11 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Map<String, Object> map1 = new HashMap<>();
         Map<String, Object> map2 = new HashMap<>();
         Map<String, Object> map3 = new HashMap<>();
-        
+
         map1.put("map2", map2);
         map2.put("map3", map3);
         map3.put("map1", map1); // 形成循环引用
-        
+
         map1.put("value1", "test1");
         map2.put("value2", "test2");
         map3.put("value3", "test3");
@@ -1180,11 +1258,11 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Map<String, Object> outer = new HashMap<>();
         Map<String, Object> inner1 = new HashMap<>();
         Map<String, Object> inner2 = new HashMap<>();
-        
+
         outer.put("inner1", inner1);
         inner1.put("inner2", inner2);
         inner2.put("outer", outer); // 形成循环引用
-        
+
         outer.put("data", "outerData");
         inner1.put("data", "inner1Data");
         inner2.put("data", "inner2Data");
@@ -1204,7 +1282,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Map<String, Object> valueMap = new HashMap<>();
         keyMap.put("data", "keyData");
         valueMap.put("data", "valueData");
-        
+
         // 使用 IdentityHashMap 来存储 Map 作为 key，避免调用 hashCode()
         Map<Object, Object> mapWithMapKey = new java.util.IdentityHashMap<>();
         mapWithMapKey.put(keyMap, valueMap); // Map 作为 key
@@ -1214,13 +1292,15 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Object masked = SqlLogMaskUtils.maskParams(mapWithMapKey);
         assertNotNull(masked);
         assertInstanceOf(Map.class, masked);
-        
+
         // 验证 Map key 被转换为字符串表示
         Map<?, ?> result = (Map<?, ?>) masked;
         // 应该有一个以 Map 类名开头的 key（因为 Map key 被转换为字符串表示）
-        boolean hasMapKeyRepresentation = result.keySet().stream()
-                .anyMatch(k -> k instanceof String && k.toString().contains("HashMap"));
-        assertTrue(hasMapKeyRepresentation || result.containsKey("normalKey"),
+        boolean hasMapKeyRepresentation =
+                result.keySet().stream()
+                        .anyMatch(k -> k instanceof String && k.toString().contains("HashMap"));
+        assertTrue(
+                hasMapKeyRepresentation || result.containsKey("normalKey"),
                 "应该包含转换后的 Map key 表示或正常 key");
     }
 
@@ -1232,7 +1312,7 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
         Map<String, Object> map2 = new HashMap<>();
         map1.put("map2", map2);
         map2.put("map1", map1); // 形成循环引用
-        
+
         // 使用 IdentityHashMap 来存储 Map 作为 key，避免调用 hashCode()
         Map<Object, Object> container = new java.util.IdentityHashMap<>();
         container.put(map1, "value1"); // 循环引用的 Map 作为 key
@@ -1246,13 +1326,18 @@ class SqlLogMaskUtilsTest extends BaseUnitTest {
 
     @Test
     void maskSql_handlesEscapedQuotesAndIgnoresStringsAndComments() {
-        String sql = "UPDATE user SET `password`='a''b', \"api_key\"=\"quoted-value\" "
-                + "WHERE note='password=inside-string' "
-                + "-- password='line-secret'\n"
-                + "AND nickname='alice' /* token='block-secret' */";
+        String sql =
+                "UPDATE user SET `password`='a''b', \"api_key\"=\"quoted-value\" "
+                        + "WHERE note='password=inside-string' "
+                        + "-- password='line-secret'\n"
+                        + "AND nickname='alice' /* token='block-secret' */";
 
-        assertEquals("UPDATE user SET `password`=" + CommonConstants.MASKED + ", \"api_key\"="
-                        + CommonConstants.MASKED + " WHERE note='password=inside-string' "
+        assertEquals(
+                "UPDATE user SET `password`="
+                        + CommonConstants.MASKED
+                        + ", \"api_key\"="
+                        + CommonConstants.MASKED
+                        + " WHERE note='password=inside-string' "
                         + "-- password='line-secret'\n"
                         + "AND nickname='alice' /* token='block-secret' */",
                 SqlLogMaskUtils.maskSql(sql));

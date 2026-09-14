@@ -12,27 +12,19 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum OrderDirection {
-    
-    /**
-     * 升序
-     */
+
+    /** 升序 */
     ASC("ASC", "升序"),
-    
-    /**
-     * 降序
-     */
+
+    /** 降序 */
     DESC("DESC", "降序");
-    
-    /**
-     * 方向码
-     */
+
+    /** 方向码 */
     private final String code;
-    
-    /**
-     * 方向描述
-     */
+
+    /** 方向描述 */
     private final String description;
-    
+
     /**
      * 根据方向码获取枚举
      *
@@ -50,7 +42,7 @@ public enum OrderDirection {
         }
         return ASC;
     }
-    
+
     /**
      * 判断是否为升序
      *
@@ -60,7 +52,7 @@ public enum OrderDirection {
     public static boolean isAsc(String code) {
         return ASC.getCode().equalsIgnoreCase(code);
     }
-    
+
     /**
      * 判断是否为降序
      *
@@ -71,4 +63,3 @@ public enum OrderDirection {
         return DESC.getCode().equalsIgnoreCase(code);
     }
 }
-

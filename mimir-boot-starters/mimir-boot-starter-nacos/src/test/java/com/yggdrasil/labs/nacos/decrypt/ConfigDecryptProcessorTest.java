@@ -1,22 +1,23 @@
 package com.yggdrasil.labs.nacos.decrypt;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.nacos.config.NacosEncryptProperties;
-import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.StandardEnvironment;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.StandardEnvironment;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.nacos.config.NacosEncryptProperties;
+import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * 配置解密处理器测试
@@ -90,12 +91,16 @@ class ConfigDecryptProcessorTest {
     @Test
     void shouldNotOverrideHigherPriorityPlaintextProperty() {
         String encrypted = ConfigCryptoUtils.encrypt("nacos-secret", testKey);
-        environment.getPropertySources().addLast(new MapPropertySource("nacos", Map.of(
-                "app.secret", "ENC(" + encrypted + ")"
-        )));
-        environment.getPropertySources().addFirst(new MapPropertySource("override", Map.of(
-                "app.secret", "runtime-override"
-        )));
+        environment
+                .getPropertySources()
+                .addLast(
+                        new MapPropertySource(
+                                "nacos", Map.of("app.secret", "ENC(" + encrypted + ")")));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "override", Map.of("app.secret", "runtime-override")));
 
         new ConfigDecryptProcessor(properties).process(environment);
 
@@ -207,11 +212,12 @@ class ConfigDecryptProcessorTest {
 
     @Test
     void shouldFailWhenEncryptedWrapperIsMalformed() {
-        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "test.key", "ENC()"
-        )));
+        environment
+                .getPropertySources()
+                .addFirst(new MapPropertySource("test", Map.of("test.key", "ENC()")));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> new ConfigDecryptProcessor(properties).process(environment));
     }
 
@@ -219,9 +225,14 @@ class ConfigDecryptProcessorTest {
     void shouldDecryptEveryEncryptedSegmentInPropertyValue() {
         String first = ConfigCryptoUtils.encrypt("first", testKey);
         String second = ConfigCryptoUtils.encrypt("second", testKey);
-        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "test.key", "jdbc://ENC(" + first + ")/ENC(" + second + ")"
-        )));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "test",
+                                Map.of(
+                                        "test.key",
+                                        "jdbc://ENC(" + first + ")/ENC(" + second + ")")));
 
         new ConfigDecryptProcessor(properties).process(environment);
 
@@ -240,15 +251,20 @@ class ConfigDecryptProcessorTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            assertThrows(IllegalStateException.class,
+            assertThrows(
+                    IllegalStateException.class,
                     () -> new ConfigDecryptProcessor(properties).process(environment));
 
-            assertTrue(appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .anyMatch(message -> message.contains("test.key")));
-            assertTrue(appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .noneMatch(message -> message.contains(secret) || message.contains("ENC(")));
+            assertTrue(
+                    appender.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .anyMatch(message -> message.contains("test.key")));
+            assertTrue(
+                    appender.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .noneMatch(
+                                    message ->
+                                            message.contains(secret) || message.contains("ENC(")));
         } finally {
             logger.detachAppender(appender);
             appender.stop();
@@ -272,12 +288,17 @@ class ConfigDecryptProcessorTest {
         try {
             new ConfigDecryptProcessor(properties).process(environment);
 
-            assertTrue(appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .anyMatch(message -> message.equals("配置项解密成功: test.key")));
-            assertTrue(appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .noneMatch(message -> message.contains(plaintext) || message.contains(ciphertext)));
+            assertTrue(
+                    appender.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .anyMatch(message -> message.equals("配置项解密成功: test.key")));
+            assertTrue(
+                    appender.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .noneMatch(
+                                    message ->
+                                            message.contains(plaintext)
+                                                    || message.contains(ciphertext)));
         } finally {
             logger.detachAppender(appender);
             logger.setLevel(previousLevel);
@@ -326,11 +347,14 @@ class ConfigDecryptProcessorTest {
     void shouldRejectUnsupportedConfiguredAlgorithm() {
         properties.setAlgorithm("DES");
         String encrypted = ConfigCryptoUtils.encrypt("secret", testKey);
-        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "test.key", "ENC(" + encrypted + ")"
-        )));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "test", Map.of("test.key", "ENC(" + encrypted + ")")));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> new ConfigDecryptProcessor(properties).process(environment));
     }
 
@@ -338,11 +362,14 @@ class ConfigDecryptProcessorTest {
     void shouldRejectMalformedKeyBeforeDecrypting() {
         String encrypted = ConfigCryptoUtils.encrypt("secret", testKey);
         properties.setKey("not-base64");
-        environment.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "test.key", "ENC(" + encrypted + ")"
-        )));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "test", Map.of("test.key", "ENC(" + encrypted + ")")));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(
+                IllegalStateException.class,
                 () -> new ConfigDecryptProcessor(properties).process(environment));
     }
 

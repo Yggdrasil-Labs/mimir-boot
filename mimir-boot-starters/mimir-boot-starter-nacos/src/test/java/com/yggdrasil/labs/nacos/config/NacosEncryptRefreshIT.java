@@ -1,13 +1,13 @@
 package com.yggdrasil.labs.nacos.config;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
-import com.yggdrasil.labs.nacos.decrypt.ConfigDecryptProcessor;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -22,9 +22,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
+import com.yggdrasil.labs.nacos.decrypt.ConfigDecryptProcessor;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class NacosEncryptRefreshIT {
 
@@ -54,7 +57,8 @@ class NacosEncryptRefreshIT {
             refreshContext.properties().put(NacosEncryptProperties.PREFIX + ".key", invalidKey);
             refreshContext.properties().put(PROPERTY_NAME, encrypted("new-plaintext", validKey));
 
-            assertThrows(IllegalStateException.class,
+            assertThrows(
+                    IllegalStateException.class,
                     () -> context.publishEvent(new EnvironmentChangeEvent(Set.of(PROPERTY_NAME))));
 
             assertCurrentSecret(context, "old-plaintext");
@@ -76,16 +80,19 @@ class NacosEncryptRefreshIT {
             refreshContext.properties().put(NacosEncryptProperties.PREFIX + ".key", invalidKey);
             refreshContext.properties().put(PROPERTY_NAME, "ENC(" + nextCiphertext + ")");
 
-            assertThrows(IllegalStateException.class,
+            assertThrows(
+                    IllegalStateException.class,
                     () -> context.publishEvent(new EnvironmentChangeEvent(Set.of(PROPERTY_NAME))));
 
-            String messages = appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .reduce("", (left, right) -> left + "\n" + right);
-            assertTrue(!messages.contains(validKey)
-                    && !messages.contains(invalidKey)
-                    && !messages.contains(nextCiphertext)
-                    && !messages.contains(nextPlaintext));
+            String messages =
+                    appender.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .reduce("", (left, right) -> left + "\n" + right);
+            assertTrue(
+                    !messages.contains(validKey)
+                            && !messages.contains(invalidKey)
+                            && !messages.contains(nextCiphertext)
+                            && !messages.contains(nextPlaintext));
         } finally {
             logger.detachAppender(appender);
             appender.stop();
@@ -97,12 +104,15 @@ class NacosEncryptRefreshIT {
         properties.put(NacosEncryptProperties.PREFIX + ".key", key);
         properties.put(PROPERTY_NAME, encrypted(plaintext, key));
         StandardEnvironment environment = new StandardEnvironment();
-        environment.getPropertySources().addFirst(new MapPropertySource("nacos-refresh", properties));
+        environment
+                .getPropertySources()
+                .addFirst(new MapPropertySource("nacos-refresh", properties));
 
         SpringApplication application = new SpringApplication(RefreshConfiguration.class);
         application.setEnvironment(environment);
         application.setWebApplicationType(WebApplicationType.NONE);
-        application.setDefaultProperties(Map.of("spring.cloud.nacos.config.import-check.enabled", "false"));
+        application.setDefaultProperties(
+                Map.of("spring.cloud.nacos.config.import-check.enabled", "false"));
         return new MutableRefreshContext(application.run(), properties);
     }
 
@@ -115,17 +125,16 @@ class NacosEncryptRefreshIT {
         return "ENC(" + ConfigCryptoUtils.encrypt(plaintext, key) + ")";
     }
 
-    private record MutableRefreshContext(ConfigurableApplicationContext context, Map<String, Object> properties) {
-    }
+    private record MutableRefreshContext(
+            ConfigurableApplicationContext context, Map<String, Object> properties) {}
 
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(RefreshProperties.class)
     @ImportAutoConfiguration({
-            NacosEncryptAutoConfiguration.class,
-            ConfigurationPropertiesRebinderAutoConfiguration.class
+        NacosEncryptAutoConfiguration.class,
+        ConfigurationPropertiesRebinderAutoConfiguration.class
     })
-    static class RefreshConfiguration {
-    }
+    static class RefreshConfiguration {}
 
     @ConfigurationProperties("app")
     static class RefreshProperties {

@@ -1,28 +1,31 @@
 package com.yggdrasil.labs.log;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * Logback 基本日志功能测试
  *
- * <p>测试基本日志能力，包括：</p>
+ * <p>测试基本日志能力，包括：
+ *
  * <ul>
- * <li>日志格式</li>
- * <li>打印级别</li>
- * <li>日志输出</li>
- * <li>异常信息</li>
- * <li>时间戳</li>
+ *   <li>日志格式
+ *   <li>打印级别
+ *   <li>日志输出
+ *   <li>异常信息
+ *   <li>时间戳
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -65,9 +68,7 @@ class LogbackBasicTest extends BaseUnitTest {
         super.tearDown();
     }
 
-    /**
-     * 测试基本日志捕获
-     */
+    /** 测试基本日志捕获 */
     @Test
     void testBasicLogCapture() {
         logger.info("这是一条测试日志");
@@ -79,9 +80,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertEquals("这是一条测试日志", event.getFormattedMessage());
     }
 
-    /**
-     * 测试所有日志级别
-     */
+    /** 测试所有日志级别 */
     @Test
     void testAllLogLevels() {
         logger.trace("TRACE 级别");
@@ -99,9 +98,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertEquals(Level.ERROR, listAppender.list.get(4).getLevel());
     }
 
-    /**
-     * 测试日志内容验证
-     */
+    /** 测试日志内容验证 */
     @Test
     void testLogContent() {
         logger.info("用户登录成功: username=admin, status=200");
@@ -114,9 +111,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertTrue(message.contains("status=200"), "应包含状态码");
     }
 
-    /**
-     * 测试异常信息记录
-     */
+    /** 测试异常信息记录 */
     @Test
     void testExceptionLogging() {
         Exception exception = new RuntimeException("测试异常消息");
@@ -127,9 +122,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertEquals("测试异常消息", event.getThrowableProxy().getMessage());
     }
 
-    /**
-     * 测试日志时间戳
-     */
+    /** 测试日志时间戳 */
     @Test
     void testLogTimestamp() {
         long before = System.currentTimeMillis();
@@ -139,13 +132,10 @@ class LogbackBasicTest extends BaseUnitTest {
         ILoggingEvent event = listAppender.list.get(0);
         long logTime = event.getTimeStamp();
 
-        assertTrue(logTime >= before && logTime <= after,
-                "日志时间戳应该在当前时间范围内: " + logTime);
+        assertTrue(logTime >= before && logTime <= after, "日志时间戳应该在当前时间范围内: " + logTime);
     }
 
-    /**
-     * 测试参数化日志
-     */
+    /** 测试参数化日志 */
     @Test
     void testParameterizedLogging() {
         String username = "admin";
@@ -155,27 +145,20 @@ class LogbackBasicTest extends BaseUnitTest {
         ILoggingEvent event = listAppender.list.get(0);
         String formattedMessage = event.getFormattedMessage();
 
-        assertTrue(formattedMessage.contains("admin"),
-                "应包含用户名: " + formattedMessage);
-        assertTrue(formattedMessage.contains("200"),
-                "应包含状态码: " + formattedMessage);
+        assertTrue(formattedMessage.contains("admin"), "应包含用户名: " + formattedMessage);
+        assertTrue(formattedMessage.contains("200"), "应包含状态码: " + formattedMessage);
     }
 
-    /**
-     * 测试 Logger 名称
-     */
+    /** 测试 Logger 名称 */
     @Test
     void testLoggerName() {
         logger.info("测试日志");
 
         ILoggingEvent event = listAppender.list.get(0);
-        assertEquals("BASIC_TEST_LOGGER", event.getLoggerName(),
-                "Logger 名称应该是 BASIC_TEST_LOGGER");
+        assertEquals("BASIC_TEST_LOGGER", event.getLoggerName(), "Logger 名称应该是 BASIC_TEST_LOGGER");
     }
 
-    /**
-     * 测试日志级别过滤
-     */
+    /** 测试日志级别过滤 */
     @Test
     void testLogLevelFiltering() {
         // 设置为 WARN 级别
@@ -187,16 +170,13 @@ class LogbackBasicTest extends BaseUnitTest {
         logger.error("ERROR 日志");
 
         // 应该只有 WARN 和 ERROR 日志被记录
-        assertEquals(2, listAppender.list.size(),
-                "应该在 WARN 级别下只记录 WARN 和 ERROR");
+        assertEquals(2, listAppender.list.size(), "应该在 WARN 级别下只记录 WARN 和 ERROR");
 
         assertEquals(Level.WARN, listAppender.list.get(0).getLevel());
         assertEquals(Level.ERROR, listAppender.list.get(1).getLevel());
     }
 
-    /**
-     * 测试 Logger 继承性
-     */
+    /** 测试 Logger 继承性 */
     @Test
     void testLoggerHierarchy() {
         Logger childLogger = (Logger) LoggerFactory.getLogger("BASIC_TEST_LOGGER.child");
@@ -207,13 +187,10 @@ class LogbackBasicTest extends BaseUnitTest {
         childLogger.info("子 Logger 日志");
 
         assertEquals(1, listAppender.list.size());
-        assertEquals("BASIC_TEST_LOGGER.child",
-                listAppender.list.get(0).getLoggerName());
+        assertEquals("BASIC_TEST_LOGGER.child", listAppender.list.get(0).getLoggerName());
     }
 
-    /**
-     * 测试批量日志记录
-     */
+    /** 测试批量日志记录 */
     @Test
     void testMultipleLogsCapture() {
         logger.debug("DEBUG: 调试信息");
@@ -221,8 +198,7 @@ class LogbackBasicTest extends BaseUnitTest {
         logger.warn("WARN: 警告信息");
         logger.error("ERROR: 错误信息");
 
-        assertEquals(4, listAppender.list.size(),
-                "应该捕获 4 条不同级别的日志");
+        assertEquals(4, listAppender.list.size(), "应该捕获 4 条不同级别的日志");
 
         // 验证顺序
         assertEquals(Level.DEBUG, listAppender.list.get(0).getLevel());
@@ -231,9 +207,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertEquals(Level.ERROR, listAppender.list.get(3).getLevel());
     }
 
-    /**
-     * 测试日志线程信息
-     */
+    /** 测试日志线程信息 */
     @Test
     void testThreadInfo() {
         logger.info("线程测试");
@@ -245,9 +219,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertFalse(threadName.isEmpty(), "线程名称不应该为空");
     }
 
-    /**
-     * 测试 MDC (Mapped Diagnostic Context)
-     */
+    /** 测试 MDC (Mapped Diagnostic Context) */
     @Test
     void testMdcContext() {
         org.slf4j.MDC.put("userId", "12345");
@@ -263,8 +235,12 @@ class LogbackBasicTest extends BaseUnitTest {
         assertEquals(1, listAppender.list.size(), "应该捕获 1 条日志");
         ILoggingEvent event = listAppender.list.get(0);
         assertNotNull(event.getMDCPropertyMap(), "日志事件应该包含 MDC 属性映射");
-        assertEquals("12345", event.getMDCPropertyMap().get("userId"), "日志中的 userId MDC 值应该是 12345");
-        assertEquals("req-001", event.getMDCPropertyMap().get("requestId"), "日志中的 requestId MDC 值应该是 req-001");
+        assertEquals(
+                "12345", event.getMDCPropertyMap().get("userId"), "日志中的 userId MDC 值应该是 12345");
+        assertEquals(
+                "req-001",
+                event.getMDCPropertyMap().get("requestId"),
+                "日志中的 requestId MDC 值应该是 req-001");
 
         // 验证 MDC 可以通过其他方式访问
         logger.info("再次测试");
@@ -274,9 +250,7 @@ class LogbackBasicTest extends BaseUnitTest {
         assertNull(org.slf4j.MDC.get("userId"), "清理后 userId MDC 值应该为 null");
     }
 
-    /**
-     * 综合测试：完整的日志场景
-     */
+    /** 综合测试：完整的日志场景 */
     @Test
     void testCompleteLoggingScenario() {
         String username = "testUser";
@@ -294,4 +268,3 @@ class LogbackBasicTest extends BaseUnitTest {
         assertTrue(listAppender.list.get(2).getFormattedMessage().contains("可能存在问题"));
     }
 }
-

@@ -1,22 +1,25 @@
 package com.yggdrasil.labs.test.base;
 
-import com.yggdrasil.labs.test.util.TestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.yggdrasil.labs.test.util.TestUtils;
+
 /**
  * 单元测试基类
  *
- * <p>提供单元测试的基础功能：</p>
+ * <p>提供单元测试的基础功能：
+ *
  * <ul>
- * <li>自动初始化 Mockito</li>
- * <li>自动清理测试环境</li>
- * <li>提供测试工具方法</li>
+ *   <li>自动初始化 Mockito
+ *   <li>自动清理测试环境
+ *   <li>提供测试工具方法
  * </ul>
  *
- * <p>使用示例：</p>
+ * <p>使用示例：
+ *
  * <pre>{@code
  * class MyServiceTest extends BaseUnitTest {
  *     @Test
@@ -32,9 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public abstract class BaseUnitTest {
 
-    /**
-     * 测试前准备
-     */
+    /** 测试前准备 */
     @BeforeEach
     void setUpBase() {
         // 清理测试环境
@@ -43,9 +44,7 @@ public abstract class BaseUnitTest {
         setUp();
     }
 
-    /**
-     * 测试后清理
-     */
+    /** 测试后清理 */
     @AfterEach
     void tearDownBase() {
         // 清理测试环境
@@ -54,18 +53,13 @@ public abstract class BaseUnitTest {
         tearDown();
     }
 
-    /**
-     * 子类可以重写此方法添加测试前的准备逻辑
-     */
+    /** 子类可以重写此方法添加测试前的准备逻辑 */
     protected void setUp() {
         // 默认空实现，子类可重写
     }
 
-    /**
-     * 子类可以重写此方法添加测试后的清理逻辑
-     */
+    /** 子类可以重写此方法添加测试后的清理逻辑 */
     protected void tearDown() {
         // 默认空实现，子类可重写
     }
 }
-

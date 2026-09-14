@@ -1,15 +1,16 @@
 package com.yggdrasil.labs.log.config;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * 日志脱敏配置属性测试
@@ -28,9 +29,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         properties = new LogMaskProperties();
     }
 
-    /**
-     * 测试默认值
-     */
+    /** 测试默认值 */
     @Test
     void testDefaultValues() {
         assertNotNull(properties.getEnabledPatterns());
@@ -40,9 +39,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertEquals(CommonConstants.MASKED, properties.getReplacement());
     }
 
-    /**
-     * 测试设置启用的脱敏规则
-     */
+    /** 测试设置启用的脱敏规则 */
     @Test
     void testSetEnabledPatterns() {
         List<String> patterns = Arrays.asList("password", "token", "secret");
@@ -54,15 +51,14 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertTrue(properties.getEnabledPatterns().contains("secret"));
     }
 
-    /**
-     * 测试设置自定义脱敏规则
-     */
+    /** 测试设置自定义脱敏规则 */
     @Test
     void testSetCustomPatterns() {
-        List<String> customPatterns = Arrays.asList(
-                "\\d{4}-\\d{4}-\\d{4}-\\d{4}",  // 信用卡号
-                "\\d{11}"  // 手机号
-        );
+        List<String> customPatterns =
+                Arrays.asList(
+                        "\\d{4}-\\d{4}-\\d{4}-\\d{4}", // 信用卡号
+                        "\\d{11}" // 手机号
+                        );
         properties.setCustomPatterns(customPatterns);
 
         assertEquals(2, properties.getCustomPatterns().size());
@@ -70,9 +66,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertTrue(properties.getCustomPatterns().contains("\\d{11}"));
     }
 
-    /**
-     * 测试设置替换字符
-     */
+    /** 测试设置替换字符 */
     @Test
     void testSetReplacement() {
         String customReplacement = "***MASKED***";
@@ -81,9 +75,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertEquals(customReplacement, properties.getReplacement());
     }
 
-    /**
-     * 测试设置 null 值
-     */
+    /** 测试设置 null 值 */
     @Test
     void testSetNullValues() {
         properties.setEnabledPatterns(null);
@@ -95,9 +87,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertNull(properties.getReplacement());
     }
 
-    /**
-     * 测试设置空列表
-     */
+    /** 测试设置空列表 */
     @Test
     void testSetEmptyLists() {
         properties.setEnabledPatterns(new ArrayList<>());
@@ -109,9 +99,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertTrue(properties.getCustomPatterns().isEmpty());
     }
 
-    /**
-     * 测试所有属性的组合使用
-     */
+    /** 测试所有属性的组合使用 */
     @Test
     void testAllPropertiesTogether() {
         List<String> enabledPatterns = Arrays.asList("password", "api_key");
@@ -127,9 +115,7 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertEquals(replacement, properties.getReplacement());
     }
 
-    /**
-     * 测试多次设置属性
-     */
+    /** 测试多次设置属性 */
     @Test
     void testMultipleSetOperations() {
         // 第一次设置
@@ -147,4 +133,3 @@ class LogMaskPropertiesTest extends BaseUnitTest {
         assertEquals("REPL2", properties.getReplacement());
     }
 }
-

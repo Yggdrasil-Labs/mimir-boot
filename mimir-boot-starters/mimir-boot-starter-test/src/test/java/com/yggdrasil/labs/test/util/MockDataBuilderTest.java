@@ -1,11 +1,11 @@
 package com.yggdrasil.labs.test.util;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * MockDataBuilder 测试
@@ -15,9 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class MockDataBuilderTest {
 
-    /**
-     * 测试用的简单类
-     */
+    /** 测试用的简单类 */
     static class TestUser {
         private String name;
         private Integer age;
@@ -48,9 +46,7 @@ class MockDataBuilderTest {
         }
     }
 
-    /**
-     * 测试用的类（无参构造函数）
-     */
+    /** 测试用的类（无参构造函数） */
     static class SimpleClass {
         private String value;
 
@@ -63,9 +59,7 @@ class MockDataBuilderTest {
         }
     }
 
-    /**
-     * 测试用的类（有父类）
-     */
+    /** 测试用的类（有父类） */
     static class ParentClass {
         protected String parentField;
 
@@ -100,10 +94,11 @@ class MockDataBuilderTest {
 
     @Test
     void testWith() {
-        MockDataBuilder<TestUser> builder = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("张三"))
-                .with(u -> u.setAge(25))
-                .with(u -> u.setEmail("zhangsan@example.com"));
+        MockDataBuilder<TestUser> builder =
+                MockDataBuilder.of(TestUser.class)
+                        .with(u -> u.setName("张三"))
+                        .with(u -> u.setAge(25))
+                        .with(u -> u.setEmail("zhangsan@example.com"));
 
         TestUser user = builder.build();
         assertEquals("张三", user.getName());
@@ -113,9 +108,7 @@ class MockDataBuilderTest {
 
     @Test
     void testBuild() {
-        TestUser user = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("李四"))
-                .build();
+        TestUser user = MockDataBuilder.of(TestUser.class).with(u -> u.setName("李四")).build();
 
         assertNotNull(user, "构建的对象不应为 null");
         assertEquals("李四", user.getName());
@@ -123,8 +116,8 @@ class MockDataBuilderTest {
 
     @Test
     void testGetInstance() {
-        MockDataBuilder<TestUser> builder = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("王五"));
+        MockDataBuilder<TestUser> builder =
+                MockDataBuilder.of(TestUser.class).with(u -> u.setName("王五"));
 
         TestUser instance1 = builder.getInstance();
         TestUser instance2 = builder.build();
@@ -137,10 +130,11 @@ class MockDataBuilderTest {
 
     @Test
     void testBuildList_WithoutCustomizer() {
-        MockDataBuilder<TestUser> builder = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("测试用户"))
-                .with(u -> u.setAge(30))
-                .with(u -> u.setEmail("test@example.com"));
+        MockDataBuilder<TestUser> builder =
+                MockDataBuilder.of(TestUser.class)
+                        .with(u -> u.setName("测试用户"))
+                        .with(u -> u.setAge(30))
+                        .with(u -> u.setEmail("test@example.com"));
 
         List<TestUser> users = builder.buildList(3);
 
@@ -162,13 +156,16 @@ class MockDataBuilderTest {
 
     @Test
     void testBuildList_WithCustomizer() {
-        MockDataBuilder<TestUser> builder = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("基础名称"));
+        MockDataBuilder<TestUser> builder =
+                MockDataBuilder.of(TestUser.class).with(u -> u.setName("基础名称"));
 
-        List<TestUser> users = builder.buildList(3, u -> {
-            u.setAge(20);
-            u.setEmail("custom@example.com");
-        });
+        List<TestUser> users =
+                builder.buildList(
+                        3,
+                        u -> {
+                            u.setAge(20);
+                            u.setEmail("custom@example.com");
+                        });
 
         assertNotNull(users);
         assertEquals(3, users.size());
@@ -183,8 +180,8 @@ class MockDataBuilderTest {
 
     @Test
     void testBuildList_WithIndexBasedCustomizer() {
-        List<TestUser> users = MockDataBuilder.of(TestUser.class)
-                .buildList(3, u -> u.setName("用户"));
+        List<TestUser> users =
+                MockDataBuilder.of(TestUser.class).buildList(3, u -> u.setName("用户"));
 
         assertNotNull(users);
         assertEquals(3, users.size());
@@ -201,8 +198,7 @@ class MockDataBuilderTest {
 
     @Test
     void testBuildList_EmptyList() {
-        List<TestUser> users = MockDataBuilder.of(TestUser.class)
-                .buildList(0);
+        List<TestUser> users = MockDataBuilder.of(TestUser.class).buildList(0);
 
         assertNotNull(users);
         assertTrue(users.isEmpty(), "空列表应为空");
@@ -210,9 +206,10 @@ class MockDataBuilderTest {
 
     @Test
     void testBuildList_WithInheritance() {
-        MockDataBuilder<ChildClass> builder = MockDataBuilder.of(ChildClass.class)
-                .with(c -> c.setParentField("父类字段"))
-                .with(c -> c.setChildField("子类字段"));
+        MockDataBuilder<ChildClass> builder =
+                MockDataBuilder.of(ChildClass.class)
+                        .with(c -> c.setParentField("父类字段"))
+                        .with(c -> c.setChildField("子类字段"));
 
         List<ChildClass> children = builder.buildList(2);
 
@@ -223,9 +220,7 @@ class MockDataBuilderTest {
         }
     }
 
-    /**
-     * 测试用的类（只有带参构造函数，没有无参构造函数）
-     */
+    /** 测试用的类（只有带参构造函数，没有无参构造函数） */
     static class ClassWithoutNoArgConstructor {
         private final String value;
 
@@ -238,9 +233,7 @@ class MockDataBuilderTest {
         }
     }
 
-    /**
-     * 测试用的类（只有私有构造函数）
-     */
+    /** 测试用的类（只有私有构造函数） */
     static class ClassWithPrivateConstructor {
         private ClassWithPrivateConstructor() {
             // 私有构造函数
@@ -252,17 +245,23 @@ class MockDataBuilderTest {
     @Test
     void testOf_ClassWithoutNoArgConstructor() {
         // 测试没有无参构造函数的类
-        assertThrows(com.yggdrasil.labs.common.exception.SystemException.class, () -> {
-            MockDataBuilder.of(ClassWithoutNoArgConstructor.class);
-        }, "没有无参构造函数的类应抛出异常");
+        assertThrows(
+                com.yggdrasil.labs.common.exception.SystemException.class,
+                () -> {
+                    MockDataBuilder.of(ClassWithoutNoArgConstructor.class);
+                },
+                "没有无参构造函数的类应抛出异常");
     }
 
     @Test
     void testOf_ClassWithPrivateConstructor() {
         // 测试只有私有构造函数的类（虽然有无参构造函数，但无法访问）
-        assertThrows(com.yggdrasil.labs.common.exception.SystemException.class, () -> {
-            MockDataBuilder.of(ClassWithPrivateConstructor.class);
-        }, "只有私有构造函数的类应抛出异常");
+        assertThrows(
+                com.yggdrasil.labs.common.exception.SystemException.class,
+                () -> {
+                    MockDataBuilder.of(ClassWithPrivateConstructor.class);
+                },
+                "只有私有构造函数的类应抛出异常");
     }
 
     @Test
@@ -270,13 +269,16 @@ class MockDataBuilderTest {
         // TestUser 有无参构造函数，所以这里不会失败
         MockDataBuilder<TestUser> builder = MockDataBuilder.of(TestUser.class);
         assertDoesNotThrow(() -> builder.buildList(1), "TestUser 有无参构造函数，应该成功");
-        
+
         // 测试没有无参构造函数的类
-        assertThrows(com.yggdrasil.labs.common.exception.SystemException.class, () -> {
-            MockDataBuilder<ClassWithoutNoArgConstructor> badBuilder = 
-                    MockDataBuilder.of(ClassWithoutNoArgConstructor.class);
-            badBuilder.buildList(1);
-        }, "没有无参构造函数的类在 buildList 时应抛出异常");
+        assertThrows(
+                com.yggdrasil.labs.common.exception.SystemException.class,
+                () -> {
+                    MockDataBuilder<ClassWithoutNoArgConstructor> badBuilder =
+                            MockDataBuilder.of(ClassWithoutNoArgConstructor.class);
+                    badBuilder.buildList(1);
+                },
+                "没有无参构造函数的类在 buildList 时应抛出异常");
     }
 
     // ========== 静态方法测试 ==========
@@ -288,8 +290,7 @@ class MockDataBuilderTest {
 
         assertNotNull(timestamp1, "时间戳不应为 null");
         assertNotNull(timestamp2, "时间戳不应为 null");
-        assertTrue(timestamp1.isBefore(timestamp2) || timestamp1.isEqual(timestamp2),
-                "时间戳应合理");
+        assertTrue(timestamp1.isBefore(timestamp2) || timestamp1.isEqual(timestamp2), "时间戳应合理");
     }
 
     @Test
@@ -318,11 +319,12 @@ class MockDataBuilderTest {
 
     @Test
     void testChainedCalls() {
-        TestUser user = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("链式调用"))
-                .with(u -> u.setAge(18))
-                .with(u -> u.setEmail("chain@example.com"))
-                .build();
+        TestUser user =
+                MockDataBuilder.of(TestUser.class)
+                        .with(u -> u.setName("链式调用"))
+                        .with(u -> u.setAge(18))
+                        .with(u -> u.setEmail("chain@example.com"))
+                        .build();
 
         assertEquals("链式调用", user.getName());
         assertEquals(18, user.getAge());
@@ -331,13 +333,13 @@ class MockDataBuilderTest {
 
     @Test
     void testMultipleWithCalls() {
-        MockDataBuilder<TestUser> builder = MockDataBuilder.of(TestUser.class)
-                .with(u -> u.setName("多次调用1"))
-                .with(u -> u.setName("多次调用2"))
-                .with(u -> u.setName("多次调用3"));
+        MockDataBuilder<TestUser> builder =
+                MockDataBuilder.of(TestUser.class)
+                        .with(u -> u.setName("多次调用1"))
+                        .with(u -> u.setName("多次调用2"))
+                        .with(u -> u.setName("多次调用3"));
 
         TestUser user = builder.build();
         assertEquals("多次调用3", user.getName(), "最后一次调用应覆盖前面的值");
     }
 }
-

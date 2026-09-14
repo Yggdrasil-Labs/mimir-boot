@@ -6,13 +6,14 @@ import org.springframework.context.annotation.Profile;
 /**
  * 测试自动配置类
  *
- * <p>提供测试环境的自动配置：</p>
+ * <p>提供测试环境的自动配置：
+ *
  * <ul>
- * <li>测试环境的特殊处理</li>
- * <li>测试专用的配置</li>
+ *   <li>测试环境的特殊处理
+ *   <li>测试专用的配置
  * </ul>
  *
- * <p>此配置类仅在 test profile 激活时生效</p>
+ * <p>此配置类仅在 test profile 激活时生效
  *
  * @author Yggdrasil Labs
  * @since 1.0.0

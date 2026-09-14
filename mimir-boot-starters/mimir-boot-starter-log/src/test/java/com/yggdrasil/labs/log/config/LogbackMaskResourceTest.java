@@ -1,17 +1,19 @@
 package com.yggdrasil.labs.log.config;
 
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.Test;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.junit.jupiter.api.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 class LogbackMaskResourceTest extends BaseUnitTest {
 
@@ -19,7 +21,8 @@ class LogbackMaskResourceTest extends BaseUnitTest {
     void accessAndSqlAppendersUseMaskConverter() throws Exception {
         try (InputStream resource = getClass().getResourceAsStream("/logback-spring.xml")) {
             assertNotNull(resource);
-            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resource);
+            Document document =
+                    DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resource);
             Map<String, String> patterns = patternsByAppender(document);
 
             assertEquals(true, patterns.get("FILE_ACCESS").contains("%mask"));

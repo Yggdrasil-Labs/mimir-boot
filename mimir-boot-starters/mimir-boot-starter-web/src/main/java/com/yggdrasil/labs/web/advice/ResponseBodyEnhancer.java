@@ -1,10 +1,5 @@
 package com.yggdrasil.labs.web.advice;
 
-import com.yggdrasil.labs.common.response.R;
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.web.config.WebProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -17,14 +12,22 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.web.config.WebProperties;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 响应体增强器
  *
- * <p>功能说明：</p>
+ * <p>功能说明：
+ *
  * <ul>
- * <li>自动为 R 响应对象填充 traceId</li>
- * <li>支持跳过已包含 traceId 的响应</li>
- * <li>仅增强 {@code R} 响应对象</li>
+ *   <li>自动为 R 响应对象填充 traceId
+ *   <li>支持跳过已包含 traceId 的响应
+ *   <li>仅增强 {@code R} 响应对象
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -38,16 +41,16 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
 
     /**
      * 判断是否支持增强
-     * <p>
-     * 仅对返回 {@code R} 或 {@code ResponseEntity<R>} 的接口进行增强
-     * </p>
      *
-     * @param returnType    返回类型
+     * <p>仅对返回 {@code R} 或 {@code ResponseEntity<R>} 的接口进行增强
+     *
+     * @param returnType 返回类型
      * @param converterType 转换器类型
      * @return 是否支持增强
      */
     @Override
-    public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
+    public boolean supports(
+            MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         // 检查是否启用响应增强
         if (!isEnabled()) {
             return false;
@@ -70,13 +73,15 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
             return true;
         }
         if (Object.class == returnClass
-                && AnnotatedElementUtils.hasAnnotation(returnType.getContainingClass(), RestControllerAdvice.class)) {
+                && AnnotatedElementUtils.hasAnnotation(
+                        returnType.getContainingClass(), RestControllerAdvice.class)) {
             return true;
         }
         if (!HttpEntity.class.isAssignableFrom(returnClass)) {
             return false;
         }
-        Class<?> responseBodyType = ResolvableType.forMethodParameter(returnType).getGeneric(0).resolve();
+        Class<?> responseBodyType =
+                ResolvableType.forMethodParameter(returnType).getGeneric(0).resolve();
         return responseBodyType != null && R.class.isAssignableFrom(responseBodyType);
     }
 
@@ -91,16 +96,15 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
 
     /**
      * 增强响应体
-     * <p>
-     * 自动为 R 响应对象填充 traceId
-     * </p>
      *
-     * @param body          响应体
-     * @param returnType    返回类型
+     * <p>自动为 R 响应对象填充 traceId
+     *
+     * @param body 响应体
+     * @param returnType 返回类型
      * @param selectedContentType 选中的内容类型
      * @param selectedConverterType 选中的转换器类型
-     * @param request       请求对象
-     * @param response      响应对象
+     * @param request 请求对象
+     * @param response 响应对象
      * @return 增强后的响应体
      */
     @Override
@@ -137,9 +141,8 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
 
     /**
      * 从 MDC 获取 traceId
-     * <p>
-     * 优先从 MDC 的 traceId 获取，如果不存在则尝试从 requestId 获取
-     * </p>
+     *
+     * <p>优先从 MDC 的 traceId 获取，如果不存在则尝试从 requestId 获取
      *
      * @return traceId
      */

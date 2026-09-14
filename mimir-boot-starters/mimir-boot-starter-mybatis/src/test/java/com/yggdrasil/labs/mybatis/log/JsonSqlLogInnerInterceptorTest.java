@@ -1,11 +1,11 @@
 package com.yggdrasil.labs.mybatis.log;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.LogTestUtils;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.sql.Connection;
+import java.util.List;
+
 import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
@@ -14,11 +14,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.util.List;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.LogTestUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * JSON SQL 日志拦截器测试
@@ -36,7 +38,7 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
     protected void setUp() {
         super.setUp();
         interceptor = new JsonSqlLogInnerInterceptor();
-        
+
         // 配置日志捕获
         listAppender = LogTestUtils.setupLogger("SQL.JSON");
         Logger logger = (Logger) LoggerFactory.getLogger("SQL.JSON");
@@ -60,9 +62,10 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
         when(boundSql.getSql()).thenReturn("SELECT * FROM user WHERE id = ?");
         when(boundSql.getParameterObject()).thenReturn(null);
 
-        assertDoesNotThrow(() -> {
-            interceptor.beforePrepare(statementHandler, connection, null);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    interceptor.beforePrepare(statementHandler, connection, null);
+                });
 
         // 验证日志输出
         List<ILoggingEvent> logs = listAppender.list;
@@ -75,7 +78,7 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
         StatementHandler statementHandler = mock(StatementHandler.class);
         BoundSql boundSql = mock(BoundSql.class);
         Connection connection = mock(Connection.class);
-        
+
         java.util.Map<String, Object> params = new java.util.HashMap<>();
         params.put("id", 123);
         params.put("name", "test");
@@ -84,9 +87,10 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
         when(boundSql.getSql()).thenReturn("SELECT * FROM user WHERE id = ? AND name = ?");
         when(boundSql.getParameterObject()).thenReturn(params);
 
-        assertDoesNotThrow(() -> {
-            interceptor.beforePrepare(statementHandler, connection, null);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    interceptor.beforePrepare(statementHandler, connection, null);
+                });
 
         // 验证日志包含参数
         List<ILoggingEvent> logs = listAppender.list;
@@ -174,9 +178,10 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
         when(statementHandler.getBoundSql()).thenThrow(new RuntimeException("Test exception"));
 
         // 应该捕获异常，不抛出
-        assertDoesNotThrow(() -> {
-            interceptor.beforePrepare(statementHandler, connection, null);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    interceptor.beforePrepare(statementHandler, connection, null);
+                });
     }
 
     @Test
@@ -186,8 +191,9 @@ class JsonSqlLogInnerInterceptorTest extends BaseUnitTest {
 
         when(statementHandler.getBoundSql()).thenReturn(null);
 
-        assertDoesNotThrow(() -> {
-            interceptor.beforePrepare(statementHandler, connection, null);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    interceptor.beforePrepare(statementHandler, connection, null);
+                });
     }
 }

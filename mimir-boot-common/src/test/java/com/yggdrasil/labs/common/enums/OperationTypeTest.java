@@ -1,8 +1,8 @@
 package com.yggdrasil.labs.common.enums;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 class OperationTypeTest {
 
@@ -14,5 +14,3 @@ class OperationTypeTest {
         assertEquals(OperationType.OTHER, OperationType.fromCode(null));
     }
 }
-
-

@@ -1,16 +1,17 @@
 package com.yggdrasil.labs.web.interceptor;
 
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 class WebInterceptorTest extends BaseUnitTest {
 
@@ -52,7 +53,11 @@ class WebInterceptorTest extends BaseUnitTest {
         org.slf4j.MDC.put("external", "keep-me");
 
         webInterceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-        webInterceptor.afterCompletion(request, new MockHttpServletResponse(), new Object(), new RuntimeException("expected"));
+        webInterceptor.afterCompletion(
+                request,
+                new MockHttpServletResponse(),
+                new Object(),
+                new RuntimeException("expected"));
 
         assertEquals("old-ip", org.slf4j.MDC.get("ip"));
         assertEquals("trace-owned-by-trace-interceptor", org.slf4j.MDC.get("traceId"));
@@ -124,6 +129,7 @@ class WebInterceptorTest extends BaseUnitTest {
         assertNull(org.slf4j.MDC.get("ip"));
         assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
+
     @Test
     void releasesIpAfterConcurrentHandlingStarted() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -151,7 +157,8 @@ class WebInterceptorTest extends BaseUnitTest {
         webInterceptor.afterConcurrentHandlingStarted(request, response, new Object());
         request.setRemoteAddr("198.51.100.11");
         webInterceptor.preHandle(request, response, new Object());
-        webInterceptor.afterCompletion(request, response, new Object(), new RuntimeException("async timeout"));
+        webInterceptor.afterCompletion(
+                request, response, new Object(), new RuntimeException("async timeout"));
 
         assertEquals("ip-before", org.slf4j.MDC.get("ip"));
         assertEquals("keep-me", org.slf4j.MDC.get("external"));
@@ -169,10 +176,10 @@ class WebInterceptorTest extends BaseUnitTest {
         webInterceptor.afterConcurrentHandlingStarted(request, response, new Object());
         request.setRemoteAddr("198.51.100.11");
         webInterceptor.preHandle(request, response, new Object());
-        webInterceptor.afterCompletion(request, response, new Object(), new RuntimeException("async error"));
+        webInterceptor.afterCompletion(
+                request, response, new Object(), new RuntimeException("async error"));
 
         assertEquals("ip-before", org.slf4j.MDC.get("ip"));
         assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
-
 }

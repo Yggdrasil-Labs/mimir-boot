@@ -1,13 +1,13 @@
 package com.yggdrasil.labs.test.config;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 class TestStarterConsumerTest {
 
@@ -24,15 +24,15 @@ class TestStarterConsumerTest {
 
     @Test
     void explicitConsumerConfigurationStillTakesEffect() {
-        try (ConfigurableApplicationContext context = new SpringApplicationBuilder(TestConfiguration.class)
-                .web(WebApplicationType.NONE)
-                .profiles("test")
-                .properties(
-                        "spring.main.banner-mode=off")
-                .run(
-                        "--spring.application.name=consumer-test",
-                        "--spring.jpa.hibernate.ddl-auto=validate",
-                        "--spring.jpa.show-sql=false")) {
+        try (ConfigurableApplicationContext context =
+                new SpringApplicationBuilder(TestConfiguration.class)
+                        .web(WebApplicationType.NONE)
+                        .profiles("test")
+                        .properties("spring.main.banner-mode=off")
+                        .run(
+                                "--spring.application.name=consumer-test",
+                                "--spring.jpa.hibernate.ddl-auto=validate",
+                                "--spring.jpa.show-sql=false")) {
             Environment environment = context.getEnvironment();
 
             assertEquals("consumer-test", environment.getProperty("spring.application.name"));

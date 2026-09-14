@@ -1,18 +1,18 @@
 package com.yggdrasil.labs.test.util;
 
-import com.yggdrasil.labs.common.exception.ErrorCode;
-import com.yggdrasil.labs.common.exception.SystemException;
-
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.SystemException;
+
 /**
  * Mock 数据构建器
  *
- * <p>提供链式构建测试数据的方法</p>
+ * <p>提供链式构建测试数据的方法
  *
  * @param <T> 数据类型
  * @author Yggdrasil Labs
@@ -28,7 +28,8 @@ public class MockDataBuilder<T> {
         try {
             this.instance = clazz.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-            throw new SystemException(ErrorCode.PARAM_ERROR.getCode(), "无法创建实例: " + clazz.getName(), e);
+            throw new SystemException(
+                    ErrorCode.PARAM_ERROR.getCode(), "无法创建实例: " + clazz.getName(), e);
         }
     }
 
@@ -36,7 +37,7 @@ public class MockDataBuilder<T> {
      * 创建构建器
      *
      * @param clazz 类型
-     * @param <T>   类型参数
+     * @param <T> 类型参数
      * @return 构建器实例
      */
     public static <T> MockDataBuilder<T> of(Class<T> clazz) {
@@ -66,7 +67,7 @@ public class MockDataBuilder<T> {
     /**
      * 构建列表
      *
-     * <p>注意：此方法会为每个实例应用相同的配置。如果需要不同的配置，请使用 {@link #buildList(int, Consumer)}</p>
+     * <p>注意：此方法会为每个实例应用相同的配置。如果需要不同的配置，请使用 {@link #buildList(int, Consumer)}
      *
      * @param count 数量
      * @return 实例列表（所有实例使用相同的配置）
@@ -78,7 +79,7 @@ public class MockDataBuilder<T> {
     /**
      * 构建列表，支持为每个实例自定义配置
      *
-     * @param count      数量
+     * @param count 数量
      * @param customizer 每个实例的自定义配置器（可以为 null，表示复制当前实例的配置）
      * @return 实例列表
      */
@@ -96,7 +97,8 @@ public class MockDataBuilder<T> {
                 }
                 list.add(item);
             } catch (Exception e) {
-                throw new SystemException(ErrorCode.PARAM_ERROR.getCode(), "无法创建实例: " + clazz.getName(), e);
+                throw new SystemException(
+                        ErrorCode.PARAM_ERROR.getCode(), "无法创建实例: " + clazz.getName(), e);
             }
         }
         return list;
@@ -157,4 +159,3 @@ public class MockDataBuilder<T> {
         return LocalDateTime.now().plusDays(daysOffset);
     }
 }
-

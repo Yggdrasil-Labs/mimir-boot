@@ -2,14 +2,16 @@ package com.yggdrasil.labs.rpc.core.tracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
+
 import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
-import java.util.Map;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
 
 class MdcRpcTracerBridgeTest {
 
@@ -25,9 +27,12 @@ class MdcRpcTracerBridgeTest {
         MDC.put(CommonConstants.REQUEST_ID, "previous-request");
         MDC.put("external", "keep-me");
 
-        RpcTraceScope scope = bridge.extractScope(context(), Map.of(
-                HttpHeaderConstants.TRACE_ID_HEADER, "invalid trace id",
-                HttpHeaderConstants.REQUEST_ID_HEADER, "invalid request id"));
+        RpcTraceScope scope =
+                bridge.extractScope(
+                        context(),
+                        Map.of(
+                                HttpHeaderConstants.TRACE_ID_HEADER, "invalid trace id",
+                                HttpHeaderConstants.REQUEST_ID_HEADER, "invalid request id"));
 
         assertThat(MDC.get(CommonConstants.TRACE_ID)).matches("[0-9a-f]{32}");
         assertThat(MDC.get(CommonConstants.REQUEST_ID)).isNull();
@@ -55,11 +60,12 @@ class MdcRpcTracerBridgeTest {
     }
 
     private RpcCallContext context() {
-        return RpcCallContext.create(RpcCallMetadata.builder()
-                .service("test-service")
-                .method("test-method")
-                .protocol("test")
-                .target("test-target")
-                .build());
+        return RpcCallContext.create(
+                RpcCallMetadata.builder()
+                        .service("test-service")
+                        .method("test-method")
+                        .protocol("test")
+                        .target("test-target")
+                        .build());
     }
 }

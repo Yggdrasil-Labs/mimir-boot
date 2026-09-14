@@ -1,15 +1,16 @@
 package com.yggdrasil.labs.log.config;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import com.yggdrasil.labs.common.constant.CommonConstants;
 
 /**
  * 日志脱敏配置属性
  *
- * <p>用于配置日志敏感信息脱敏功能</p>
+ * <p>用于配置日志敏感信息脱敏功能
  *
  * @author Yggdrasil Labs
  * @since 1.0.0
@@ -18,20 +19,15 @@ import java.util.List;
 public class LogMaskProperties {
 
     /**
-     * 启用的预置脱敏规则（按名称）
-     * 可用值：password, token, secret, api_key, account, id_card, phone, bank_card, email, name, id_card_number, phone_number, bank_card_number, email_address
+     * 启用的预置脱敏规则（按名称） 可用值：password, token, secret, api_key, account, id_card, phone, bank_card,
+     * email, name, id_card_number, phone_number, bank_card_number, email_address
      */
     private List<String> enabledPatterns = new ArrayList<>();
 
-    /**
-     * 自定义脱敏规则（正则表达式）
-     * 与预置规则一起使用
-     */
+    /** 自定义脱敏规则（正则表达式） 与预置规则一起使用 */
     private List<String> customPatterns = new ArrayList<>();
 
-    /**
-     * 替换字符（默认：****）
-     */
+    /** 替换字符（默认：****） */
     private String replacement = CommonConstants.MASKED;
 
     public List<String> getEnabledPatterns() {

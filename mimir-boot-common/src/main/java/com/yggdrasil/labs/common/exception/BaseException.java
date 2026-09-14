@@ -1,17 +1,14 @@
 package com.yggdrasil.labs.common.exception;
 
-import lombok.Getter;
-
 import java.io.Serial;
 
-/**
- * 抽象基础异常，封装通用错误码与消息
- */
+import lombok.Getter;
+
+/** 抽象基础异常，封装通用错误码与消息 */
 @Getter
 public abstract class BaseException extends RuntimeException implements IException {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @Serial private static final long serialVersionUID = 1L;
 
     private final String code;
     private final String message;
@@ -40,5 +37,3 @@ public abstract class BaseException extends RuntimeException implements IExcepti
         this.message = errorCode.getMessage();
     }
 }
-
-

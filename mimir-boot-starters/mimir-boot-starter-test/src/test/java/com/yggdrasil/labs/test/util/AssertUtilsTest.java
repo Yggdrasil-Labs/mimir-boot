@@ -1,18 +1,19 @@
 package com.yggdrasil.labs.test.util;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.*;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * AssertUtils 断言工具类测试
@@ -41,33 +42,45 @@ class AssertUtilsTest {
     @Test
     void testAssertContains_NullCollection() {
         List<String> list = null;
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContains(list, "a");
-        }, "null 集合应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContains(list, "a");
+                },
+                "null 集合应抛出异常");
     }
 
     @Test
     void testAssertContains_EmptyCollection() {
         List<String> list = new ArrayList<>();
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContains(list, "a");
-        }, "空集合应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContains(list, "a");
+                },
+                "空集合应抛出异常");
     }
 
     @Test
     void testAssertContains_ElementNotInCollection() {
         List<String> list = Arrays.asList("a", "b", "c");
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContains(list, "d");
-        }, "不存在的元素应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContains(list, "d");
+                },
+                "不存在的元素应抛出异常");
     }
 
     @Test
     void testAssertContains_WithMessage_NullCollection() {
         List<String> list = null;
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContains(list, "a", "自定义消息");
-        }, "null 集合应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContains(list, "a", "自定义消息");
+                },
+                "null 集合应抛出异常");
     }
 
     @Test
@@ -99,9 +112,12 @@ class AssertUtilsTest {
     @Test
     void testAssertContainsKey_NullMap() {
         Map<String, String> map = null;
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContainsKey(map, "key1");
-        }, "null Map 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContainsKey(map, "key1");
+                },
+                "null Map 应抛出异常");
     }
 
     @Test
@@ -109,17 +125,23 @@ class AssertUtilsTest {
         Map<String, String> map = new HashMap<>();
         map.put("key1", "value1");
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContainsKey(map, "key2");
-        }, "不存在的 key 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContainsKey(map, "key2");
+                },
+                "不存在的 key 应抛出异常");
     }
 
     @Test
     void testAssertContainsKey_WithMessage_NullMap() {
         Map<String, String> map = null;
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertContainsKey(map, "key1", "自定义消息");
-        }, "null Map 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertContainsKey(map, "key1", "自定义消息");
+                },
+                "null Map 应抛出异常");
     }
 
     @Test
@@ -148,38 +170,56 @@ class AssertUtilsTest {
 
     @Test
     void testAssertNotBlank_NullString() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertNotBlank(null);
-        }, "null 字符串应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertNotBlank(null);
+                },
+                "null 字符串应抛出异常");
     }
 
     @Test
     void testAssertNotBlank_EmptyString() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertNotBlank("");
-        }, "空字符串应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertNotBlank("");
+                },
+                "空字符串应抛出异常");
     }
 
     @Test
     void testAssertNotBlank_BlankString() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertNotBlank("   ");
-        }, "空白字符串应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertNotBlank("   ");
+                },
+                "空白字符串应抛出异常");
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertNotBlank("\t");
-        }, "制表符字符串应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertNotBlank("\t");
+                },
+                "制表符字符串应抛出异常");
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertNotBlank("\n");
-        }, "换行符字符串应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertNotBlank("\n");
+                },
+                "换行符字符串应抛出异常");
     }
 
     @Test
     void testAssertNotBlank_WithMessage_NullString() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertNotBlank(null, "自定义消息");
-        }, "null 字符串应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertNotBlank(null, "自定义消息");
+                },
+                "null 字符串应抛出异常");
     }
 
     // ========== assertEquals 测试 ==========
@@ -204,34 +244,49 @@ class AssertUtilsTest {
 
     @Test
     void testAssertEquals_ExpectedNull_ActualNotNull() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertEquals(null, "test");
-        }, "期望 null 但实际不为 null 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertEquals(null, "test");
+                },
+                "期望 null 但实际不为 null 应抛出异常");
     }
 
     @Test
     void testAssertEquals_ExpectedNotNull_ActualNull() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertEquals("test", null);
-        }, "期望不为 null 但实际为 null 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertEquals("test", null);
+                },
+                "期望不为 null 但实际为 null 应抛出异常");
     }
 
     @Test
     void testAssertEquals_NotEqual() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertEquals("test1", "test2");
-        }, "不相等应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertEquals("test1", "test2");
+                },
+                "不相等应抛出异常");
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertEquals(1, 2);
-        }, "不相等应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertEquals(1, 2);
+                },
+                "不相等应抛出异常");
     }
 
     @Test
     void testAssertEquals_WithMessage_NotEqual() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertEquals("test1", "test2", "自定义消息");
-        }, "不相等应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertEquals("test1", "test2", "自定义消息");
+                },
+                "不相等应抛出异常");
     }
 
     @Test
@@ -271,10 +326,11 @@ class AssertUtilsTest {
         logger.info("Test message");
         ILoggingEvent event = appender.list.get(0);
 
-        assertDoesNotThrow(() -> {
-            AssertUtils.assertLogLevel(event, Level.INFO);
-            AssertUtils.assertLogLevel(event, Level.INFO, "自定义消息");
-        });
+        assertDoesNotThrow(
+                () -> {
+                    AssertUtils.assertLogLevel(event, Level.INFO);
+                    AssertUtils.assertLogLevel(event, Level.INFO, "自定义消息");
+                });
     }
 
     @Test
@@ -282,16 +338,22 @@ class AssertUtilsTest {
         logger.info("Test message");
         ILoggingEvent event = appender.list.get(0);
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogLevel(event, Level.ERROR);
-        }, "日志级别不匹配应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogLevel(event, Level.ERROR);
+                },
+                "日志级别不匹配应抛出异常");
     }
 
     @Test
     void testAssertLogLevel_NullEvent() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogLevel(null, Level.INFO);
-        }, "null 事件应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogLevel(null, Level.INFO);
+                },
+                "null 事件应抛出异常");
     }
 
     @Test
@@ -314,11 +376,12 @@ class AssertUtilsTest {
         logger.info("Test message with Status=[200]");
         ILoggingEvent event = appender.list.get(0);
 
-        assertDoesNotThrow(() -> {
-            AssertUtils.assertLogContains(event, "Status=[200]");
-            AssertUtils.assertLogContains(event, "Test message");
-            AssertUtils.assertLogContains(event, "Status=[200]", "自定义消息");
-        });
+        assertDoesNotThrow(
+                () -> {
+                    AssertUtils.assertLogContains(event, "Status=[200]");
+                    AssertUtils.assertLogContains(event, "Test message");
+                    AssertUtils.assertLogContains(event, "Status=[200]", "自定义消息");
+                });
     }
 
     @Test
@@ -326,16 +389,22 @@ class AssertUtilsTest {
         logger.info("Test message");
         ILoggingEvent event = appender.list.get(0);
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogContains(event, "Not found");
-        }, "日志不包含指定文本应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogContains(event, "Not found");
+                },
+                "日志不包含指定文本应抛出异常");
     }
 
     @Test
     void testAssertLogContains_NullEvent() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogContains(null, "test");
-        }, "null 事件应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogContains(null, "test");
+                },
+                "null 事件应抛出异常");
     }
 
     @Test
@@ -343,10 +412,11 @@ class AssertUtilsTest {
         logger.info("Request completed with Status=[200]");
         ILoggingEvent event = appender.list.get(0);
 
-        assertDoesNotThrow(() -> {
-            AssertUtils.assertLogStatus(event, 200);
-            AssertUtils.assertLogStatus(event, 200, "自定义消息");
-        });
+        assertDoesNotThrow(
+                () -> {
+                    AssertUtils.assertLogStatus(event, 200);
+                    AssertUtils.assertLogStatus(event, 200, "自定义消息");
+                });
     }
 
     @Test
@@ -354,9 +424,12 @@ class AssertUtilsTest {
         logger.info("Request completed with Status=[200]");
         ILoggingEvent event = appender.list.get(0);
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogStatus(event, 404);
-        }, "状态码不匹配应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogStatus(event, 404);
+                },
+                "状态码不匹配应抛出异常");
     }
 
     @Test
@@ -376,10 +449,11 @@ class AssertUtilsTest {
         logger.info("Message 2");
         logger.info("Message 3");
 
-        assertDoesNotThrow(() -> {
-            AssertUtils.assertLogSize(appender, 3);
-            AssertUtils.assertLogSize(appender, 3, "自定义消息");
-        });
+        assertDoesNotThrow(
+                () -> {
+                    AssertUtils.assertLogSize(appender, 3);
+                    AssertUtils.assertLogSize(appender, 3, "自定义消息");
+                });
     }
 
     @Test
@@ -387,23 +461,29 @@ class AssertUtilsTest {
         logger.info("Message 1");
         logger.info("Message 2");
 
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogSize(appender, 3);
-        }, "日志数量不匹配应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogSize(appender, 3);
+                },
+                "日志数量不匹配应抛出异常");
     }
 
     @Test
     void testAssertLogSize_NullAppender() {
-        assertThrows(AssertionError.class, () -> {
-            AssertUtils.assertLogSize(null, 0);
-        }, "null appender 应抛出异常");
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    AssertUtils.assertLogSize(null, 0);
+                },
+                "null appender 应抛出异常");
     }
 
     @Test
     void testAssertLogSize_EmptyList() {
-        assertDoesNotThrow(() -> {
-            AssertUtils.assertLogSize(appender, 0);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    AssertUtils.assertLogSize(appender, 0);
+                });
     }
 }
-

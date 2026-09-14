@@ -1,17 +1,18 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
-import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
-import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
+import com.yggdrasil.labs.mybatis.crypto.CryptoUtils;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * String 加密 TypeHandler 测试
@@ -49,9 +50,10 @@ class StringCryptoTypeHandlerTest extends BaseUnitTest {
         PreparedStatement ps = mock(PreparedStatement.class);
 
         // toString 方法将 null 转为空字符串
-        assertDoesNotThrow(() -> {
-            handler.setNonNullParameter(ps, 1, null, null);
-        });
+        assertDoesNotThrow(
+                () -> {
+                    handler.setNonNullParameter(ps, 1, null, null);
+                });
     }
 
     @Test
@@ -149,7 +151,8 @@ class StringCryptoTypeHandlerTest extends BaseUnitTest {
     }
 
     @Test
-    void contextConstructor_readsV2ButWritesV1_and_threeArgumentConstructorWritesV2() throws Exception {
+    void contextConstructor_readsV2ButWritesV1_and_threeArgumentConstructorWritesV2()
+            throws Exception {
         CryptoKeyProvider keyProvider = () -> testKey;
         StringCryptoTypeHandler v1Writer = new StringCryptoTypeHandler(keyProvider, "orders");
         StringCryptoTypeHandler v2Writer = new StringCryptoTypeHandler(keyProvider, "orders", true);
@@ -161,7 +164,8 @@ class StringCryptoTypeHandlerTest extends BaseUnitTest {
         assertFalse(v1.getValue().startsWith("v2:"));
 
         ResultSet resultSet = mock(ResultSet.class);
-        when(resultSet.getString("value")).thenReturn(CryptoUtils.encrypt("value", testKey, "orders"));
+        when(resultSet.getString("value"))
+                .thenReturn(CryptoUtils.encrypt("value", testKey, "orders"));
         assertEquals("value", v1Writer.getNullableResult(resultSet, "value"));
 
         v2Writer.setNonNullParameter(statement, 2, "value", null);

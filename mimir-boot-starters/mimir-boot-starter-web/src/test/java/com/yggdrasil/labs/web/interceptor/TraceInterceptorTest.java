@@ -1,10 +1,14 @@
 package com.yggdrasil.labs.web.interceptor;
 
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,19 +16,18 @@ import org.mockito.Mock;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.test.base.BaseUnitTest;
 
 /**
  * Trace 拦截器测试
  *
- * <p>测试 TraceInterceptor 的功能：</p>
+ * <p>测试 TraceInterceptor 的功能：
+ *
  * <ul>
- * <li>从请求头获取 traceId</li>
- * <li>生成新的 traceId</li>
- * <li>设置到 MDC 和响应头</li>
+ *   <li>从请求头获取 traceId
+ *   <li>生成新的 traceId
+ *   <li>设置到 MDC 和响应头
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -34,14 +37,11 @@ class TraceInterceptorTest extends BaseUnitTest {
 
     private TraceInterceptor traceInterceptor;
 
-    @Mock
-    private HttpServletRequest request;
+    @Mock private HttpServletRequest request;
 
-    @Mock
-    private HttpServletResponse response;
+    @Mock private HttpServletResponse response;
 
-    @Mock
-    private Object handler;
+    @Mock private Object handler;
 
     @Override
     @BeforeEach
@@ -56,9 +56,7 @@ class TraceInterceptorTest extends BaseUnitTest {
         super.tearDown();
     }
 
-    /**
-     * 测试从请求头获取 traceId
-     */
+    /** 测试从请求头获取 traceId */
     @Test
     void testPreHandleWithTraceIdFromHeader() {
         // 设置请求头中的 traceId
@@ -125,9 +123,7 @@ class TraceInterceptorTest extends BaseUnitTest {
         verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
     }
 
-    /**
-     * 测试生成新的 traceId（当请求头中没有时）
-     */
+    /** 测试生成新的 traceId（当请求头中没有时） */
     @Test
     void testPreHandleWithGeneratedTraceId() {
         // 请求头中没有 traceId
@@ -150,9 +146,7 @@ class TraceInterceptorTest extends BaseUnitTest {
         verify(response).setHeader(eq(HttpHeaderConstants.TRACE_ID_HEADER), anyString());
     }
 
-    /**
-     * 测试从 MDC 获取已存在的 traceId
-     */
+    /** 测试从 MDC 获取已存在的 traceId */
     @Test
     void testPreHandleWithExistingTraceIdInMdc() {
         // 先在 MDC 中设置 traceId
@@ -175,9 +169,7 @@ class TraceInterceptorTest extends BaseUnitTest {
         verify(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, existingTraceId);
     }
 
-    /**
-     * 测试请求头中的 traceId 优先级高于 MDC
-     */
+    /** 测试请求头中的 traceId 优先级高于 MDC */
     @Test
     void testPreHandleWithHeaderPriority() {
         // MDC 中已有 traceId
@@ -209,7 +201,10 @@ class TraceInterceptorTest extends BaseUnitTest {
 
         traceInterceptor.preHandle(localRequest, new MockHttpServletResponse(), handler);
         traceInterceptor.afterCompletion(
-                localRequest, new MockHttpServletResponse(), handler, new RuntimeException("expected"));
+                localRequest,
+                new MockHttpServletResponse(),
+                handler,
+                new RuntimeException("expected"));
 
         assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
         assertEquals("keep-me", org.slf4j.MDC.get("external"));
@@ -228,7 +223,8 @@ class TraceInterceptorTest extends BaseUnitTest {
 
         assertEquals("new-request-id", org.slf4j.MDC.get("requestId"));
 
-        traceInterceptor.afterCompletion(localRequest, new MockHttpServletResponse(), handler, null);
+        traceInterceptor.afterCompletion(
+                localRequest, new MockHttpServletResponse(), handler, null);
 
         assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
         assertEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
@@ -246,7 +242,8 @@ class TraceInterceptorTest extends BaseUnitTest {
         assertNotEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
         assertEquals(32, org.slf4j.MDC.get("requestId").length());
 
-        traceInterceptor.afterCompletion(localRequest, new MockHttpServletResponse(), handler, null);
+        traceInterceptor.afterCompletion(
+                localRequest, new MockHttpServletResponse(), handler, null);
 
         assertEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
     }
@@ -273,8 +270,12 @@ class TraceInterceptorTest extends BaseUnitTest {
 
     @Test
     void reusesStoredIdentityAcrossEveryServletRedispatchType() {
-        for (DispatcherType dispatcherType : List.of(
-                DispatcherType.FORWARD, DispatcherType.ERROR, DispatcherType.INCLUDE, DispatcherType.ASYNC)) {
+        for (DispatcherType dispatcherType :
+                List.of(
+                        DispatcherType.FORWARD,
+                        DispatcherType.ERROR,
+                        DispatcherType.INCLUDE,
+                        DispatcherType.ASYNC)) {
             MockHttpServletRequest localRequest = new MockHttpServletRequest();
             MockHttpServletResponse localResponse = new MockHttpServletResponse();
             localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "initial-trace-id");
@@ -287,7 +288,8 @@ class TraceInterceptorTest extends BaseUnitTest {
             assertEquals("initial-request-id", org.slf4j.MDC.get("requestId"));
 
             if (dispatcherType == DispatcherType.ASYNC) {
-                traceInterceptor.afterConcurrentHandlingStarted(localRequest, localResponse, handler);
+                traceInterceptor.afterConcurrentHandlingStarted(
+                        localRequest, localResponse, handler);
             }
             localRequest.setDispatcherType(dispatcherType);
             localRequest.removeHeader(HttpHeaderConstants.TRACE_ID_HEADER);
@@ -298,21 +300,33 @@ class TraceInterceptorTest extends BaseUnitTest {
             traceInterceptor.preHandle(localRequest, localResponse, handler);
 
             assertEquals("initial-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
-            assertEquals("initial-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
+            assertEquals(
+                    "initial-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
 
             traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
             if (dispatcherType == DispatcherType.ASYNC) {
-                assertEquals("before-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
-                assertEquals("before-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
+                assertEquals(
+                        "before-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
+                assertEquals(
+                        "before-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
             } else {
-                assertEquals("initial-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
-                assertEquals("initial-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
+                assertEquals(
+                        "initial-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
+                assertEquals(
+                        "initial-request-id",
+                        org.slf4j.MDC.get("requestId"),
+                        dispatcherType.name());
                 traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
             }
             assertEquals("before-trace-id", org.slf4j.MDC.get("traceId"), dispatcherType.name());
-            assertEquals("before-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
-            assertEquals("initial-trace-id", localRequest.getAttribute(TraceInterceptor.class.getName() + ".traceId"));
-            assertEquals("initial-request-id", localRequest.getAttribute(TraceInterceptor.class.getName() + ".requestId"));
+            assertEquals(
+                    "before-request-id", org.slf4j.MDC.get("requestId"), dispatcherType.name());
+            assertEquals(
+                    "initial-trace-id",
+                    localRequest.getAttribute(TraceInterceptor.class.getName() + ".traceId"));
+            assertEquals(
+                    "initial-request-id",
+                    localRequest.getAttribute(TraceInterceptor.class.getName() + ".requestId"));
             org.slf4j.MDC.clear();
         }
     }
@@ -322,12 +336,16 @@ class TraceInterceptorTest extends BaseUnitTest {
         when(request.getHeader(HttpHeaderConstants.TRACE_ID_HEADER)).thenReturn("new-trace-id");
         org.slf4j.MDC.put("traceId", "previous-trace-id");
         doThrow(new IllegalStateException("response committed"))
-                .when(response).setHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
+                .when(response)
+                .setHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
 
-        assertThrows(IllegalStateException.class, () -> traceInterceptor.preHandle(request, response, handler));
+        assertThrows(
+                IllegalStateException.class,
+                () -> traceInterceptor.preHandle(request, response, handler));
 
         assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
     }
+
     @Test
     void releasesMdcAfterConcurrentHandlingStarted() throws Exception {
         MockHttpServletRequest localRequest = new MockHttpServletRequest();
@@ -360,7 +378,8 @@ class TraceInterceptorTest extends BaseUnitTest {
         localRequest.removeHeader(HttpHeaderConstants.TRACE_ID_HEADER);
         localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "redispatch-trace-id");
         traceInterceptor.preHandle(localRequest, localResponse, handler);
-        traceInterceptor.afterCompletion(localRequest, localResponse, handler, new RuntimeException("async error"));
+        traceInterceptor.afterCompletion(
+                localRequest, localResponse, handler, new RuntimeException("async error"));
 
         assertEquals("trace-before", org.slf4j.MDC.get("traceId"));
         assertEquals("request-before", org.slf4j.MDC.get("requestId"));
@@ -381,7 +400,8 @@ class TraceInterceptorTest extends BaseUnitTest {
         localRequest.removeHeader(HttpHeaderConstants.TRACE_ID_HEADER);
         localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "redispatch-trace-id");
         traceInterceptor.preHandle(localRequest, localResponse, handler);
-        traceInterceptor.afterCompletion(localRequest, localResponse, handler, new RuntimeException("async timeout"));
+        traceInterceptor.afterCompletion(
+                localRequest, localResponse, handler, new RuntimeException("async timeout"));
 
         assertEquals("trace-before", org.slf4j.MDC.get("traceId"));
         assertEquals("request-before", org.slf4j.MDC.get("requestId"));
@@ -451,5 +471,4 @@ class TraceInterceptorTest extends BaseUnitTest {
         assertNull(org.slf4j.MDC.get(TraceInterceptor.TRACE_ID));
         assertNull(org.slf4j.MDC.get("requestId"));
     }
-
 }

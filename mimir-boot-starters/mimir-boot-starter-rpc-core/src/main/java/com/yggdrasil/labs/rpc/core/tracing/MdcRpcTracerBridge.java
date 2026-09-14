@@ -1,28 +1,32 @@
 package com.yggdrasil.labs.rpc.core.tracing;
 
-import com.yggdrasil.labs.common.constant.CommonConstants;
-import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
-import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
+
 import org.slf4j.MDC;
 import org.springframework.util.StringUtils;
 
-/**
- * 基于 SLF4J MDC 的默认 RPC Trace 上下文传播实现。
- */
+import com.yggdrasil.labs.common.constant.CommonConstants;
+import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
+import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
+
+/** 基于 SLF4J MDC 的默认 RPC Trace 上下文传播实现。 */
 public class MdcRpcTracerBridge implements RpcTracerBridge {
 
-    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
+    private static final Pattern IDENTIFIER_PATTERN =
+            Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
 
     @Override
     public Map<String, String> inject(RpcCallContext context) {
         Map<String, String> carrier = new LinkedHashMap<>();
         putIfValid(carrier, HttpHeaderConstants.TRACE_ID_HEADER, MDC.get(CommonConstants.TRACE_ID));
-        putIfValid(carrier, HttpHeaderConstants.REQUEST_ID_HEADER, MDC.get(CommonConstants.REQUEST_ID));
+        putIfValid(
+                carrier,
+                HttpHeaderConstants.REQUEST_ID_HEADER,
+                MDC.get(CommonConstants.REQUEST_ID));
         return carrier;
     }
 
@@ -42,7 +46,9 @@ public class MdcRpcTracerBridge implements RpcTracerBridge {
     private void applyCarrier(Map<String, String> carrier) {
         String traceId = carrierValue(carrier, HttpHeaderConstants.TRACE_ID_HEADER);
         String requestId = carrierValue(carrier, HttpHeaderConstants.REQUEST_ID_HEADER);
-        MDC.put(CommonConstants.TRACE_ID, isValidIdentifier(traceId) ? traceId : generateIdentifier());
+        MDC.put(
+                CommonConstants.TRACE_ID,
+                isValidIdentifier(traceId) ? traceId : generateIdentifier());
         if (isValidIdentifier(requestId)) {
             MDC.put(CommonConstants.REQUEST_ID, requestId);
         } else {

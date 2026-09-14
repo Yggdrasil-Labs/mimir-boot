@@ -1,16 +1,18 @@
 package com.yggdrasil.labs.nacos.crypto;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+
+import com.yggdrasil.labs.test.base.BaseUnitTest;
+import com.yggdrasil.labs.test.util.AssertUtils;
+import com.yggdrasil.labs.test.util.TestUtils;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.test.base.BaseUnitTest;
-import com.yggdrasil.labs.test.util.AssertUtils;
-import com.yggdrasil.labs.test.util.TestUtils;
-import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 配置加解密工具类测试
@@ -169,7 +171,8 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
         String[] parts = encrypted.split(":", -1);
         String ciphertext = (parts[2].charAt(0) == 'A' ? "B" : "A") + parts[2].substring(1);
 
-        assertThrows(RuntimeException.class,
+        assertThrows(
+                RuntimeException.class,
                 () -> ConfigCryptoUtils.decrypt(parts[0] + ":" + parts[1] + ":" + ciphertext, key));
     }
 
@@ -179,8 +182,10 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
         String legacyCiphertext = ConfigCryptoUtils.encrypt("legacy-secret", key, "AES");
 
         assertFalse(legacyCiphertext.startsWith("v1:"));
-        assertThrows(RuntimeException.class, () -> ConfigCryptoUtils.decrypt(legacyCiphertext, key));
-        AssertUtils.assertEquals("legacy-secret", ConfigCryptoUtils.decrypt(legacyCiphertext, key, "AES"));
+        assertThrows(
+                RuntimeException.class, () -> ConfigCryptoUtils.decrypt(legacyCiphertext, key));
+        AssertUtils.assertEquals(
+                "legacy-secret", ConfigCryptoUtils.decrypt(legacyCiphertext, key, "AES"));
     }
 
     @Test
@@ -208,8 +213,10 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
 
     @Test
     void shouldDecryptFixedLegacyAesEcbCiphertext() {
-        assertEquals("legacy-secret", ConfigCryptoUtils.decrypt(
-                "TU0hsTeAvom99Aj157kgoA==", "MDEyMzQ1Njc4OWFiY2RlZg==", "AES"));
+        assertEquals(
+                "legacy-secret",
+                ConfigCryptoUtils.decrypt(
+                        "TU0hsTeAvom99Aj157kgoA==", "MDEyMzQ1Njc4OWFiY2RlZg==", "AES"));
     }
 
     @Test
@@ -235,9 +242,11 @@ class ConfigCryptoUtilsTest extends BaseUnitTest {
         String key = ConfigCryptoUtils.generateKey();
 
         // 无效的密文应该抛出异常
-        assertThrows(RuntimeException.class, () -> {
-            ConfigCryptoUtils.decrypt("invalid-ciphertext", key);
-        });
+        assertThrows(
+                RuntimeException.class,
+                () -> {
+                    ConfigCryptoUtils.decrypt("invalid-ciphertext", key);
+                });
     }
 
     private long countLegacyMigrationWarnings(ListAppender<ILoggingEvent> appender) {

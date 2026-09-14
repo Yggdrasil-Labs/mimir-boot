@@ -1,21 +1,9 @@
 package com.yggdrasil.labs.log.web;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.yggdrasil.labs.test.util.LogTestUtils;
-import jakarta.servlet.AsyncContext;
-import jakarta.servlet.DispatcherType;
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,6 +17,18 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,15 +49,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.yggdrasil.labs.test.util.LogTestUtils;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * 访问日志异步 Servlet 集成测试。
  *
- * <p>使用嵌入式 Servlet 容器而非手工构造 {@code AsyncContext}，覆盖 Spring MVC 异步派发和
- * Servlet 再次 {@code startAsync()} 时的监听器重注册。</p>
+ * <p>使用嵌入式 Servlet 容器而非手工构造 {@code AsyncContext}，覆盖 Spring MVC 异步派发和 Servlet 再次 {@code
+ * startAsync()} 时的监听器重注册。
  *
  * @author Yggdrasil Labs
  * @since 2.2.1
@@ -68,8 +72,7 @@ class AccessLogFilterServletIntegrationTest {
     private static final long AWAIT_TIMEOUT_SECONDS = 5;
     private static final long LOG_STABILITY_MILLIS = 100;
 
-    @TempDir
-    static Path logPath;
+    @TempDir static Path logPath;
     private String previousLogPath;
     private ListAppender<ILoggingEvent> listAppender;
     private Logger accessLogger;
@@ -100,8 +103,8 @@ class AccessLogFilterServletIntegrationTest {
             AsyncLifecycleProbe probe = context.getBean(AsyncLifecycleProbe.class);
             DeferredResultEndpoint endpoint = context.getBean(DeferredResultEndpoint.class);
 
-            CompletableFuture<HttpResponse<String>> response = sendAsync(
-                    webContext.getWebServer().getPort(), "/access-log/deferred");
+            CompletableFuture<HttpResponse<String>> response =
+                    sendAsync(webContext.getWebServer().getPort(), "/access-log/deferred");
             assertTrue(endpoint.awaitRequest(), "控制器应收到异步请求");
             assertTrue(probe.awaitInitialAsyncFilterReturn(), "访问日志过滤器应在首次异步派发后完成监听器注册");
 
@@ -121,16 +124,17 @@ class AccessLogFilterServletIntegrationTest {
             attachAccessAppender();
             AsyncLifecycleProbe probe = context.getBean(AsyncLifecycleProbe.class);
 
-            CompletableFuture<HttpResponse<String>> response = sendAsync(
-                    webContext.getWebServer().getPort(), "/access-log/restarted");
+            CompletableFuture<HttpResponse<String>> response =
+                    sendAsync(webContext.getWebServer().getPort(), "/access-log/restarted");
 
             assertTrue(probe.awaitRestartedAsyncCycle(), "应观察到重启异步周期");
-            assertTrue(probe.awaitRestartedAsyncFilterReturn(),
-                    "第二轮异步上下文必须在访问日志过滤器返回后仍保持挂起");
-            assertEquals(0, matchingAccessLogs("/access-log/restarted").size(),
+            assertTrue(probe.awaitRestartedAsyncFilterReturn(), "第二轮异步上下文必须在访问日志过滤器返回后仍保持挂起");
+            assertEquals(
+                    0,
+                    matchingAccessLogs("/access-log/restarted").size(),
                     "第二轮异步完成前不应由同步 finally 兜底输出访问日志");
-            assertTrue(probe.reusedSameAsyncContext(),
-                    "本测试只有在容器实际复用同一 AsyncContext identity 时才覆盖该契约");
+            assertTrue(
+                    probe.reusedSameAsyncContext(), "本测试只有在容器实际复用同一 AsyncContext identity 时才覆盖该契约");
 
             assertTrue(probe.completeRestartedAsyncCycle(), "应由测试闸门完成第二轮异步上下文");
             HttpResponse<String> result = response.get(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -148,10 +152,11 @@ class AccessLogFilterServletIntegrationTest {
     }
 
     private CompletableFuture<HttpResponse<String>> sendAsync(int port, String path) {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-                .timeout(REQUEST_TIMEOUT)
-                .GET()
-                .build();
+        HttpRequest request =
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                        .timeout(REQUEST_TIMEOUT)
+                        .GET()
+                        .build();
         return HttpClient.newHttpClient().sendAsync(request, HttpResponse.BodyHandlers.ofString());
     }
 
@@ -224,7 +229,8 @@ class AccessLogFilterServletIntegrationTest {
 
         @Bean
         FilterRegistrationBean<Filter> asyncLifecycleProbeFilter(AsyncLifecycleProbe probe) {
-            FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(new AsyncLifecycleProbeFilter(probe));
+            FilterRegistrationBean<Filter> registration =
+                    new FilterRegistrationBean<>(new AsyncLifecycleProbeFilter(probe));
             registration.setName("asyncLifecycleProbeFilter");
             registration.addUrlPatterns("/*");
             registration.setAsyncSupported(true);
@@ -234,9 +240,11 @@ class AccessLogFilterServletIntegrationTest {
         }
 
         @Bean
-        ServletRegistrationBean<RestartingAsyncServlet> restartingAsyncServlet(AsyncLifecycleProbe probe) {
-            ServletRegistrationBean<RestartingAsyncServlet> registration = new ServletRegistrationBean<>(
-                    new RestartingAsyncServlet(probe), "/access-log/restarted");
+        ServletRegistrationBean<RestartingAsyncServlet> restartingAsyncServlet(
+                AsyncLifecycleProbe probe) {
+            ServletRegistrationBean<RestartingAsyncServlet> registration =
+                    new ServletRegistrationBean<>(
+                            new RestartingAsyncServlet(probe), "/access-log/restarted");
             registration.setName("restartingAsyncServlet");
             registration.setAsyncSupported(true);
             return registration;
@@ -247,11 +255,13 @@ class AccessLogFilterServletIntegrationTest {
     static class DeferredResultEndpoint {
 
         private final CountDownLatch requestReceived = new CountDownLatch(1);
-        private final AtomicReference<DeferredResult<ResponseEntity<String>>> pendingResult = new AtomicReference<>();
+        private final AtomicReference<DeferredResult<ResponseEntity<String>>> pendingResult =
+                new AtomicReference<>();
 
         @GetMapping("/access-log/deferred")
         DeferredResult<ResponseEntity<String>> deferred() {
-            DeferredResult<ResponseEntity<String>> result = new DeferredResult<>(REQUEST_TIMEOUT.toMillis());
+            DeferredResult<ResponseEntity<String>> result =
+                    new DeferredResult<>(REQUEST_TIMEOUT.toMillis());
             pendingResult.set(result);
             requestReceived.countDown();
             return result;
@@ -264,7 +274,9 @@ class AccessLogFilterServletIntegrationTest {
         private void complete(HttpStatus status) {
             DeferredResult<ResponseEntity<String>> result = pendingResult.get();
             assertNotNull(result, "应先收到 DeferredResult 请求再完成响应");
-            assertTrue(result.setResult(ResponseEntity.status(status).body("deferred")), "DeferredResult 应可完成");
+            assertTrue(
+                    result.setResult(ResponseEntity.status(status).body("deferred")),
+                    "DeferredResult 应可完成");
         }
     }
 
@@ -311,8 +323,7 @@ class AccessLogFilterServletIntegrationTest {
         }
 
         private boolean reusedSameAsyncContext() {
-            return initialContext.get() != null
-                    && initialContext.get() == restartedContext.get();
+            return initialContext.get() != null && initialContext.get() == restartedContext.get();
         }
     }
 
@@ -330,10 +341,12 @@ class AccessLogFilterServletIntegrationTest {
             try {
                 chain.doFilter(request, response);
             } finally {
-                if (request.getDispatcherType() == DispatcherType.REQUEST && request.isAsyncStarted()) {
+                if (request.getDispatcherType() == DispatcherType.REQUEST
+                        && request.isAsyncStarted()) {
                     probe.initialAsyncFilterReturned.countDown();
                 }
-                if (request.getDispatcherType() == DispatcherType.ASYNC && request.isAsyncStarted()) {
+                if (request.getDispatcherType() == DispatcherType.ASYNC
+                        && request.isAsyncStarted()) {
                     probe.recordRestartedAsyncFilterReturn();
                 }
             }
@@ -349,12 +362,14 @@ class AccessLogFilterServletIntegrationTest {
         }
 
         @Override
-        protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        protected void doGet(HttpServletRequest request, HttpServletResponse response)
+                throws IOException {
             if (request.getDispatcherType() == DispatcherType.REQUEST) {
                 AsyncContext initialContext = request.startAsync();
                 probe.recordInitialContext(initialContext);
                 initialContext.setTimeout(REQUEST_TIMEOUT.toMillis());
-                initialContext.start(() -> dispatchAfterInitialListenerRegistration(initialContext));
+                initialContext.start(
+                        () -> dispatchAfterInitialListenerRegistration(initialContext));
                 return;
             }
 
@@ -367,9 +382,12 @@ class AccessLogFilterServletIntegrationTest {
         private void dispatchAfterInitialListenerRegistration(AsyncContext initialContext) {
             try {
                 if (!probe.awaitInitialAsyncFilterReturn()) {
-                    HttpServletResponse response = (HttpServletResponse) initialContext.getResponse();
+                    HttpServletResponse response =
+                            (HttpServletResponse) initialContext.getResponse();
                     try {
-                        response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "listener registration timeout");
+                        response.sendError(
+                                HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                                "listener registration timeout");
                     } catch (IOException ignored) {
                         // 连接关闭时无法再写入错误响应。
                     }
@@ -380,7 +398,8 @@ class AccessLogFilterServletIntegrationTest {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 try {
-                    HttpServletResponse response = (HttpServletResponse) initialContext.getResponse();
+                    HttpServletResponse response =
+                            (HttpServletResponse) initialContext.getResponse();
                     response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "interrupted");
                 } catch (IOException ignored) {
                     // 连接关闭时无法再写入错误响应。
