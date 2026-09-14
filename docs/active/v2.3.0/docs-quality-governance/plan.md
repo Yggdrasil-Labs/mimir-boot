@@ -4,7 +4,7 @@ version: v2.3.0
 status: planned
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-15
 ---
 
 # Agent 文档治理与本地质量门禁 — 实施计划
@@ -13,7 +13,7 @@ updated: 2026-09-14
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-14T23:12:10+08:00
+**Updated At:** 2026-09-15T00:27:07+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -42,7 +42,7 @@ updated: 2026-09-14
 
 ## 方案审查记录
 
-此处仅记录方案审查，独立于上方实施完成状态。2026-09-14 方案审查结论为 PASS：Spec、Design、Plan、Migration、RFC 的正确性、可行性、完整性和可维护性均为 4/5，按公共评分规则加权均分 4.00/5，无未解决 P0/P1。该结论只表示方案可实施，所有实施任务仍为 pending。
+此处仅记录方案审查，独立于上方实施完成状态。2026-09-14 方案审查结论为 PASS：Spec、Design、Plan、Migration、RFC 的正确性、可行性、完整性和可维护性均为 4/5，按公共评分规则加权均分 4.00/5，无未解决 P0/P1。该结论只表示当时方案可实施，审查时所有实施任务仍为 pending。
 
 首轮发现 5 项 P1、4 项 P2，结论 FAIL（3.58/5）；修订复核确认原问题闭合，并补充 2 项 P1、1 项 P2。最后定点复核确认 T7 迁移执行表、index 重调用防递归及控制文件清单均已补齐。
 
@@ -68,7 +68,8 @@ updated: 2026-09-14
 
 | objective | scope | actor_kind | role | model | started_at | finished_at | status | attempt | attempt_limit | elapsed | stop_reason | strategy_change | evidence | budget_revision |
 |-----------|-------|------------|------|-------|------------|-------------|--------|---------|---------------|---------|-------------|-----------------|----------|-----------------|
-| T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | pending | running | 1 | 2 | pending | pending | none | baseline-mvnw-Pci-clean-verify-passed-15-reactors | initial |
+| T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | unknown（外部 agent 未返回可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | failed | none | external-agent-502-before-commit | initial |
+| T1 Maven 文档工具链与格式基线恢复 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | controller | inherit | unknown（收到 agent 502 后接管） | 2026-09-15T00:27:07+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 由 agent 502 改为 controller 接管并以 TDD 修复真实配置问题 | 33192a3；Maven selfTest/normal/无全局 Node PATH 均通过 | initial |
 
 ## Global Constraints
 
@@ -148,30 +149,30 @@ B 组 T2 与 T3 不共享写入文件；D 组 T5 与 T6 不共享写入文件。
 
 **Acceptance Criteria:**
 
-- [ ] AC1: 未安装全局 Node 的 Java 17 环境可经 Maven 完成格式检查；精确工具版本与依赖锁匹配，下载产物被忽略。
-- [ ] AC2: 3 份 Starter README 的列表保持同一列表的代码块缩进，历史计划相邻引用修复后实际 markdownlint 返回 0。
-- [ ] AC3: 受管工具缺失或锁不匹配明确失败；子模块有效 POM/发布 Parent 正常构建路径不继承 Node 工具链。
+- [x] AC1: 未安装全局 Node 的 Java 17 环境可经 Maven 完成格式检查；精确工具版本与依赖锁匹配，下载产物被忽略。
+- [x] AC2: 3 份 Starter README 的列表保持同一列表的代码块缩进，历史计划相邻引用修复后实际 markdownlint 返回 0。
+- [x] AC3: 受管工具缺失或锁不匹配明确失败；子模块有效 POM/发布 Parent 正常构建路径不继承 Node 工具链。
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHAs:** []
+- **Status:** completed
+- **Commit SHAs:** [33192a3bbce0f7f223cffc090a360dee7e6424c0]
 - **Dispatch Base SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 - **Dispatch Ref:** feature/docs_quality_governance_2.3.0
-- **Attempts:** 1
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** `node --test` 先后确认报告缺少工具缓存路径、POM 使用不存在的 `node` goal、短入口 `bootstrap.mjs` 返回 2；均在实现前得到预期失败。
+- **Verify Result:** `node --test --test-reporter spec tools/docs-check/test/toolchain.test.mjs` 为 4/4；`./mvnw -N -Pdocs-check verify -Ddocs.selfTest=true`、`./mvnw -N -Pdocs-check verify`、`env PATH=/usr/bin:/bin ./mvnw -N -Pdocs-check verify` 均退出 0，格式检查 73 文件 0 问题；`git diff --check` 通过。
+- **AC Result:** AC1 已以受限 PATH、报告中的 Node v22.22.3 / markdownlint-cli2 0.23.2 与工具路径验证；AC2 已以全库格式检查 0 问题验证；AC3 已以越界/缺运行时 exit 2 与 common effective POM 无 docs Node execution 验证。
+- **Concerns:** frontend-maven-plugin 的下载器在本环境停滞；已校验官方 Node SHA-256，并将 Node/npm 官方归档放入该插件的 Maven 本地缓存后完成同一 Maven 流程验证。
 
 **Task Completion Gate:**
 
-- [ ] Red 证据存在，失败原因或基线状态与本任务一致。
-- [ ] Verify 证据存在，退出码和结果通过。
-- [ ] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
-- [ ] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
-- [ ] AC checkbox 与实际验证同步。
+- [x] Red 证据存在，失败原因或基线状态与本任务一致。
+- [x] Verify 证据存在，退出码和结果通过。
+- [x] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
+- [x] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
+- [x] AC checkbox 与实际验证同步。
 
 **Step 1: Red**
 
