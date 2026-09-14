@@ -13,7 +13,7 @@ updated: 2026-09-15
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T00:29:58+08:00
+**Updated At:** 2026-09-15T01:25:26+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -70,7 +70,8 @@ updated: 2026-09-15
 |-----------|-------|------------|------|-------|------------|-------------|--------|---------|---------------|---------|-------------|-----------------|----------|-----------------|
 | T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | unknown（外部 agent 未返回可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | failed | none | external-agent-502-before-commit | initial |
 | T1 Maven 文档工具链与格式基线恢复 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | controller | inherit | unknown（收到 agent 502 后接管） | 2026-09-15T00:27:07+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 由 agent 502 改为 controller 接管并以 TDD 修复真实配置问题 | 33192a3；Maven selfTest/normal/无全局 Node PATH 均通过 | initial |
-| T2 文档规则与可信结果模型 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | worker | inherit | 2026-09-15T00:29:58+08:00 | pending | running | 1 | 2 | pending | pending | none | T1-33192a3-verified | initial |
+| T2 文档规则与可信结果模型 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | worker | inherit | 2026-09-15T00:29:58+08:00 | unknown（agent 未回传可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | cancelled | none | agent-unresponsive-before-result；工作区变更由 controller 接管审计 | initial |
+| T2 文档规则与可信结果模型恢复 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T01:25:26+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无响应，controller 接管；提交后 full 回归发现 fixture 扫描和格式诊断路径缺陷并以 TDD 修复 | a2a1663、63f060b；Node 13/13；Maven selfTest/normal 通过 | initial |
 
 ## Global Constraints
 
@@ -224,30 +225,30 @@ AC1：移除全局 Node PATH 后运行 Maven，自检报告包含精确版本和
 
 **Acceptance Criteria:**
 
-- [ ] AC1: 中文/重复标题、显式 anchor、目录与引用式链接正确解析；代码块不被当成真实链接，外部 URL 不阻断本地检查。
-- [ ] AC2: 技术债编号重复、退役 ID 复用、数字排序错误、摘要明细不对应或根 README 引用 TD 时分别失败；必要历史版本和模板示例不误报。
-- [ ] AC3: 同时存在格式错误和断链时两项均有诊断；只有归档提示时返回 0；缺工具返回 2，不将空 full 结果判为通过。
+- [x] AC1: 中文/重复标题、显式 anchor、目录与引用式链接正确解析；代码块不被当成真实链接，外部 URL 不阻断本地检查。
+- [x] AC2: 技术债编号重复、退役 ID 复用、数字排序错误、摘要明细不对应或根 README 引用 TD 时分别失败；必要历史版本和模板示例不误报。
+- [x] AC3: 同时存在格式错误和断链时两项均有诊断；只有归档提示时返回 0；缺工具返回 2，不将空 full 结果判为通过。
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHAs:** []
+- **Status:** complete
+- **Commit SHAs:** [a2a1663, 63f060b]
 - **Dispatch Base SHA:** 158da24
 - **Dispatch Ref:** feature/docs_quality_governance_2.3.0
-- **Attempts:** 1
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** `git show 158da24:tools/docs-check/check.mjs | rg 'T1 仅实现 format 模式'` 证明基线 full 只返回 not_run；回归修复前 `node --test --test-reporter spec tools/docs-check/test/docs-check.test.mjs` 失败，确认默认扫描纳入失效 fixtures 且缺少 `markdown-format:MD022` 诊断。
+- **Verify Result:** Node `toolchain.test.mjs + docs-check.test.mjs` 13/13 通过；`./mvnw -N -Pdocs-check verify -Ddocs.selfTest=true` 与 `./mvnw -N -Pdocs-check verify` 均通过；真实 full 的格式、导航和技术债检查通过。
+- **AC Result:** AC1/AC2/AC3 均由真实 Markdown fixture 和结果 JSON 覆盖并通过。
+- **Concerns:** 真实 full 仍报告 3 个存量文档漂移：`docs/archive/index.md` 两个失效目录链接、`mimir-boot-common/README.md` 重复标题；无白名单，交由 T7 修复。
 
 **Task Completion Gate:**
 
-- [ ] Red 证据存在，失败原因或基线状态与本任务一致。
-- [ ] Verify 证据存在，退出码和结果通过。
-- [ ] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
-- [ ] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
-- [ ] AC checkbox 与实际验证同步。
+- [x] Red 证据存在，失败原因或基线状态与本任务一致。
+- [x] Verify 证据存在，退出码和结果通过。
+- [x] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
+- [x] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
+- [x] AC checkbox 与实际验证同步。
 
 **Step 1: Red**
 
