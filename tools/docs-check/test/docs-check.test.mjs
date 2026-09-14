@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -43,11 +43,29 @@ test('full 模式同时报告格式错误和断链，并继续执行独立检查
     assert.equal(report.overall, 'failed');
     assert.equal(check(report, 'markdown-format').status, 'failed');
     assert.equal(check(report, 'internal-links').status, 'failed');
-    assert.ok(findings(report, 'markdown-format').length > 0);
+    assert.ok(findings(report, 'markdown-format:MD022').some((finding) => finding.path === 'docs/broken.md'));
     assert.ok(findings(report, 'internal-link').length > 0);
     assert.ok(check(report, 'navigation').status);
     assert.ok(check(report, 'technical-debt').status);
     assert.ok(check(report, 'maintenance-policy').status);
+});
+
+test('默认发现忽略工具自身的失效 Markdown fixtures', async () => {
+    await withFixture('valid-links', async (root) => {
+        const fixtureDirectory = path.join(root, 'tools/docs-check/test/fixtures/repro');
+        await mkdir(fixtureDirectory, { recursive: true });
+        await writeFile(path.join(fixtureDirectory, 'invalid.md'), '# 故意错误\n正文\n\n[断链](missing.md)\n', 'utf8');
+
+        const report = await runDocsCheck({
+            root,
+            mode: 'full',
+            reportPath: path.join(root, 'report.json'),
+        });
+
+        assert.equal(report.exitCode, 0);
+        assert.equal(report.overall, 'passed');
+        assert.equal(report.findings.some((finding) => finding.path?.startsWith('tools/docs-check/test/fixtures/')), false);
+    });
 });
 
 test('Markdown AST 正确处理中文标题、显式 anchor、引用式链接、图片和代码块', async () => {

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { addFinding, createCheck, finalizeReport } from './results.mjs';
 import { classifyPath, defaultPolicy, isFormatExempt, loadPolicy, normalizePath } from './policy.mjs';
 
@@ -124,7 +124,8 @@ async function resolveFiles(root, files) {
     if (files.length > 0) {
         return files.map(normalizePath);
     }
-    return trackedMarkdownFiles(root) || walkMarkdownFiles(root);
+    const discovered = trackedMarkdownFiles(root) || await walkMarkdownFiles(root);
+    return discovered.filter((file) => !normalizePath(file).startsWith('tools/docs-check/test/fixtures/'));
 }
 
 function readToolPackageVersion(packageName) {
@@ -156,6 +157,26 @@ function runProcess(command, args, cwd) {
     });
 }
 
+async function runMarkdownlint(args) {
+    const entry = pathToFileURL(path.join(toolRoot, 'node_modules', 'markdownlint-cli2', 'markdownlint-cli2.mjs')).href;
+    const { main } = await import(entry);
+    const stdout = [];
+    const stderr = [];
+    const exitCode = await main({
+        argv: args,
+        logMessage: (message) => {
+            stdout.push(message);
+            process.stdout.write(`${message}\n`);
+        },
+        logError: (message) => {
+            stderr.push(message);
+            process.stderr.write(`${message}\n`);
+        },
+        allowStdin: true,
+    });
+    return { exitCode, signal: null, stdout: stdout.join('\n'), stderr: stderr.join('\n') };
+}
+
 function markdownlintConfig(root) {
     const target = path.join(root, '.markdownlint-cli2.jsonc');
     try {
@@ -181,15 +202,18 @@ function markdownlintConfig(root) {
 function parseMarkdownlintFindings(output, root) {
     const findings = [];
     for (const line of output.split(/\r?\n/u)) {
-        const match = line.match(/^(.*?):(\d+)(?::(\d+))?\s+(?:error|warning)\s+(MD\d+)\s+(.*)$/u);
+        const match = line.match(/^(.*?):(\d+)(?::(\d+))?\s+(?:error|warning)\s+(MD\d+)(?:\/[^\s]+)?\s+(.*)$/u);
         if (!match) {
             continue;
         }
         const absoluteOrRelative = match[1];
-        let findingPath = absoluteOrRelative;
-        if (path.isAbsolute(absoluteOrRelative)) {
-            findingPath = normalizePath(path.relative(root, absoluteOrRelative));
-        }
+        const absolutePath = path.isAbsolute(absoluteOrRelative)
+            ? absoluteOrRelative
+            : path.resolve(process.cwd(), absoluteOrRelative);
+        const relativePath = path.relative(root, absolutePath);
+        const findingPath = relativePath.startsWith('..') || path.isAbsolute(relativePath)
+            ? normalizePath(absoluteOrRelative)
+            : normalizePath(relativePath);
         findings.push({
             severity: 'error',
             rule: `markdown-format:${match[4]}`,
@@ -222,10 +246,11 @@ async function runFormatCheck(root, files, policy) {
             findings: [{ severity: 'error', rule: 'markdown-config', path: null, line: null, message: '缺少 .markdownlint-cli2.jsonc 和 .markdownlint.json 配置' }],
         };
     }
-    const command = [markdownlintEntry, '--no-globs', '--config', config, ...formatFiles];
+    const args = ['--no-globs', '--config', config, ...formatFiles.map((file) => path.join(root, file))];
+    const command = [markdownlintEntry, ...args];
     const startedAt = Date.now();
     try {
-        const result = await runProcess(process.execPath, command, root);
+        const result = await runMarkdownlint(args);
         const output = `${result.stdout}\n${result.stderr}`;
         const findings = parseMarkdownlintFindings(output, root);
         const failed = result.exitCode !== 0;
