@@ -13,7 +13,7 @@ updated: 2026-09-15
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T01:28:04+08:00
+**Updated At:** 2026-09-15T01:55:00+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -72,7 +72,8 @@ updated: 2026-09-15
 | T1 Maven 文档工具链与格式基线恢复 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | controller | inherit | unknown（收到 agent 502 后接管） | 2026-09-15T00:27:07+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 由 agent 502 改为 controller 接管并以 TDD 修复真实配置问题 | 33192a3；Maven selfTest/normal/无全局 Node PATH 均通过 | initial |
 | T2 文档规则与可信结果模型 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | worker | inherit | 2026-09-15T00:29:58+08:00 | unknown（agent 未回传可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | cancelled | none | agent-unresponsive-before-result；工作区变更由 controller 接管审计 | initial |
 | T2 文档规则与可信结果模型恢复 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T01:25:26+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无响应，controller 接管；提交后 full 回归发现 fixture 扫描和格式诊断路径缺陷并以 TDD 修复 | a2a1663、63f060b；Node 13/13；Maven selfTest/normal 通过 | initial |
-| T3 Spotless、覆盖率时序和报告完整性 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality"] | work | worker | inherit | 2026-09-15T01:28:04+08:00 | pending | running | 1 | 2 | pending | pending | none | T1-33192a3、T2-b17a78a-verified | initial |
+| T3 Spotless、覆盖率时序和报告完整性 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality"] | work | worker | inherit | 2026-09-15T01:28:04+08:00 | unknown（agent 未回传可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | cancelled | none | agent-unresponsive-before-result；工作区变更由 controller 接管审计 | initial |
+| T3 Spotless、覆盖率时序和报告完整性恢复 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality","210 个 Spotless 自动修复的 Java 文件"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T01:55:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无响应后由 controller 接管；根无源配置修正后将实际暴露的既有格式漂移纳入同一门禁改造 | 56a58da；真实 T3FormatProbe、IT 独占覆盖和全仓 preflight 通过 | initial |
 
 ## Global Constraints
 
@@ -283,6 +284,7 @@ AC1/AC2：真实解析 fixture 断言 path、rule、status；AC3：结果 JSON �
 - Create: `tools/docs-check/verify-reports.mjs`
 - Create: `scripts/tests/java-quality-gates-test.sh`
 - Test: `scripts/tests/fixtures/java-quality`
+- Modify: `mimir-boot-common/**.java` 与 `mimir-boot-starters/**.java` 中由 `./mvnw -Pci spotless:apply` 自动修复的 210 个既有格式漂移文件
 
 **Interfaces:**
 
@@ -294,30 +296,30 @@ AC1/AC2：真实解析 fixture 断言 path、rule、status；AC3：结果 JSON �
 
 **Acceptance Criteria:**
 
-- [ ] AC1: 每个真实 Java 子模块的有效配置包含 main/test 源码，故意错误格式触发实际 Spotless 非零。
-- [ ] AC2: 仅由集成测试执行的方法出现在最终 JaCoCo XML 的覆盖计数中；check 与 report 消费同一最终执行数据，阈值保持 0.60/0.50。
-- [ ] AC3: 测试失败、被跳过、应有模块报告缺失、旧报告、阈值不足均失败；无源码/无某类测试豁免有明确原因。
+- [x] AC1: 每个真实 Java 子模块的有效配置包含 main/test 源码，故意错误格式触发实际 Spotless 非零。
+- [x] AC2: 仅由集成测试执行的方法出现在最终 JaCoCo XML 的覆盖计数中；check 与 report 消费同一最终执行数据，阈值保持 0.60/0.50。
+- [x] AC3: 测试失败、被跳过、应有模块报告缺失、旧报告、阈值不足均失败；无源码/无某类测试豁免有明确原因。
 
 **Execution:**
 
-- **Status:** in_progress
-- **Commit SHAs:** []
+- **Status:** completed
+- **Commit SHAs:** [56a58dafe29d0c4380f97ac53686c89fc12ba5cb]
 - **Dispatch Base SHA:** b17a78a
 - **Dispatch Ref:** feature/docs_quality_governance_2.3.0
-- **Attempts:** 1
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** 初始 `java-quality-gates-test.sh` 因缺少 `verify-reports.mjs` 失败；根 POM 的无源 Spotless 配置曾遮蔽子模块，启用实际继承后临时 `T3FormatProbe.java` 令 `spotless:check` 返回 1 并报告该文件。
+- **Verify Result:** `bash scripts/tests/java-quality-gates-test.sh` 通过，包含真实 `*IT` 独占类进入最终 JaCoCo XML 的断言；`./mvnw -Pci spotless:check` 通过；`QUALITY_REPORT_DIR=/tmp/mimir-t3-preflight-report bash scripts/ci-preflight.sh` 通过，11 个 Java 模块的报告结果均为 passed；`mimir-boot-common` effective POM 含 `src/main/java/**/*.java` 和 `src/test/java/**/*.java`。
+- **AC Result:** AC1 由 effective POM 和真实 Spotless 反例验证；AC2 由临时 IT 独占类的最终 XML 指令计数验证，report/check 同为 verify 阶段且读取 `${project.build.directory}/jacoco.exec`；AC3 由失败、跳过、缺 XML、摘要失配、阈值不足、未记录清单和清理旧产物的 fixture 反例验证。
+- **Concerns:** 根无源配置修正后发现 210 个既有 Java 格式漂移（7,160 行新增、5,953 行删除），已完全由项目 Spotless 规则自动修复并纳入同一提交；无语义修改。外部 worker 未回传结果，controller 已完成独立验证。
 
 **Task Completion Gate:**
 
-- [ ] Red 证据存在，失败原因或基线状态与本任务一致。
-- [ ] Verify 证据存在，退出码和结果通过。
-- [ ] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
-- [ ] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
-- [ ] AC checkbox 与实际验证同步。
+- [x] Red 证据存在，失败原因或基线状态与本任务一致。
+- [x] Verify 证据存在，退出码和结果通过。
+- [x] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
+- [x] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
+- [x] AC checkbox 与实际验证同步。
 
 **Step 1: Red**
 
