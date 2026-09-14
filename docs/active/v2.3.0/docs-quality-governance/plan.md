@@ -13,7 +13,7 @@ updated: 2026-09-15
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T02:20:00+08:00
+**Updated At:** 2026-09-15T02:25:00+08:00
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
 **Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
@@ -76,6 +76,8 @@ updated: 2026-09-15
 | T3 Spotless、覆盖率时序和报告完整性恢复 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality","210 个 Spotless 自动修复的 Java 文件"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T01:55:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无响应后由 controller 接管；根无源配置修正后将实际暴露的既有格式漂移纳入同一门禁改造 | 56a58da；真实 T3FormatProbe、IT 独占覆盖和全仓 preflight 通过 | initial |
 | T4 共享调度器与受检快照 | ["scripts/quality-check.sh","scripts/lib/quality-snapshot.sh","tools/docs-check/quality-result.mjs","scripts/tests/quality-check-test.sh","scripts/tests/fixtures/quality-runner"] | work | worker | inherit | 2026-09-15T02:00:00+08:00 | pending | running | 1 | 2 | pending | pending | none | T2-63f060b、T3-56a58da-verified | initial |
 | T4 共享调度器与受检快照恢复 | ["scripts/quality-check.sh","scripts/lib/quality-snapshot.sh","tools/docs-check/quality-result.mjs","scripts/tests/quality-check-test.sh","scripts/tests/fixtures/quality-runner"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T02:20:00+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无回传且未写入工作区，controller 接管并以真实 Git fixture 完成快照实现 | b2c1040；fixture full commit、真实 index quick 和报告 schema 通过 | initial |
+| T5 显式安装与 Git 提交推送门禁 | [".githooks/pre-commit",".githooks/pre-push","scripts/setup-dev.sh","scripts/tests/setup-dev-test.sh","scripts/tests/pre-commit-test.sh","scripts/tests/pre-push-test.sh"] | work | worker | inherit | 2026-09-15T02:25:00+08:00 | pending | running | 1 | 2 | pending | pending | none | T4-b2c1040-verified | initial |
+| T6 CI 统一入口与证据上传 | [".github/workflows/ci.yml","scripts/tests/ci-quality-contract-test.sh"] | work | worker | inherit | 2026-09-15T02:25:00+08:00 | pending | running | 1 | 2 | pending | pending | none | T4-b2c1040-verified | initial |
 
 ## Global Constraints
 
@@ -441,11 +443,11 @@ AC1：进程调用计数证明没有重复 test/package/verify；AC2：前后索
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Dispatch Base SHA:** 61867cf
+- **Dispatch Ref:** feature/docs_quality_governance_2.3.0
+- **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** null
 - **Verify Result:** null
@@ -505,11 +507,11 @@ GitHub CI 与本地共用检查器、规则、工具版本和结果模型。保�
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHAs:** []
-- **Dispatch Base SHA:** null
-- **Dispatch Ref:** null
-- **Attempts:** 0
+- **Dispatch Base SHA:** 61867cf
+- **Dispatch Ref:** feature/docs_quality_governance_2.3.0
+- **Attempts:** 1
 - **Blocked Reason:** null
 - **Red Result:** null
 - **Verify Result:** null
