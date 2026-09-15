@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! project_root="$(git rev-parse --show-toplevel)"; then
+  echo '质量检查：无法解析当前 Git 工作树' >&2
+  exit 2
+fi
+[[ -f "$project_root/scripts/quality-check.sh" ]] || {
+  echo "质量检查：缺少共享入口：$project_root/scripts/quality-check.sh" >&2
+  exit 2
+}
+zero_oid='0000000000000000000000000000000000000000'
+declare -A checked_trees=()
+failed=0
+
+while read -r local_ref local_oid remote_ref remote_oid extra; do
+  [[ -n "$local_ref" && -n "$local_oid" && -n "$remote_ref" && -n "$remote_oid" && -z "${extra:-}" ]] || {
+    echo '质量检查：pre-push 输入必须包含 Git 提供的四列引用信息' >&2
+    exit 2
+  }
+  if [[ "$local_oid" == "$zero_oid" ]]; then
+    echo "质量检查：跳过删除引用 $remote_ref" >&2
+    continue
+  fi
+  if ! commit="$(git rev-parse --verify "${local_oid}^{commit}" 2>/dev/null)"; then
+    echo "质量检查：$local_ref 的对象不是可解析的 commit：$local_oid" >&2
+    exit 2
+  fi
+  if ! tree="$(git rev-parse "${commit}^{tree}" 2>/dev/null)"; then
+    echo "质量检查：无法解析 $local_ref 的 tree：$commit" >&2
+    exit 2
+  fi
+  check_key="$tree:$remote_oid"
+  if [[ -n "${checked_trees[$check_key]:-}" ]]; then
+    echo "质量检查：复用相同 tree 和变更基线的检查（$local_ref）" >&2
+    continue
+  fi
+  checked_trees[$check_key]=1
+  set +e
+  bash "$project_root/scripts/quality-check.sh" --mode full --source commit --commit "$commit" --base "$remote_oid"
+  exit_code=$?
+  set -e
+  if [[ "$exit_code" -ne 0 ]]; then
+    echo "质量检查：拒绝推送 $local_ref 到 $remote_ref" >&2
+    if [[ "$exit_code" -gt 1 || "$failed" -eq 2 ]]; then
+      failed=2
+    else
+      failed=1
+    fi
+  fi
+done
+
+exit "$failed"

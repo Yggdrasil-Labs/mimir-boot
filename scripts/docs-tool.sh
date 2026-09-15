@@ -4,6 +4,59 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tool_root="$project_root/tools/docs-check"
 
+# Maven 在线准备一次；快照只读匹配当前 POM/锁文件的缓存。
+prepare_tool() (
+    set -euo pipefail
+    local operation="$1" origin common cache_root key cache temporary
+    origin="${QUALITY_ORIGIN_ROOT:-$project_root}"
+    common="$(git -C "$origin" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || common="$project_root/target"
+    cache_root="$common/mimir-quality/cache"
+    key="$(cd "$project_root" && { uname -sm && sha256sum pom.xml tools/docs-check/package.json tools/docs-check/package-lock.json; } | sha256sum | cut -d' ' -f1)" || return 2
+    cache="$cache_root/$key"
+    if [[ "$operation" == --prepare ]]; then
+        mkdir -p "$cache_root" || return 2
+        exec 9>"$cache_root/prepare.lock" || return 2
+        flock 9 || return 2
+        (cd "$project_root" && ./mvnw -N -Pdocs-check process-resources) || {
+            echo 'Maven 文档工具准备失败。' >&2
+            return 2
+        }
+        "$tool_root/.maven-node/node/node" "$tool_root/bootstrap.mjs" || {
+            echo '文档工具 bootstrap 失败。' >&2
+            return 2
+        }
+        temporary="$(mktemp -d "$cache_root/.prepare.XXXXXX")" || return 2
+        trap 'rm -rf "$temporary"' EXIT
+        cp -a "$tool_root/.maven-node" "$tool_root/node_modules" "$temporary/" || return 2
+        (cd "$temporary" && find . -type f ! -name checksums -print0 | sort -z | xargs -0 sha256sum > "$temporary/checksums") || return 2
+        # 缓存只在显式准备时替换；flock 保护并发发布和读取。
+        rm -rf "$cache" || return 2
+        mv "$temporary" "$cache" || return 2
+        echo "文档工具缓存已准备：$key"
+    else
+        if [[ ! -f "$cache/checksums" ]]; then
+            if [[ -n "${QUALITY_ORIGIN_ROOT:-}" ]]; then
+                echo '暂存/提交版本的文档工具缓存缺失或锁文件已变化；请先运行 bash scripts/docs-tool.sh --prepare。' >&2
+                return 2
+            fi
+            prepare_tool --prepare || return 2
+        fi
+        exec 9<"$cache_root/prepare.lock" || return 2
+        flock -s 9 || return 2
+        (cd "$cache" && sha256sum --quiet -c checksums) || { echo '文档工具缓存损坏，请重新 --prepare。' >&2; return 2; }
+        # 每个执行目录持有独立可变安装，避免 worktree/并发构建相互污染。
+        mkdir -p "$tool_root" || return 2
+        cp -a "$cache/.maven-node" "$cache/node_modules" "$tool_root/" || return 2
+        "$tool_root/.maven-node/node/node" "$tool_root/bootstrap.mjs" || return 2
+        echo "文档工具缓存命中：$key"
+    fi
+)
+
+if [[ "${1:-}" == --prepare || "${1:-}" == --ensure ]]; then
+    prepare_tool "$1" || exit 2
+    exit 0
+fi
+
 if [[ "$#" -lt 1 ]]; then
     echo "用法：bash scripts/docs-tool.sh <tools/docs-check 内的入口> [参数...]" >&2
     exit 2

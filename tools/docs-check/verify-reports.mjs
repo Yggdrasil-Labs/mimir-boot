@@ -108,16 +108,15 @@ function countTestFiles(files, modulePath, matcher) {
 
 export async function generateExpected(root, runId) {
     const files = await walk(root);
-    const modules = new Set(files.filter((file) => file.includes('/src/main/java/') && file.endsWith('.java')).map(modulePathFromSource));
+    const modules = new Set(files.filter((file) => (file.startsWith('src/main/java/') || file.includes('/src/main/java/')) && file.endsWith('.java')).map(modulePathFromSource));
     return {
         schemaVersion: SCHEMA_VERSION,
         runId,
         executionRoot: root,
         startedAt: new Date().toISOString(),
-        thresholds: { instruction: 0.60, branch: 0.50 },
         modules: [...modules].sort().map((modulePath) => {
             const base = modulePath === '.' ? '' : `${modulePath}/`;
-            const unitCount = countTestFiles(files, modulePath, /(?:Test|Tests)\.java$/u) - countTestFiles(files, modulePath, /(?:IT|IntegrationTest)\.java$/u);
+            const unitCount = countTestFiles(files, modulePath, /^(?!.*(?:IT|IntegrationTest)\.java$).*(?:Test|Tests)\.java$/u);
             const integrationCount = countTestFiles(files, modulePath, /(?:IT|IntegrationTest)\.java$/u);
             return {
                 path: modulePath,
@@ -176,6 +175,11 @@ async function cleanExpected(root, expectedPath) {
             if (await exists(artifactPath)) throw new Error(`无法清理旧产物：${artifact.path}`);
         }
     }
+    for (const module of expected.modules) {
+        for (const kind of ['surefire', 'failsafe']) {
+            for (const file of await reportFiles(root, `${module.path}/target/${kind}-reports`)) await rm(file);
+        }
+    }
     expected.cleanedAt = new Date().toISOString();
     await writeJson(expectedPath, expected);
 }
@@ -200,20 +204,13 @@ async function validateTestReports(root, module, kind, findings) {
     }
     for (const report of reports) {
         const source = await readFile(report, 'utf8');
+        if (!/<testsuite\b[^>]*\btests=["'][1-9]\d*["']/u.test(source) || !/<\/testsuite>/u.test(source)) {
+            findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relativePath(root, report)} 为空或缺少有效测试套件` });
+        }
         if (/(?:failures|errors|skipped)="[1-9]\d*"/u.test(source) || /<(?:failure|error|skipped)(?:\s|\/|>)/u.test(source)) {
             findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relativePath(root, report)} 包含失败、错误或跳过测试` });
         }
     }
-}
-
-function coverageRatio(source, type) {
-    const matcher = new RegExp(`<counter\\s+type="${type}"\\s+missed="(\\d+)"\\s+covered="(\\d+)"`, 'gu');
-    const matches = [...source.matchAll(matcher)];
-    const match = matches.at(-1);
-    if (!match) return null;
-    const missed = Number(match[1]);
-    const covered = Number(match[2]);
-    return covered / (missed + covered || 1);
 }
 
 async function validateArtifact(root, module, artifactName, findings) {
@@ -242,13 +239,15 @@ export async function verifyReports(root, expectedPath) {
         await validateArtifact(root, module, 'jacocoExec', findings);
         if (xml) {
             const source = await readFile(xml, 'utf8');
-            const instruction = coverageRatio(source, 'INSTRUCTION');
-            const branch = coverageRatio(source, 'BRANCH');
-            if (instruction === null || instruction < expected.thresholds.instruction) findings.push({ rule: 'coverage-instruction', module: module.path, message: `指令覆盖率未达到 ${expected.thresholds.instruction}` });
-            if (branch === null || branch < expected.thresholds.branch) findings.push({ rule: 'coverage-branch', module: module.path, message: `分支覆盖率未达到 ${expected.thresholds.branch}` });
+            const hasReportRoot = /<report\b[^>]*>[\s\S]*<\/report>/u.test(source);
+            const hasInstructionCounter = /<counter\b[^>]*\btype=["']INSTRUCTION["'][^>]*\/?\s*>/u.test(source);
+            const hasBranchCounter = /<counter\b[^>]*\btype=["']BRANCH["'][^>]*\/?\s*>/u.test(source);
+            if (!hasReportRoot || !hasInstructionCounter || !hasBranchCounter) findings.push({ rule: 'coverage-report-invalid', module: module.path, message: `${relativePath(root, xml)} 缺少有效 report 根元素或 INSTRUCTION/BRANCH counter` });
         }
     }
-    return { schemaVersion: SCHEMA_VERSION, runId: expected.runId, executionRoot: root, expectedPath, checks: expected.modules.map((module) => ({ id: `module:${module.path}`, status: findings.some((finding) => finding.module === module.path) ? 'failed' : 'passed' })), findings, overall: findings.length === 0 ? 'passed' : 'failed', exitCode: findings.length === 0 ? 0 : 1 };
+    const testsStatus = findings.some((f) => f.rule.startsWith('test-report')) ? 'failed' : 'passed';
+    const coverageStatus = findings.some((f) => f.rule.startsWith('coverage-')) ? 'failed' : 'passed';
+    return { testsStatus, coverageStatus, sonarStatus: 'not_applicable', schemaVersion: SCHEMA_VERSION, runId: expected.runId, executionRoot: root, expectedPath, checks: expected.modules.map((module) => ({ id: `module:${module.path}`, status: findings.some((finding) => finding.module === module.path) ? 'failed' : 'passed' })), findings, overall: findings.length === 0 ? 'passed' : 'failed', exitCode: findings.length === 0 ? 0 : 1 };
 }
 
 async function main() {

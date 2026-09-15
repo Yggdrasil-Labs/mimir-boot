@@ -173,7 +173,9 @@ PageResult<User> result = PageResult.of(users, totalCount, pageIndex, pageSize);
   - 组合：`PageRequest page`
   - 用途：封装分页查询参数
 
-#### 使用示例
+<a id="使用示例-1"></a>
+
+#### DTO/VO 使用示例
 
 ```java
 // Command - 写操作

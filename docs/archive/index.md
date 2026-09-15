@@ -14,5 +14,5 @@ updated: 2026-08-16
 | 版本 | 归档日期 | 保留至 | 前序版本 | 包含需求 (slug) | 路径 |
 |------|----------|--------|----------|----------------|------|
 | v2.2.0 | 2026-08-16 | 2027-08-16 | v2.1.1 | project-governance | [`v2.2.0/`](./v2.2.0/) |
-| v2.1.1 | 2026-07-26 | 2027-07-26 | v2.1.0 | capability-review-2026-07, quality-refinement | [`v2.1.1/`](./v2.1.1/) |
-| v2.1.0 | 2026-06-28 | 2027-06-28 | v2.0.4 | documentation-system-rebuild, exception-handler-adapter | [`v2.1.0/`](./v2.1.0/) |
+| v2.1.1 | 2026-07-26 | 2027-07-26 | v2.1.0 | capability-review-2026-07, quality-refinement | [`v2.1.1/`](./v2.1.1/release.md) |
+| v2.1.0 | 2026-06-28 | 2027-06-28 | v2.0.4 | documentation-system-rebuild, exception-handler-adapter | [`v2.1.0/`](./v2.1.0/release.md) |

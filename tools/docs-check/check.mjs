@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir, stat } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -89,12 +89,12 @@ function validateOptions({ root, files, mode, reportPath }) {
 }
 
 function trackedMarkdownFiles(root) {
-    const result = spawnSync('git', ['-C', root, 'ls-files', '-z', '--', '*.md', '*.markdown', '*.mdx'], {
+    const result = spawnSync('git', ['-C', root, 'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*.md', '*.markdown', '*.mdx'], {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
     });
-    if (result.status === 0) {
-        return result.stdout.split('\0').filter(Boolean);
+    if (result.status === 0 && !result.error) {
+        return [...new Set(result.stdout.split('\0').filter((file) => file && existsSync(path.join(root, file))))];
     }
     return null;
 }
@@ -125,7 +125,7 @@ async function resolveFiles(root, files) {
         return files.map(normalizePath);
     }
     const discovered = trackedMarkdownFiles(root) || await walkMarkdownFiles(root);
-    return discovered.filter((file) => !normalizePath(file).startsWith('tools/docs-check/test/fixtures/'));
+    return discovered.filter((file) => !['tools/docs-check/test/fixtures/', 'scripts/tests/fixtures/'].some((prefix) => normalizePath(file).startsWith(prefix)));
 }
 
 function readToolPackageVersion(packageName) {
