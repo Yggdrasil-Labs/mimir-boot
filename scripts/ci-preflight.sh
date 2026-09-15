@@ -53,8 +53,8 @@ prepare_quality_matrix() {
   fi
   mkdir -p "$quality_directory"
   quality_expected="$quality_directory/build-manifest.json"
-  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --generate-expected "$quality_expected" --run-id "$run_id"
-  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --clean-expected "$quality_expected"
+  bash scripts/docs-tool.sh src/quality/verify-java-reports.mjs --root "$project_root" --generate-expected "$quality_expected" --run-id "$run_id"
+  bash scripts/docs-tool.sh src/quality/verify-java-reports.mjs --root "$project_root" --clean-expected "$quality_expected"
 }
 
 initialize_managed_docs_tool() {
@@ -87,9 +87,9 @@ main() {
   ./mvnw "${MAVEN_ARGS[@]}"
   build_exit=$?
   set -e
-  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --record-artifacts "$quality_expected"
+  bash scripts/docs-tool.sh src/quality/verify-java-reports.mjs --root "$project_root" --record-artifacts "$quality_expected"
   set +e
-  bash scripts/docs-tool.sh verify-reports.mjs --root "$project_root" --expected "$quality_expected" --report "$report"
+  bash scripts/docs-tool.sh src/quality/verify-java-reports.mjs --root "$project_root" --expected "$quality_expected" --report "$report"
   verify_exit=$?
   set -e
   if [[ "${RUN_SONAR:-false}" == true ]]; then

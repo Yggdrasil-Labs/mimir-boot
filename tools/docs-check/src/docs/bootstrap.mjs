@@ -2,7 +2,7 @@ import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const toolRoot = path.dirname(fileURLToPath(import.meta.url));
+const toolRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 async function readJson(filePath, label) {
     try {

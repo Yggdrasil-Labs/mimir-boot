@@ -52,7 +52,7 @@ created: 2026-09-14
 | `docs/product-specs/new-user-onboarding.md` | `README.md`、`docs/engineering/development.md` | 最小接入路径与成功标准 | 使用步骤归入 README；开发验收规则归入工程规程，仍有效的需求约束按所属需求保留；完成后删除旧正文。 |
 | `docs/product-specs/starter-capabilities.md` | `README.md`、各模块 README、`docs/design-docs/module-boundaries.md` | Starter 选择、使用契约与开发验收 | 能力概览归入根 README，配置和限制归入模块 README；开发边界及验收约束逐项迁移，完成后删除旧正文。 |
 
-实施 T7 在本文件追加逐章节执行表，每行必须填写：旧路径/锚点、内容类别、唯一目标文件/锚点、外部固定路径消费者（没有则填 none）、兼容入口、验收证据和处理结果。QUALITY_SCORE 的每条观察必须有对应行。技术债编号另由 `tools/docs-check/debt-id-registry.json` 持久记录已用/退役 ID，T8 关闭债项时同步登记 retired；本矩阵不成为第二份编号事实源。
+实施 T7 在本文件追加逐章节执行表，每行必须填写：旧路径/锚点、内容类别、唯一目标文件/锚点、外部固定路径消费者（没有则填 none）、兼容入口、验收证据和处理结果。QUALITY_SCORE 的每条观察必须有对应行。技术债编号不属于文档质量门禁的校验对象；本矩阵也不承担编号事实源职责。
 
 ## 模块 README 的边界
 

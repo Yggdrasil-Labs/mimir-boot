@@ -1,6 +1,6 @@
-import { checkLinks } from './links.mjs';
-import { classifyPath, isNavigationRoot } from './policy.mjs';
-import { createCheck } from './results.mjs';
+import { checkLinks, existingTarget } from './links.mjs';
+import { isNavigationExempt, isNavigationRoot } from '../policy.mjs';
+import { createCheck } from '../../quality/results.mjs';
 
 export async function checkNavigation({ root, files, policy }) {
     const startedAt = Date.now();
@@ -8,7 +8,7 @@ export async function checkNavigation({ root, files, policy }) {
     const documents = linkResult.documents;
     const candidates = new Set(
         documents
-            .filter((document) => classifyPath(document.path, policy) === 'effective')
+            .filter((document) => !isNavigationExempt(document.path, policy))
             .map((document) => document.path),
     );
     if (candidates.size === 0) {
@@ -35,20 +35,11 @@ export async function checkNavigation({ root, files, policy }) {
             if (link.href.startsWith('#') || /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(link.href.trim())) {
                 continue;
             }
-            const rawTarget = link.href.split('#', 1)[0];
-            const sourceParts = document.path.split('/');
-            sourceParts.pop();
-            const target = rawTarget ? [...sourceParts, ...rawTarget.split('/')].join('/') : document.path;
-            const normalized = normalizeNavigationTarget(target);
-            const targetCandidates = [normalized];
-            if (!normalized.endsWith('.md') && !normalized.endsWith('.markdown') && !normalized.endsWith('.mdx')) {
-                targetCandidates.push(`${normalized}.md`, `${normalized}.markdown`, `${normalized}.mdx`);
-            }
-            const resolved = targetCandidates.find((candidate) => incoming.has(candidate));
-            if (resolved) {
-                incoming.set(resolved, incoming.get(resolved) + 1);
+            const target = await existingTarget(root, document.path, link.href);
+            if (target.path && incoming.has(target.path)) {
+                incoming.set(target.path, incoming.get(target.path) + 1);
                 if (adjacency.has(document.path)) {
-                    adjacency.get(document.path).add(resolved);
+                    adjacency.get(document.path).add(target.path);
                 }
             }
         }
@@ -80,7 +71,7 @@ export async function checkNavigation({ root, files, policy }) {
                 rule: 'navigation-unreachable',
                 path: candidate,
                 line: 1,
-                message: `有效文档未从导航根可达：${candidate}`,
+                message: `文档未从导航根可达：${candidate}`,
             });
         }
     }
@@ -89,25 +80,10 @@ export async function checkNavigation({ root, files, policy }) {
             id: 'navigation',
             status: findings.length > 0 ? 'failed' : 'passed',
             exitCode: findings.length > 0 ? 1 : 0,
-            reason: findings.length > 0 ? '存在未从导航根可达的有效文档' : null,
+            reason: findings.length > 0 ? '存在未从导航根可达的文档' : null,
             durationMs: Date.now() - startedAt,
         }),
         findings,
         linksBySource,
     };
-}
-
-function normalizeNavigationTarget(target) {
-    const parts = [];
-    for (const part of target.split('/')) {
-        if (!part || part === '.') {
-            continue;
-        }
-        if (part === '..') {
-            parts.pop();
-        } else {
-            parts.push(part);
-        }
-    }
-    return parts.join('/');
 }

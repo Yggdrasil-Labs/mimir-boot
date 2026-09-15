@@ -123,16 +123,18 @@ async function contentHash(root) {
         '.markdownlint.json',
         'scripts/docs-tool.sh',
         'scripts/ci-preflight.sh',
-        'tools/docs-check/verify-reports.mjs',
-        ...['check', 'links', 'navigation', 'debt', 'policy', 'results'].map((name) => `tools/docs-check/${name}.mjs`),
-        'tools/docs-check/debt-id-registry.json',
+        'tools/docs-check/src/quality/verify-java-reports.mjs',
+        'tools/docs-check/src/quality/results.mjs',
+        'tools/docs-check/src/docs/check.mjs',
+        'tools/docs-check/src/docs/policy.mjs',
+        'tools/docs-check/src/docs/checks/links.mjs',
+        'tools/docs-check/src/docs/checks/navigation.mjs',
         'pom.xml',
         'mimir-boot-parent/pom.xml',
         'scripts/quality-check.sh',
         'tools/docs-check/package.json',
         'tools/docs-check/package-lock.json',
-        'tools/docs-check/policy.json',
-        'tools/docs-check/results.mjs',
+        'tools/docs-check/config/policy.json',
     ];
     const hash = createHash('sha256');
     for (const file of files) {

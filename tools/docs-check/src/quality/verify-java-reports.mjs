@@ -7,10 +7,10 @@ const SKIPPED_DIRECTORIES = new Set(['.git', '.worktrees', 'node_modules', 'targ
 
 function usage() {
     return [
-        '用法：node verify-reports.mjs --root <绝对路径> --generate-expected <绝对路径> --run-id <id>',
-        '      node verify-reports.mjs --root <绝对路径> --record-artifacts <绝对路径>',
-        '      node verify-reports.mjs --root <绝对路径> --clean-expected <绝对路径>',
-        '      node verify-reports.mjs --root <绝对路径> --expected <绝对路径> --report <绝对路径>',
+        '用法：node verify-java-reports.mjs --root <绝对路径> --generate-expected <绝对路径> --run-id <id>',
+        '      node verify-java-reports.mjs --root <绝对路径> --record-artifacts <绝对路径>',
+        '      node verify-java-reports.mjs --root <绝对路径> --clean-expected <绝对路径>',
+        '      node verify-java-reports.mjs --root <绝对路径> --expected <绝对路径> --report <绝对路径>',
     ].join('\n');
 }
 

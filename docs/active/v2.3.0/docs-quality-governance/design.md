@@ -74,13 +74,12 @@ flowchart TD
 
 - 接口：`./mvnw -N -Pdocs-check verify`，默认扫描当前仓库受 Git 跟踪的全部 Markdown。
 - 可选属性：`-Ddocs.mode=format|full` 选择模式（默认 full），`-Ddocs.selfTest=true` 显式执行检查器测试；`-Ddocs.root=<absolute-path>` 指定完整源码快照；`-Ddocs.manifest=<absolute-json-file>` 指定受检文件清单；`-Ddocs.report=<absolute-json-file>` 指定报告输出。hook 快照执行必须显式传 root 和 manifest。
-- 内核：`runDocsCheck({root: string, files: string[], mode: 'format' | 'full', reportPath: string}): Promise<CheckReport>`，由 `tools/docs-check/check.mjs` 提供。
-- `format` 使用 markdownlint-cli2；`full` 加入内部链接与锚点、索引可达性、台账结构和维护规则检查。扫描排除 `.git`、`.worktrees`、node_modules、target、缓存与临时目录；不因文件未被某个宽泛 glob 匹配而跳过应检查的 tracked Markdown。
+- 内核：`runDocsCheck({root: string, files: string[], mode: 'format' | 'full', reportPath: string}): Promise<CheckReport>`，由 `tools/docs-check/src/docs/check.mjs` 提供。
+- `format` 使用 markdownlint-cli2；`full` 加入内部链接与锚点、索引可达性检查。扫描排除 `.git`、`.worktrees`、node_modules、target、缓存与临时目录；不因文件未被某个宽泛 glob 匹配而跳过应检查的 tracked Markdown。
 - 沿用 `.markdownlint.json` 规则。CHANGELOG 等既有格式豁免在 `policy.json` 显式登记，仍检查它们的内部链接；新文档不自动扩大豁免。
 - 链接使用 Markdown 解析器处理 inline/reference link、图片、相对路径、目录 index/README、URL 编码和中文/重复标题锚点；不从代码块或行内代码识别普通文档链接。显式 HTML anchor 支持 GitHub 页面行为。外部网络 URL 不作为本地阻断检查。
-- 可达性从 AGENTS.md、README.md、docs/index.md 和模块 README 出发；区分设计中的代码路径与真实 Markdown 导航链接。规范模板可按明确角色豁免内容规则，但必须可发现；历史记录仍接受格式和链接检查。
-- 技术债检查编号唯一、数字升序、清单与明细一一对应；已移除编号不复用，编号事实源为 `tools/docs-check/debt-id-registry.json`，包含 `schemaVersion: 1`、`highWatermark: integer` 和 `entries: [{id: string, state: active | retired}]`。T2 首次由完整历史与台账人工核准初始化；日常检查只读当前快照注册表，不依赖完整 Git 历史或 fetch。已退役 ID 不得转为 active，新条目必须超过已有高水位，删除债项只改为 retired，不删除注册记录。注册表变更须在评审中对照基线，不能通过重写高水位来重用 ID。验收数据覆盖 TD-009/TD-010 的数字排序。
-- 根 README 不得引用技术债路径或 TD 编号；终态规则只约束有效说明正文。历史日期、兼容说明、必要依赖示例和代码块中的示例文本不误报。普通版本去重、语义重复仍包含人工审查，不承诺简单正则识别所有漂移。
+- 可达性从 AGENTS.md、README.md、docs/index.md 出发，并正确解析目录链接的 index/README。所有发现到的 Markdown 默认参与导航；只有 `docs/archive/**`、设计模板和 CHANGELOG 等显式例外不要求可达。文档新增或迁移无需维护 effective/historical 白名单。
+- 技术债台账保留为普通 Markdown 文档；质量门禁不再校验技术债 ID、排序、摘要或注册表，也不维护技术债编号注册表。编号治理由文档维护流程和人工评审负责。
 - 每个检查返回独立结果；一个普通违规不终止其他独立检查。结构化结果写入失败为工具错误，总体不能返回成功。
 
 ### IC-03 提交前快速检查（B4）
@@ -109,7 +108,7 @@ flowchart TD
 - JaCoCo `report` 从 `test` 移到集成测试结束后的 `verify`，与 `check` 使用相同最终 exec 数据；prepare-agent 同时服务 Surefire/Failsafe 且数据追加，单次构建以 clean 清除旧数据。每模块报告不被后续测试覆盖；构建顺序由 effective POM 和集成覆盖 fixture 核实。
 - `check` 读取执行数据判定阈值，并非读取 XML；report 生成的最终 XML 是上传和 Sonar 的输入。二者分别验证，不能只移动 report 就认为阈值检查已经合格。
 - 指令/分支门槛仍为 0.60/0.50，BUNDLE 级；沿用既有 entity/dto/vo/Application 排除并在期望报告矩阵登记。纯 POM 或无可测源码模块可以豁免，必须带理由。
-- 核验接口：`bash scripts/docs-tool.sh verify-reports.mjs --root <execution-root> --expected <expected-report-json> --report <result-json>`，文件实际放在 `tools/docs-check/verify-reports.mjs`。检测 Surefire/Failsafe XML 的 errors/failures/skipped，以及每个应产出报告模块的报告存在性、内容和当前运行归属。
+- 核验接口：`bash scripts/docs-tool.sh src/quality/verify-java-reports.mjs --root <execution-root> --expected <expected-report-json> --report <result-json>`，实现位于 `tools/docs-check/src/quality/verify-java-reports.mjs`。检测 Surefire/Failsafe XML 的 errors/failures/skipped，以及每个应产出报告模块的报告存在性、内容和当前运行归属。
 - 期望报告矩阵来源于本次有效 reactor、源码/测试清单及 effective POM 的包括/排除规则，保存在本次运行目录；不能从已经生成的报告反推应有报告。无某类测试的模块明确豁免；真实测试被 skip 不能豁免。
 - 新鲜度：每次执行生成唯一 runId 与 build-manifest.json，记录 executionRoot、开始时间、expectedReports 和 expectedExec。Maven 启动前仅清理这些声明的旧报告/exec 路径并确认全部不存在，清理失败即 error；不删除源码。然后唯一调用 clean verify。仅在 Maven 成功、clean 阶段成功且应有产物重新出现时，计算产物 SHA-256 写入本次 manifest；核验器逐项比对路径、摘要及 runId，缺 manifest、清理失败、构建中断或外来旧报告均不能通过。时间戳只辅助诊断，不作为唯一归属依据。
 - Maven 失败时按阶段记录失败和依赖未执行；允许解析已产生报告用于定位，不会将其提升为通过。成功但缺少预期报告仍返回失败。

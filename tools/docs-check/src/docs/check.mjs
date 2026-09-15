@@ -5,12 +5,13 @@ import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { addFinding, createCheck, finalizeReport } from './results.mjs';
-import { classifyPath, defaultPolicy, isFormatExempt, loadPolicy, normalizePath } from './policy.mjs';
+import { addFinding, createCheck, finalizeReport } from '../quality/results.mjs';
+import { defaultPolicy, isFormatExempt, loadPolicy, normalizePath } from './policy.mjs';
 
 const moduleRoot = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(moduleRoot, '..', '..');
-const toolRoot = path.resolve(process.env.MIMIR_DOCS_TOOL_ROOT || moduleRoot);
+const defaultToolRoot = path.resolve(moduleRoot, '..', '..');
+const toolRoot = path.resolve(process.env.MIMIR_DOCS_TOOL_ROOT || defaultToolRoot);
+const projectRoot = path.resolve(toolRoot, '..', '..');
 const markdownlintEntry = path.join(
     toolRoot,
     'node_modules',
@@ -124,8 +125,7 @@ async function resolveFiles(root, files) {
     if (files.length > 0) {
         return files.map(normalizePath);
     }
-    const discovered = trackedMarkdownFiles(root) || await walkMarkdownFiles(root);
-    return discovered.filter((file) => !['tools/docs-check/test/fixtures/', 'scripts/tests/fixtures/'].some((prefix) => normalizePath(file).startsWith(prefix)));
+    return trackedMarkdownFiles(root) || await walkMarkdownFiles(root);
 }
 
 function readToolPackageVersion(packageName) {
@@ -306,26 +306,6 @@ async function runSelfTest(root) {
     }
 }
 
-async function runMaintenanceCheck(files, policy) {
-    const findings = [];
-    for (const file of files) {
-        const classification = classifyPath(file, policy);
-        if (classification === 'historical') {
-            findings.push({ severity: 'warning', rule: 'archive-review', path: file, line: 1, message: '归档/历史文档只按历史语义检查，发布状态需要人工核对' });
-        }
-    }
-    return {
-        check: createCheck({
-            id: 'maintenance-policy',
-            status: 'passed',
-            exitCode: 0,
-            reason: null,
-            durationMs: 0,
-        }),
-        findings,
-    };
-}
-
 async function reportTree(root, files) {
     const hash = createHash('sha256');
     for (const file of [...files].sort()) {
@@ -341,7 +321,7 @@ async function reportTree(root, files) {
 
 async function configurationHash(root) {
     const hash = createHash('sha256');
-    for (const relative of ['.markdownlint-cli2.jsonc', '.markdownlint.json', 'tools/docs-check/package.json', 'tools/docs-check/package-lock.json', 'tools/docs-check/policy.json', 'tools/docs-check/debt-id-registry.json']) {
+    for (const relative of ['.markdownlint-cli2.jsonc', '.markdownlint.json', 'tools/docs-check/package.json', 'tools/docs-check/package-lock.json', 'tools/docs-check/config/policy.json']) {
         hash.update(relative);
         try {
             hash.update(await readFile(path.join(root, relative)));
@@ -403,7 +383,7 @@ export async function runDocsCheck({ root, files = [], mode = 'format', reportPa
                 policy = await loadPolicy(resolvedRoot);
             } catch (error) {
                 appendResult(report, {
-                    check: createCheck({ id: 'maintenance-policy', status: 'error', exitCode: 2, reason: error.message, durationMs: 0 }),
+                    check: createCheck({ id: 'document-policy', status: 'error', exitCode: 2, reason: error.message, durationMs: 0 }),
                     findings: [{ severity: 'error', rule: 'policy-tool', path: null, line: null, message: error.message }],
                 });
             }
@@ -412,10 +392,10 @@ export async function runDocsCheck({ root, files = [], mode = 'format', reportPa
             const selfTestStarted = Date.now();
             try {
                 await runSelfTest(resolvedRoot);
-                report.checks.push(createCheck({ id: 'tool-self-test', command: ['node', 'check.mjs', '--self-test'], status: 'passed', exitCode: 0, durationMs: Date.now() - selfTestStarted }));
+                report.checks.push(createCheck({ id: 'tool-self-test', command: ['node', 'src/docs/check.mjs', '--self-test'], status: 'passed', exitCode: 0, durationMs: Date.now() - selfTestStarted }));
             } catch (error) {
                 appendResult(report, {
-                    check: createCheck({ id: 'tool-self-test', command: ['node', 'check.mjs', '--self-test'], status: 'error', exitCode: 2, reason: error.message, durationMs: Date.now() - selfTestStarted }),
+                    check: createCheck({ id: 'tool-self-test', command: ['node', 'src/docs/check.mjs', '--self-test'], status: 'error', exitCode: 2, reason: error.message, durationMs: Date.now() - selfTestStarted }),
                     findings: [{ severity: 'error', rule: 'tool-self-test', path: null, line: null, message: error.message }],
                 });
             }
@@ -430,11 +410,10 @@ export async function runDocsCheck({ root, files = [], mode = 'format', reportPa
             }
             let linksModule;
             try {
-                linksModule = await import('./links.mjs');
+                linksModule = await import('./checks/links.mjs');
             } catch (error) {
                 appendResult(report, dependencyError('internal-links', error));
                 appendResult(report, dependencyError('navigation', error));
-                appendResult(report, dependencyError('technical-debt', error));
                 linksModule = null;
             }
             if (linksModule) {
@@ -444,20 +423,11 @@ export async function runDocsCheck({ root, files = [], mode = 'format', reportPa
                     appendResult(report, dependencyError('internal-links', error));
                 }
                 try {
-                    const navigationModule = await import('./navigation.mjs');
+                    const navigationModule = await import('./checks/navigation.mjs');
                     appendResult(report, await navigationModule.checkNavigation({ root: resolvedRoot, files: resolvedFiles, policy }));
                 } catch (error) {
                     appendResult(report, dependencyError('navigation', error));
                 }
-                try {
-                    const debtModule = await import('./debt.mjs');
-                    appendResult(report, await debtModule.checkDebt({ root: resolvedRoot, files: resolvedFiles, policy }));
-                } catch (error) {
-                    appendResult(report, dependencyError('technical-debt', error));
-                }
-            }
-            if (!report.checks.some((check) => check.id === 'maintenance-policy')) {
-                appendResult(report, await runMaintenanceCheck(resolvedFiles, policy));
             }
         }
         finalizeReport(report, { emptyFull: mode === 'full' && resolvedFiles.length === 0 });

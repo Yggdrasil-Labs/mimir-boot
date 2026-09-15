@@ -21,7 +21,7 @@ prepare_tool() (
             echo 'Maven 文档工具准备失败。' >&2
             return 2
         }
-        "$tool_root/.maven-node/node/node" "$tool_root/bootstrap.mjs" || {
+        "$tool_root/.maven-node/node/node" "$tool_root/src/docs/bootstrap.mjs" || {
             echo '文档工具 bootstrap 失败。' >&2
             return 2
         }
@@ -47,7 +47,7 @@ prepare_tool() (
         # 每个执行目录持有独立可变安装，避免 worktree/并发构建相互污染。
         mkdir -p "$tool_root" || return 2
         cp -a "$cache/.maven-node" "$cache/node_modules" "$tool_root/" || return 2
-        "$tool_root/.maven-node/node/node" "$tool_root/bootstrap.mjs" || return 2
+        "$tool_root/.maven-node/node/node" "$tool_root/src/docs/bootstrap.mjs" || return 2
         echo "文档工具缓存命中：$key"
     fi
 )

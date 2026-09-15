@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "navigationExemptions": [
+    "docs/archive/**",
+    "docs/design-docs/_template.md",
+    "CHANGELOG.md",
+    ".cursor/**"
+  ],
+  "formatExemptions": [
+    "CHANGELOG.md",
+    ".cursor/**"
+  ],
+  "navigationRoots": [
+    "AGENTS.md",
+    "README.md",
+    "docs/index.md"
+  ]
+}

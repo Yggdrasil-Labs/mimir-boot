@@ -1,8 +1,8 @@
 import MarkdownIt from 'markdown-it';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { addFinding, createCheck } from './results.mjs';
-import { classifyPath, isFormatExempt, normalizePath } from './policy.mjs';
+import { addFinding, createCheck } from '../../quality/results.mjs';
+import { isFormatExempt, normalizePath } from '../policy.mjs';
 
 const parser = new MarkdownIt({ html: true, linkify: false, typographer: false });
 
@@ -144,7 +144,7 @@ export async function readDocument(root, relativePath, cache = new Map()) {
     return document;
 }
 
-async function existingTarget(root, sourcePath, href) {
+export async function existingTarget(root, sourcePath, href) {
     let decoded;
     try {
         decoded = decodeURIComponent(href.replace(/\\/gu, '/'));
@@ -229,8 +229,7 @@ export async function checkLinks({ root, files, policy = null }) {
     const seenHeadings = new Map();
     for (const document of documents) {
         const local = new Map();
-        const checkHeadingUniqueness = !policy
-            || classifyPath(document.path, policy) === 'effective' && !isFormatExempt(document.path, policy);
+        const checkHeadingUniqueness = !policy || !isFormatExempt(document.path, policy);
         for (const heading of document.headings) {
             if (checkHeadingUniqueness && local.has(heading.slug)) {
                 findings.push({

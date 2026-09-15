@@ -2,31 +2,19 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const moduleRoot = path.dirname(fileURLToPath(import.meta.url));
+const toolRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const defaultPolicy = {
     schemaVersion: 1,
-    effective: [
-        'AGENTS.md',
-        'README.md',
-        'docs/index.md',
-        'docs/**',
-        'docs/design-docs/**',
-        'docs/active/v2.3.0/**',
-        'docs/active/tech-debt-tracker.md',
-        '**/README.md',
-    ],
-    historical: [
+    // 默认校验所有发现到的 Markdown；这里只声明明确不要求纳入当前导航的资料。
+    navigationExemptions: [
         'docs/archive/**',
-        'docs/active/v2.1.1/**',
-        'docs/active/v2.2.1/**',
-        'docs/product-specs/**',
+        'docs/design-docs/_template.md',
+        'CHANGELOG.md',
+        '.cursor/**',
     ],
-    templates: ['docs/design-docs/_template.md'],
     formatExemptions: ['CHANGELOG.md', '.cursor/**'],
     navigationRoots: ['AGENTS.md', 'README.md', 'docs/index.md'],
-    technicalDebtPath: 'docs/active/tech-debt-tracker.md',
-    rootReadmePath: 'README.md',
 };
 
 function globToRegExp(pattern) {
@@ -63,22 +51,12 @@ export function matchesAny(file, patterns = []) {
     return patterns.some((pattern) => globToRegExp(normalizePath(pattern)).test(normalized));
 }
 
-export function classifyPath(file, policy) {
-    const normalized = normalizePath(file);
-    if (matchesAny(normalized, policy.templates)) {
-        return 'template';
-    }
-    if (matchesAny(normalized, policy.historical)) {
-        return 'historical';
-    }
-    if (matchesAny(normalized, policy.effective)) {
-        return 'effective';
-    }
-    return 'unclassified';
-}
-
 export function isFormatExempt(file, policy) {
     return matchesAny(file, policy.formatExemptions);
+}
+
+export function isNavigationExempt(file, policy) {
+    return matchesAny(file, policy.navigationExemptions);
 }
 
 export function isNavigationRoot(file, policy) {
@@ -87,8 +65,8 @@ export function isNavigationRoot(file, policy) {
 
 export async function loadPolicy(root) {
     const candidates = [
-        path.join(root, 'tools', 'docs-check', 'policy.json'),
-        path.join(moduleRoot, 'policy.json'),
+        path.join(root, 'tools', 'docs-check', 'config', 'policy.json'),
+        path.join(toolRoot, 'config', 'policy.json'),
     ];
     for (const candidate of candidates) {
         try {

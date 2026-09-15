@@ -293,7 +293,7 @@ if [[ "$bootstrap_exit" -ne 0 ]]; then
 fi
 
 managed_node="$project_root/tools/docs-check/.maven-node/node/node"
-result_tool="$project_root/tools/docs-check/results.mjs"
+result_tool="$project_root/tools/docs-check/src/quality/results.mjs"
 [[ -x "$managed_node" && -f "$result_tool" ]] || { echo '质量检查缺少 Maven 托管 Node 或结果汇总器。' >&2; exit 2; }
 run_id="quality-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 "$managed_node" "$result_tool" init --report "$report" --report-directory "$run_directory" --root "$project_root" --run-id "$run_id" --source "$effective_source" --commit "${effective_commit:-null}" --tree "$effective_tree"
@@ -351,7 +351,7 @@ append_check docs-bootstrap passed true "$(json_array bash scripts/docs-tool.sh 
 
 if [[ "$mode" == quick ]]; then
   if [[ "$docs_required" == true ]]; then
-    run_check docs-format true '[]' bash scripts/docs-tool.sh check.mjs --root "$project_root" --mode format --report "$run_directory/docs-report.json"
+    run_check docs-format true '[]' bash scripts/docs-tool.sh src/docs/check.mjs --root "$project_root" --mode format --report "$run_directory/docs-report.json"
   else
     append_not_applicable docs-format
   fi
@@ -361,7 +361,7 @@ if [[ "$mode" == quick ]]; then
     append_not_applicable java-format
   fi
 else
-  run_check docs-full true '[]' bash scripts/docs-tool.sh check.mjs --root "$project_root" --mode full --report "$run_directory/docs-report.json"
+  run_check docs-full true '[]' bash scripts/docs-tool.sh src/docs/check.mjs --root "$project_root" --mode full --report "$run_directory/docs-report.json"
   export QUALITY_REPORT_DIR="$run_directory/java"
   run_check java-quality true '[]' env MIMIR_DOCS_READY_ROOT="$project_root" bash scripts/ci-preflight.sh
   java_exit="$RUN_CHECK_EXIT"
