@@ -6,6 +6,6 @@
     ".worktrees/**",
     "**/node_modules/**",
     "**/target/**",
-    "tools/docs-check/.maven-node/**"
+    "tools/engineering/.maven-node/**"
   ]
 }

@@ -1,15 +1,16 @@
 {
-  "name": "mimir-boot-docs-check",
+  "name": "mimir-boot-engineering",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.22.3"
   },
   "scripts": {
-    "bootstrap": "node src/docs/bootstrap.mjs",
+    "bootstrap": "node src/bootstrap.mjs",
     "check": "node src/docs/check.mjs"
   },
   "devDependencies": {
+    "@xmldom/xmldom": "0.9.12",
     "markdown-it": "14.3.0",
     "markdownlint-cli2": "0.23.2"
   }

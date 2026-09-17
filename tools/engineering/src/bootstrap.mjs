@@ -2,7 +2,7 @@ import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const toolRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const toolRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 async function readJson(filePath, label) {
     try {
@@ -36,4 +36,4 @@ for (const [name, version] of Object.entries(packageJson.devDependencies || {}))
     }
 }
 await assertFile(path.join(toolRoot, 'node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs'), 'markdownlint-cli2 入口');
-process.stdout.write(`文档工具就绪：node=${process.version} npm=${npm.version} markdownlint-cli2=${packageJson.devDependencies['markdownlint-cli2']}\n`);
+process.stdout.write(`工程工具就绪：node=${process.version} npm=${npm.version} markdownlint-cli2=${packageJson.devDependencies['markdownlint-cli2']}\n`);

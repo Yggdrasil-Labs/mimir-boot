@@ -80,12 +80,11 @@ jobs:
           fi
           chmod +x mvnw
 
-      - name: Verify build (format check + compile)
-        run: ./mvnw -B spotless:check clean package -DskipTests
+      # 完整构建与发布验收统一在后续共享门禁执行。
 
   release-consumer-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: [ release-verify ]
     permissions:
       contents: read
@@ -98,14 +97,31 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
 
-      - name: Verify published artifact layout contract
-        run: |
-          if [[ -f scripts/test-suite-consumer-contract-test.sh ]]; then
-            bash scripts/test-suite-consumer-contract-test.sh
-          fi
+      - name: Run shared quality gate
+        if: hashFiles('scripts/engineering.sh') != ''
+        run: bash scripts/engineering.sh quality --mode full --source worktree --report "${RUNNER_TEMP}/mimir-quality/quality-report.json"
 
-      - name: Verify published-consumer contract
-        run: bash scripts/test-suite-consumer.sh
+      # 仅兼容手动补偿迁移前的不可变 tag；新版本不得降级到旧入口。
+      - name: Verify legacy recovery tag
+        if: hashFiles('scripts/engineering.sh') == ''
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]] || { echo '新发布缺少统一工程入口' >&2; exit 2; }
+          for required in scripts/ci-preflight.sh scripts/test-suite-consumer.sh; do
+            [[ -f "$required" ]] || { echo "旧 tag 缺少原有必需门禁：$required" >&2; exit 2; }
+          done
+          if [[ -f scripts/test-suite-consumer-contract-test.sh ]]; then bash scripts/test-suite-consumer-contract-test.sh; fi
+          bash scripts/test-suite-consumer.sh
+          if [[ -f scripts/verify-release-signing.sh ]]; then bash scripts/verify-release-signing.sh --preheat; fi
+          bash scripts/ci-preflight.sh
+
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: release-quality-report
+          path: ${{ runner.temp }}/mimir-quality
+          retention-days: 7
 
   publish-gpr:
     runs-on: ubuntu-latest
@@ -187,6 +203,10 @@ jobs:
         with:
           version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || '' }}
 
+      - name: Prepare shared engineering tools
+        if: hashFiles('scripts/engineering.sh') != ''
+        run: bash scripts/engineering.sh prepare
+
       - name: Configure GPG key
         run: |
           set -euo pipefail
@@ -264,7 +284,7 @@ jobs:
 
       - name: Observe Maven Central deployment
         id: observe
-        if: always() && steps.publish.outputs.deployment_id != ''
+        if: always() && steps.publish.outputs.deployment_id != '' && hashFiles('scripts/engineering.sh') != ''
         continue-on-error: true
         env:
           DEPLOYMENT_ID: ${{ steps.publish.outputs.deployment_id }}
@@ -283,17 +303,7 @@ jobs:
             exit 1
           fi
 
-          portal_state=$(python3 - "$response_file" <<'PY'
-          import json
-          import sys
-
-          payload = json.load(open(sys.argv[1], encoding="utf-8"))
-          state = payload.get("deploymentState")
-          if not isinstance(state, str) or not state:
-              raise SystemExit("Portal 状态响应缺少 deploymentState")
-          print(state)
-          PY
-          )
+          portal_state=$(bash scripts/engineering.sh portal-state "$response_file")
           echo "portal_state=$portal_state" >> "$GITHUB_OUTPUT"
 
           {
@@ -364,7 +374,7 @@ jobs:
           VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
         run: |
           set -euo pipefail
-          bash scripts/verify-maven-central-public.sh "${VERSION#v}"
+          bash scripts/engineering.sh public "${VERSION#v}"
 
       - name: Record public Maven Central verification evidence
         if: always()

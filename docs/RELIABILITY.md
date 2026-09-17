@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-13
+updated: 2026-09-16
 ---
 
 # 可靠性要求
@@ -22,10 +22,10 @@ updated: 2026-09-13
 - SonarCloud 分析提供新代码质量门禁结果，具体执行纪律见 [`SONAR_QUALITY_DISCIPLINE.md`](./SONAR_QUALITY_DISCIPLINE.md)
 - 发布通过 GitHub Actions + release-please 驱动
 - Maven Wrapper 是首选构建入口
-- CI 通过 `scripts/ci-preflight.sh` 在 Java 17 下执行独立 `clean -Pci verify`，并分别检查 Surefire/Failsafe 与 JaCoCo 报告；报告扫描会排除 `.git` 和 `.worktrees`。
-- `scripts/test-suite-consumer.sh` 使用隔离的 file repository 验证 BOM、Starter 和受管依赖；`scripts/verify-release-signing.sh` 使用隔离签名 fixture 验证制品与附属制品，失败 fixture 必须阻断部署。
+- 本地与 CI 的基础完整验收入口为 `bash scripts/engineering.sh quality --mode full --source worktree`；Java 子阶段在 Java 17 下执行 `clean -Pci verify`，并分别检查 Surefire/Failsafe 与 JaCoCo 报告；报告扫描会排除 `.git` 和 `.worktrees`。默认不运行 Sonar，本地需显式设置 `RUN_SONAR=true` 并提供三项凭据才能覆盖 CI 的条件远程门禁。
+- `bash scripts/engineering.sh consumer` 使用隔离的 file repository 验证 BOM、Starter 和受管依赖；`bash scripts/engineering.sh signing --preheat` 使用隔离签名 fixture 验证制品与附属制品，失败 fixture 必须阻断部署；两项均纳入本地与 CI 的 full 门禁。
 
-当前门禁的验证范围存在以下限制：Spotless 子模块源码范围可能被根配置覆盖（TD-044），JaCoCo XML 在 Failsafe 前生成（TD-043）；consumer 验证未覆盖所有受管依赖的真实 API 兼容性（TD-037、TD-040、TD-041）。流程执行成功不代表这些边界正确，处置状态见[技术债台账](./active/tech-debt-tracker.md)。
+当前根 POM 已限制无源 Spotless 配置的继承，Parent 的 JaCoCo `report` 已绑定到 Failsafe 之后的 `verify`。TD-043、TD-044 的历史缺陷与专项验收状态见[技术债台账](./active/tech-debt-tracker.md)；配置调整不等于已完成专项负向验收。consumer 验证仍未覆盖所有受管依赖的真实 API 兼容性（TD-037、TD-040、TD-041），流程执行成功不代表这些边界均已覆盖。
 
 ## 3. 发布可靠性
 

@@ -5,8 +5,8 @@ if ! project_root="$(git rev-parse --show-toplevel)"; then
   echo '质量检查：无法解析当前 Git 工作树' >&2
   exit 2
 fi
-[[ -f "$project_root/scripts/quality-check.sh" ]] || {
-  echo "质量检查：缺少共享入口：$project_root/scripts/quality-check.sh" >&2
+[[ -f "$project_root/scripts/engineering.sh" ]] || {
+  echo "质量检查：缺少共享入口：$project_root/scripts/engineering.sh" >&2
   exit 2
 }
-exec bash "$project_root/scripts/quality-check.sh" --mode quick --source index
+exec bash "$project_root/scripts/engineering.sh" quality --mode quick --source index

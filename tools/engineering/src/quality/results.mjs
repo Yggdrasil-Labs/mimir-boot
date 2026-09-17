@@ -28,7 +28,7 @@ export function createCheck({
         status,
         required,
         exitCode,
-        reason: status === 'passed' || status === 'not_applicable' ? null : reason || '检查未通过',
+        reason: status === 'passed' ? null : reason || (status === 'not_applicable' ? '当前模式不适用此检查' : '检查未通过'),
         durationMs,
     };
 }
@@ -64,7 +64,7 @@ export function finalizeReport(report, { emptyFull = false } = {}) {
 }
 
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -117,27 +117,65 @@ function within(directory, candidate, label) {
     if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`${label} 必须位于报告目录内`);
 }
 
+async function sourceModuleFiles(root) {
+    const files = [];
+    async function visit(directory, relative = '') {
+        let entries;
+        try {
+            entries = await readdir(directory, { withFileTypes: true });
+        } catch (error) {
+            if (error.code === 'ENOENT') return;
+            throw error;
+        }
+        for (const entry of entries) {
+            const childRelative = path.join(relative, entry.name);
+            const child = path.join(directory, entry.name);
+            if (entry.isDirectory()) {
+                await visit(child, childRelative);
+            } else if (entry.isFile() && childRelative.endsWith('.mjs')) {
+                files.push(childRelative.split(path.sep).join('/'));
+            }
+        }
+    }
+    await visit(path.join(root, 'tools/engineering/src'), 'tools/engineering/src');
+    return files;
+}
+
 async function contentHash(root) {
     const files = [
         '.markdownlint-cli2.jsonc',
         '.markdownlint.json',
-        'scripts/docs-tool.sh',
-        'scripts/ci-preflight.sh',
-        'tools/docs-check/src/quality/verify-java-reports.mjs',
-        'tools/docs-check/src/quality/results.mjs',
-        'tools/docs-check/src/docs/check.mjs',
-        'tools/docs-check/src/docs/policy.mjs',
-        'tools/docs-check/src/docs/checks/links.mjs',
-        'tools/docs-check/src/docs/checks/navigation.mjs',
+        'scripts/engineering.sh',
+        'scripts/lib/engineering-tool.sh',
+        'scripts/lib/quality-snapshot.sh',
+        'tools/engineering/src/bootstrap.mjs',
+        'tools/engineering/src/cli.mjs',
+        'tools/engineering/src/quality/runner.mjs',
+        'tools/engineering/src/quality/java.mjs',
+        'tools/engineering/src/quality/verify-java-reports.mjs',
+        'tools/engineering/src/quality/results.mjs',
+        'tools/engineering/src/docs/check.mjs',
+        'tools/engineering/src/docs/policy.mjs',
+        'tools/engineering/src/docs/checks/links.mjs',
+        'tools/engineering/src/docs/checks/navigation.mjs',
+        'tools/engineering/src/release/artifact-contract.mjs',
+        'tools/engineering/src/release/consumer.mjs',
+        'tools/engineering/src/release/fixture-consumer.mjs',
+        'tools/engineering/src/release/portal-state.mjs',
+        'tools/engineering/src/release/public.mjs',
+        'tools/engineering/src/release/runtime.mjs',
+        'tools/engineering/src/release/signing.mjs',
+        'tools/engineering/src/release/verify-contracts.mjs',
         'pom.xml',
         'mimir-boot-parent/pom.xml',
         'scripts/quality-check.sh',
-        'tools/docs-check/package.json',
-        'tools/docs-check/package-lock.json',
-        'tools/docs-check/config/policy.json',
+        'tools/engineering/package.json',
+        'tools/engineering/package-lock.json',
+        'tools/engineering/config/policy.json',
     ];
+    files.push(...await sourceModuleFiles(root));
     const hash = createHash('sha256');
-    for (const file of files) {
+    for (const file of [...new Set(files)].sort()) {
         hash.update(file);
         try {
             hash.update(await readFile(path.join(root, file)));
@@ -149,6 +187,42 @@ async function contentHash(root) {
     return hash.digest('hex');
 }
 
+export { contentHash };
+
+export async function createRunReport({ root, reportDirectory, runId, source, commit = null, tree }) {
+    if (!root || !reportDirectory || !runId || !source || !tree) {
+        throw new Error('质量报告缺少 root、reportDirectory、runId、source 或 tree');
+    }
+    return {
+        schemaVersion: SCHEMA_VERSION,
+        runId,
+        startedAt: new Date().toISOString(),
+        finishedAt: null,
+        reportDirectory,
+        toolVersions: { node: process.version },
+        source,
+        commit,
+        tree,
+        configurationHash: await contentHash(root),
+        checks: [],
+        findings: [],
+        overall: 'error',
+        exitCode: 2,
+    };
+}
+
+export async function writeReport(reportPath, report) {
+    await mkdir(path.dirname(reportPath), { recursive: true });
+    await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+}
+
+export function appendResult(report, result) {
+    report.checks.push(result.check);
+    for (const finding of result.findings || []) {
+        addFinding(report, finding);
+    }
+}
+
 async function readReport(reportPath) {
     try {
         const report = JSON.parse(await readFile(reportPath, 'utf8'));
@@ -157,11 +231,6 @@ async function readReport(reportPath) {
     } catch (error) {
         throw new Error(`无法读取质量报告：${error.message}`);
     }
-}
-
-async function writeReport(reportPath, report) {
-    await mkdir(path.dirname(reportPath), { recursive: true });
-    await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 }
 
 function commandVersion(command, args, root) {
@@ -217,7 +286,7 @@ async function append(options) {
     if (exitCode !== null && !Number.isInteger(exitCode)) throw new Error('--exit-code 必须是整数或 null');
     if (status === 'passed' && reason !== null) throw new Error('passed 状态不能提供 reason');
     validateCheck({ id: options.id, status, exitCode, dependsOn, command }, report.checks);
-    if (!['passed', 'not_applicable'].includes(status) && !reason) throw new Error(`${status} 状态必须提供 reason`);
+    if (status !== 'passed' && (typeof reason !== 'string' || !reason.trim())) throw new Error(`${status} 状态必须提供 reason`);
     if (logPath !== null) {
         const resolvedLogPath = requireAbsolute(logPath, '--log');
         within(report.reportDirectory, resolvedLogPath, '--log');

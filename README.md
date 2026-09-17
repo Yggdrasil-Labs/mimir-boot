@@ -164,7 +164,13 @@ logging:
 # 跳过测试
 ./mvnw clean package -DskipTests
 
-# 测试与 CI profile 质量门禁
+# 统一完整验收（默认不运行 Sonar）
+bash scripts/engineering.sh quality --mode full --source worktree
+
+# Java 子检查入口（完整验收会调用；默认 RUN_SONAR=false）
+bash scripts/engineering.sh java
+
+# Java 子检查中的 Maven 基础构建步骤
 ./mvnw -Pci clean verify
 
 # CI profile 下的代码格式化检查（Spotless）
@@ -174,7 +180,7 @@ logging:
 ./mvnw spotless:apply
 ```
 
-`-Pci clean verify` 启用当前配置的测试、覆盖率、Spotless 和 Enforcer 门禁。当前子模块格式扫描范围和集成测试覆盖率报告仍有局限，配置细节见 [Parent 文档](mimir-boot-parent/README.md)。
+`-Pci clean verify` 启用当前配置的测试、覆盖率、Spotless 和 Enforcer 门禁；JaCoCo report 在 `verify` 阶段生成，并消费单元测试与集成测试的执行数据。`bash scripts/engineering.sh java` 还会核验测试/覆盖率报告，并按 `RUN_SONAR` 条件在通过后单独运行 Sonar。配置细节见 [Parent 文档](mimir-boot-parent/README.md)。
 
 ## 📋 技术栈
 
@@ -351,18 +357,21 @@ graph TD
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-  - 在 push 到 `main`/`develop` 和目标分支为 `main` 的 PR 时运行：`bash scripts/ci-preflight.sh`
-  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率；当前 JaCoCo XML 在集成测试前生成
-  - Spotless 检查随 CI profile 执行，实际扫描范围受模块配置影响
-  - 可选 Sonar：仅在 push 到 `main`/`develop` 且同时存在 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和 `SONAR_PROJECT_KEY` 时自动执行
+  - 本地工作区与 CI 共用完整验收：`bash scripts/engineering.sh quality --mode full --source worktree`；pre-push 使用同一执行器检查提交快照
+  - 完整验收固定包含文档、发布契约、构建模型、隔离消费者、临时密钥签名，以及 Maven 测试和覆盖率报告核验
+  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率；最终 XML 在单元与集成测试结束后生成
+  - 提交前执行暂存快照的文档与 Java 格式检查；推送前执行待推送提交快照的完整验收
+  - 本地 full 默认 `RUN_SONAR=false`，只等价 CI 的基础检查；Sonar 仅在 push 到 `main`/`develop` 且同时存在 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和 `SONAR_PROJECT_KEY` 时自动执行
 
 - **Release PR 与自动打 Tag（.github/workflows/release-please.yml）**
   - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
   - 合并该 PR 后，由 `create-tag.yml` 创建 `vX.Y.Z` Tag；Tag 再触发 `release.yml`，在公开制品校验通过后创建 GitHub Release
 
 - **发布（.github/workflows/release.yml）**
-  - 基于 Tag 触发：先执行 `./mvnw -B spotless:check clean package -DskipTests`，再执行消费者契约校验
+  - 基于 Tag 触发：发布前执行与本地相同的完整门禁；发布后再验证 Maven Central 公开制品可见性
   - 按发布选择发布制品到 GitHub Packages（GPR）和/或 Maven Central；Maven Central 正式版需要显式 GPG 签名
+
+工具职责、运行条件及各子命令见[工程工具说明](tools/engineering/README.md)。
 
 ### 使用 GitHub Packages（消费者）
 

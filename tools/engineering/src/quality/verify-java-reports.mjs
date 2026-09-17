@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SCHEMA_VERSION = 1;
 const SKIPPED_DIRECTORIES = new Set(['.git', '.worktrees', 'node_modules', 'target', '.maven-node']);
@@ -21,7 +22,7 @@ function assertAbsolute(value, label) {
     return path.resolve(value);
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
     const options = { root: null, expected: null, report: null, generateExpected: null, recordArtifacts: null, cleanExpected: null, runId: null };
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
@@ -152,7 +153,7 @@ async function writeJson(file, value) {
     await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-async function recordArtifacts(root, expectedPath) {
+export async function recordArtifacts(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
     for (const module of expected.modules) {
@@ -165,7 +166,7 @@ async function recordArtifacts(root, expectedPath) {
     await writeJson(expectedPath, expected);
 }
 
-async function cleanExpected(root, expectedPath) {
+export async function cleanExpected(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
     for (const module of expected.modules) {
@@ -269,4 +270,6 @@ async function main() {
     return result.exitCode;
 }
 
-main().then((exitCode) => { process.exitCode = exitCode; }).catch((error) => { process.stderr.write(`报告核验失败：${error.message}\n`); process.exitCode = 2; });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    main().then((exitCode) => { process.exitCode = exitCode ?? 0; }).catch((error) => { process.stderr.write(`报告核验失败：${error.message}\n`); process.exitCode = 2; });
+}

@@ -57,14 +57,14 @@ done
 
 if ! (
   cd "$project_root"
-  bash scripts/docs-tool.sh --prepare
+  bash scripts/engineering.sh prepare
 ); then
-  fail '文档工具准备失败'
+  fail '工程工具准备失败'
 fi
 
 if ! (
   cd "$project_root"
-  bash scripts/quality-check.sh --mode quick --source worktree
+  bash scripts/engineering.sh quality --mode quick --source worktree
 ); then
   fail 'quick worktree 检查失败'
 fi

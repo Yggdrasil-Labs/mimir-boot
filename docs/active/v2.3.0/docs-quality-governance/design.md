@@ -4,7 +4,7 @@ version: v2.3.0
 status: draft
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-16
 ---
 
 # Agent 文档治理与本地质量门禁 — 技术设计
@@ -13,7 +13,7 @@ updated: 2026-09-14
 
 用户已在会话中确认 docs 优先服务 Agent、人主要阅读 README、目录收敛和完整的本地质量门禁。基线为 `6275137bd17b3c5543ed852ee3abec4bb9af16fb`。规划目录 v2.3.0 按 main 与最近 v2.2.1 tag 推导；根 POM 当前仍为 2.2.2-SNAPSHOT，规划版本不构成发版承诺。
 
-现有 CI 使用独立的 Markdown action，再调用 `scripts/ci-preflight.sh` 执行 Maven 与报告核验。TD-043 记录 JaCoCo 报告早于集成测试，TD-044 记录 Spotless 无源配置继承导致漏扫。旧校验曾因 gardening 的人工提示返回 1 而短路，后续命令未执行却被声明为通过。
+历史基线（非当前实现）的 CI 使用独立 Markdown action，再调用旧 `scripts/ci-preflight.sh` 执行 Maven 与报告核验。该基线记录了 TD-043 的 JaCoCo 报告早于集成测试、TD-044 的 Spotless 无源配置继承漏扫，以及 gardening 人工提示返回 1 后短路后续检查的问题；当前实现统一由下述质量入口编排。
 
 另一会话在 `.worktrees/fix-markdown-prepush` 留有未提交草稿：Markdown 修复、npm 清单、pre-push 和安装脚本。草稿只检查工作区，尚未满足本设计的 Maven 托管和精确版本检查要求。实施时先记录该工作树 diff，与对应会话协调后逐项复用；不直接 merge、reset、删除或覆盖该工作树。
 
@@ -30,7 +30,7 @@ updated: 2026-09-14
 - 不提高覆盖率百分比，不新增独立单元测试覆盖率指标，不让首版按改动范围省略推送全量验证。
 - 不修改远端分支保护，不认为本地 hook 无法绕过；不在本轮自动归档 v2.2.1。
 - 不建设文档网站、不生成空目录、不重写历史事实，不修改个人技能库的固定路径规则。
-- 本轮产出设计和计划；所有待建命令均为接口约定，尚不能作为已实现功能执行。
+- 文档目录迁移及缺少专项证据的场景仍按计划跟踪；当前可执行入口见 Testing Strategy，命令存在不代表全部验收完成。
 
 ## Architecture
 
@@ -52,13 +52,13 @@ flowchart TD
     Summary --> Gate[退出码与提交或推送判定]
 ```
 
-仓库拟新增 `tools/docs-check/` 存放 Node 清单、锁文件及文档检查器；`scripts/quality-check.sh`、`scripts/lib/quality-snapshot.sh`、`tools/docs-check/quality-result.mjs` 负责执行、快照及汇总；`.githooks/` 只做适配。根 POM 增加显式 `docs-check` profile，使用 frontend-maven-plugin 下载项目本地 Node/npm，插件声明设置 `inherited=false`。工具依赖不得加入发布 Parent 的正常构建路径。
+仓库以 `tools/engineering/` 统一存放 Node 清单、锁文件和工程检查实现，`src/docs/`、`src/quality/`、`src/release/` 分别负责文档、质量和发布验收；`scripts/engineering.sh` 提供统一命令，`scripts/quality-check.sh` 与 `scripts/lib/` 保留运行时准备及 Git 快照适配；`.githooks/` 只做适配。根 POM 的显式 `docs-check` profile 使用 frontend-maven-plugin 下载项目本地 Node/npm，插件声明设置 `inherited=false`。工具依赖不得加入发布 Parent 的正常构建路径。
 
-现有 `scripts/ci-preflight.sh` 保留为 Java 完整构建及报告核验入口；新增共享入口依次或独立调度文档、Java、发布契约脚本，避免前置文档提示导致其他独立检查被漏跑。普通 `./mvnw verify` 和依赖安装不修改 Git 配置。
+`bash scripts/engineering.sh quality --mode full --source worktree` 是本地和 CI 共用的统一完整验收入口。Node 调度器固定执行文档、构建模型、发布契约、隔离消费者和签名，再运行 Java 子检查 `bash scripts/engineering.sh java`；不因环境或变更分类跳过基础检查。默认 `RUN_SONAR=false`，因此本地 full 只等价 CI 基础检查，不包含 Sonar。独立检查失败仍汇总其他检查结果。普通 `./mvnw verify` 和依赖安装不修改 Git 配置。
 
 工具目录的 Node、npm、markdownlint-cli2 和插件版本由精确版本配置与锁文件管理；实现 T1 以 CI 已使用的检查器版本为兼容基线，锁定实际验证的组合。不在全局 README 重复写易变版本。工具缓存位于仓库共同 Git 目录下的 `mimir-quality/cache/`，以平台、运行时版本和锁文件内容摘要分区；临时执行目录按运行唯一创建，不在多个 worktree 之间共享可变 node_modules。
 
-`bash scripts/docs-tool.sh <entry-relative-path> [args...]` 使用已准备且版本匹配的 Node 执行 `tools/docs-check/` 内入口，透传参数与退出码；拒绝路径逃逸，工具缺失返回 2。所有 shell 调用 Node 检查器均经此适配器。
+`scripts/lib/engineering-tool.sh` 负责准备、校验和启动 `tools/engineering/` 的受管 Node，透传参数与退出码并拒绝入口路径逃逸；对外使用 `bash scripts/engineering.sh <命令> [参数...]`。已安装且校验和匹配时不覆盖正在运行的 Node，支持发布契约的嵌套命令。
 
 ## Interface Contract
 
@@ -73,8 +73,8 @@ flowchart TD
 ### IC-02 文档检查（B1、B3、B8）
 
 - 接口：`./mvnw -N -Pdocs-check verify`，默认扫描当前仓库受 Git 跟踪的全部 Markdown。
-- 可选属性：`-Ddocs.mode=format|full` 选择模式（默认 full），`-Ddocs.selfTest=true` 显式执行检查器测试；`-Ddocs.root=<absolute-path>` 指定完整源码快照；`-Ddocs.manifest=<absolute-json-file>` 指定受检文件清单；`-Ddocs.report=<absolute-json-file>` 指定报告输出。hook 快照执行必须显式传 root 和 manifest。
-- 内核：`runDocsCheck({root: string, files: string[], mode: 'format' | 'full', reportPath: string}): Promise<CheckReport>`，由 `tools/docs-check/src/docs/check.mjs` 提供。
+- 可选属性：`-Ddocs.mode=format|full` 选择模式（Maven profile 默认 format），`-Ddocs.selfTest=true` 显式执行检查器自检，`-Ddocs.report=<absolute-json-file>` 指定报告输出。Node 入口支持 `docs --root <absolute-path> --mode full --report <absolute-json-file>`；hook 快照通过内部运行清单传递源 tree/commit。format/full 均读取同一份文档策略。
+- 内核：`runDocsCheck({root: string, files: string[], mode: 'format' | 'full', reportPath: string}): Promise<CheckReport>`，由 `tools/engineering/src/docs/check.mjs` 提供。
 - `format` 使用 markdownlint-cli2；`full` 加入内部链接与锚点、索引可达性检查。扫描排除 `.git`、`.worktrees`、node_modules、target、缓存与临时目录；不因文件未被某个宽泛 glob 匹配而跳过应检查的 tracked Markdown。
 - 沿用 `.markdownlint.json` 规则。CHANGELOG 等既有格式豁免在 `policy.json` 显式登记，仍检查它们的内部链接；新文档不自动扩大豁免。
 - 链接使用 Markdown 解析器处理 inline/reference link、图片、相对路径、目录 index/README、URL 编码和中文/重复标题锚点；不从代码块或行内代码识别普通文档链接。显式 HTML anchor 支持 GitHub 页面行为。外部网络 URL 不作为本地阻断检查。
@@ -82,44 +82,47 @@ flowchart TD
 - 技术债台账保留为普通 Markdown 文档；质量门禁不再校验技术债 ID、排序、摘要或注册表，也不维护技术债编号注册表。编号治理由文档维护流程和人工评审负责。
 - 每个检查返回独立结果；一个普通违规不终止其他独立检查。结构化结果写入失败为工具错误，总体不能返回成功。
 
+发布构建模型检查已由 Python 迁入 `tools/engineering/src/quality/verify-build-model.mjs`，纳入 full，也可通过 `bash scripts/engineering.sh build-model` 单独运行。它使用 XML 解析器核验全部 Reactor 模块在 default/`maven-central` 下的 GPG 属性、插件与 execution 开关，要求 Java 17；可通过 `MIMIR_BUILD_MODEL_M2` 指定 Maven 缓存。执行时会向本地缓存安装根、BOM、Parent 元数据，并生成临时 effective POM。
+
 ### IC-03 提交前快速检查（B4）
 
-- 接口：`.githooks/pre-commit` 调用 `bash scripts/quality-check.sh --mode quick --source index`。
+- 接口：`.githooks/pre-commit` 调用 `bash scripts/engineering.sh quality --mode quick --source index`。
 - 输入是 Git 索引的完整快照，包括暂存配置、源码和工具锁文件。导出后执行索引快照内的共享入口，外层 `--source index` 仅负责导出，内层固定调用 `--mode quick --source worktree` 并消费清单，不再次导出；检测已有 QUALITY_SNAPSHOT_MANIFEST 时若仍请求 index/commit，返回参数错误 2，防止递归。采用 IC-04 的重新调用协议；运行清单 source=index、commit=null，并携带相对 HEAD（首次提交为空树）的 changedFiles，快照内不再调用 git diff 猜变更范围。使用索引导出到唯一临时目录，不执行 stash、reset、checkout 或自动 git add；路径处理采用 NUL 分隔，覆盖空格、中文和删除/重命名。
-- 控制文件触发清单为 `tools/docs-check/**`、`scripts/quality-check.sh`、`scripts/docs-tool.sh`、`scripts/setup-dev.sh`、`scripts/ci-preflight.sh`、`scripts/test-suite-consumer-contract-test.sh`、`scripts/verify-maven-central-public-contract-test.sh`、`scripts/lib/**`、`.githooks/**`、`.mvn/**`、`mvnw`、`**/pom.xml`、`.markdownlint*` 和 Spotless 配置文件；任一变更同时触发 Markdown 与 Java 格式检查。检查器自测放入 full 和 CI，quick 不运行测试。自测的子 fixture 禁用自身测试开关，防止递归；真实 hooks 全量集成验收由独立测试入口执行。
+- 工程工具、Shell 入口、Git hooks、Maven 与格式配置变更同时触发文档和 Java 格式检查；普通 Markdown/Java 变更触发对应格式检查。发布验收 fixture 属于 full，quick 不运行。临时 Git/错误注入验收只生成在临时目录，不提交测试目录。
 - 其他文件依据暂存变更决定检查类别：Markdown 或文档规则变化触发文档格式检查；Java、POM、格式规则变化触发 Java 格式检查。相应类别先全量检查快照内的受管文件，首版不实现文件级格式增量优化。
-- Java 使用快照的 `./mvnw -Pci spotless:check`，不添加 `-N`，覆盖多模块源码，不编译、不执行测试。文档使用 IC-02 的 format 模式，Maven 属性 `-Ddocs.mode=format`（默认 `full`）。没有相关文件变化时记录原因明确的 `not_applicable`。
+- Java 使用快照的 `./mvnw -Pci spotless:check`，不添加 `-N`，覆盖多模块源码，不编译、不执行测试。文档使用 IC-02 的 format 模式，Maven 属性 `-Ddocs.mode=format`；full 验收使用 `bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test`。没有相关文件变化时记录原因明确的 `not_applicable`。
 - 工具缓存不匹配暂存锁文件时拒绝检查并提示重新初始化。已格式化但未暂存的内容不得影响结果；失败不创建 commit，退出码沿用统一结果。
 
 ### IC-04 推送前完整检查（B5）
 
 - 接口：`.githooks/pre-push <remote-name> <remote-location>`，从 stdin 读取 Git 提供的 `<local-ref> <local-oid> <remote-ref> <remote-oid>` 行；不自行猜测 origin/main。
 - 非删除引用将 local OID 解析到 commit（含 annotated tag）；不能解析为 commit 的对象返回明确不支持错误。每个不同 tree OID 在本次执行中最多完整检查一次；删除行只记录 `not_applicable`。
-- 调用：`bash scripts/quality-check.sh --mode full --source commit --commit <sha>`；新分支也检查完整目标树，不依赖旧远端 SHA 可用，不为取范围执行 fetch。
+- 调用：`bash scripts/engineering.sh quality --mode full --source commit --commit <sha>`；新分支也检查完整目标树，不依赖旧远端 SHA 可用，不为取范围执行 fetch。
 - 完整快照含待推送提交的构建脚本、配置和工具锁；快照缺失检查契约时返回明确失败，不用当前工作区脚本冒充被推送版本规则。旧版本标签的补推属于单独评估操作，不能静默放行。
-- 调度算法：当前 hook 只读取 ref 并导出目标树到临时目录；随后切换到该目录，执行其中的 `scripts/quality-check.sh --mode full --source worktree`，通过由导出器提供的只读运行清单传递 source=commit、commit/tree 和文件清单。`--source commit` 命令也必须执行同样的导出和重新调用过程，不能仅把 root 参数传给当前工作区的检查实现。隔离子进程清除 Git 仓库定位环境变量，所有 Maven、policy、脚本及锁文件均取自目标树；缺入口立即失败，禁止回退当前版本。运行清单路径由 `QUALITY_SNAPSHOT_MANIFEST` 传入，包含 originRoot、source、commit、tree、files、changedFiles（完整模式可为空数组），消费者只读并核对导出内容。
+- 调度算法：当前 hook 只读取 ref 并导出目标树到临时目录；随后切换到该目录，执行其中的 `bash scripts/engineering.sh quality --mode full --source worktree`，通过由导出器提供的只读运行清单传递 source=commit、commit/tree 和文件清单。`--source commit` 命令也必须执行同样的导出和重新调用过程，不能仅把 root 参数传给当前工作区的检查实现。隔离子进程清除 Git 仓库定位环境变量，所有 Maven、policy、脚本及锁文件均取自目标树；缺入口立即失败，禁止回退当前版本。运行清单路径由 `QUALITY_SNAPSHOT_MANIFEST` 传入，包含 originRoot、source、commit、tree、files、changedFiles（完整模式可为空数组），消费者只读并核对导出内容。
 - 快照执行不会触碰当前 worktree 的 target、源文件或索引。一次多引用推送任一目标失败即整体拒绝；日志中记录受检 ref、commit 和 tree。
 - 同一运行内可以复用同一 tree 的结果；首版不缓存跨运行的质量通过结论，只缓存依赖和工具。
 
 ### IC-05 Java 完整质量与报告核验（B6）
 
-- 接口：`bash scripts/ci-preflight.sh`；在受检执行根中调用 `./mvnw -B -Pci clean verify`，保留既有 RUN_SONAR 环境契约。
+- 接口：`bash scripts/engineering.sh java`，作为 full 的 Java 子检查；在受检执行根中调用 `./mvnw -B -Pci clean verify`，保留既有 RUN_SONAR 环境契约。
 - 根 POM 无源 Spotless 配置设置不继承，或采用经 effective POM 验证的等价覆盖；不得通过全局跳过规避 TD-044。每个真实 Java 模块显式验证受检源码范围。
 - JaCoCo `report` 从 `test` 移到集成测试结束后的 `verify`，与 `check` 使用相同最终 exec 数据；prepare-agent 同时服务 Surefire/Failsafe 且数据追加，单次构建以 clean 清除旧数据。每模块报告不被后续测试覆盖；构建顺序由 effective POM 和集成覆盖 fixture 核实。
 - `check` 读取执行数据判定阈值，并非读取 XML；report 生成的最终 XML 是上传和 Sonar 的输入。二者分别验证，不能只移动 report 就认为阈值检查已经合格。
 - 指令/分支门槛仍为 0.60/0.50，BUNDLE 级；沿用既有 entity/dto/vo/Application 排除并在期望报告矩阵登记。纯 POM 或无可测源码模块可以豁免，必须带理由。
-- 核验接口：`bash scripts/docs-tool.sh src/quality/verify-java-reports.mjs --root <execution-root> --expected <expected-report-json> --report <result-json>`，实现位于 `tools/docs-check/src/quality/verify-java-reports.mjs`。检测 Surefire/Failsafe XML 的 errors/failures/skipped，以及每个应产出报告模块的报告存在性、内容和当前运行归属。
+- 核验接口：`bash scripts/lib/engineering-tool.sh src/quality/verify-java-reports.mjs --root <execution-root> --expected <expected-report-json> --report <result-json>`，实现位于 `tools/engineering/src/quality/verify-java-reports.mjs`。检测 Surefire/Failsafe XML 的 errors/failures/skipped，以及每个应产出报告模块的报告存在性、内容和当前运行归属。
 - 期望报告矩阵来源于本次有效 reactor、源码/测试清单及 effective POM 的包括/排除规则，保存在本次运行目录；不能从已经生成的报告反推应有报告。无某类测试的模块明确豁免；真实测试被 skip 不能豁免。
 - 新鲜度：每次执行生成唯一 runId 与 build-manifest.json，记录 executionRoot、开始时间、expectedReports 和 expectedExec。Maven 启动前仅清理这些声明的旧报告/exec 路径并确认全部不存在，清理失败即 error；不删除源码。然后唯一调用 clean verify。仅在 Maven 成功、clean 阶段成功且应有产物重新出现时，计算产物 SHA-256 写入本次 manifest；核验器逐项比对路径、摘要及 runId，缺 manifest、清理失败、构建中断或外来旧报告均不能通过。时间戳只辅助诊断，不作为唯一归属依据。
 - Maven 失败时按阶段记录失败和依赖未执行；允许解析已产生报告用于定位，不会将其提升为通过。成功但缺少预期报告仍返回失败。
+- Sonar 不是同一次 Maven invocation：仅当 `RUN_SONAR=true` 且 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 由环境提供时，在 `clean verify` 成功并完成报告核验后独立执行 `./mvnw -B -Pci sonar:sonar`，并通过 `-Dsonar.qualitygate.wait=true` 等待 Quality Gate。缺少任一变量为配置错误；不记录凭据值。
 
 ### IC-06 共享调度与 CI（B3、B5、B7）
 
-- 接口：`bash scripts/quality-check.sh --mode <quick|full> --source <worktree|index|commit> [--commit <sha>] [--report <absolute-json-path>]`；commit source 必须提供 sha，其他 source 禁止该参数；参数错误返回 2。
-- `quick`：IC-03 的格式分类检查；`full`：IC-02 全部文档检查及检查器自测（`-Ddocs.selfTest=true`）、IC-05 全量 Java 构建及报告核验，再运行现有 `scripts/test-suite-consumer-contract-test.sh` 和 `scripts/verify-maven-central-public-contract-test.sh`。
+- 接口：`bash scripts/engineering.sh quality --mode <quick|full> --source <worktree|index|commit> [--commit <sha>] [--report <absolute-json-path>]`；commit source 必须提供 sha，其他 source 禁止该参数；参数错误返回 2。
+- `quick`：IC-03 的格式分类检查；`full`：文档 full、构建模型、`src/release/verify-contracts.mjs`、隔离消费者、临时密钥签名，最后执行 IC-05 的 Java 子检查（`bash scripts/engineering.sh java`，其中包含 `./mvnw -B -Pci clean verify` 及报告核验）。检查清单固定，不受变更路径或 CI 标志影响。
 - 文档与 Java 构建是独立检查，分别执行并收集退出码；测试与覆盖率依赖编译，不在编译失败后宣称已运行。禁止仅用一串 `&&` 后输出统一成功，也禁止忽略子进程错误。
-- CI 工作流将独立 Markdown action、Java 构建和两个契约脚本入口收敛到 `bash scripts/quality-check.sh --mode full --source worktree`；CI 使用 checkout 的跟踪内容，保留 Java 17、Sonar 条件以及 always 上传报告逻辑。
-- 本地缺 Sonar 凭证不阻断本地门禁，Sonar 标记 `not_applicable`；CI 沿用现有 push 与凭证条件。Sonar 已被要求执行而失败时不能降级为不适用。
+- CI 和 Release 发布前验收均调用 `bash scripts/engineering.sh quality --mode full --source worktree`；保留 Java 17、Sonar 条件及 always 上传报告逻辑，CI 中不另写一份本地验收实现。
+- 本地 full 默认 `RUN_SONAR=false`，只等价 CI 基础检查，Sonar 标记 `not_applicable`；CI 仅在 push 到 `main`/`develop` 且三个凭据均配置时设置 `RUN_SONAR=true`。若已确认目标项目、分支和上传授权，才可通过环境提供三个变量复现该阶段；Sonar 已被要求执行而失败时不能降级为不适用。
 - 无论工作区或快照，原始 Maven stdout/stderr、各门禁结果和工具版本都保存在同一次运行目录。CI 上传质量汇总和现有测试/覆盖率报告，失败日志中标记未执行阶段。
 
 ### IC-07 文档职责与迁移（B1、B8）
@@ -194,17 +197,23 @@ flowchart TD
 
 ## Testing Strategy
 
-| 契约 | 测试入口（实施后） | 层级与通过标准 |
+| 契约 | 当前可执行入口 | 层级与通过标准 |
 |---|---|---|
-| IC-01 | `bash scripts/tests/setup-dev-test.sh` | 临时 Git 仓库集成：无全局 Node、重复安装、冲突、两个 worktree、失败不写配置 |
-| IC-02 | `./mvnw -N -Pdocs-check verify -Ddocs.selfTest=true` | 解析单元/文件集成：MD028/MD029、中文锚点、断链、目录链接、编号、代码块误报、warning 后仍执行 |
-| IC-03 | `bash scripts/tests/pre-commit-test.sh` | 真实 git commit：部分暂存失败，实际 HEAD 不变，源文件/索引字节不变；缓存不匹配失败 |
-| IC-04 | `bash scripts/tests/pre-push-test.sh` | 本地 bare remote：错误分支被拦、新分支、多 ref、一成一败、tag、删除及非当前 HEAD |
-| IC-05 | `bash scripts/tests/java-quality-gates-test.sh` | 多模块格式负向测试、单元/IT 失败、仅 IT 覆盖方法出现在最终 XML、模块报告缺失/旧报告拒绝 |
-| IC-06 | `bash scripts/tests/quality-check-test.sh` | 执行器负向集成：失败/错误/未执行/不适用状态及 0/1/2；检查文档不短路 Java，编译失败不伪造测试通过 |
-| IC-07 | `./mvnw -N -Pdocs-check verify` 与人工矩阵核对 | 全库链接/导航/台账通过，历史语义和 README 徽章保留，所有旧路径去向可解释 |
+| IC-01 | `bash scripts/setup-dev.sh`；临时 Git 验收见下方说明 | 显式初始化、重复初始化和 hooksPath 冲突按约定返回；失败不改配置 |
+| IC-02 | `bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test` | 文档格式、链接、导航和工具自检均有结果；必需检查通过才返回 0 |
+| IC-03 | `bash scripts/engineering.sh quality --mode quick --source index` | 只检查暂存快照的文档/Java 格式；不运行测试，索引和工作区保持不变 |
+| IC-04 | `bash scripts/engineering.sh quality --mode full --source commit --commit <sha>` | 对目标提交执行完整检查；实际推送、多引用失败阻断和远端引用断言见下方临时验收 |
+| IC-05 | `bash scripts/engineering.sh java`；Maven 子步骤为 `./mvnw -B -Pci clean verify` | 测试、JaCoCo 最终报告及报告核验通过；满足条件时再独立 Sonar 并等待 Quality Gate |
+| IC-06 | `bash scripts/engineering.sh quality --mode full --source worktree` | 文档、发布契约、消费者、签名和 Java 子检查全部有结果；默认只覆盖 CI 基础检查 |
+| IC-07 | `bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test` 与人工迁移矩阵核对 | 全库格式、链接和导航通过；人工核对历史语义、README 契约及旧路径去向 |
 
-门禁测试可使用假的 Maven/检查器进程验证调度，但 Spotless 真能拒绝错误、JaCoCo 真能纳入 IT、实际 git commit/push 被拦至少各保留一个真实工具验证，不以全 mock 代替验收。
+上述命令是当前可执行入口，不等于已经完成所有行为断言。现有单独命令无法证明 Git hook 的原子性、暂存内容隔离和故障注入后的不变性；以下仅定义临时验收步骤，不创建仓库内永久测试脚本，也不把未执行步骤写成已验证：
+
+1. 在 `mktemp -d` 创建的临时普通仓库和 bare remote 中，复制待验收入口并建立第二个 worktree；分别记录 setup 前后的 `git config --local --list`、`git status --short`、`git diff --cached` 和 HEAD。验证首次初始化、重复初始化、hooksPath/自定义 hook 冲突及另一 worktree 缺 hook 的预期退出码，确认失败不改配置。
+2. 在同一临时仓库制造“工作区已修复、索引仍为错误版本”的部分暂存，运行 `bash scripts/engineering.sh quality --mode quick --source index` 及实际 commit hook；断言检查读取索引、拒绝错误版本，且工作区、索引和 HEAD 的字节摘要不变。向临时 bare remote 发送新分支、非 HEAD、多 ref 一成一败、annotated tag 和删除 ref，断言任一失败时远端引用保持不变。
+3. 在临时副本中通过受控 wrapper 或故障 HTTP fixture 注入 Maven/工具缺失、报告写入失败、构建中断、旧报告和 Sonar 失败；分别运行 `bash scripts/engineering.sh contracts`、`bash scripts/engineering.sh java` 或完整入口，核对 `failed`、`error`、`not_run`、`not_applicable` 和退出码 0/1/2 的映射。复核后删除临时目录，不修改当前工作树。
+
+Spotless 负向、JaCoCo 集成测试覆盖和 Sonar Quality Gate 仍须保留真实工具/受控服务证据；没有相应运行记录时只标记为待验收，不以 mock 或文档命令本身宣称通过。
 
 ## Milestones
 

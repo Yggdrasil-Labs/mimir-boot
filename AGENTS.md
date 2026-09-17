@@ -66,11 +66,14 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 # 跳过测试
 ./mvnw clean package -DskipTests
 
-# 运行测试 + Maven 质量门禁
+# Java 子检查入口（完整验收会调用；默认 RUN_SONAR=false）
+bash scripts/engineering.sh java
+
+# Java 子检查中的 Maven 基础构建步骤
 ./mvnw -Pci clean verify
 
-# CI 同等预检（额外校验测试报告和 JaCoCo 产物）
-bash scripts/ci-preflight.sh
+# 统一完整验收（本地与 CI 基础检查共用）
+bash scripts/engineering.sh quality --mode full --source worktree
 
 # 代码格式检查
 ./mvnw -Pci spotless:check

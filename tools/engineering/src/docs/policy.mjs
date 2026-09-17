@@ -65,7 +65,7 @@ export function isNavigationRoot(file, policy) {
 
 export async function loadPolicy(root) {
     const candidates = [
-        path.join(root, 'tools', 'docs-check', 'config', 'policy.json'),
+        path.join(root, 'tools', 'engineering', 'config', 'policy.json'),
         path.join(toolRoot, 'config', 'policy.json'),
     ];
     for (const candidate of candidates) {

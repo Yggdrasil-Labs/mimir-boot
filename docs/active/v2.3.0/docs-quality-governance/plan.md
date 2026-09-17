@@ -4,7 +4,7 @@ version: v2.3.0
 status: planned
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-15
+updated: 2026-09-17
 ---
 
 # Agent 文档治理与本地质量门禁 — 实施计划
@@ -42,9 +42,42 @@ updated: 2026-09-15
 
 ## 当前执行范围
 
-按用户最新要求，先完成质量门禁，文档目录迁移暂缓。保留 AGENTS.md 原有内容，只修复直接阻断门禁的两处文档问题。提交前只检查暂存格式；推送前和 CI 共用文档、Maven 测试/覆盖率及报告核验入口。删除本特性额外添加的 scripts/tests 模拟框架，不再把治理工具自测串入日常门禁；已有业务 Java 测试和发布消费者契约保持执行。下方为前序任务记录，不能据此认定 T7/T8 已交付。
+按用户最新要求，先完成质量门禁，文档目录迁移暂缓。统一完整验收为 `bash scripts/engineering.sh quality --mode full --source worktree`；其中 `bash scripts/engineering.sh java` 是 Java 子检查，实际 Maven 基础步骤为 `./mvnw -Pci clean verify`，随后核验报告。提交前只检查暂存格式；推送前和 CI 共用完整工程验收。删除本特性额外添加的 scripts/tests 模拟框架，不提交独立工具测试目录；保留文档自检、业务 Java 测试和发布消费者契约。下方为前序任务记录，不能据此认定 T7/T8 已交付。
 
-**2026-09-15 当前实现补充：** 工具实现已收敛为 `tools/docs-check/src/docs/` 与 `src/quality/`；技术债 ID 注册表及自动校验已移除。下方涉及平铺脚本、`debt.mjs`、`debt-id-registry.json` 的任务记录是当时的历史执行证据，不再描述当前接口；以设计文档和实际目录为准。
+**2026-09-16 当前实现补充：** 工具实现已收敛为 `tools/engineering/src/docs/`、`src/quality/` 与 `src/release/`；技术债 ID 注册表及自动校验已移除。下方涉及旧 tools/docs-check 路径、平铺脚本、`debt.mjs`、`debt-id-registry.json` 的任务记录是当时的历史执行证据，不再描述当前接口；以设计文档和实际目录为准。
+
+## 工程脚本统一迁移（2026-09-15 至 2026-09-16，实施中）
+
+用户要求本地与 CI 保持同等验收并减少脚本技术栈。本轮按以下顺序执行：迁移至 `tools/engineering/` 并统一入口与锁文件；将 Shell 编排及内嵌 Python 迁入 Node；完整门禁采用固定检查清单；迁移发布消费者、签名与公开制品验收；更新调用与文档；执行正常及故意失败场景和完整门禁。默认本地 `RUN_SONAR=false`，full 只等价 CI 基础检查；CI 仅在 push 到 `main`/`develop` 且三个 Sonar 环境变量均由受控环境提供时启用独立 Sonar 阶段。本地经确认目标项目、分支和上传授权后，可显式设置同样变量执行。临时验收数据不进入仓库测试目录，远程 Sonar 与发布后可见性明确记录执行条件。最终验证结果完成后补记。
+
+### 本轮复核修复与验收（2026-09-16）
+
+本轮修正完整入口、Java 子检查及 Sonar 条件的文档契约，更新当前可执行验收表，并将 hooks 与初始化脚本统一到 `scripts/engineering.sh quality`。保留已有历史记录；未新增依赖、永久测试框架或改变 Sonar 触发策略。
+
+验证基于 `6ae779007b02884f9345182f115e1d1a3facebec` 上的未提交工作树，环境为 Java 17.0.19、Maven 3.9.16、受管 Node 22.22.3。报告均为本机临时证据，不代表 CI 或远程发布已通过。
+
+| 验收 | 结果 | 证据与边界 |
+|---|---|---|
+| `quality --mode full --source worktree` | exit 1 | `/tmp/mimir-fixall-quality.EaUhow/quality-report.json`；唯一失败为消费者阶段下载 junixsocket-common 时响应体截断，原报告保持失败 |
+| 完整门禁中的 Java 子阶段 | 通过 | 15 个 Reactor 模块构建成功，1083 个测试，失败/错误/跳过均为 0；测试与覆盖率报告核验通过 |
+| 完整门禁中的构建模型、发布契约、签名 | 通过 | 15 个 POM 的 default/maven-central 模型通过；48 个制品及附属制品签名通过，失败 fixture 阻断部署 |
+| 独立源码副本中的消费者重试 | exit 0 | `/tmp/mimir-consumer-retry.lWPVes/consumer-retry.log`；Parent、BOM-only 在线/离线构建、starter flatten 抽查及故意失败 Failsafe 阻断均通过；构建配置与工程工具源码经比对和当前工作树一致，未替换原失败报告 |
+| `quality --mode quick --source worktree` | exit 0 | `/tmp/mimir-fixall-quality.EaUhow/quick-report.json`；真实文档和 Java 格式检查通过 |
+| 文档 `full --self-test` | exit 0 | `/tmp/mimir-fixall-quality.EaUhow/docs-final.json`；74 份 Markdown 的格式、链接、导航和工具自检通过；本表更新后再次复验 |
+| 临时 Git hook 集成 | 17 项通过 | `/tmp/mimir-hooks-acceptance.WDQ22B/acceptance-report.txt`；真实 Git 仓库和 bare remote，工程进程边界使用退出码替身；验证参数、失败阻断、HEAD/index/远端不变、多引用、去重及删除引用 |
+| SonarCloud | 未执行 | 本机未配置三个 Sonar 环境变量，报告为 `not_applicable`；不宣称远程 Quality Gate 已通过 |
+
+实际暂存快照隔离、安装冲突矩阵、Spotless 专项负向及集成测试专属覆盖等未被以上证据直接证明的场景仍待专项验收；不据本轮记录关闭 TD-043/TD-044 或标记文档迁移已完成。
+
+### 验收问题修复（2026-09-17）
+
+本轮按 `fixall` 要求处理三个问题：Maven 提前失败时区分未执行与真实测试/覆盖率失败；补齐命令耗时、Maven 版本及不适用原因；发布工具缺失或执行环境异常返回 2，制品校验失败仍返回 1。保持现有完整门禁清单、覆盖率阈值和发布结构。
+
+先在临时目录复现上述问题，再验证修复后的正常、故意失败、缺工具和缺报告场景；不新增独立工具测试目录。主代理独立重跑专项回归：报告字段与调度异常 8 项通过，Java 状态归类 5 个场景通过，发布错误分类 7 个场景通过。
+
+完整命令为 `bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-fixall.mrzNIG/full-report.json`，于 2026-09-17 20:13 至 20:56（北京时间）执行，退出码为 1。文档、15 个 POM 的构建模型、发布契约、隔离消费者与 Java 门禁均通过；Java 15 个模块构建成功，100 份测试报告合计 1083 个测试，失败、错误、跳过均为 0，覆盖率报告核验通过。真实 Java 报告已记录 Maven 3.9.16 和命令耗时；Sonar 保留 `not_applicable` 及原因 `RUN_SONAR=false`，未执行远程检查。
+
+唯一失败为签名预热的依赖下载：Dubbo、Javassist、Netty 等 JAR 从 Maven Central 获取时出现 `Remote host terminated the handshake`，签名专项尚未完成，不能认定完整验收通过。保留原始失败报告，不以其他通过结果替代。报告绑定工作树指纹 `worktree-1a724ece708a74c87932b8dc2015f45f8b311528f37cf9813a3e343cf4fabe28`；本段为验收后的文档补记，需单独复验文档检查。临时日志和回归证据位于 `/tmp/mimir-fixall.mrzNIG/`，不代表远程 CI 或发布验收。
 
 ## 方案审查记录
 
@@ -646,7 +679,7 @@ docs 维护 Agent 开发契约，README 维护人的使用契约。先按迁移�
 
 **Step 3: Verify**
 
-`./mvnw -N -Pdocs-check verify`；`git diff --check`；逐行核对 migration.md 并记录来源、目标、入链和语义结果；人工沿四条 Agent 路径和 README 接入路径走读。
+`bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test`；`bash scripts/engineering.sh contracts`；`bash scripts/engineering.sh quality --mode full --source worktree`；`./mvnw -Pci clean verify`；`git diff --check`；逐行核对 migration.md 并记录来源、目标、入链和语义结果；人工沿四条 Agent 路径和 README 接入路径走读。
 
 **AC Verification:**
 
@@ -719,7 +752,7 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 
 **Step 3: Verify**
 
-`bash scripts/tests/setup-dev-test.sh`；`bash scripts/tests/pre-commit-test.sh`；`bash scripts/tests/pre-push-test.sh`；`bash scripts/tests/java-quality-gates-test.sh`；`bash scripts/tests/ci-quality-contract-test.sh`；`bash scripts/quality-check.sh --mode full --source commit --commit <验收SHA>`。验收 SHA 必须为实际完成实现的提交；不能填文档基线。
+`bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test`；`bash scripts/engineering.sh contracts`；`bash scripts/engineering.sh java`；`./mvnw -Pci clean verify`；`bash scripts/engineering.sh quality --mode full --source commit --commit <验收SHA>`。验收 SHA 必须为实际完成实现的提交；不能填文档基线。真实 hook 的部分暂存、多个 ref 原子性及工具/构建/报告故障注入无法由上述单独命令完整断言，按设计 Testing Strategy 在临时 Git/临时副本中验收；不创建永久测试脚本，也不把未执行步骤写成已验证。
 
 **AC Verification:**
 

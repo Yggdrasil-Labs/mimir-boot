@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-13
+updated: 2026-09-16
 ---
 
 # 技术债务追踪
@@ -29,8 +29,8 @@ updated: 2026-09-13
 | [TD-040](#td-040-mongodb-驱动族) | MongoDB 驱动族兼容 | BOM / MongoDB 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
-| [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
-| [TD-044](#td-044-spotless-子模块门禁) | Spotless 子模块格式门禁 | Parent / 格式门禁 | 中 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
+| [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项证据闭环 |
+| [TD-044](#td-044-spotless-子模块门禁) | Spotless 子模块格式门禁 | Parent / 格式门禁 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项负向验收 |
 | [TD-045](#td-045-日志断言索引边界) | 日志断言索引边界 | starter-test / 日志断言边界 | 中 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-046](#td-046-测试清理顺序) | 测试清理顺序 | starter-test / 清理顺序 | 低 | 待安排维护 | YoungerYang-Y | 2026-09-13 | 待安排维护 |
 
@@ -114,14 +114,16 @@ updated: 2026-09-13
 
 ### TD-043：JaCoCo 集成测试覆盖率
 
-- **现状与风险**：`mimir-boot-parent/pom.xml` 将 JaCoCo `report` 绑定到 `test`，早于 Failsafe 集成测试；Sonar 和上传步骤读取的 XML 遗漏后续覆盖数据。本轮重生成 Web 报告后，指令覆盖率从 `75.45%` 升至 `95.85%`。
+- **历史问题**：JaCoCo `report` 曾绑定到 `test`，早于 Failsafe 集成测试，导致 XML 遗漏后续覆盖数据；历史重生成 Web 报告时，指令覆盖率从 `75.45%` 升至 `95.85%`，该数值不作为当前验收证据。
+- **当前状态**：`mimir-boot-parent/pom.xml` 已将 `report` 绑定到 `verify`；仍需以集成测试专属覆盖场景和最终报告证据完成验收。
 - **处置与验收**：在集成测试结束后生成最终报告，明确执行数据合并方式，并验证上传的 XML 包含 Failsafe 覆盖数据。
 
 <a id="td-044-spotless-子模块门禁"></a>
 
 ### TD-044：Spotless 子模块格式门禁
 
-- **现状与风险**：根 `pom.xml` 的 Spotless 活动配置 `__NO_SOURCES__` 被子模块继承，覆盖 Parent 在 `pluginManagement` 声明的源码范围；日志模块的 `-Pci` effective POM 表明检查未跳过但未扫描 Java 源码。
+- **历史问题**：根 POM 的 Spotless 活动配置 `__NO_SOURCES__` 曾被子模块继承，覆盖 Parent 的源码范围，造成检查未跳过但未扫描 Java 源码。
+- **当前状态**：根 `pom.xml` 已设置该配置 `inherited=false`；仍需以子模块 effective POM 和错误格式负向 fixture 完成验收。
 - **处置与验收**：限制根无源配置的继承范围或显式覆盖活动插件配置，并通过子模块负向格式 fixture 验证门禁会失败。
 
 <a id="td-045-日志断言索引边界"></a>

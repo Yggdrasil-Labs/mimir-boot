@@ -320,8 +320,8 @@
                         <configuration>
                             <nodeVersion>v22.22.3</nodeVersion>
                             <npmVersion>10.9.8</npmVersion>
-                            <workingDirectory>${project.basedir}/tools/docs-check</workingDirectory>
-                            <installDirectory>${project.basedir}/tools/docs-check/.maven-node</installDirectory>
+                            <workingDirectory>${project.basedir}/tools/engineering</workingDirectory>
+                            <installDirectory>${project.basedir}/tools/engineering/.maven-node</installDirectory>
                         </configuration>
                         <executions>
                             <execution>

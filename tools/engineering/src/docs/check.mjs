@@ -321,7 +321,7 @@ async function reportTree(root, files) {
 
 async function configurationHash(root) {
     const hash = createHash('sha256');
-    for (const relative of ['.markdownlint-cli2.jsonc', '.markdownlint.json', 'tools/docs-check/package.json', 'tools/docs-check/package-lock.json', 'tools/docs-check/config/policy.json']) {
+    for (const relative of ['.markdownlint-cli2.jsonc', '.markdownlint.json', 'tools/engineering/package.json', 'tools/engineering/package-lock.json', 'tools/engineering/config/policy.json']) {
         hash.update(relative);
         try {
             hash.update(await readFile(path.join(root, relative)));
@@ -378,15 +378,13 @@ export async function runDocsCheck({ root, files = [], mode = 'format', reportPa
         report.tree = await reportTree(resolvedRoot, resolvedFiles);
         report.configurationHash = await configurationHash(resolvedRoot);
         let policy = defaultPolicy;
-        if (mode === 'full') {
-            try {
-                policy = await loadPolicy(resolvedRoot);
-            } catch (error) {
-                appendResult(report, {
-                    check: createCheck({ id: 'document-policy', status: 'error', exitCode: 2, reason: error.message, durationMs: 0 }),
-                    findings: [{ severity: 'error', rule: 'policy-tool', path: null, line: null, message: error.message }],
-                });
-            }
+        try {
+            policy = await loadPolicy(resolvedRoot);
+        } catch (error) {
+            appendResult(report, {
+                check: createCheck({ id: 'document-policy', status: 'error', exitCode: 2, reason: error.message, durationMs: 0 }),
+                findings: [{ severity: 'error', rule: 'policy-tool', path: null, line: null, message: error.message }],
+            });
         }
         if (process.env.DOCS_SELF_TEST === 'true') {
             const selfTestStarted = Date.now();

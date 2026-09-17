@@ -3,10 +3,10 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-# Maven 托管的文档检查工具运行时与依赖
-tools/docs-check/node_modules/
-tools/docs-check/.maven-node/
-tools/docs-check/target/
+# Maven 托管的工程工具运行时与依赖
+tools/engineering/node_modules/
+tools/engineering/.maven-node/
+tools/engineering/target/
 
 # Maven Wrapper
 .mvn/wrapper/maven-wrapper.jar

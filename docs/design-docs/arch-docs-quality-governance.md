@@ -4,6 +4,7 @@ status: draft
 owner: 项目维护者
 tags: [architecture, documentation, agent, quality]
 created: 2026-09-14
+updated: 2026-09-16
 ---
 
 # 文档体系与质量门禁治理 RFC
@@ -65,25 +66,25 @@ docs/
 
 ## 质量检查模型
 
-检查逻辑由仓库维护，并由 Maven 提供统一入口。Node/npm 仍是 Markdown 检查器的运行时，由项目工具链固定和复用；它不成为 Java 应用运行依赖，也不写入发布制品。日常入口应统一为 Maven profile，例如 `./mvnw -N -Pdocs-check verify`，具体插件、锁文件和脚本由实施计划落地。
+检查逻辑由仓库维护，完整验收统一使用 `bash scripts/engineering.sh quality --mode full --source worktree`。Maven 的 `docs-check` profile 固定并准备 Node/npm，`tools/engineering/` 统一管理文档、质量和发布验收实现及依赖锁文件；工程工具不成为 Java 应用运行依赖，也不写入发布制品。`./mvnw -N -Pdocs-check verify` 默认只检查文档格式，`./mvnw -Pci clean verify` 只执行 Maven 子门禁，均不能替代完整入口。
 
 检查分三层：
 
 1. **提交前。** Git `pre-commit` 检查暂存区中的 Markdown 与 Java 格式，检查类别由暂存变更和控制文件触发清单决定，不自动修改文件或暂存区。
-2. **推送前。** Git `pre-push` 检查待推送内容的完整文档规则、仓库内链接与锚点、索引导航、技术债编号及维护约定，并运行完整 Maven 编译、测试、覆盖率和报告核验。未准备工具时明确失败并指向初始化命令。
-3. **CI 兜底。** GitHub Actions 调用同一套仓库脚本和配置，通过共享入口执行文档检查，再由 `scripts/ci-preflight.sh` 唯一调用 `./mvnw -Pci clean verify`；本地通过不能替代独立 CI 结果。
+2. **推送前。** Git `pre-push` 对待推送提交快照调用同一完整入口，检查文档格式、仓库内链接与锚点、索引导航、构建模型、发布契约、隔离消费者与签名，以及 Maven 编译、测试、覆盖率和报告。未准备目标树工具缓存时明确失败并指向初始化命令。
+3. **CI 兜底。** GitHub Actions 对检出的工作树调用同一完整入口和固定检查清单；本地通过不能替代独立 CI 结果。Sonar 默认不运行，CI 沿用 push 与凭据条件；本地只有提供三项凭据并设置 `RUN_SONAR=true` 时才覆盖同一远程分析与质量门禁，执行条件见 [Sonar 纪律](../SONAR_QUALITY_DISCIPLINE.md)。
 
 检查器至少覆盖：
 
 - Markdown 格式与列表编号；
 - 相对链接、锚点、索引与实际目录；
-- 技术债编号唯一、数字序号升序、摘要与明细对应；
-- 根 README 不出现技术债台账或 TD 编号；
-- 关键长期文档和模块 README 的维护规则；
+- 构建签名模型、发布工具契约、隔离消费者及签名成功与失败场景；
 - Spotless 实际扫描范围；
 - Surefire/Failsafe 测试报告、JaCoCo XML 和覆盖率门禁产物完整性。
 
-格式化是显式修复动作，例如 `./mvnw spotless:apply`；检查 hook 只报告并阻断。完整构建在一次 Maven 生命周期中执行，避免用重复命令造成虚假的覆盖率或测试结论。现有覆盖率门槛继续以 POM 为准，首轮治理不重新定义阈值。
+技术债编号、摘要与明细对应、README 的受众约束和长期文档维护规则由文档维护及人工评审负责，不属于自动门禁，也不维护独立编号注册表。
+
+格式化是显式修复动作，例如 `./mvnw spotless:apply`；检查 hook 只报告并阻断。Java 质量阶段在一次 `clean verify` 生命周期中生成测试和覆盖率证据；需要 Sonar 时，报告核验通过后再单独执行 `sonar:sonar` 并等待远程结果。隔离发布 fixture 与这次质量构建分别记录，不能用 fixture 的构建结果替代最终测试报告。现有覆盖率门槛继续以 POM 为准，首轮治理不重新定义阈值。
 
 ## 迁移与验收门禁
 
@@ -95,8 +96,8 @@ docs/
 2. 同一易变事实只保留一个维护位置；README、产品规格和长期约束之间通过链接表达关系。
 3. 旧的稳定章节链接仍可解析；已迁移页面保留显式 anchor 或短期迁移映射，不保留整段重复正文。
 4. 根 README 的核心版本描述和徽章保留，且不出现 TD/技术债台账引用；普通依赖版本没有被重复写入全局文档。
-5. 本地 hook、Maven 统一入口和 GitHub CI 对同一变更给出一致的检查结果；任一检查未执行或执行出错时整体不得报告通过。
-6. `git diff --check`、Markdown lint、仓库内链接检查、文档治理脚本和 `./mvnw -Pci clean verify` 均有可复核输出；失败项在 `active/` 记录，不伪造为已完成。
+5. 本地 hook、统一工程入口和 GitHub CI 对同一输入及相同 Sonar 条件执行相同检查；任一必需检查未执行或执行出错时整体不得报告通过。条件不适用的检查必须明确标记，不能宣称已执行。
+6. `git diff --check` 和统一完整验收均有可复核输出；文档格式、链接、导航、发布及 Maven 子检查分别记录，失败项在 `active/` 记录，不伪造为已完成。
 
 本 RFC 在迁移和门禁全部落地、索引已同步、代码与文档抽样复核通过后，才可由维护者将 `status` 从 `draft` 更新为 `verified`。当前草案不授权目录迁移、Git hook 安装、提交或推送。
 
