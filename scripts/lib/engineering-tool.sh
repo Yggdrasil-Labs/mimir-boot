@@ -4,7 +4,7 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 tool_root="$project_root/tools/engineering"
 
-# Maven 在线准备一次；快照只读匹配当前 POM/锁文件的缓存。
+# 只有显式准备和 full 门禁可在线准备；quick 与快照仅读取匹配当前 POM/锁文件的缓存。
 prepare_tool() (
     set -euo pipefail
     local operation="$1" origin common cache_root key cache temporary
@@ -35,8 +35,8 @@ prepare_tool() (
         echo "工程工具缓存已准备：$key"
     else
         if [[ ! -f "$cache/checksums" ]]; then
-            if [[ -n "${QUALITY_ORIGIN_ROOT:-}" ]]; then
-                echo '目标树的工程工具缓存缺失或锁文件已变化；请先运行 bash scripts/engineering.sh prepare。' >&2
+            if [[ "$operation" == --verify || -n "${QUALITY_ORIGIN_ROOT:-}" ]]; then
+                echo '工程工具缓存缺失或锁文件已变化；请先运行 bash scripts/setup-dev.sh。' >&2
                 return 2
             fi
             prepare_tool --prepare || return 2
@@ -55,7 +55,7 @@ prepare_tool() (
     fi
 )
 
-if [[ "${1:-}" == --prepare || "${1:-}" == --ensure ]]; then
+if [[ "${1:-}" == --prepare || "${1:-}" == --ensure || "${1:-}" == --verify ]]; then
     prepare_tool "$1" || exit 2
     exit 0
 fi

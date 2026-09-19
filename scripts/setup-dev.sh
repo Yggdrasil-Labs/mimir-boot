@@ -64,6 +64,13 @@ fi
 
 if ! (
   cd "$project_root"
+  ./mvnw -B -Pci spotless:check
+); then
+  fail 'Spotless 检查或依赖预热失败；请检查格式、网络和 Maven 镜像后重试'
+fi
+
+if ! (
+  cd "$project_root"
   bash scripts/engineering.sh quality --mode quick --source worktree
 ); then
   fail 'quick worktree 检查失败'

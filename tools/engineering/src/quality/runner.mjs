@@ -243,6 +243,15 @@ function processCheck(id, command, result, logPath, required = true, reasonPrefi
     });
 }
 
+async function quickJavaFormatReason(result, logPath) {
+    if (result.exitCode === 0) return '检查返回非零退出码';
+    const source = await readFile(logPath, 'utf8').catch(() => '');
+    if (/offline mode/u.test(source) && /(?:Cannot access|has not been downloaded)/u.test(source)) {
+        return 'Maven 离线缓存不完整，请先运行 bash scripts/setup-dev.sh';
+    }
+    return '检查返回非零退出码';
+}
+
 async function readChildReport(file) {
     try {
         return JSON.parse(await readFile(file, 'utf8'));
@@ -501,10 +510,11 @@ async function runQualityInternal(options) {
     });
     report.toolVersions.engineeringTool = path.join(options.root, 'scripts/lib/engineering-tool.sh');
     if (options.bootstrapLog) {
+        const bootstrapOperation = options.mode === 'quick' ? '--verify' : '--ensure';
         appendResult(report, {
             check: createCheck({
                 id: 'engineering-bootstrap',
-                command: ['bash', 'scripts/lib/engineering-tool.sh', '--ensure'],
+                command: ['bash', 'scripts/lib/engineering-tool.sh', bootstrapOperation],
                 logPath: options.bootstrapLog,
                 status: 'passed',
                 required: true,
@@ -541,8 +551,9 @@ async function runQualityInternal(options) {
         } else if (categories.java) {
             await runIndependentStage(report, 'java-format', async () => {
                 const logPath = path.join(options.reportDirectory, 'logs', 'java-format.log');
-                const result = await runProcess({ command: path.join(options.root, 'mvnw'), args: ['-Pci', 'spotless:check'], cwd: options.root, logPath });
-                appendResult(report, { check: processCheck('java-format', ['./mvnw', '-Pci', 'spotless:check'], result, logPath), findings: [] });
+                const result = await runProcess({ command: path.join(options.root, 'mvnw'), args: ['--offline', '-Pci', 'spotless:check'], cwd: options.root, logPath });
+                const reasonPrefix = await quickJavaFormatReason(result, logPath);
+                appendResult(report, { check: processCheck('java-format', ['./mvnw', '--offline', '-Pci', 'spotless:check'], result, logPath, true, reasonPrefix), findings: [] });
                 return result;
             });
         } else {

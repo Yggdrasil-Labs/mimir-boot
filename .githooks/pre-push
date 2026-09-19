@@ -37,7 +37,7 @@ while read -r local_ref local_oid remote_ref remote_oid extra; do
   fi
   checked_trees[$check_key]=1
   set +e
-  bash "$project_root/scripts/engineering.sh" quality --mode full --source commit --commit "$commit" --base "$remote_oid"
+  bash "$project_root/scripts/engineering.sh" quality --mode quick --source commit --commit "$commit" --base "$remote_oid"
   exit_code=$?
   set -e
   if [[ "$exit_code" -ne 0 ]]; then

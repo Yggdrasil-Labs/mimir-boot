@@ -29,8 +29,13 @@ done
 [[ -z "$report" || "$report" == /* ]] || fail '--report 必须是绝对路径'
 [[ "$list" == false || "$source_kind" == worktree ]] || fail '--list 使用 source=worktree'
 
+# quick 是日常 Hook 的离线入口，只可验证已准备的工程工具缓存；
+# full 则允许在 CI 或显式验收时自动准备。
+tool_operation=--ensure
+if [[ "$mode" == quick ]]; then tool_operation=--verify; fi
+
 if [[ "$list" == true ]]; then
-  bash "$project_root/scripts/lib/engineering-tool.sh" --ensure >&2
+  bash "$project_root/scripts/lib/engineering-tool.sh" "$tool_operation" >&2
   exec bash "$project_root/scripts/lib/engineering-tool.sh" src/quality/runner.mjs --mode "$mode" --source worktree --list
 fi
 
@@ -65,9 +70,9 @@ json_string() {
 
 # 仅在 Node 无法启动时写最小错误证据；正常报告全部由 Node 生成。
 bootstrap_error() {
-  local stage="$1"
-  printf '{"schemaVersion":1,"source":%s,"reportDirectory":%s,"overall":"error","exitCode":2,"checks":[{"id":%s,"status":"error","required":true,"exitCode":2,"reason":"工程工具准备或快照失败，请检查 logs","command":[],"dependsOn":[]}]}\n' \
-    "$(json_string "${effective_source:-$source_kind}")" "$(json_string "$run_directory")" "$(json_string "$stage")" > "$report"
+  local stage="$1" reason="${2:-工程工具准备或快照失败，请检查 logs}"
+  printf '{"schemaVersion":1,"source":%s,"reportDirectory":%s,"overall":"error","exitCode":2,"checks":[{"id":%s,"status":"error","required":true,"exitCode":2,"reason":%s,"command":[],"dependsOn":[]}]}\n' \
+    "$(json_string "${effective_source:-$source_kind}")" "$(json_string "$run_directory")" "$(json_string "$stage")" "$(json_string "$reason")" > "$report"
 }
 
 if [[ "$source_kind" != worktree ]]; then
@@ -106,9 +111,13 @@ else
 fi
 
 bootstrap_started=$SECONDS
-if ! bash "$project_root/scripts/lib/engineering-tool.sh" --ensure > "$run_directory/logs/engineering-bootstrap.log" 2>&1; then
+if ! bash "$project_root/scripts/lib/engineering-tool.sh" "$tool_operation" > "$run_directory/logs/engineering-bootstrap.log" 2>&1; then
   echo "工程工具准备失败：$run_directory/logs/engineering-bootstrap.log" >&2
-  bootstrap_error engineering-bootstrap
+  bootstrap_reason='工程工具准备或快照失败，请检查 logs'
+  if [[ "$mode" == quick ]]; then
+    bootstrap_reason='quick 门禁依赖的工程工具缓存不可用；请先运行 bash scripts/setup-dev.sh，然后检查 logs'
+  fi
+  bootstrap_error engineering-bootstrap "$bootstrap_reason"
   # 保留 Node 不可用时的独立 Maven 诊断能力，但本次门禁始终失败。
   if [[ "$mode" == full ]]; then
     (cd "$project_root" && ./mvnw -B -Pci clean verify) > "$run_directory/logs/java-fallback.log" 2>&1 || true
