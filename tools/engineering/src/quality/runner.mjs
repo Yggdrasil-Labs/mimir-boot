@@ -162,7 +162,7 @@ function installCancellationHandler() {
 }
 
 /** 执行长命令并保证返回前日志流已经 flush，避免读取报告时与写入竞态。 */
-export async function runProcess({ command, args, cwd, logPath }) {
+export async function runProcess({ command, args, cwd, logPath, env = {} }) {
     const started = performance.now();
     let log;
     try {
@@ -201,6 +201,7 @@ export async function runProcess({ command, args, cwd, logPath }) {
         try {
             child = spawn(command, args, {
                 cwd,
+                env: { ...process.env, ...env },
                 stdio: ['ignore', 'pipe', 'pipe'],
                 detached: process.platform !== 'win32',
             });
@@ -322,24 +323,29 @@ function reportChildFailure(report, id, result, validationError) {
     return { ...processResult(2, null, new Error(message)), durationMs: result.durationMs };
 }
 
-async function runEngineeringTool({ root, toolPath, entry, args, logPath }) {
+async function runEngineeringTool({ root, toolPath, entry, args, logPath, env = {} }) {
     return runProcess({
         command: 'bash',
         args: [toolPath, entry, ...args],
         cwd: root,
         logPath,
+        env,
     });
 }
 
 async function runToolCheck(report, options, id, entry, args = [], required = true) {
     const logPath = path.join(options.reportDirectory, 'logs', `${id}.log`);
     const command = ['bash', 'scripts/lib/engineering-tool.sh', entry, ...args];
+    const env = ['release-consumer', 'release-signing'].includes(id)
+        ? { MIMIR_RELEASE_LOG_DIRECTORY: path.join(options.reportDirectory, 'release-logs') }
+        : {};
     const result = await runEngineeringTool({
         root: options.root,
         toolPath: 'scripts/lib/engineering-tool.sh',
         entry,
         args,
         logPath,
+        env,
     });
     appendResult(report, { check: processCheck(id, command, result, logPath, required), findings: [] });
     return result;

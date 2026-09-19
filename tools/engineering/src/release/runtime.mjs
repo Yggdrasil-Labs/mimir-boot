@@ -142,6 +142,15 @@ export function settingsXml({ proxyXml = '', mirrorId = '', mirrorUrl = '' } = {
 `;
 }
 
+/** 仅识别 Maven Resolver 已明确报告的可恢复传输中断；语义失败绝不重试。 */
+export function isTransientMavenTransferFailure(output) {
+    if (typeof output !== 'string' || !output.trim()) return false;
+    if (/(?:Tests run:|Failures:|COMPILATION ERROR|Malformed POM)/iu.test(output)) return false;
+    if (/(?:status code\s*[:=]?\s*4\d\d\b|Unauthorized|Forbidden|Checksum validation failed|PKIX path building failed)/iu.test(output)) return false;
+    // 父 POM 解析失败也可能由传输中断引起；只按明确的底层原因重试。
+    return /(?:Remote host terminated the handshake|SSL peer shut down incorrectly|Connection reset|(?:Read|Connect) timed out|Connection timed out|Premature end of Content-Length delimited message body|status code\s*[:=]?\s*(?:502|503|504)\b)/iu.test(output);
+}
+
 function writeChunk(stream, chunk) {
     if (stream) stream.write(chunk);
     return chunk;
@@ -178,8 +187,13 @@ export function runCommand(command, args = [], {
     env = {},
     logPath = null,
     label = command,
+    timeoutMs = 0,
 } = {}) {
     return new Promise((resolve, reject) => {
+        if (!Number.isInteger(timeoutMs) || timeoutMs < 0) {
+            reject(new EngineeringError(`${label} 的超时必须是非负整数毫秒`, 2));
+            return;
+        }
         let logStream = null;
         try {
             if (logPath) logStream = createWriteStream(logPath, { flags: 'w', encoding: 'utf8' });
@@ -193,12 +207,15 @@ export function runCommand(command, args = [], {
         let cancelledSignal = null;
         let terminationError = null;
         let escalationTimer = null;
+        let timeoutTimer = null;
         const signalHandlers = new Map();
         const cleanup = () => {
             for (const [signal, handler] of signalHandlers) process.removeListener(signal, handler);
             signalHandlers.clear();
             if (escalationTimer) clearTimeout(escalationTimer);
             escalationTimer = null;
+            if (timeoutTimer) clearTimeout(timeoutTimer);
+            timeoutTimer = null;
         };
         const sendSignal = (signal) => {
             if (!child?.pid) return;
@@ -294,6 +311,11 @@ export function runCommand(command, args = [], {
             sendSignal(cancelledSignal);
             scheduleEscalation();
         }
+        if (timeoutMs > 0) {
+            timeoutTimer = setTimeout(() => {
+                finish(null, new EngineeringError(`${label} 超时（${timeoutMs}ms）`, 2));
+            }, timeoutMs);
+        }
         child.stdout.on('data', (chunk) => {
             const text = chunk.toString();
             process.stdout.write(text);
@@ -317,17 +339,48 @@ export function runCommand(command, args = [], {
     });
 }
 
-export async function runMavenStage(stage, args, { logsDirectory, cwd = projectRoot, env = {} } = {}) {
+const MAVEN_RETRY_BASE_DELAY_MS = 1000;
+const MAVEN_RETRY_MAX_DELAY_MS = 5000;
+const MAVEN_STAGE_TIMEOUT_MS = 10 * 60 * 1000;
+
+export async function runMavenStage(stage, args, {
+    logsDirectory,
+    cwd = projectRoot,
+    env = {},
+    maxAttempts = 1,
+    retryArgs = [],
+    timeoutMs = MAVEN_STAGE_TIMEOUT_MS,
+} = {}) {
     if (!logsDirectory) fail('Maven 阶段缺少日志目录', 2);
+    if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 3) fail('Maven 阶段最大尝试次数必须在 1-3 之间', 2);
+    if (!Array.isArray(retryArgs) || !retryArgs.every((argument) => typeof argument === 'string')) fail('Maven 重试参数必须是字符串数组', 2);
+    if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) fail('Maven 阶段超时必须是正整数毫秒', 2);
     await mkdir(logsDirectory, { recursive: true });
-    const logPath = path.join(logsDirectory, `${stage}.log`);
     const command = args[0] || path.join(projectRoot, 'mvnw');
     const commandArgs = args[0] ? args.slice(1) : args;
-    const result = await runCommand(command, commandArgs, { cwd, env, logPath, label: stage });
-    if (result.exitCode !== 0) {
-        fail(`Maven 阶段失败：${stage}（exit=${result.exitCode}${result.signal ? `, signal=${result.signal}` : ''}，日志：${logPath}）`, result.exitCode >= 2 ? 2 : 1);
+    const logPaths = [];
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const logPath = path.join(logsDirectory, `${stage}.attempt-${attempt}.log`);
+        logPaths.push(logPath);
+        const attemptArgs = attempt === 1 ? commandArgs : [...retryArgs, ...commandArgs];
+        const result = await runCommand(command, attemptArgs, {
+            cwd,
+            env,
+            logPath,
+            label: `${stage}（第 ${attempt}/${maxAttempts} 次）`,
+            timeoutMs,
+        });
+        if (result.exitCode === 0) return { ...result, logPath, logPaths, attempts: attempt };
+        const output = await readFile(logPath, 'utf8').catch(() => '');
+        const retryable = attempt < maxAttempts && isTransientMavenTransferFailure(output);
+        if (!retryable) {
+            fail(`Maven 阶段失败：${stage}（exit=${result.exitCode}${result.signal ? `, signal=${result.signal}` : ''}，尝试=${attempt}/${maxAttempts}，日志：${logPaths.join('、')}）`, result.exitCode >= 2 ? 2 : 1);
+        }
+        const retryDelay = Math.min(MAVEN_RETRY_BASE_DELAY_MS * (2 ** (attempt - 1)), MAVEN_RETRY_MAX_DELAY_MS);
+        process.stderr.write(`Maven 阶段 ${stage} 出现可恢复传输错误，将在 ${retryDelay}ms 后进行第 ${attempt + 1}/${maxAttempts} 次尝试。\n`);
+        await delay(retryDelay);
     }
-    return { ...result, logPath };
+    fail(`Maven 阶段重试状态异常：${stage}`, 2);
 }
 
 export async function writeText(file, text, options = {}) {

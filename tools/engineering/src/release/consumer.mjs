@@ -1,6 +1,6 @@
 import { DOMParser } from '@xmldom/xmldom';
 import path from 'node:path';
-import { preserveMetadata } from './maven-cache.mjs';
+import { copyThirdPartyMavenCache, defaultMavenBootstrapRepository, defaultMavenSeedRepository, preserveMetadata } from './maven-cache.mjs';
 
 import {
     assertFixtureMimirRepositoryMarkers,
@@ -32,6 +32,15 @@ import {
 const MAVEN_NAMESPACE = 'http://maven.apache.org/POM/4.0.0';
 const contractRocketMqVersion = '2.3.6';
 const contractElasticsearchVersion = '8.11.0';
+const MAVEN_REPOSITORY_ID = 'central';
+const RETRYABLE_MAVEN_STAGES = new Set([
+    'root-online-clean-deploy',
+    'consumer-online-resolve',
+    'consumer-online-tree',
+    'bom-online-resolve',
+    'bom-online-tree',
+    'failure-online-resolve',
+]);
 
 const parser = new DOMParser({
     onError: (level, message) => { throw new Error(`XML ${level}: ${message}`); },
@@ -116,12 +125,66 @@ async function assertPublishedArtifacts(repositoryDir, revision) {
 }
 
 async function runConsumerMaven(stage, command, logsDirectory) {
-    return runMavenStage(stage, command, { logsDirectory, cwd: projectRoot });
+    return runMavenStage(stage, command, {
+        logsDirectory,
+        cwd: projectRoot,
+        maxAttempts: RETRYABLE_MAVEN_STAGES.has(stage) ? 3 : 1,
+        retryArgs: RETRYABLE_MAVEN_STAGES.has(stage) ? ['-U'] : [],
+    });
+}
+
+async function seedMavenCaches(seedDirectory, cacheDirectories, { announce = true } = {}) {
+    let files = 0;
+    let sourceExists = false;
+    for (const directory of cacheDirectories) {
+        const result = await copyThirdPartyMavenCache(seedDirectory, directory, { repositoryId: MAVEN_REPOSITORY_ID });
+        files += result.files;
+        sourceExists ||= result.sourceExists;
+    }
+    if (announce && sourceExists) process.stderr.write(`发布消费者已从第三方 Maven 缓存种入 ${files} 个文件；Mimir 制品保持隔离。\n`);
+    else if (announce) process.stderr.write(`发布消费者未找到第三方 Maven 缓存，将执行冷缓存准备：${seedDirectory}\n`);
+    return { files, sourceExists };
+}
+
+async function backfillMavenCache({ targetDirectory, sourceDirectories, announce = true }) {
+    let files = 0;
+    for (const directory of sourceDirectories) {
+        const result = await copyThirdPartyMavenCache(directory, targetDirectory, { repositoryId: MAVEN_REPOSITORY_ID, overwrite: false });
+        files += result.files;
+    }
+    if (announce && files > 0) process.stderr.write(`发布消费者已回填 ${files} 个新增第三方 Maven 缓存文件。\n`);
+    return { files };
+}
+
+async function finalizeConsumer({ completed, seedCacheDirectory, cacheDirectories, externalLogsDirectory, logsDirectory, workDirectory }) {
+    if (!completed) {
+        try {
+            const recovered = await backfillMavenCache({ targetDirectory: seedCacheDirectory, sourceDirectories: cacheDirectories, announce: false });
+            if (recovered.files > 0) process.stderr.write(`发布消费者已保留 ${recovered.files} 个已完成的第三方 Maven 下载，供下次重试复用。\n`);
+        } catch (error) {
+            process.stderr.write(`发布消费者缓存恢复失败，保留原始验收错误：${error.message}\n`);
+        }
+    }
+    if (!completed && !externalLogsDirectory) process.stderr.write(`发布消费者失败日志：${logsDirectory}\n`);
+    try {
+        try {
+            if (completed && !externalLogsDirectory) await removeDirectory(logsDirectory);
+        } finally {
+            if (process.env.MIMIR_KEEP_WORKDIR === '1') process.stderr.write(`保留 consumer 临时目录：${workDirectory}\n`);
+            else await removeDirectory(workDirectory);
+        }
+    } catch (error) {
+        if (completed) throw error;
+        process.stderr.write(`发布消费者临时目录清理失败，保留原始验收错误：${error.message}\n`);
+    }
 }
 
 async function main() {
     const workDirectory = await makeTempDirectory('mimir-suite-consumer-');
-    const logsDirectory = path.join(workDirectory, 'logs');
+    const externalLogsDirectory = process.env.MIMIR_RELEASE_LOG_DIRECTORY || '';
+    const logsDirectory = externalLogsDirectory
+        ? path.join(path.resolve(externalLogsDirectory), 'consumer')
+        : await makeTempDirectory('mimir-release-consumer-logs-');
     const consumerDirectory = path.join(workDirectory, 'consumer');
     const bomConsumerDirectory = path.join(workDirectory, 'bom-only-consumer');
     const failureConsumerDirectory = path.join(workDirectory, 'failure-consumer');
@@ -131,14 +194,27 @@ async function main() {
     const consumerCacheDirectory = path.join(workDirectory, 'consumer-m2');
     const bomConsumerCacheDirectory = path.join(workDirectory, 'bom-consumer-m2');
     const failureConsumerCacheDirectory = path.join(workDirectory, 'failure-consumer-m2');
+    const sharedCacheDirectory = path.join(workDirectory, 'third-party-m2');
     const settingsFile = path.join(workDirectory, 'settings.xml');
     const blockedSettingsFile = path.join(workDirectory, 'blocked-settings.xml');
     const mvnw = path.join(projectRoot, 'mvnw');
+    const seedCacheDirectory = defaultMavenSeedRepository();
+    const bootstrapCacheDirectory = defaultMavenBootstrapRepository();
+    let completed = false;
 
     try {
         await runtime.mkdir(logsDirectory, { recursive: true });
         const { proxyXml } = proxySettings();
         await writeSettings(settingsFile, { proxyXml });
+        let seededFromBootstrap = false;
+        let seed = await seedMavenCaches(seedCacheDirectory, [sharedCacheDirectory], { announce: false });
+        if (!seed.sourceExists && !process.env.MIMIR_MAVEN_SEED_REPOSITORY) {
+            seed = await seedMavenCaches(bootstrapCacheDirectory, [sharedCacheDirectory], { announce: false });
+            seededFromBootstrap = seed.sourceExists;
+        }
+        if (seed.sourceExists) process.stderr.write(`发布消费者已从${seededFromBootstrap ? '只读 Maven 引导' : '专用 Maven'}缓存种入 ${seed.files} 个文件；Mimir 制品保持隔离。\n`);
+        if (!seed.sourceExists) process.stderr.write(`发布消费者未找到第三方 Maven 缓存，将执行冷缓存准备：${seedCacheDirectory}\n`);
+        await seedMavenCaches(sharedCacheDirectory, [producerCacheDirectory], { announce: false });
         const revision = await readPomProperty(path.join(projectRoot, 'pom.xml'), 'revision');
         const bomRocketMqVersion = await readPomProperty(path.join(projectRoot, 'mimir-boot-bom/pom.xml'), 'rocketmq.version');
         const bomElasticsearchVersion = await readPomProperty(path.join(projectRoot, 'mimir-boot-bom/pom.xml'), 'elasticsearch.version');
@@ -153,10 +229,11 @@ async function main() {
         const producerProjects = ['-pl', producerSelector, '-am'];
         const onlineMaven = [mvnw, '-B', '-s', settingsFile, '-f', path.join(projectRoot, 'pom.xml'), `-Dmaven.repo.local=${producerCacheDirectory}`, ...producerProjects];
         await runConsumerMaven('root-online-clean-deploy', [...onlineMaven, 'clean', 'deploy', '-Dmaven.test.skip=true', '-Dmaven.source.skip=true', '-Dmaven.javadoc.skip=true', '-Dmaven.deploy.skip=true', '-Dgpg.skip=true'], logsDirectory);
+        await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [producerCacheDirectory], announce: false });
 
         await runtime.mkdir(blockedRepositoryDirectory, { recursive: true });
-        await preserveMetadata(producerCacheDirectory, blockedRepositoryDirectory, 'central');
-        await writeSettings(blockedSettingsFile, { mirrorId: 'central', mirrorUrl: `file://${blockedRepositoryDirectory}` });
+        await preserveMetadata(producerCacheDirectory, blockedRepositoryDirectory, MAVEN_REPOSITORY_ID);
+        await writeSettings(blockedSettingsFile, { mirrorId: MAVEN_REPOSITORY_ID, mirrorUrl: `file://${blockedRepositoryDirectory}` });
         const isolatedMaven = [mvnw, '-B', '-o', '-s', blockedSettingsFile, '-f', path.join(projectRoot, 'pom.xml'), `-Dmaven.repo.local=${producerCacheDirectory}`, ...producerProjects];
         await runConsumerMaven('root-isolated-clean', [...isolatedMaven, 'clean'], logsDirectory);
         const deployMaven = [mvnw, '-B', '-s', blockedSettingsFile, '-f', path.join(projectRoot, 'pom.xml'), `-Dmaven.repo.local=${producerCacheDirectory}`, ...producerProjects];
@@ -169,6 +246,7 @@ async function main() {
         for (const artifact of compactArtifacts) await assertCompactPom(await findPublishedPom(repositoryDirectory, revision, artifact), artifact);
 
         await writeConsumerFixture(consumerDirectory, revision, repositoryDirectory);
+        await seedMavenCaches(sharedCacheDirectory, [consumerCacheDirectory], { announce: false });
         if (await fileExists(path.join(consumerCacheDirectory, 'io/github/yggdrasil-labs'))) fail('consumer cache 在首次解析前不应已有 Mimir 制品');
         const onlineConsumerMaven = [mvnw, '-B', '-s', settingsFile, '-f', path.join(consumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${consumerCacheDirectory}`];
         await runConsumerMaven('consumer-online-resolve', [...onlineConsumerMaven, 'dependency:resolve', `-DoutputFile=${path.join(consumerDirectory, 'target/online-dependency-resolve.txt')}`], logsDirectory);
@@ -176,6 +254,7 @@ async function main() {
         await runConsumerMaven('consumer-online-clean-verify', [...onlineConsumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 缺少 ParentLifecycleIT Failsafe 报告');
         await assertFixtureMimirRepositoryMarkers(consumerCacheDirectory, ['mimir-boot', 'mimir-boot-parent', 'mimir-boot-common', ...starterArtifacts]);
+        await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [consumerCacheDirectory], announce: false });
 
         const consumerMaven = [mvnw, '-B', '-o', '-s', blockedSettingsFile, '-f', path.join(consumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${consumerCacheDirectory}`];
         await runConsumerMaven('consumer-isolated-resolve', [...consumerMaven, 'dependency:resolve', `-DoutputFile=${path.join(consumerDirectory, 'target/dependency-resolve.txt')}`], logsDirectory);
@@ -187,6 +266,7 @@ async function main() {
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 隔离执行缺少 ParentLifecycleIT Failsafe 报告');
 
         await writeBomConsumerFixture(bomConsumerDirectory, revision, repositoryDirectory);
+        await seedMavenCaches(sharedCacheDirectory, [bomConsumerCacheDirectory], { announce: false });
         if (await fileExists(path.join(bomConsumerCacheDirectory, 'io/github/yggdrasil-labs'))) fail('BOM-only consumer cache 在首次解析前不应已有 Mimir 制品');
         const bomOnlineMaven = [mvnw, '-B', '-s', settingsFile, '-f', path.join(bomConsumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${bomConsumerCacheDirectory}`];
         await runConsumerMaven('bom-online-resolve', [...bomOnlineMaven, 'dependency:resolve', `-DoutputFile=${path.join(bomConsumerDirectory, 'target/online-dependency-resolve.txt')}`], logsDirectory);
@@ -202,8 +282,10 @@ async function main() {
             `co.elastic.clients:elasticsearch-java:jar:${contractElasticsearchVersion}`,
         ]) if (!bomTree.includes(coordinate)) fail(`BOM-only 隔离依赖树缺少 ${coordinate}`);
         await runConsumerMaven('bom-isolated-verify', [...bomConsumerMaven, 'clean', 'verify'], logsDirectory);
+        await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [bomConsumerCacheDirectory], announce: false });
 
         await writeFailureConsumerFixture(failureConsumerDirectory, revision, repositoryDirectory);
+        await seedMavenCaches(sharedCacheDirectory, [failureConsumerCacheDirectory], { announce: false });
         if (await fileExists(path.join(failureConsumerCacheDirectory, 'io/github/yggdrasil-labs'))) fail('failure consumer cache 在首次解析前不应已有 Mimir 制品');
         const failureMaven = [mvnw, '-B', '-s', settingsFile, '-f', path.join(failureConsumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${failureConsumerCacheDirectory}`];
         await runConsumerMaven('failure-online-resolve', [...failureMaven, 'dependency:resolve', `-DoutputFile=${path.join(failureConsumerDirectory, 'target/online-dependency-resolve.txt')}`], logsDirectory);
@@ -215,16 +297,20 @@ async function main() {
         const failureReportText = await runtime.readFile(failureReport, 'utf8');
         if (!failureReportText.includes('AlwaysFailIT') || !failureReportText.includes('<failure')) fail('AlwaysFailIT Failsafe 报告未记录失败');
 
+        await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [failureConsumerCacheDirectory], announce: false });
+        await backfillMavenCache({ targetDirectory: seedCacheDirectory, sourceDirectories: [producerCacheDirectory, consumerCacheDirectory, bomConsumerCacheDirectory, failureConsumerCacheDirectory] });
+        completed = true;
         process.stdout.write(`隔离发布消费者验证通过：Parent、独立 BOM-only consumer、starter flatten 抽查和故意失败 Failsafe 门禁均符合版本 ${revision}。\n`);
     } finally {
-        if (process.env.MIMIR_KEEP_WORKDIR === '1') process.stderr.write(`保留 consumer 临时目录：${workDirectory}\n`);
-        else await removeDirectory(workDirectory);
+        await finalizeConsumer({ completed, seedCacheDirectory, cacheDirectories: [producerCacheDirectory, consumerCacheDirectory, bomConsumerCacheDirectory, failureConsumerCacheDirectory], externalLogsDirectory, logsDirectory, workDirectory });
     }
 }
 
 if (isMainModule(import.meta.url)) finishMain(main());
 
 export {
+    backfillMavenCache,
+    finalizeConsumer,
     assertCompactPom,
     assertParentFailsafe,
     parsePom,

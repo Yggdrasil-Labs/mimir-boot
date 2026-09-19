@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { preserveMetadata } from './maven-cache.mjs';
+import { copyThirdPartyMavenCache, defaultMavenBootstrapRepository, defaultMavenSeedRepository, preserveMetadata } from './maven-cache.mjs';
 
 import {
     createProxySettings,
@@ -11,6 +11,7 @@ import {
     projectRoot,
     removeDirectory,
     runCommand,
+    runMavenStage,
     settingsXml,
     runtime,
     writeText,
@@ -22,12 +23,8 @@ function parseArgs(argv) {
     fail('用法: signing.mjs [--preheat]', 2);
 }
 
-async function runMaven(command, args, label, env = {}) {
-    const result = await runCommand(command, args, { cwd: projectRoot, env, label });
-    if (result.exitCode !== 0) {
-        fail(`Maven 阶段失败：${label}（exit=${result.exitCode}${result.signal ? `, signal=${result.signal}` : ''}）`, result.exitCode >= 2 ? 2 : 1);
-    }
-    return result;
+async function runMaven(command, args, label, { logsDirectory, env = {}, maxAttempts = 1, retryArgs = [] } = {}) {
+    return runMavenStage(label, [command, ...args], { logsDirectory, cwd: projectRoot, env, maxAttempts, retryArgs });
 }
 
 async function writeMavenSettings(file, { proxyXml, mirrorId = '', mirrorUrl = '' }) {
@@ -44,12 +41,18 @@ async function main(argv = process.argv.slice(2)) {
     const failedRepositoryDirectory = path.join(workDirectory, 'failed-repository');
     const blockedRepositoryDirectory = path.join(workDirectory, 'blocked-remote');
     const cacheDirectory = path.join(workDirectory, 'm2');
-    const seedCacheDirectory = process.env.MIMIR_RELEASE_SIGNING_SEED_M2 || '';
+    const seedCacheDirectory = process.env.MIMIR_RELEASE_SIGNING_SEED_M2 || defaultMavenSeedRepository();
+    const bootstrapCacheDirectory = defaultMavenBootstrapRepository();
     const fixture = path.join(workDirectory, 'gpg-failure-fixture.sh');
     const settingsFile = path.join(workDirectory, 'settings.xml');
     const preheatSettingsFile = path.join(workDirectory, 'preheat-settings.xml');
+    const externalLogsDirectory = process.env.MIMIR_RELEASE_LOG_DIRECTORY || '';
+    const logsDirectory = externalLogsDirectory
+        ? path.join(path.resolve(externalLogsDirectory), 'signing')
+        : await makeTempDirectory('mimir-release-signing-logs-');
     const previousUmask = process.umask(0o077);
     const mvnw = path.join(projectDirectory, 'mvnw');
+    let completed = false;
 
     try {
         const { proxyXml } = createProxySettings();
@@ -59,25 +62,23 @@ async function main(argv = process.argv.slice(2)) {
         await runtime.mkdir(failedRepositoryDirectory, { recursive: true });
         await runtime.mkdir(blockedRepositoryDirectory, { recursive: true });
         await runtime.mkdir(cacheDirectory, { recursive: true });
+        await runtime.mkdir(logsDirectory, { recursive: true });
         await runtime.stat(gpgHome);
         await runtime.stat(verifyHome);
 
-        if (seedCacheDirectory) {
-            try {
-                if (!(await runtime.stat(seedCacheDirectory)).isDirectory()) fail(`MIMIR_RELEASE_SIGNING_SEED_M2 不是目录：${seedCacheDirectory}`, 2);
-            } catch (error) {
-                if (error instanceof Error && error.exitCode) throw error;
-                fail(`MIMIR_RELEASE_SIGNING_SEED_M2 不是目录：${seedCacheDirectory}`, 2);
-            }
-            await runtime.cp(seedCacheDirectory, cacheDirectory, { recursive: true, force: true });
-        } else if (!preheat) {
-            fail('空缓存验证请使用 --preheat；离线验证请显式设置 MIMIR_RELEASE_SIGNING_SEED_M2。', 2);
+        let seededFromBootstrap = false;
+        let seed = await copyThirdPartyMavenCache(seedCacheDirectory, cacheDirectory, { repositoryId: 'maven-central' });
+        if (!seed.sourceExists && !process.env.MIMIR_RELEASE_SIGNING_SEED_M2 && !process.env.MIMIR_MAVEN_SEED_REPOSITORY) {
+            seed = await copyThirdPartyMavenCache(bootstrapCacheDirectory, cacheDirectory, { repositoryId: 'maven-central' });
+            seededFromBootstrap = seed.sourceExists;
         }
+        if (seed.sourceExists) process.stderr.write(`发布签名已从${seededFromBootstrap ? '只读 Maven 引导' : '第三方 Maven'}缓存种入 ${seed.files} 个文件；Mimir 制品保持隔离。\n`);
+        else if (!preheat) fail(`未找到第三方 Maven 缓存：${seedCacheDirectory}；请使用 --preheat 或设置 MIMIR_RELEASE_SIGNING_SEED_M2。`, 2);
 
         if (preheat) {
             await writeMavenSettings(preheatSettingsFile, { proxyXml, mirrorId: 'maven-central', mirrorUrl: 'https://repo.maven.apache.org/maven2' });
-            await runMaven(mvnw, ['-B', '-s', preheatSettingsFile, '-f', path.join(projectDirectory, 'pom.xml'), 'clean', `-Dmaven.repo.local=${cacheDirectory}`], 'signing-preheat-clean');
-            await runMaven(mvnw, ['-B', '-s', preheatSettingsFile, '-f', path.join(projectDirectory, 'pom.xml'), 'deploy', '-Dmaven.test.skip=true', `-Dmaven.repo.local=${cacheDirectory}`, '-Dmaven.deploy.skip=true', '-Dgpg.skip=true'], 'signing-preheat-deploy');
+            await runMaven(mvnw, ['-B', '-s', preheatSettingsFile, '-f', path.join(projectDirectory, 'pom.xml'), 'clean', `-Dmaven.repo.local=${cacheDirectory}`], 'signing-preheat-clean', { logsDirectory, maxAttempts: 3, retryArgs: ['-U'] });
+            await runMaven(mvnw, ['-B', '-s', preheatSettingsFile, '-f', path.join(projectDirectory, 'pom.xml'), 'deploy', '-Dmaven.test.skip=true', `-Dmaven.repo.local=${cacheDirectory}`, '-Dmaven.deploy.skip=true', '-Dgpg.skip=true'], 'signing-preheat-deploy', { logsDirectory, maxAttempts: 3, retryArgs: ['-U'] });
         }
 
         await preserveMetadata(cacheDirectory, blockedRepositoryDirectory, 'maven-central');
@@ -99,8 +100,8 @@ async function main(argv = process.argv.slice(2)) {
             '-Dgpg.skip=false', '-Dgpg.executable=gpg', `-DaltDeploymentRepository=fixture::default::file://${repositoryDirectory}`,
         ];
         const cleanCommand = ['-B', '-s', settingsFile, '-f', path.join(projectDirectory, 'pom.xml'), 'clean', `-Dmaven.repo.local=${cacheDirectory}`];
-        await runMaven(mvnw, cleanCommand, 'signing-clean');
-        await runMaven(mvnw, deployCommand, 'signing-deploy', gpgEnv);
+        await runMaven(mvnw, cleanCommand, 'signing-clean', { logsDirectory });
+        await runMaven(mvnw, deployCommand, 'signing-deploy', { logsDirectory, env: gpgEnv });
 
         const artifacts = (await listFiles(repositoryDirectory)).filter((file) => file.endsWith('.pom') || file.endsWith('.jar'));
         if (artifacts.length === 0) fail('签名 fixture 未生成任何 POM/JAR 制品');
@@ -117,7 +118,7 @@ async function main(argv = process.argv.slice(2)) {
         }
 
         await writeText(fixture, '#!/usr/bin/env bash\nexit 7\n', { mode: 0o700 });
-        await runMaven(mvnw, cleanCommand, 'signing-failed-clean');
+        await runMaven(mvnw, cleanCommand, 'signing-failed-clean', { logsDirectory });
         const failedResult = await runCommand(mvnw, [
             '-B', '-s', settingsFile, '-f', path.join(projectDirectory, 'pom.xml'), 'deploy',
             '-Dmaven.test.skip=true', `-Dmaven.repo.local=${cacheDirectory}`, '-Dmaven.deploy.skip=false',
@@ -125,13 +126,18 @@ async function main(argv = process.argv.slice(2)) {
         ], { cwd: projectDirectory, env: gpgEnv, label: 'signing-failure-fixture' });
         if (failedResult.exitCode === 0) fail('返回 7 的 GPG fixture 未阻断 deploy');
         if ((await listFiles(failedRepositoryDirectory)).length > 0) fail('失败签名 deploy 不得在隔离仓库留下半成功制品');
+        const backfilled = await copyThirdPartyMavenCache(cacheDirectory, seedCacheDirectory, { repositoryId: 'maven-central', overwrite: false });
+        if (backfilled.files > 0) process.stderr.write(`发布签名已回填 ${backfilled.files} 个新增第三方 Maven 缓存文件。\n`);
+        completed = true;
         process.stdout.write(`发布签名验证通过：${artifacts.length} 个制品及附属制品均由临时密钥签名，失败 fixture 已阻断部署。\n`);
     } finally {
         process.umask(previousUmask);
+        if (!completed && !externalLogsDirectory) process.stderr.write(`发布签名失败日志：${logsDirectory}\n`);
+        if (completed && !externalLogsDirectory) await removeDirectory(logsDirectory);
         await removeDirectory(workDirectory);
     }
 }
 
 if (isMainModule(import.meta.url)) finishMain(main());
 
-export { main, parseArgs };
+export { main, parseArgs, runMaven };

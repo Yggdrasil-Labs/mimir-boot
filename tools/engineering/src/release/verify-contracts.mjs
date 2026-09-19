@@ -6,9 +6,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertFixturePublishedArtifact } from './artifact-contract.mjs';
+import { copyThirdPartyMavenCache } from './maven-cache.mjs';
 import { verifyPublic } from './public.mjs';
 import { parsePortalState } from './portal-state.mjs';
-import { errorExitCode, toolEnvironmentError } from './runtime.mjs';
+import { runMaven as runSigningMaven } from './signing.mjs';
+import { backfillMavenCache, finalizeConsumer } from './consumer.mjs';
+import { errorExitCode, isTransientMavenTransferFailure, runMavenStage, toolEnvironmentError } from './runtime.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const normalize = (text) => text.split('\n').map((line) => line.trim()).filter(Boolean).join('\n');
@@ -123,6 +126,120 @@ async function verifyArtifactLayout(directory) {
     await assertFixturePublishedArtifact(repository, '2.2.1-SNAPSHOT', 'mimir-boot');
 }
 
+async function verifyMavenCacheFixture(directory) {
+    const source = path.join(directory, 'maven-seed');
+    const target = path.join(directory, 'maven-target');
+    const dependency = path.join(source, 'org/example/dependency/1.0.0');
+    const excluded = path.join(source, 'io/github/yggdrasil-labs/mimir-boot/2.2.2');
+    await mkdir(dependency, { recursive: true });
+    await mkdir(excluded, { recursive: true });
+    await writeFile(path.join(dependency, 'dependency-1.0.0.jar'), 'third-party');
+    await writeFile(path.join(dependency, 'dependency-1.0.0.jar.sha1'), 'checksum');
+    await writeFile(path.join(dependency, '_remote.repositories'), '#NOTE\ndependency-1.0.0.jar>maven-central=\n');
+    await writeFile(path.join(dependency, 'dependency-1.0.0.jar.lastUpdated'), 'transient failure');
+    await writeFile(path.join(dependency, 'dependency-1.0.0.pom.part'), 'partial');
+    await writeFile(path.join(dependency, 'resolver-status.properties'), 'stale failure');
+    await writeFile(path.join(source, 'org/example/maven-metadata-maven-central.xml'), '<metadata/>');
+    await writeFile(path.join(excluded, 'mimir-boot-2.2.2.jar'), 'must not leak');
+
+    const copied = await copyThirdPartyMavenCache(source, target, { repositoryId: 'central' });
+    assert.ok(copied.files > 0, '第三方 Maven 缓存应复制有效制品');
+    assert.equal(await readFile(path.join(target, 'org/example/dependency/1.0.0/dependency-1.0.0.jar'), 'utf8'), 'third-party');
+    assert.match(await readFile(path.join(target, 'org/example/dependency/1.0.0/_remote.repositories'), 'utf8'), />central=/u);
+    await assert.rejects(readFile(path.join(target, 'io/github/yggdrasil-labs/mimir-boot/2.2.2/mimir-boot-2.2.2.jar')));
+    await assert.rejects(readFile(path.join(target, 'org/example/dependency/1.0.0/dependency-1.0.0.jar.lastUpdated')));
+    await assert.rejects(readFile(path.join(target, 'org/example/dependency/1.0.0/dependency-1.0.0.pom.part')));
+    await assert.rejects(readFile(path.join(target, 'org/example/dependency/1.0.0/resolver-status.properties')));
+    assert.equal(await readFile(path.join(target, 'org/example/maven-metadata-central.xml'), 'utf8'), '<metadata/>');
+    assert.ok(await readFile(path.join(target, 'org/example/maven-metadata-central.xml.sha1'), 'utf8'));
+
+    await writeFile(path.join(dependency, 'dependency-1.0.0.pom'), '<project/>');
+    await writeFile(path.join(dependency, '_remote.repositories'), 'dependency-1.0.0.pom>maven-central=\n');
+    await copyThirdPartyMavenCache(source, target, { repositoryId: 'central', overwrite: false });
+    const mergedMarkers = await readFile(path.join(target, 'org/example/dependency/1.0.0/_remote.repositories'), 'utf8');
+    assert.match(mergedMarkers, /dependency-1\.0\.0\.jar>central=/u);
+    assert.match(mergedMarkers, /dependency-1\.0\.0\.pom>central=/u, '增量回填必须合并新增制品的来源标记');
+
+    assert.equal(isTransientMavenTransferFailure('Remote host terminated the handshake'), true);
+    assert.equal(isTransientMavenTransferFailure('Could not transfer artifact: Connection reset'), true);
+    assert.equal(isTransientMavenTransferFailure('Tests run: 1, Failures: 1'), false);
+    assert.equal(isTransientMavenTransferFailure('status code: 401'), false);
+    assert.equal(isTransientMavenTransferFailure('Could not transfer artifact example:private:jar:1.0.0 from/to central: status code: 401'), false);
+    assert.equal(isTransientMavenTransferFailure('Could not find artifact example:missing:jar:1.0.0'), false);
+    assert.equal(isTransientMavenTransferFailure('Could not find artifact example:missing:jar:1.0.0 in fixture\nCould not transfer artifact example:missing:jar:1.0.0 from/to central: Remote host terminated the handshake'), true);
+}
+
+async function verifyConsumerCacheFlow() {
+    const source = await readFile(path.join(root, 'tools/engineering/src/release/consumer.mjs'), 'utf8');
+    for (const cache of ['producerCacheDirectory', 'consumerCacheDirectory', 'bomConsumerCacheDirectory', 'failureConsumerCacheDirectory']) {
+        assert.ok(source.includes(`backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [${cache}]`), `${cache} 必须回填到共享缓存`);
+    }
+}
+
+function verifyTransferClassification() {
+    assert.equal(isTransientMavenTransferFailure('Non-resolvable parent POM: Could not transfer artifact example:parent:pom:1.0: Remote host terminated the handshake'), true);
+    for (const reason of ['status code: 400', 'status code: 401', 'status code: 403', 'status code: 404', 'Checksum validation failed', 'PKIX path building failed']) {
+        assert.equal(isTransientMavenTransferFailure(`Could not transfer artifact example:artifact:jar:1.0: ${reason}`), false, reason);
+    }
+    assert.equal(isTransientMavenTransferFailure('Could not transfer artifact example:artifact:jar:401: Connection reset'), true);
+    assert.equal(isTransientMavenTransferFailure('Non-resolvable parent POM: Could not find artifact example:parent:pom:1.0'), false);
+}
+
+async function verifySigningRetry(directory) {
+    const executable = path.join(directory, 'maven-retry-fixture');
+    await writeFile(executable, '#!/usr/bin/env bash\nif [[ ! -f "$MIMIR_CONTRACT_RETRY_FILE" ]]; then\n  touch "$MIMIR_CONTRACT_RETRY_FILE"\n  echo "Remote host terminated the handshake" >&2\n  exit 1\nfi\n[[ "${1:-}" == "-U" ]]\n', { mode: 0o700 });
+    const result = await runSigningMaven(executable, [], 'signing-retry-contract', {
+        logsDirectory: path.join(directory, 'signing-retry'),
+        env: { MIMIR_CONTRACT_RETRY_FILE: path.join(directory, 'signing-attempt') },
+        maxAttempts: 3,
+        retryArgs: ['-U'],
+    });
+    assert.equal(result.attempts, 2, '签名重试必须透传 -U');
+}
+
+async function verifyConsumerRecovery(directory) {
+    const workDirectory = path.join(directory, 'failed-consumer');
+    const cache = path.join(workDirectory, 'stage-cache');
+    await mkdir(path.join(cache, 'org/example'), { recursive: true });
+    await writeFile(path.join(cache, 'org/example/download.jar'), 'completed-download');
+    const shared = path.join(directory, 'shared-cache');
+    await backfillMavenCache({ targetDirectory: shared, sourceDirectories: [cache], announce: false });
+    assert.equal(await readFile(path.join(shared, 'org/example/download.jar'), 'utf8'), 'completed-download');
+    const invalidSeed = path.join(directory, 'seed-is-file');
+    await writeFile(invalidSeed, 'not-a-directory');
+    const original = new Error('原始 Maven 失败');
+    await assert.rejects(async () => {
+        try { throw original; } finally {
+            await finalizeConsumer({ completed: false, seedCacheDirectory: invalidSeed, cacheDirectories: [cache], externalLogsDirectory: directory, logsDirectory: directory, workDirectory });
+        }
+    }, (error) => error === original, '回填异常不得覆盖原始失败');
+    if (process.env.MIMIR_KEEP_WORKDIR !== '1') await assert.rejects(readFile(path.join(cache, 'org/example/download.jar')), { code: 'ENOENT' });
+}
+
+async function verifyMavenRetryFixture(directory) {
+    const logsDirectory = path.join(directory, 'maven-retry-logs');
+    const attemptFile = path.join(directory, 'maven-retry-attempt');
+    const script = `import { readFile, writeFile } from 'node:fs/promises';
+const file = process.env.MIMIR_CONTRACT_RETRY_FILE;
+const attempt = Number(await readFile(file, 'utf8').catch(() => '0')) + 1;
+await writeFile(file, String(attempt));
+if (attempt === 1) { console.error('Remote host terminated the handshake'); process.exit(1); }
+process.stdout.write('retry recovered\\n');`;
+    const result = await runMavenStage('transient-maven-fixture', [process.execPath, '--input-type=module', '--eval', script], {
+        logsDirectory,
+        env: { MIMIR_CONTRACT_RETRY_FILE: attemptFile },
+        maxAttempts: 3,
+    });
+    assert.equal(result.attempts, 2);
+    assert.match(await readFile(path.join(logsDirectory, 'transient-maven-fixture.attempt-1.log'), 'utf8'), /handshake/u);
+    assert.match(await readFile(path.join(logsDirectory, 'transient-maven-fixture.attempt-2.log'), 'utf8'), /retry recovered/u);
+
+    await assert.rejects(runMavenStage('timeout-maven-fixture', [process.execPath, '--eval', 'setTimeout(() => {}, 2000)'], {
+        logsDirectory,
+        timeoutMs: 50,
+    }), /超时/u);
+}
+
 async function verifyPublicFixture(directory) {
     const version = '2.2.2';
     const artifactPath = (artifact, extension) => `/io/github/yggdrasil-labs/${artifact}/${version}/${artifact}-${version}.${extension}`;
@@ -180,6 +297,12 @@ export async function verifyContracts() {
     try {
         await verifyWorkflow(directory);
         await verifyArtifactLayout(directory);
+        await verifyConsumerCacheFlow();
+        await verifyConsumerRecovery(directory);
+        verifyTransferClassification();
+        await verifySigningRetry(directory);
+        await verifyMavenCacheFixture(directory);
+        await verifyMavenRetryFixture(directory);
         await verifyPublicFixture(directory);
         process.stdout.write('发布工作流、制品目录、Portal 观察和公开制品重试契约均通过。\n');
     } finally {
