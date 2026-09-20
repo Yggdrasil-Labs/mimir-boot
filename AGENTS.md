@@ -8,7 +8,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 
 ## 全局规范
 
-1. 智能体优先遵循项目规范（`AGENTS.md`、`ARCHITECTURE.md`、`docs/design-docs/`）。项目约束 > 智能体全局约束。
+1. 智能体优先遵循项目规范（`AGENTS.md`、`docs/standards/`、`ARCHITECTURE.md`、`docs/design-docs/`）。项目约束 > 智能体全局约束。
 2. Git Conventional Commits，message 中文。格式：`<type>(<scope>): <中文描述>`。
 3. 文档与代码冲突时以代码为准并回写文档。
 4. 默认保持向后兼容，不静默修改公共配置语义、发布结构、公开接口或依赖体系。
@@ -18,41 +18,39 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 
 ## 导航
 
-### A. 长期约束（只读，修改需架构 RFC）
+### A. 架构与规范（实质性变更需架构 RFC）
 
+- 项目规范与文档治理：[`docs/index.md#项目规范`](./docs/index.md#项目规范)
+- 架构设计与决策：[`docs/design-docs/index.md`](./docs/design-docs/index.md)
 - 系统边界与依赖方向：[`ARCHITECTURE.md`](./ARCHITECTURE.md)
-- 工程信条：[`docs/design-docs/core-beliefs.md`](./docs/design-docs/core-beliefs.md)
-- 模块边界：[`docs/design-docs/module-boundaries.md`](./docs/design-docs/module-boundaries.md)
-- 业务领域划分：[`docs/DOMAINS.md`](./docs/DOMAINS.md)
-- 安全策略：[`docs/SECURITY.md`](./docs/SECURITY.md)
-- 可靠性标准：[`docs/RELIABILITY.md`](./docs/RELIABILITY.md)
+- 工程信条：[`docs/standards/core-beliefs.md`](./docs/standards/core-beliefs.md)
+- 模块划分与依赖设计：[`docs/design-docs/arch-module-dependencies.md`](./docs/design-docs/arch-module-dependencies.md)
+- 安全约束：[`docs/standards/security.md`](./docs/standards/security.md)
+- 可靠性约束：[`docs/standards/reliability.md`](./docs/standards/reliability.md)
 
-### B. 流转文档
+### B. 工作指南与流转文档
 
 - 活跃版本：[`docs/active/index.md`](./docs/active/index.md)
 - 版本归档：[`docs/archive/index.md`](./docs/archive/index.md)
 - 技术债：[`docs/active/tech-debt-tracker.md`](./docs/active/tech-debt-tracker.md)
-- 设计决策：[`docs/design-docs/index.md`](./docs/design-docs/index.md)
+- 开发与环境准备：[`docs/engineering/development.md`](./docs/engineering/development.md)
 
 ### C. 参考与产物
 
-- 产品思维：[`docs/PRODUCT_SENSE.md`](./docs/PRODUCT_SENSE.md)
-- 产品能力说明：[`docs/product-specs/index.md`](./docs/product-specs/index.md)
-- 质量评分：[`docs/QUALITY_SCORE.md`](./docs/QUALITY_SCORE.md)
 - 文档总索引：[`docs/index.md`](./docs/index.md)
 
 ## 决策地图
 
 | 改什么 | 去哪里 |
 |--------|--------|
-| 新增/升级第三方依赖版本 | `mimir-boot-bom/pom.xml` |
-| 修改构建插件、质量门禁 | `mimir-boot-parent/pom.xml` |
+| 新增/升级第三方依赖版本 | `mimir-boot-bom/pom.xml` + [`工程规程`](./docs/engineering/development.md) |
+| 修改构建插件、质量门禁 | `mimir-boot-parent/pom.xml` + [`测试规程`](./docs/engineering/testing.md) |
 | 修改公共模型（异常/响应/分页/枚举） | `mimir-boot-common` |
-| 新增 Starter | `mimir-boot-starters/` + BOM 注册 + 聚合模块注册 |
+| 新增 Starter | [`新增 Starter 规程`](./docs/engineering/new-starter.md) |
 | 修改已有 Starter 自动装配 | 对应 starter 目录 |
-| 修改 CI/CD 流水线 | `.github/workflows/` |
+| 修改 CI/CD 流水线 | `.github/workflows/` + [`测试规程`](./docs/engineering/testing.md) / [`发布规程`](./docs/engineering/release.md) |
 | 升级 Spring Boot / Spring Cloud 主版本 | 高风险，需计划 + RFC |
-| 修改发布策略或版本号 | 根 `pom.xml` 的 `revision` + release 工作流 |
+| 修改发布策略或版本号 | 根 `pom.xml` 的 `revision` + [`发布规程`](./docs/engineering/release.md) |
 
 ## 开发命令
 

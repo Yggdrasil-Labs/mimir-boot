@@ -154,9 +154,9 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 
 下列坐标当前属于“仅管理”，不能依据 BOM 声明推断为已验证的运行时组合：
 
-- `org.mongodb:mongodb-driver-sync:4.11.5` 与 Spring Boot 管理的 MongoDB 驱动族存在版本不一致风险，详见 [TD-040](../docs/active/tech-debt-tracker.md#td-040-mongodb-驱动族)。
-- `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1` 与当前 Spring Boot 3.3 基线存在兼容性风险，详见 [TD-041](../docs/active/tech-debt-tracker.md#td-041-springdoc-boot-兼容性)。
-- `com.squareup.okhttp3:okhttp:5.5.0` 的 JVM 消费坐标仍待确认，详见 [TD-037](../docs/active/tech-debt-tracker.md#td-037-okhttp-jvm-制品)。
+- `org.mongodb:mongodb-driver-sync:4.11.5` 与 Spring Boot 管理的 MongoDB 驱动族存在版本不一致风险，接入前请在目标应用中验证。
+- `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1` 与当前 Spring Boot 3.3 基线存在兼容性风险，接入前请在目标应用中验证。
+- `com.squareup.okhttp3:okhttp:5.5.0` 的 JVM 消费坐标仍待确认，接入前请在目标应用中验证。
 
 接入方使用这些坐标前，应先完成独立的消费者编译或运行验证。
 
@@ -257,6 +257,7 @@ mvn versions:display-dependency-updates
 - [Mimir Boot Parent](../mimir-boot-parent/README.md) - 父 POM 说明
 - [Mimir Boot Common](../mimir-boot-common/README.md) - 公共组件说明
 - [项目根目录 README](../README.md) - 项目总体说明
+- [发布规程](../docs/engineering/release.md)
 
 ## 🔍 查看完整依赖列表
 

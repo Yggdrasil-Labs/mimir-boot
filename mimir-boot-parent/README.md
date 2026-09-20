@@ -136,7 +136,7 @@ mvn clean verify -Pprecheck
 
 - ✅ 执行单元测试
 - ✅ 检查代码覆盖率（指令覆盖率 ≥ 60%，分支覆盖率 ≥ 50%）
-- ⚠️ 执行 Spotless 格式检查；子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制
+- 执行 Spotless 格式检查
 - 🔍 适合提交前验证代码质量
 
 **配置说明**：
@@ -156,7 +156,7 @@ mvn clean verify -Pci
 
 - ✅ 执行单元测试
 - ✅ 检查代码覆盖率（指令覆盖率 ≥ 60%，分支覆盖率 ≥ 50%）
-- ⚠️ 执行代码格式检查（Spotless）；子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制
+- 执行代码格式检查（Spotless）
 - ✅ 检查依赖约束（Maven Enforcer）
 - 🛡️ 最严格的检查，确保代码质量
 
@@ -203,23 +203,9 @@ mvn clean verify -Pci
 mvn clean verify -Pprecheck
 ```
 
-### 发布到 Maven Central
+### 发布
 
-继承 `mimir-boot-parent` 的项目默认跳过远程部署（`maven.deploy.skip=true`）。仓库根 POM 另外定义了未默认激活的 `maven-central` profile；该 profile 只属于本仓库聚合构建，不会随着独立发布的 parent 自动提供给外部项目。发布到 Maven Central 时，还需在 `~/.m2/settings.xml` 中配置 `<server id="central">` 凭证，并在发布项目中显式配置对应发布 profile。
-
-**mimir-boot 本仓库**发布命令（在仓库根目录执行）：
-
-- **正式版**（需 GPG 签名）：
-
-  ```bash
-  ./mvnw -P maven-central -Dmaven.deploy.skip=false -Dgpg.skip=false -Dgpg.passphrase=你的GPG密码 deploy
-  ```
-
-- **开发版 / SNAPSHOT**（可跳过 GPG，仅发到 Central Snapshots）：
-
-  ```bash
-  ./mvnw -P maven-central -Dmaven.deploy.skip=false -Dgpg.skip=true deploy
-  ```
+本模块只说明 Parent 的继承和构建配置；仓库发布前置、验收和补偿流程统一见 [发布规程](../docs/engineering/release.md)。
 
 ### 子项目继承
 
@@ -257,7 +243,7 @@ JaCoCo 插件用于代码覆盖率检查，通过不同的 profiles 控制是否
 
 ### 覆盖率报告
 
-启用覆盖率检查时，JaCoCo 会在 `test` 阶段生成覆盖率报告；集成测试覆盖率尚未合并到该报告，见 [TD-043](../docs/active/tech-debt-tracker.md#td-043-jacoco-集成测试覆盖率)：
+启用覆盖率检查时，JaCoCo 会在 `test` 阶段生成覆盖率报告；该报告不包含集成测试覆盖率：
 
 - **报告位置**：`target/site/jacoco/index.html`
 - **XML 报告**：`target/site/jacoco/jacoco.xml`（用于 CI 集成）
@@ -296,9 +282,9 @@ open target/site/jacoco/index.html
 
 格式化检查在以下 profiles 中启用：
 
-- **ci**：CI 流水线中自动执行代码格式检查（在 `validate` 阶段）；子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制
+- **ci**：CI 流水线中自动执行代码格式检查（在 `validate` 阶段）
 
-**dev** profile 会跳过格式化检查；`precheck`、`ci` 和 `prod` 会执行已配置的 Spotless 检查，但子模块源码扫描范围存在 [TD-044](../docs/active/tech-debt-tracker.md#td-044-spotless-子模块门禁) 限制。
+**dev** profile 会跳过格式化检查；`precheck`、`ci` 和 `prod` 会执行已配置的 Spotless 检查。
 
 ### 格式化规则
 
@@ -361,7 +347,7 @@ mvn enforcer:enforce
 
 ### 使用 `${revision}` 占位符
 
-项目使用 `flatten-maven-plugin` 支持 `${revision}` 版本占位符，便于统一管理版本号。发布 Parent 时，flatten 会解析并固化部分 `pluginManagement` 配置；下游项目通过属性覆盖编译插件版本、Java 版本或 JaCoCo 门槛时，不能假设这些覆盖一定作用于已发布 Parent，详见技术债 [TD-036](../docs/active/tech-debt-tracker.md#td-036-parent-flatten-属性覆盖)。
+项目使用 `flatten-maven-plugin` 支持 `${revision}` 版本占位符，便于统一管理版本号。发布 Parent 时，flatten 会解析并固化部分 `pluginManagement` 配置；下游项目通过属性覆盖编译插件版本、Java 版本或 JaCoCo 门槛时，应以已发布 Parent 的实际 POM 为准。
 
 在根 POM 中定义：
 
@@ -419,6 +405,7 @@ mvn verify
 - [JaCoCo 文档](https://www.jacoco.org/jacoco/trunk/doc/)
 - [Spotless 文档](https://github.com/diffplug/spotless)
 - [Google Java Format](https://github.com/google/google-java-format)
+- [发布规程](../docs/engineering/release.md)
 
 ## 🤝 贡献
 

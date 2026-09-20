@@ -47,6 +47,16 @@
 | `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | ✅ 已完成 |
 | `mimir-boot-starter-test`               | 测试基类与辅助工具                     | ✅ 已完成 |
 
+### 🧩 按场景组合提示
+
+以下是常见起步组合，按需选择，不要求接入方全部引入；Processor 仅在需要编译期生成代码时使用。
+
+| 场景 | 可按需组合 |
+|---|---|
+| 最小 Web 服务 | [`starter-log`](mimir-boot-starters/mimir-boot-starter-log/README.md)、[`starter-exception`](mimir-boot-starters/mimir-boot-starter-exception/README.md)、[`starter-web`](mimir-boot-starters/mimir-boot-starter-web/README.md)、[`starter-test`](mimir-boot-starters/mimir-boot-starter-test/README.md) |
+| 数据服务 | Web 组合 + [`starter-mybatis`](mimir-boot-starters/mimir-boot-starter-mybatis/README.md)；按需选择 [`starter-mybatis-processor`](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md)（编译期生成 Mapper、Service、ServiceImpl） |
+| RPC 服务 | Web 组合 + [`starter-rpc-core`](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md)；按需选择 [`starter-dubbo`](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) 或 [`starter-feign`](mimir-boot-starters/mimir-boot-starter-feign/README.md) |
+
 ### 🔮 未来方向
 
 以下能力在探索中，尚未启动正式开发：

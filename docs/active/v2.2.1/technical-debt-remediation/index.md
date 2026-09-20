@@ -5,7 +5,7 @@ status: verified
 owner: YoungerYang-Y
 branch: main
 created: 2026-08-16
-updated: 2026-08-29
+updated: 2026-09-20
 ---
 
 # 技术债修复
@@ -18,5 +18,6 @@ updated: 2026-08-29
 | [spec.md](./spec.md) | 已验证 | 9 个 Behavior、34 个可验收 Scenario |
 | [design.md](./design.md) | 已验证 | 13 个接口契约及兼容、回滚与测试策略 |
 | [plan.md](./plan.md) | 已完成 | 9 个 TDD/RFC 任务，分 4 个依赖组执行 |
+| [文档同步 RFC（历史记录）](./rfc-doc-sync.md) | 当时已验证 | T9 文档同步的批准记录、范围与历史验证边界；不作为当前架构指南 |
 
 Spec、Design 和 Plan 已按 `plan.md` 的 T1-T9 依赖图完成实施与验证，并由 controller 维护执行 ledger。T9 已先提交消费文档与技术债闭环，再通过预发布门禁发布最终状态；RFC、Spec、Design、需求索引和版本索引均已按门禁结果同步。

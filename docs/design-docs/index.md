@@ -1,32 +1,39 @@
-# 设计决策目录
+# 架构设计
 
-项目级通用设计决策。每个文档定义一个跨功能的设计主题（如缓存策略、幂等设计），智能体在相关领域编码前应先查阅。
+本目录是长期积累的架构设计库，回答“系统如何组织、为什么这样设计、如何演进”。不是规范合集，也不是单次需求的执行日志。全局概览见 [ARCHITECTURE.md](../../ARCHITECTURE.md)；必须遵守的规则见[项目规范](../index.md#项目规范)，日常工作步骤见[工程指南](../engineering/development.md)。
 
-| id | 主题 | status | owner | 适用范围 | 路径 |
-|----|------|--------|-------|----------|------|
-| design-core-beliefs | 核心信条 | verified | — | 全仓库 | [`core-beliefs.md`](./core-beliefs.md) |
-| design-module-boundaries | 模块边界 | verified | — | 全仓库 | [`module-boundaries.md`](./module-boundaries.md) |
-| design-doc-governance | 文档治理 | verified | — | docs/ | [`documentation-governance.md`](./documentation-governance.md) |
-| arch-technical-debt-remediation | 技术债修复长期约束同步 RFC | verified | YoungerYang-Y | T1–T7 已验证事实的长期文档同步边界 | [`arch-technical-debt-remediation.md`](./arch-technical-debt-remediation.md) |
-| arch-docs-quality-governance | 文档体系与质量门禁治理 RFC | draft | 项目维护者 | Agent 文档职责、迁移边界和本地/CI 检查模型 | [`arch-docs-quality-governance.md`](./arch-docs-quality-governance.md) |
+## 当前架构
 
-## status 含义
+按架构主题维护当前方案，主题文档与 RFC 统一采用 `arch-<主题>.md` 命名。文件名前缀表示架构文档，不表示已经获批或完成验证；当前设计与 RFC 由本页分类及正文说明区分。设计重点是职责、依赖、协作流程和取舍，不重复维护通用安全、可靠性或文档治理规则。
 
-- **draft**：设计尚未落地。智能体可参考但需注意细节可能变化。
-- **verified**：设计与实现一致。智能体应严格遵守。
-- **stale**：实现已偏离设计。智能体不应信赖细节，需先更新。
+| 设计 | 回答的问题 |
+|---|---|
+| [模块划分与依赖设计](./arch-module-dependencies.md) | parent、BOM、common 与 Starter 如何分工，能力放在哪里，依赖如何组织？ |
 
-## 何时创建 design-doc
+有实际设计内容时再扩展主题，不提前创建空目录或占位文档。跨需求复用的架构设计长期保留，不随某次需求完成而归档。
 
-- 需要修改 `ARCHITECTURE.md` 或 `core-beliefs.md` 中的长期约束时，先创建 `arch-` 前缀的 design-doc 作为架构 RFC
-- 发现跨多个需求的通用设计问题时（如缓存策略、幂等设计、错误码规范）
-- 实施过程中需要违反现有依赖方向或架构约束时，暂停实施，先创建架构 RFC
+## 架构演进与 RFC
 
-**不要用 design-doc 替代需求目录中的 design.md**——需求级的设计放在 `docs/active/{版本}/{需求}/design.md`，项目级的通用决策放在这里。
+RFC 记录重要变更的背景、备选方案、取舍和批准依据，关联需求中的实施与验收记录。落地后同步受影响的当前架构文档；RFC 本身保留历史语义，不改写成日常操作手册。
 
-## 如何添加
+| 决策 | 用途与阅读边界 |
+|---|---|
+| [文档体系与质量门禁治理](./arch-docs-quality-governance.md) | 文档分层与检查体系的设计依据；日常文档维护规则见项目规范，当前实施进度见关联需求。 |
 
-1. 复制 `_template.md` 为 `{主题名}.md`（如 `cache-strategy.md`；架构 RFC 用 `arch-` 前缀）
-2. 填写 frontmatter 和所有章节
-3. 在上方目录表中添加条目
-4. status 设为 draft；落地验证后更新为 verified
+状态沿用现有模型：`draft` 表示尚未完成落地验证，`verified` 表示已完成对应验证，`stale` 表示需要重新核对。是否获批查阅正文，状态不替代批准记录或任务进度。
+
+## 新内容放在哪里
+
+| 内容 | 位置 |
+|---|---|
+| 跨模块结构、依赖关系、关键协作流程、架构方案取舍 | 本目录的主题文档；重大变更先用 `arch-*.md` RFC 评审 |
+| 安全、可靠性、文档维护等必须遵守的规则 | `docs/standards/` |
+| 如何开发、测试、发布和排查工程问题 | `docs/engineering/` |
+| 单个需求的行为、具体实施方案、任务与验收记录 | `docs/active/`，完成后随版本归档 |
+| 接入、配置和使用示例 | 根 README 或对应模块 README |
+
+长期产品行为契约目前由模块 README 承载；需要独立 Product Spec 时按[文档治理规范](../standards/documentation-governance.md#1-内容归属)建立，不将其混入架构设计。
+
+按内容职责而非关键词归类：安全、可靠性的约束放在规范中，对应的具体架构方案仍可放在本目录。
+
+参考[架构设计模板](./_template.md)，按主题选用章节。具有跨版本架构价值的 RFC 留在本目录；仅服务单次需求的同步授权、任务范围或验收过程记录放回对应需求目录。迁移保留历史批准和验证证据，不因文件名带 RFC 就列为长期架构设计；普通修订无需新建 RFC。

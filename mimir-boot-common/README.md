@@ -108,7 +108,7 @@ PageRequest sortedRequest = PageRequest.of(1L, 10L, "createTime", "DESC");
 **注意事项：**
 
 - 无参构造只设置默认字段值，不会为后续 setter 或 Jackson 绑定自动校验；绑定请求参数后应显式调用 `validateAndCorrect()`，或在计算偏移量前调用 `getOffset()`
-- 直接读取 `getPageIndex()`、`getPageSize()` 时不会触发校验；相关边界见 [TD-042](../docs/active/tech-debt-tracker.md#td-042-分页参数校验)
+- 直接读取 `getPageIndex()`、`getPageSize()` 时不会触发校验；计算偏移量前应调用 `getOffset()`
 
 - **PageResult** - 分页结果
 

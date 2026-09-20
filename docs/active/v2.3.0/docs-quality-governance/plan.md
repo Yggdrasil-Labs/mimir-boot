@@ -1,10 +1,10 @@
 ---
 id: docs-quality-governance-plan
 version: v2.3.0
-status: planned
+status: in-progress
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # Agent 文档治理与本地质量门禁 — 实施计划
@@ -13,26 +13,25 @@ updated: 2026-09-17
 **Baseline SHA:** f5e387106f260b6f122ff5d74fa3803897bf1d4c
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-14T23:03:02+08:00
-**Updated At:** 2026-09-15T02:30:00+08:00
+**Updated At:** 2026-09-20
 **Resolved Path:** docs/active/v2.3.0/docs-quality-governance/
 **Goal:** 先建立可信本地质量门禁，再完成 Agent 文档职责与目录迁移。
-**Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、engineering 与历史目录各司其职。
+**Architecture:** Maven 托管工具；共享调度器绑定索引或提交快照；Git hooks 和 CI 调用同一检查；README、design-docs、standards、engineering 与历史目录各司其职。
 **Tech Stack:** Java 17、Maven Wrapper、Spotless、Surefire/Failsafe、JaCoCo、Maven 托管 Node/markdownlint、Bash、Git。
 **Commit Mode:** per-task
-**Effective Execution Mode:** serial
-**Execution Mode Reason:** 当前特性分支在主工作区执行，且未获并行 worktree 的合入授权；按任务顺序串行实施以保持隔离。
+**Effective Execution Mode:** 当前目录内按文件范围隔离并行
+**Execution Mode Reason:** 当前继续文档修复；独立文件组可并行，主代理统一校验。不创建或合并 worktree。
 **Ledger Mode:** controller-commits
 
-用户已批准按本计划实施。开始执行前仍需完成隔离、基线、计划结构和任务级验证；本计划不授权 push、merge、rebase 或其他历史改写。所有 Task 初始 pending 不表示存在阻塞。
+用户已批准在当前目录继续实施。历史任务保留当时的执行记录；当前状态见下表及 T7/T8。本计划不授权自动提交、push、merge、rebase 或其他历史改写。
 
-<!-- markdownlint-disable MD032 -->
 **Plan Verdict:**
+
 - **Status:** pending
 - **Verified At:** null
 - **Evidence:** null
 - **Blocked Tasks:** none
 - **Concerns:** none
-<!-- markdownlint-enable MD032 -->
 
 **Accepted Risks:**
 
@@ -42,9 +41,19 @@ updated: 2026-09-17
 
 ## 当前执行范围
 
-按用户最新要求，先完成质量门禁，文档目录迁移暂缓。统一完整验收为 `bash scripts/engineering.sh quality --mode full --source worktree`；其中 `bash scripts/engineering.sh java` 是 Java 子检查，实际 Maven 基础步骤为 `./mvnw -Pci clean verify`，随后核验报告。提交前只检查暂存格式；推送前和 CI 共用完整工程验收。删除本特性额外添加的 scripts/tests 模拟框架，不提交独立工具测试目录；保留文档自检、业务 Java 测试和发布消费者契约。下方为前序任务记录，不能据此认定 T7/T8 已交付。
+质量门禁已完成并单独提交；当前继续执行文档职责归位。提交与推送 hook 分别对暂存区和待推送提交执行离线 quick；CI、发布工作流与显式本地 full 执行完整验收。当前操作与触发条件见[工程指南](../../../engineering/development.md)和[测试与质量](../../../engineering/testing.md)。下方任务保留前序实施证据，其中“pre-push 全量”已被日常离线 quick 的实施调整取代，不能据此认定 T8 已交付。保留文档自检、业务 Java 测试与发布消费者契约，不新增独立工具测试目录。
 
 **2026-09-16 当前实现补充：** 工具实现已收敛为 `tools/engineering/src/docs/`、`src/quality/` 与 `src/release/`；技术债 ID 注册表及自动校验已移除。下方涉及旧 tools/docs-check 路径、平铺脚本、`debt.mjs`、`debt-id-registry.json` 的任务记录是当时的历史执行证据，不再描述当前接口；以设计文档和实际目录为准。
+
+### 当前状态与后续工作
+
+| 范围 | 当前状态 | 如何继续 |
+|---|---|---|
+| T1–T6 工程实现 | 已有提交；下方 Execution 保留当时记录 | 不按旧脚本路径、旧 pre-push full 或编号注册表要求重新实施；当前行为以工程指南和实现为准 |
+| T7 文档迁移 | 文档内容修复与验收通过，未提交 | 验收记录已回填；提交需单独授权，不将未提交状态写成整个任务完成 |
+| T8 整体验收 | 尚未完成 | 文档复验不替代最终提交快照的 full、场景证据核对与远程状态说明 |
+
+本轮修复范围：待执行规则对齐、Sonar 纪律承接、评分模型退役说明、场景组合建议、Product Spec 的按需建立条件、模块路径与文档元信息。既有失败报告不改写；当前文档检查与后续整体验收分别记录在 [verification.md](./verification.md)。没有授权时不提交或推送。
 
 ## 工程脚本统一迁移（2026-09-15 至 2026-09-16，实施中）
 
@@ -124,11 +133,11 @@ updated: 2026-09-17
 - Java 17；根 POM 2.2.2-SNAPSHOT 不因规划目录 v2.3.0 自动变更；Spring Boot/Cloud 基线不调整。
 - 覆盖率按适用模块指令 ≥ 0.60、分支 ≥ 0.50；单元及集成测试覆盖共同贡献，保留并明确既有排除口径。
 - Node/npm、Maven 插件与检查器在 T1 锁定实际验证的精确版本并生成锁文件；本地与 CI 使用同份配置，不依赖全局 Node。
-- pre-commit 检查实际索引中的相关格式类别且不运行测试；pre-push 首版全量验证实际待推送版本；CI 使用相同核心。
+- pre-commit 对实际索引、pre-push 对待推送提交执行离线 quick；CI、发布和显式本地 full 执行完整验收。
 - hook 不自动改源码、暂存或分支；仅显式 setup 写仓库本地 hooksPath，禁止全局配置修改或覆盖已有 hook。
 - 独立检查分别收集退出码；依赖无法运行显示 not_run；必需项缺失/失败/错误都不能总体通过。
-- 根 README 不引用 TD/技术债台账，保留徽章与核心版本；docs 面向 Agent；历史记录只改必要格式/链接/标识，不自动归档。
-- 不修改个人技能库；外部固定路径依赖通过最小跳转入口或显式兼容记录处理。
+- 根 README 不引用 TD/技术债台账，保留徽章与核心版本；docs 服务维护者与 Agent；历史记录只改必要格式/链接/标识，不自动归档。
+- 不修改个人技能库；仓库内引用完成切换后删除旧页，不保留迁移入口。外部固定路径需求单独评估，不据此自动恢复旧页。
 - 不触碰另一会话 .worktrees/fix-markdown-prepush 未提交草稿；实施前记录清单并协调复用，不把草稿视为已验证实现。
 - WSL 需要 Node 时先 source ~/.nvm/nvm.sh；门禁自身仍通过 Maven 管理的运行时执行，不能依赖此全局环境。
 - 命令、接口路径与创建文件均为实施契约；在对应 Task 实现前不存在是预期状态，不得伪造已执行证据。
@@ -599,25 +608,27 @@ AC1：解析 workflow 断言入口/检查映射；AC2：无凭证/有条件但�
 - Modify: `docs/index.md`
 - Modify: `docs/active/index.md`
 - Modify: `docs/design-docs/index.md`
-- Modify: `docs/design-docs/core-beliefs.md`
-- Modify: `docs/design-docs/module-boundaries.md`
-- Modify: `docs/design-docs/documentation-governance.md`
-- Modify: `docs/DOMAINS.md`
-- Modify: `docs/SECURITY.md`
-- Modify: `docs/RELIABILITY.md`
-- Modify: `docs/PRODUCT_SENSE.md`
-- Modify: `docs/QUALITY_SCORE.md`
-- Modify: `docs/SONAR_QUALITY_DISCIPLINE.md`
-- Modify: `docs/product-specs/index.md`
-- Modify: `docs/product-specs/new-user-onboarding.md`
-- Modify: `docs/product-specs/starter-capabilities.md`
-- Create: `docs/design-docs/security.md`
-- Create: `docs/design-docs/reliability.md`
-- Create: `docs/engineering/index.md`
+- Move: `docs/design-docs/core-beliefs.md` → `docs/standards/core-beliefs.md`
+- Move: `docs/design-docs/module-boundaries.md` → `docs/design-docs/arch-module-dependencies.md`
+- Move: `docs/design-docs/arch-technical-debt-remediation.md` → `docs/active/v2.2.1/technical-debt-remediation/rfc-doc-sync.md`（保留历史证据，需求索引承接导航）
+- Move: `docs/design-docs/documentation-governance.md` → `docs/standards/documentation-governance.md`
+- Delete: `docs/DOMAINS.md`
+- Delete: `docs/SECURITY.md`
+- Delete: `docs/RELIABILITY.md`
+- Delete: `docs/PRODUCT_SENSE.md`
+- Delete: `docs/QUALITY_SCORE.md`
+- Delete: `docs/SONAR_QUALITY_DISCIPLINE.md`
+- Delete: `docs/product-specs/index.md`
+- Delete: `docs/product-specs/new-user-onboarding.md`
+- Delete: `docs/product-specs/starter-capabilities.md`
+- Create: `docs/standards/security.md`
+- Create: `docs/standards/reliability.md`
 - Create: `docs/engineering/development.md`
 - Create: `docs/engineering/testing.md`
 - Create: `docs/engineering/release.md`
 - Create: `docs/engineering/new-starter.md`
+- Delete: `docs/active/v2.3.0/docs-quality-governance/index.md`（导航合入版本索引）
+- Modify: `docs/active/v2.3.0/index.md`
 - Modify: `mimir-boot-bom/README.md`
 - Modify: `mimir-boot-common/README.md`
 - Modify: `mimir-boot-parent/README.md`
@@ -638,36 +649,36 @@ AC1：解析 workflow 断言入口/检查映射；AC2：无凭证/有条件但�
 - Produces: AGENTS.md 任务导航；engineering 操作规程；迁移矩阵每行的目标章节和旧路径去向。
 
 **Behavior:**
-docs 维护 Agent 开发契约，README 维护人的使用契约。先按迁移矩阵归并内容，再更新导航和链接；约束与操作分离，历史语义不重写，仍被外部工具硬编码依赖的旧路径按最小跳转入口兼容。
+docs 为维护者和 Agent 共用，README 维护接入方使用契约。先按迁移矩阵归并内容，再更新导航和链接；架构设计、规范与操作分离，历史语义不重写。删除旧页，不保留迁移跳转或兼容锚点；外部固定路径需求另行评估。
 
 **Acceptance Criteria:**
 
-- [ ] AC1: 依赖修改、新 Starter、配置变更和发布四类 Agent 任务均从 AGENTS 到达权威约束、操作方法和验收入口；人仅凭 README 可找到必要使用信息。
-- [ ] AC2: 迁移矩阵所有来源有目标，旧路径/锚点引用可解析，文档 full 检查返回 0；不丢失仍有效的产品验收要求。
-- [ ] AC3: 根 README 徽章和核心版本保留且不引用 TD；历史只改变格式/链接/标识，v2.2.1 不被自动归档或认定已发布。
+- [x] AC1: 依赖修改、新 Starter、配置变更和发布四类 Agent 任务均从 AGENTS 到达权威约束、操作方法和验收入口；人仅凭 README 可找到必要使用信息。
+- [x] AC2: 迁移矩阵所有来源有目标，仓库内引用均已切换到可解析的新路径/锚点，文档 full 检查返回 0；不丢失仍有效的产品验收要求。
+- [x] AC3: 根 README 徽章和核心版本保留且不引用 TD；历史只改变格式/链接/标识，v2.2.1 不被自动归档或认定已发布。
 
-- [ ] AC4: migration.md 的逐章节执行表覆盖所有迁移源；旧路径/锚点、内容类别、唯一目标、外部消费者、兼容入口、验收证据、结果字段均完整，QUALITY_SCORE 每条观察有去向或不迁移依据。
+- [x] AC4: migration.md 的逐章节执行表覆盖所有迁移源；旧路径/锚点、内容类别、唯一目标、外部消费者、兼容入口、验收证据、结果字段均完整，QUALITY_SCORE 每条观察有去向或不迁移依据。
 
 **Execution:**
 
-- **Status:** pending
+- **Status:** in_progress
 - **Commit SHAs:** []
 - **Dispatch Base SHA:** null
 - **Dispatch Ref:** null
-- **Attempts:** 0
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Concerns:** none
+- **Red Result:** 2026-09-20 人工验收发现旧执行要求、Sonar 纪律和迁移内容遗漏；文档格式/链接检查通过不能覆盖这些语义问题。
+- **Verify Result:** 2026-09-20 文档 full（74 份 Markdown）、治理结构检查、diff 检查与修复定向断言均通过；独立语义复核无未解决项，详见 verification.md。
+- **AC Result:** AC1：四类任务入口走读通过；AC2：新路径可达且内容承接已核对；AC3：README 除组合提示外逐字节不变，历史语义及版本状态保留；AC4：矩阵明确来源、目标、外部未核实边界、评分退役与风险承接。
+- **Concerns:** 尚未提交；T8 整体验收、远程 CI 与发布不在本轮文档复验声明范围。
 
 **Task Completion Gate:**
 
-- [ ] Red 证据存在，失败原因或基线状态与本任务一致。
-- [ ] Verify 证据存在，退出码和结果通过。
-- [ ] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
+- [x] Red 证据存在，失败原因或基线状态与本任务一致。
+- [x] Verify 证据存在，退出码和结果通过。
+- [x] 所有 per-task AC 均有已核实证据，未接受的延后项为 0。
 - [ ] 有序 Commit SHAs 全部属于本 Task；未获提交授权时不标记此项完成。
-- [ ] AC checkbox 与实际验证同步。
+- [x] AC checkbox 与实际验证同步。
 
 **Step 1: Red**
 
@@ -675,11 +686,11 @@ docs 维护 Agent 开发契约，README 维护人的使用契约。先按迁移�
 
 **Step 2: Green**
 
-逐行执行已审查迁移矩阵，保留/添加必要兼容锚点，更新链接后再移除空目录。engineering 写适用任务、前提、命令、产物、通过标准和失败处理；当前观察只在活跃记录维护，约束文件不堆审计过程。分拆子任务时严格按文件独占写入。
+逐行执行已审查迁移矩阵，更新全部仓库内引用后删除旧页，不添加兼容入口。engineering 写适用任务、前提、命令、产物、通过标准和失败处理；当前观察只在活跃记录维护，约束文件不堆审计过程。分拆子任务时严格按文件独占写入。
 
 **Step 3: Verify**
 
-`bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test`；`bash scripts/engineering.sh contracts`；`bash scripts/engineering.sh quality --mode full --source worktree`；`./mvnw -Pci clean verify`；`git diff --check`；逐行核对 migration.md 并记录来源、目标、入链和语义结果；人工沿四条 Agent 路径和 README 接入路径走读。
+`bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test`；`git diff --check`；逐行核对 migration.md 并记录来源、目标、入链和语义结果；人工沿四条 Agent 路径和 README 接入路径走读。T7 记录文档验收，仓库完整门禁统一归 T8，不把 full 内部子入口机械地重复运行。
 
 **AC Verification:**
 
@@ -700,9 +711,7 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 - Create: `docs/active/v2.3.0/docs-quality-governance/verification.md`
 - Modify: `docs/design-docs/arch-docs-quality-governance.md`
 - Modify: `docs/design-docs/index.md`
-- Modify: `tools/docs-check/debt-id-registry.json`
 - Modify: `docs/active/tech-debt-tracker.md`
-- Modify: `docs/active/v2.3.0/docs-quality-governance/index.md`
 - Modify: `docs/active/v2.3.0/index.md`
 - Modify: `docs/active/v2.3.0/release.md`
 - Controller only: 本需求 `plan.md` 执行账本，独立 ledger 提交
@@ -710,7 +719,7 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 **Interfaces:**
 
 - Consumes: IC-01 至 IC-07 全部产物及按任务提交链。
-- Produces: verification.md 的完整证据表、27 个 Scenario 的断言映射、实施状态与剩余限制。
+- Produces: verification.md 的证据表、27 个 Scenario 的当前断言或替代依据、实施状态与剩余限制；文档验收与整体验收分栏记录。
 
 **Behavior:**
 用新鲜的待交付版本完成真实 hooks、完整质量门禁和文档迁移验证。报告准确区分本地通过、远程未执行、未决技术债；仅在证据满足验收标准后关闭对应问题。
@@ -752,11 +761,11 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 
 **Step 3: Verify**
 
-`bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test`；`bash scripts/engineering.sh contracts`；`bash scripts/engineering.sh java`；`./mvnw -Pci clean verify`；`bash scripts/engineering.sh quality --mode full --source commit --commit <验收SHA>`。验收 SHA 必须为实际完成实现的提交；不能填文档基线。真实 hook 的部分暂存、多个 ref 原子性及工具/构建/报告故障注入无法由上述单独命令完整断言，按设计 Testing Strategy 在临时 Git/临时副本中验收；不创建永久测试脚本，也不把未执行步骤写成已验证。
+`bash scripts/engineering.sh quality --mode full --source commit --commit <验收SHA>` 已包含文档、发布契约和 Java 子检查，无需同状态重复运行这些子入口。验收 SHA 必须为实际完成实现的提交；不能填文档基线。真实 hook 的部分暂存、多个 ref 原子性及工具/构建/报告故障注入无法由上述单独命令完整断言，按设计 Testing Strategy 在临时 Git/临时副本中验收；不创建永久测试脚本，也不把未执行步骤写成已验证。
 
 **AC Verification:**
 
-AC1：下面映射表每个 S 都有证据；AC2：提交/tree/配置摘要与结果一致，报告逐模块齐全；AC3：台账 diff、注册表退役状态、RFC 与设计索引 verified 状态及本地/远程声明分别核对；任一验收未过，RFC 保持 draft。
+AC1：下面映射表每个 S 都有证据；AC2：提交/tree/配置摘要与结果一致，报告逐模块齐全；AC3：台账 diff 与人工编号复核、RFC 验证状态及本地/远程声明分别核对（设计索引不单设状态字段）；任一验收未过，RFC 保持 draft。
 
 **Step 4: Commit**
 
@@ -779,10 +788,10 @@ AC1：下面映射表每个 S 都有证据；AC2：提交/tree/配置摘要与�
 | B4-S1 | T5 | 正常 git commit 成功，测试调用次数为 0 |
 | B4-S2 | T4, T5 | 暂存错误而工作区修复仍拒绝提交 |
 | B4-S3 | T3, T5 | 格式错误/缺工具失败，索引不变 |
-| B5-S1 | T5, T8 | 完整门禁通过才更新本地 bare remote |
+| B5-S1 | T5, T8 | 已由离线 quick 替代：待推送提交的格式与缓存检查通过后才更新本地 bare remote |
 | B5-S2 | T4, T5 | 非 HEAD 的错误 commit 推送失败 |
 | B5-S3 | T5 | 多 ref 一成一败整体拒绝，新分支检查，纯删除不构建 |
-| B5-S4 | T4 | 编译失败测试 not_run，不产生整体 passed |
+| B5-S4 | T4 | 原编译失败断言归 full 验收；push quick 核对工具或格式失败阻断，不运行编译 |
 | B6-S1 | T3, T8 | 全测试通过且最终 XML 包含 IT 方法 |
 | B6-S2 | T3 | 显式无源码豁免及阈值边界通过 |
 | B6-S3 | T3 | 格式/失败测试/skipped/阈值以下均失败 |

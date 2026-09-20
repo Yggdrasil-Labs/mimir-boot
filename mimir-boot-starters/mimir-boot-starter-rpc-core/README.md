@@ -68,7 +68,7 @@ public class MicrometerTracerBridge implements RpcTracerBridge {
 }
 ```
 
-对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`，同时实现仍为接口必需的旧 `extract` 方法。旧 `extract` 入口的调用方仍需自行管理上下文生命周期；默认 `extractScope` 只是将旧入口适配为 noop scope，不保证未知自定义上下文的回滚，不能替代自定义实现。相关兼容入口见 [TD-013](../../docs/active/tech-debt-tracker.md#td-013-rpc-mdc-scope)。
+对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`，同时实现仍为接口必需的旧 `extract` 方法。旧 `extract` 入口的调用方仍需自行管理上下文生命周期；默认 `extractScope` 只是将旧入口适配为 noop scope，不保证未知自定义上下文的回滚，不能替代自定义实现。
 
 ## 最佳实践
 

@@ -9,6 +9,8 @@ updated: 2026-09-16
 
 # Agent 文档治理与本地质量门禁 — 技术设计
 
+> 阅读边界：下方保留初始方案。后续日常离线检查调整已将 pre-push 从 full 改为提交快照上的 quick；CI 与发布仍执行 full。当前操作入口与触发条件以[测试与质量指南](../../../engineering/testing.md)及其链接的实现为准。
+
 ## Context
 
 用户已在会话中确认 docs 优先服务 Agent、人主要阅读 README、目录收敛和完整的本地质量门禁。基线为 `6275137bd17b3c5543ed852ee3abec4bb9af16fb`。规划目录 v2.3.0 按 main 与最近 v2.2.1 tag 推导；根 POM 当前仍为 2.2.2-SNAPSHOT，规划版本不构成发版承诺。
@@ -127,12 +129,12 @@ flowchart TD
 
 ### IC-07 文档职责与迁移（B1、B8）
 
-- 输入：当前有效文档和 [迁移矩阵](./migration.md)；输出：AGENTS.md 任务导航、docs/index.md 文档地图、design-docs 约束、engineering 操作规程、README 使用契约。
-- ARCHITECTURE.md 只保留系统边界、依赖方向与核心基线；module-boundaries.md 负责模块归属与改动落位，避免重抄同一依赖表。
-- `docs/SECURITY.md` → `docs/design-docs/security.md`；`docs/RELIABILITY.md` → `docs/design-docs/reliability.md`；操作内容分别进入 engineering 开发、测试或发布规程。其余文件按迁移矩阵逐项执行，不笼统删除。
+- 输入：当前有效文档和 [迁移矩阵](./migration.md)；输出：AGENTS.md 任务导航、docs/index.md 文档地图、design-docs 架构设计、standards 项目规范、engineering 操作规程、README 使用契约。
+- ARCHITECTURE.md 只保留系统边界、依赖方向与核心基线；arch-module-dependencies.md 负责模块归属与改动落位，避免重抄同一依赖表。
+- `docs/SECURITY.md` → `docs/standards/security.md`；`docs/RELIABILITY.md` → `docs/standards/reliability.md`；操作内容分别进入 engineering 开发、测试或发布规程。其余文件按迁移矩阵逐项吸收并删除旧路径。
 - 新增 `docs/engineering/{index,development,testing,release,new-starter}.md`，每份规程包含适用任务、前置条件、执行入口、产物、通过标准、失败处置。使用契约和例子链接模块 README。
 - 迁移同步更新 AGENTS.md、README 中已有正常文档链接、docs/index.md、设计索引、所有受影响 Markdown 引用及仓库内脚本的旧路径调用。外部技能库不在写入范围；记录外部旧路径依赖，不能删掉被必需工具硬编码依赖的文件后声称兼容。
-- 迁移使用显式旧→新路径/锚点映射，支持重复和中文标题；优先更新内部引用。需要兼容的旧锚点保留显式 anchor，确有外部路径依赖时保留只含跳转的旧入口，不复制旧正文。
+- 迁移使用显式旧→新路径/锚点映射，支持重复和中文标题；先更新内部引用，再删除旧路径。本轮不保留旧锚点、跳转页或兼容入口；出现外部固定路径消费者时另行评估。
 - 历史正文只改链接、格式和必要历史标识，不回写当前实现结论。台账已解决条目须等负向验证及完整门禁通过后才能移出活跃表，记录保留在本需求计划。
 
 ## Data Model

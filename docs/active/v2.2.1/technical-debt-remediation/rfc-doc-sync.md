@@ -7,7 +7,9 @@ created: 2026-08-28
 verified: 2026-08-29
 ---
 
-# 技术债修复长期约束同步 RFC
+# 技术债修复文档同步 RFC（历史记录）
+
+> 本页是 v2.2.1 技术债需求的文档同步过程记录，不是当前全局架构约束。2026-09-20 从设计库迁入本需求目录；原 id、批准记录、verified 状态和验证日期保留，仅描述当时的验证。下方“当前”“草稿”、任务编号、旧路径和命令均按原执行阶段理解，不应重新执行或作为本次授权；日常操作请查阅[开发指南](../../../engineering/development.md)，需求结果见[实施计划](./plan.md)。
 
 ## 背景与动机
 
@@ -230,11 +232,11 @@ git diff-tree --no-commit-id --name-status -r "$T9_CONTENT_SHA"
 
 ## 参考
 
-- [`ARCHITECTURE.md`](../../ARCHITECTURE.md)：系统边界、分层和依赖方向。
-- [`docs/SECURITY.md`](../SECURITY.md)：安全默认原则、敏感能力和凭证边界。
-- [`docs/RELIABILITY.md`](../RELIABILITY.md)：构建、发布与回退可靠性要求。
-- [`docs/design-docs/core-beliefs.md`](./core-beliefs.md)：长期工程信条，只读约束来源。
-- [`docs/design-docs/module-boundaries.md`](./module-boundaries.md)：模块职责、依赖与文档边界。
-- [`docs/design-docs/_template.md`](./_template.md)：设计文档结构模板。
-- [`docs/active/v2.2.1/technical-debt-remediation/plan.md`](../active/v2.2.1/technical-debt-remediation/plan.md)：T1–T9 任务、AC 和验证门禁。
-- [`docs/active/v2.2.1/technical-debt-remediation/design.md`](../active/v2.2.1/technical-debt-remediation/design.md)：已实现接口、配置和兼容性决策。
+- [`ARCHITECTURE.md`](../../../../ARCHITECTURE.md)：系统边界、分层和依赖方向。
+- [安全约束](../../../standards/security.md)：安全默认原则、敏感能力和凭证边界。
+- [可靠性约束](../../../standards/reliability.md)：构建、发布与回退可靠性要求。
+- [核心信条](../../../standards/core-beliefs.md)：长期工程信条，只读约束来源。
+- [模块边界](../../../design-docs/arch-module-dependencies.md)：模块职责、依赖与文档边界。
+- [设计文档模板](../../../design-docs/_template.md)：按主题选择的结构参考。
+- [实施计划](./plan.md)：T1–T9 任务、AC 和验证门禁。
+- [技术设计](./design.md)：已实现接口、配置和兼容性决策。

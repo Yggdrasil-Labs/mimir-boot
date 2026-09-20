@@ -358,7 +358,7 @@ mimir:
 | `bank_card_number` | 纯银行卡号 | 6222021234567890 |
 | `email_address` | 纯邮箱地址 | <user@example.com> |
 
-`password`、`token`、`secret` 规则支持常见的带引号 JSON 字段；`api_key`、`account` 等规则当前按普通 `key=value` 形式匹配，带引号的 JSON 字段可能无法命中。敏感日志请在业务侧验证实际格式，相关限制见 [TD-038](../../docs/active/tech-debt-tracker.md#td-038-日志-json-脱敏)。
+`password`、`token`、`secret` 规则支持常见的带引号 JSON 字段；`api_key`、`account` 等规则当前按普通 `key=value` 形式匹配，带引号的 JSON 字段可能无法命中。敏感日志请在业务侧验证实际格式。
 
 **编程式扩展**：
 

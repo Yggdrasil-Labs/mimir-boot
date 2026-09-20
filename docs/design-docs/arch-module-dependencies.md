@@ -1,6 +1,6 @@
-# 模块边界
+# 模块划分与依赖设计
 
-本文档描述本仓库模块的职责边界、依赖方向与新增能力的落位规则。
+本文档维护本仓库的模块职责、依赖方向与能力落位设计。全局结构见 [ARCHITECTURE.md](../../ARCHITECTURE.md)，工程取舍遵循[核心信条](../standards/core-beliefs.md)。
 
 ## 1. 顶层边界
 
@@ -84,20 +84,29 @@
 - 聚合模块注册
 - BOM 版本声明
 - 模块 README
-- 产品规格或能力索引
+- [新增 Starter 规程](../engineering/new-starter.md)要求的验证与能力索引
 
-## 4. 文档边界
+## 4. 领域归属
 
-不同信息应放在不同位置：
+| 领域 | 代码位置 | 核心职责 |
+|---|---|---|
+| 依赖管理 | `mimir-boot-bom/` | 统一版本矩阵和上游 BOM 对齐。 |
+| 构建基座 | `mimir-boot-parent/` | 插件版本、profile、质量门禁与发布配置。 |
+| 公共模型 | `mimir-boot-common/` | 异常、响应、分页、枚举等稳定基础约定。 |
+| 日志与链路 | `mimir-boot-starters/mimir-boot-starter-log/` | 脱敏、TraceId 和访问日志。 |
+| 异常与 Web 增强 | `mimir-boot-starters/mimir-boot-starter-exception/`、`mimir-boot-starters/mimir-boot-starter-web/` | 统一响应、全局异常、CORS 与 Trace。 |
+| 持久层 | `mimir-boot-starters/mimir-boot-starter-mybatis/`、`mimir-boot-starters/mimir-boot-starter-mybatis-processor/` | 分页、审计、字段加密和编译期生成。 |
+| 配置安全 | `mimir-boot-starters/mimir-boot-starter-nacos/` | Nacos `ENC()` 配置加解密。 |
+| RPC 治理 | `mimir-boot-starters/mimir-boot-starter-rpc-core/`、`mimir-boot-starters/mimir-boot-starter-dubbo/`、`mimir-boot-starters/mimir-boot-starter-feign/` | RPC 通用抽象与协议适配。 |
+| 测试支持 | `mimir-boot-starters/mimir-boot-starter-test/` | 测试基类和辅助工具。 |
 
-- 模块总体定位：`ARCHITECTURE.md`
-- 长期设计原则：`docs/design-docs/`
-- 产品能力说明：`docs/product-specs/`
-- 单次执行计划：`docs/active/{版本}/{需求}/plan.md`
-- 自动导出的事实：若仓库生成此类文档，必须在 `docs/index.md` 登记可解析路径；当前仓库没有 `docs/generated/` 目录。
-- 模块接入细节：模块 README
+Starter 可依赖 `common`，但不得形成循环依赖；Web 统一响应依赖异常治理，Dubbo/Feign 适配依赖 `rpc-core`。新增领域必须先通过新增 Starter 规程。
 
-## 5. 发布与版本边界
+## 5. 文档边界
+
+本页维护模块之间的设计关系；模块接入细节由各自 README 维护，开发与验收步骤见[工程指南](../engineering/development.md)。完整的文档归属与维护要求见[文档治理规范](../standards/documentation-governance.md)。
+
+## 6. 发布与版本边界
 
 涉及 `parent`、`bom`、`revision`、flatten、GPG、Maven Central 的内容，属于仓库级工程边界，而不是某个 starter 自己的局部实现。
 
@@ -105,22 +114,22 @@
 
 - 不要把发布规则散落写进各 starter README
 - 不要让某个 starter 私自改变全局发布语义
-- 发布相关知识应集中沉淀在顶层架构和可靠性文档中
+- 发布设计、[可靠性要求](../standards/reliability.md)与[发布步骤](../engineering/release.md)分别维护，模块 README 只引用相关入口
 
-## 6. 变更边界判断
+## 7. 变更边界判断
 
 下面这些改动通常不应直接做：
 
 - 把临时功能塞进 `common`
 - 在 starter 中引入与能力域无关的大依赖
-- 修改默认配置语义却不更新 README 和产品说明
+- 修改默认配置语义却不更新对应 README 和工程文档
 - 通过复制粘贴新建一个高度重叠的 starter
 
-## 7. 审查问题清单
+## 8. 审查问题清单
 
 发起跨模块变更前，先回答：
 
 - 这个能力最自然属于哪个模块？
 - 是否会让某个模块承担双重职责？
 - 是否引入新的公共 API、配置或行为默认值？
-- 是否需要同步更新文档索引、产品规格和计划记录？
+- 是否需要同步更新文档索引、工程规程和计划记录？

@@ -18,7 +18,7 @@ bash scripts/engineering.sh quality --mode full --source worktree
 bash scripts/engineering.sh quality --mode quick --source index
 ```
 
-pre-push 对待推送的提交快照执行 full，检查该提交中的代码、配置和工具，不借用未提交修改。工作区 full 会包括未提交文件；验收通过后仍需以实际推送提交的结果为准。
+pre-push 对待推送的提交快照执行离线 quick，检查该提交中的适用格式与工具缓存，不借用未提交修改；完整验收由 CI、发布工作流或显式本地 full 执行。工作区 full 包括未提交文件，不能替代不同输入的 CI 结果。任务选择与触发范围见[测试与质量指南](../../docs/engineering/testing.md)。
 
 ## 检查清单
 
