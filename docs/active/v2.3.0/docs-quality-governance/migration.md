@@ -9,7 +9,7 @@ updated: 2026-09-20
 
 # 文档体系迁移计划
 
-本文档把[文档治理 RFC](../../../design-docs/arch-docs-quality-governance.md)转成可执行的目录、职责和验收映射。它只描述仓库内迁移，不修改外部 skill、插件缓存或 `.worktrees/fix-markdown-prepush` 中另一会话的未提交草稿。v2.2.1 保持在 `active/`，本计划不据此认定它已发布或应归档。
+本文档把[文档治理 RFC](../../../design-docs/arch-docs-quality-governance.md)转成可执行的目录、职责和验收映射。它只描述仓库内迁移，不修改外部 skill、插件缓存或 `.worktrees/fix-markdown-prepush` 中另一会话的未提交草稿。v2.2.1 已在治理收尾后归档；本计划不根据 tag 自动推断发布或触发归档。
 
 需求、设计和实施记录：
 
@@ -45,9 +45,9 @@ updated: 2026-09-20
 | `docs/design-docs/core-beliefs.md` | `docs/standards/core-beliefs.md` | 长期工程信条 | 迁入规范目录；只吸收稳定的产品原则，维护当前终态。 |
 | `docs/design-docs/module-boundaries.md` | `docs/design-docs/arch-module-dependencies.md` | 模块边界、依赖方向、领域归属 | 统一架构文档命名并吸收 `DOMAINS.md`；旧路径删除，新增 Starter 仍按该文档验收。 |
 | `docs/design-docs/documentation-governance.md` | `docs/standards/documentation-governance.md` | 文档分类、更新触发器、索引和新鲜度 | 迁入规范目录；与本 RFC 的具体迁移规则通过链接分工，不复制全文。 |
-| `docs/design-docs/arch-technical-debt-remediation.md` | `docs/active/v2.2.1/technical-debt-remediation/rfc-doc-sync.md` | T9 文档同步的历史过程记录 | 迁入所属需求，由需求索引引用；保留原 id、历史正文、批准与验证结论，调整标题与相对链接；删除旧路径，不提前归档版本。 |
+| `docs/design-docs/arch-technical-debt-remediation.md` | `docs/archive/v2.2.1/technical-debt-remediation/rfc-doc-sync.md` | T9 文档同步的历史过程记录 | 迁入所属需求，由版本归档索引承接导航；保留原 id、历史正文、批准与验证结论，调整标题与相对链接；删除旧路径。 |
 | `docs/design-docs/_template.md` | `docs/design-docs/_template.md` | 架构主题与 RFC 的结构参考 | 按主题选择章节；强调方案、关键流程与取舍，RFC 沿用原状态模型。 |
-| `docs/active/index.md` | `docs/active/index.md` | 活跃版本导航 | 保留；增加 v2.3.0 入口时不移动 v2.2.1。 |
+| `docs/active/index.md` | `docs/active/index.md` | 活跃版本导航 | 保留；仅列出当前活跃版本，v2.2.1 由归档索引承接。 |
 | `docs/active/tech-debt-tracker.md` | `docs/active/tech-debt-tracker.md` | 技术债唯一台账 | 保留；序号按数字 ID 升序，README 不引用。 |
 | `docs/archive/index.md` | `docs/archive/index.md` | 版本归档导航 | 保留；明确归档状态与远程发布状态独立。 |
 | `docs/product-specs/index.md` | `README.md`、`docs/index.md` | 使用入口与开发导航 | 链接分别归入对应入口，全部迁移后删除旧索引及空目录。 |
@@ -139,4 +139,4 @@ git diff --check
 - 用户已决定不保留迁移入口；仓库内引用完成切换后直接删除旧路径。外部固定路径消费者如出现，须在后续变更中单独评估。
 - `pre-push` 已采用离线 quick；其通过不代表完整验收，适用 CI 的 full 结果仍须单独确认。
 - 外部链接不作为每次提交的必需联网门禁；内部链接和锚点由文档 full 或 quality full 检查，quick 只检查适用格式。
-- v2.2.1 当前“待归档”提示继续保留，直到单独核对远程发布、tag 和引用关系。
+- v2.2.1 已完成版本、tag 与仓库引用核对并归档；归档状态与远端 CI/Sonar 等单项历史证据保持独立。

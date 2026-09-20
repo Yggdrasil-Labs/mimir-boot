@@ -9,7 +9,7 @@ updated: 2026-09-13
 
 # 技术债修复实施计划
 
-> 2026-09-13 文档巡检：头部状态与下方 2026-08-29 的 Plan Verdict 同步；历史验证时间和任务证据保持原样。后续发现见[技术债台账](../../tech-debt-tracker.md)。
+> 2026-09-13 文档巡检：头部状态与下方 2026-08-29 的 Plan Verdict 同步；历史验证时间和任务证据保持原样。后续发现见[技术债台账](../../../active/tech-debt-tracker.md)。
 
 **Branch:** feature/technical-debt-remediation
 **Baseline SHA:** 78ee0d4a2f11cb09eda477abb8860b1634770f64

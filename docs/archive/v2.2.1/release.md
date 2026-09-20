@@ -1,20 +1,22 @@
 ---
 version: "v2.2.1"
 date: "2026-08-31"
-status: "in-progress"
+status: "released"
+released: "2026-09-12"
+retain_until: "2027-09-20"
 branch: "feature/foundation-quality-hardening"
-updated: "2026-09-13"
+updated: "2026-09-20"
 ---
 
 # Release — v2.2.1
 
-> 2026-09-02 终审代码补丁已分阶段提交并通过干净 worktree 复验。本文不代表已推送、远程 CI 已通过或制品已正式发布。
+> 本文保留 v2.2.1 发布前的验收记录；版本已于 2026-09-12 随 `v2.2.1` tag 发布并于本次完成文档归档。历史记录中的阶段性核验边界不改写为新的远端验证结果。
 
 ## 2026-09-13 状态复核
 
-- 本地 `v2.2.1` tag 指向 `fe3b82d`（Release Please PR #299）；后续 `1f5a4db` 已将开发版本推进到 `2.2.2-SNAPSHOT`。头部 `date`、`branch` 与下方验证记录描述当时的验收阶段。
-- 本轮未查询远程 CI 和制品仓库，发布确认状态仍待核对；不据本地 tag 推断所有发布目标均成功。
-- 后续审计发现日志 JSON 规则、Nacos 前缀删除、分页绑定和构建门禁仍有边界缺口。以下 Changelog 是该阶段的变更摘要，当前限制以[技术债台账](../tech-debt-tracker.md)的 TD-036 至 TD-046 为准。
+- `v2.2.1` tag 指向 `fe3b82d`（Release Please PR #299）；后续 `1f5a4db` 已将开发版本推进到 `2.2.2-SNAPSHOT`。头部 `date`、`branch` 与下方验证记录保留当时的验收阶段。
+- 下方“状态复核”保留当时未查询远程 CI 和制品仓库的记录；本次归档依据既有发布记录和用户确认，不把历史记录改写为新的远端验证证据。
+- 后续审计发现日志 JSON 规则、Nacos 前缀删除、分页绑定和构建门禁仍有边界缺口。以下 Changelog 是该阶段的变更摘要，当前限制以[技术债台账](../../active/tech-debt-tracker.md)的 TD-036 至 TD-046 为准。
 
 ## Changelog
 

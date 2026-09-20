@@ -116,8 +116,8 @@ updated: 2026-09-20
 
 | objective | scope | actor_kind | role | model | started_at | finished_at | status | attempt | attempt_limit | elapsed | stop_reason | strategy_change | evidence | budget_revision |
 |-----------|-------|------------|------|-------|------------|-------------|--------|---------|---------------|---------|-------------|-----------------|----------|-----------------|
-| T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | unknown（外部 agent 未返回可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | failed | none | external-agent-502-before-commit | initial |
-| T1 Maven 文档工具链与格式基线恢复 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/active/v2.2.1/foundation-quality-hardening/plan.md"] | work | controller | inherit | unknown（收到 agent 502 后接管） | 2026-09-15T00:27:07+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 由 agent 502 改为 controller 接管并以 TDD 修复真实配置问题 | 33192a3；Maven selfTest/normal/无全局 Node PATH 均通过 | initial |
+| T1 Maven 文档工具链与格式基线 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/archive/v2.2.1/foundation-quality-hardening/plan.md"] | work | worker | inherit | 2026-09-14T23:12:10+08:00 | unknown（外部 agent 未返回可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | failed | none | external-agent-502-before-commit | initial |
+| T1 Maven 文档工具链与格式基线恢复 | ["tools/docs-check","scripts/docs-tool.sh","pom.xml",".gitignore",".markdownlint-cli2.jsonc","mimir-boot-starters/mimir-boot-starter-rpc-core/README.md","mimir-boot-starters/mimir-boot-starter-dubbo/README.md","mimir-boot-starters/mimir-boot-starter-feign/README.md","docs/archive/v2.2.1/foundation-quality-hardening/plan.md"] | work | controller | inherit | unknown（收到 agent 502 后接管） | 2026-09-15T00:27:07+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 由 agent 502 改为 controller 接管并以 TDD 修复真实配置问题 | 33192a3；Maven selfTest/normal/无全局 Node PATH 均通过 | initial |
 | T2 文档规则与可信结果模型 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | worker | inherit | 2026-09-15T00:29:58+08:00 | unknown（agent 未回传可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | cancelled | none | agent-unresponsive-before-result；工作区变更由 controller 接管审计 | initial |
 | T2 文档规则与可信结果模型恢复 | ["tools/docs-check/check.mjs","tools/docs-check/package.json","tools/docs-check/package-lock.json","tools/docs-check/links.mjs","tools/docs-check/navigation.mjs","tools/docs-check/debt.mjs","tools/docs-check/policy.mjs","tools/docs-check/results.mjs","tools/docs-check/policy.json","tools/docs-check/debt-id-registry.json","tools/docs-check/test/docs-check.test.mjs","tools/docs-check/test/fixtures"] | work | controller | inherit | unknown（外部 agent 无响应后接管） | 2026-09-15T01:25:26+08:00 | done | 2 | 2 | unknown（恢复时间未单独计量） | completed | 外部 agent 无响应，controller 接管；提交后 full 回归发现 fixture 扫描和格式诊断路径缺陷并以 TDD 修复 | a2a1663、63f060b；Node 13/13；Maven selfTest/normal 通过 | initial |
 | T3 Spotless、覆盖率时序和报告完整性 | ["pom.xml","mimir-boot-parent/pom.xml","scripts/ci-preflight.sh","tools/docs-check/verify-reports.mjs","scripts/tests/java-quality-gates-test.sh","scripts/tests/fixtures/java-quality"] | work | worker | inherit | 2026-09-15T01:28:04+08:00 | unknown（agent 未回传可测结束时间） | failed | 1 | 2 | unknown（外部服务未提供） | cancelled | none | agent-unresponsive-before-result；工作区变更由 controller 接管审计 | initial |
@@ -136,7 +136,7 @@ updated: 2026-09-20
 - pre-commit 对实际索引、pre-push 对待推送提交执行离线 quick；CI、发布和显式本地 full 执行完整验收。
 - hook 不自动改源码、暂存或分支；仅显式 setup 写仓库本地 hooksPath，禁止全局配置修改或覆盖已有 hook。
 - 独立检查分别收集退出码；依赖无法运行显示 not_run；必需项缺失/失败/错误都不能总体通过。
-- 根 README 不引用 TD/技术债台账，保留徽章与核心版本；docs 服务维护者与 Agent；历史记录只改必要格式/链接/标识，不自动归档。
+- 根 README 不引用 TD/技术债台账，保留徽章与核心版本；docs 服务维护者与 Agent；历史记录只改必要格式/链接/标识，不由本计划自动归档。
 - 不修改个人技能库；仓库内引用完成切换后删除旧页，不保留迁移入口。外部固定路径需求单独评估，不据此自动恢复旧页。
 - 不触碰另一会话 .worktrees/fix-markdown-prepush 未提交草稿；实施前记录清单并协调复用，不把草稿视为已验证实现。
 - WSL 需要 Node 时先 source ~/.nvm/nvm.sh；门禁自身仍通过 Maven 管理的运行时执行，不能依赖此全局环境。
@@ -193,7 +193,7 @@ B 组 T2 与 T3 不共享写入文件；D 组 T5 与 T6 不共享写入文件。
 - Modify: `mimir-boot-starters/mimir-boot-starter-rpc-core/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-dubbo/README.md`
 - Modify: `mimir-boot-starters/mimir-boot-starter-feign/README.md`
-- Modify: `docs/active/v2.2.1/foundation-quality-hardening/plan.md`
+- Modify: `docs/archive/v2.2.1/foundation-quality-hardening/plan.md`
 - Test: `tools/docs-check/test/toolchain.test.mjs`
 
 **Interfaces:**
@@ -610,7 +610,7 @@ AC1：解析 workflow 断言入口/检查映射；AC2：无凭证/有条件但�
 - Modify: `docs/design-docs/index.md`
 - Move: `docs/design-docs/core-beliefs.md` → `docs/standards/core-beliefs.md`
 - Move: `docs/design-docs/module-boundaries.md` → `docs/design-docs/arch-module-dependencies.md`
-- Move: `docs/design-docs/arch-technical-debt-remediation.md` → `docs/active/v2.2.1/technical-debt-remediation/rfc-doc-sync.md`（保留历史证据，需求索引承接导航）
+- Move: `docs/design-docs/arch-technical-debt-remediation.md` → `docs/archive/v2.2.1/technical-debt-remediation/rfc-doc-sync.md`（保留历史证据，版本归档索引承接导航）
 - Move: `docs/design-docs/documentation-governance.md` → `docs/standards/documentation-governance.md`
 - Delete: `docs/DOMAINS.md`
 - Delete: `docs/SECURITY.md`
@@ -655,7 +655,7 @@ docs 为维护者和 Agent 共用，README 维护接入方使用契约。先按�
 
 - [x] AC1: 依赖修改、新 Starter、配置变更和发布四类 Agent 任务均从 AGENTS 到达权威约束、操作方法和验收入口；人仅凭 README 可找到必要使用信息。
 - [x] AC2: 迁移矩阵所有来源有目标，仓库内引用均已切换到可解析的新路径/锚点，文档 full 检查返回 0；不丢失仍有效的产品验收要求。
-- [x] AC3: 根 README 徽章和核心版本保留且不引用 TD；历史只改变格式/链接/标识，v2.2.1 不被自动归档或认定已发布。
+- [x] AC3: 根 README 徽章和核心版本保留且不引用 TD；迁移阶段只改变必要格式/链接/标识，v2.2.1 的发布与后续归档由独立记录确认。
 
 - [x] AC4: migration.md 的逐章节执行表覆盖所有迁移源；旧路径/锚点、内容类别、唯一目标、外部消费者、兼容入口、验收证据、结果字段均完整，QUALITY_SCORE 每条观察有去向或不迁移依据。
 

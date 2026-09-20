@@ -19,9 +19,9 @@ updated: 2026-09-16
 
 | 编号 | 主题 | 领域 | 优先级 | 状态 | Owner | 记录日期 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](./v2.2.1/technical-debt-remediation/plan.md) |
+| [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
+| [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
+| [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-036](#td-036-parent-flatten-属性覆盖) | 发布 Parent 属性覆盖 | 发布 Parent / 构建 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-037](#td-037-okhttp-jvm-制品) | OkHttp JVM 制品坐标 | BOM / 依赖治理 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-038](#td-038-日志-json-脱敏) | 日志 JSON 脱敏 | starter-log / 数据安全 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
@@ -143,4 +143,4 @@ updated: 2026-09-16
 
 ## 历史说明
 
-TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 的有效部分已在 v2.2.1 完成并从活跃清单移除。TD-030 至 TD-035 的主体修复与终审补丁已分阶段提交，并通过 [v2.2.1 底座质量强化计划](./v2.2.1/foundation-quality-hardening/plan.md) 的本地 Final Gate。DG-1 保留旧枚举 fallback 的误判风险；DG-3 接受写入 v2 后不能回退到 v1-only 二进制。
+TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 的有效部分已在 v2.2.1 完成并从活跃清单移除。TD-030 至 TD-035 的主体修复与终审补丁已分阶段提交，并通过 [v2.2.1 底座质量强化计划](../archive/v2.2.1/foundation-quality-hardening/plan.md) 的本地 Final Gate。DG-1 保留旧枚举 fallback 的误判风险；DG-3 接受写入 v2 后不能回退到 v1-only 二进制。
