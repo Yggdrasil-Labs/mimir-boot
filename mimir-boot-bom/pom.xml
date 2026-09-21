@@ -34,11 +34,11 @@
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.48</lombok.version>
         <hutool.version>5.8.47</hutool.version>
-        <fastjson2.version>2.0.64</fastjson2.version>
+        <fastjson2.version>2.0.65</fastjson2.version>
         <javapoet.version>1.13.0</javapoet.version>
 
         <!-- 日志相关 -->
-        <slf4j.version>2.0.18</slf4j.version>
+        <slf4j.version>2.0.19</slf4j.version>
 
         <!-- 测试相关 -->
         <testcontainers.version>1.21.4</testcontainers.version>
