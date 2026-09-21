@@ -15,7 +15,7 @@
 > Yggdrasil-Labs 的 Java 企业级基础框架  
 > 统一依赖版本、公共组件、自定义 Starter 与编译期代码生成工具。
 
-[快速开始](#-快速开始) • [模块说明](#-模块说明) • [技术栈](#-技术栈) • [特性展示](#-特性展示)
+[快速开始](#-快速开始) • [模块说明](#-模块说明) • [项目文档](docs/index.md) • [技术栈](#-技术栈) • [特性展示](#-特性展示)
 
 </div>
 
@@ -31,21 +31,21 @@
 
 ## 📦 模块说明
 
-| 模块                                     | 描述                           | 状态    |
-|----------------------------------------|------------------------------|-------|
-| [`mimir-boot-parent`](mimir-boot-parent/README.md) | 父 POM，提供插件版本和构建配置 | ✅ 已完成 |
-| [`mimir-boot-bom`](mimir-boot-bom/README.md) | 依赖版本统一管理（BOM） | ✅ 已完成 |
-| [`mimir-boot-common`](mimir-boot-common/README.md) | 公共模型与工具类 | ✅ 已完成 |
-| [`mimir-boot-starter-log`](mimir-boot-starters/mimir-boot-starter-log/README.md) | 日志启动器（Logback + 脱敏 + 访问日志） | ✅ 已完成 |
-| [`mimir-boot-starter-exception`](mimir-boot-starters/mimir-boot-starter-exception/README.md) | 异常处理启动器（全局异常处理、统一响应） | ✅ 已完成 |
-| [`mimir-boot-starter-web`](mimir-boot-starters/mimir-boot-starter-web/README.md) | Web 层启动器（CORS、Trace、响应增强） | ✅ 已完成 |
-| [`mimir-boot-starter-mybatis`](mimir-boot-starters/mimir-boot-starter-mybatis/README.md) | MyBatis 启动器（分页、审计、加密字段） | ✅ 已完成 |
-| [`mimir-boot-starter-mybatis-processor`](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) | MyBatis 编译期处理器（生成 Mapper、Service 和 ServiceImpl） | ✅ 已完成 |
-| [`mimir-boot-starter-nacos`](mimir-boot-starters/mimir-boot-starter-nacos/README.md) | Nacos 配置加密启动器（ENC() 格式解密） | ✅ 已完成 |
-| [`mimir-boot-starter-rpc-core`](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md) | RPC 通用治理核心（Dubbo/Feign 通用能力） | ✅ 已完成 |
-| [`mimir-boot-starter-dubbo`](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) | Dubbo 专用治理（Dubbo 增强与治理） | ✅ 已完成 |
-| [`mimir-boot-starter-feign`](mimir-boot-starters/mimir-boot-starter-feign/README.md) | Feign 专用治理（Feign 增强与治理） | ✅ 已完成 |
-| [`mimir-boot-starter-test`](mimir-boot-starters/mimir-boot-starter-test/README.md) | 测试基类与辅助工具 | ✅ 已完成 |
+| 模块 | 描述 |
+|---|---|
+| [`mimir-boot-parent`](mimir-boot-parent/README.md) | 父 POM，提供插件版本和构建配置 |
+| [`mimir-boot-bom`](mimir-boot-bom/README.md) | 依赖版本统一管理（BOM） |
+| [`mimir-boot-common`](mimir-boot-common/README.md) | 公共模型与工具类 |
+| [`mimir-boot-starter-log`](mimir-boot-starters/mimir-boot-starter-log/README.md) | 日志启动器（Logback + 脱敏 + 访问日志） |
+| [`mimir-boot-starter-exception`](mimir-boot-starters/mimir-boot-starter-exception/README.md) | 异常处理启动器（全局异常处理、统一响应） |
+| [`mimir-boot-starter-web`](mimir-boot-starters/mimir-boot-starter-web/README.md) | Web 层启动器（CORS、Trace、响应增强） |
+| [`mimir-boot-starter-mybatis`](mimir-boot-starters/mimir-boot-starter-mybatis/README.md) | MyBatis 启动器（分页、审计、加密字段） |
+| [`mimir-boot-starter-mybatis-processor`](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) | MyBatis 编译期处理器（生成 Mapper、Service 和 ServiceImpl） |
+| [`mimir-boot-starter-nacos`](mimir-boot-starters/mimir-boot-starter-nacos/README.md) | Nacos 配置加密启动器（ENC() 格式解密） |
+| [`mimir-boot-starter-rpc-core`](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md) | RPC 通用治理核心（Dubbo/Feign 通用能力） |
+| [`mimir-boot-starter-dubbo`](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) | Dubbo 专用治理（Dubbo 增强与治理） |
+| [`mimir-boot-starter-feign`](mimir-boot-starters/mimir-boot-starter-feign/README.md) | Feign 专用治理（Feign 增强与治理） |
+| [`mimir-boot-starter-test`](mimir-boot-starters/mimir-boot-starter-test/README.md) | 测试基类与辅助工具 |
 
 ### 🧩 按场景组合提示
 
@@ -56,16 +56,6 @@
 | 最小 Web 服务 | [`starter-log`](mimir-boot-starters/mimir-boot-starter-log/README.md)、[`starter-exception`](mimir-boot-starters/mimir-boot-starter-exception/README.md)、[`starter-web`](mimir-boot-starters/mimir-boot-starter-web/README.md)、[`starter-test`](mimir-boot-starters/mimir-boot-starter-test/README.md) |
 | 数据服务 | Web 组合 + [`starter-mybatis`](mimir-boot-starters/mimir-boot-starter-mybatis/README.md)；按需选择 [`starter-mybatis-processor`](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md)（编译期生成 Mapper、Service、ServiceImpl） |
 | RPC 服务 | Web 组合 + [`starter-rpc-core`](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md)；按需选择 [`starter-dubbo`](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) 或 [`starter-feign`](mimir-boot-starters/mimir-boot-starter-feign/README.md) |
-
-### 🔮 未来方向
-
-以下能力在探索中，尚未启动正式开发：
-
-- **服务治理**：限流、熔断、重试
-- **指标监控**：Metrics 采集与上报
-- **安全治理**：签名、token 透传、安全增强
-
-正式落地前需完成产品规格评审。
 
 ## 🚀 快速开始
 
@@ -81,21 +71,7 @@
 </parent>
 ```
 
-`mimir-boot-parent` 已在 `dependencyManagement` 中引入 `mimir-boot-bom`，继承 Parent 的项目通常无需重复导入 BOM。若项目不继承 Parent，或需要独立使用版本矩阵，再显式导入 BOM：
-
-```xml
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>io.github.yggdrasil-labs</groupId>
-            <artifactId>mimir-boot-bom</artifactId>
-            <version>2.2.2-SNAPSHOT</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
-```
+`mimir-boot-parent` 已在 `dependencyManagement` 中引入 `mimir-boot-bom`，继承 Parent 的项目通常无需重复导入 BOM。若项目不继承 Parent，或需要独立使用版本矩阵，请参考 [BOM 文档](mimir-boot-bom/README.md) 独立导入 BOM；版本号使用上方当前开发版本或对应正式版本。
 
 **注意**：如需使用 GitHub Packages，请参阅文末[消费者配置说明](#使用-github-packages消费者)完成凭据与仓库配置。
 
@@ -148,17 +124,8 @@ logging:
 # 构建特定嵌套模块（-pl 使用模块路径）
 ./mvnw clean install -pl mimir-boot-starters/mimir-boot-starter-log -am
 
-# 跳过测试
-./mvnw clean package -DskipTests
-
 # 统一完整验收（默认不运行 Sonar）
 bash scripts/engineering.sh quality --mode full --source worktree
-
-# Java 子检查入口（完整验收会调用；默认 RUN_SONAR=false）
-bash scripts/engineering.sh java
-
-# Java 子检查中的 Maven 基础构建步骤
-./mvnw -Pci clean verify
 
 # CI profile 下的代码格式化检查（Spotless）
 ./mvnw -Pci spotless:check
@@ -167,7 +134,7 @@ bash scripts/engineering.sh java
 ./mvnw spotless:apply
 ```
 
-`-Pci clean verify` 启用当前配置的测试、覆盖率、Spotless 和 Enforcer 门禁；JaCoCo report 在 `verify` 阶段生成，并消费单元测试与集成测试的执行数据。`bash scripts/engineering.sh java` 还会核验测试/覆盖率报告，并按 `RUN_SONAR` 条件在通过后单独运行 Sonar。配置细节见 [Parent 文档](mimir-boot-parent/README.md)。
+完整验收、Java 子检查和构建门禁详情见 [工程工具说明](tools/engineering/README.md)；Parent 构建配置见 [Parent 文档](mimir-boot-parent/README.md)。
 
 ## 📋 技术栈
 
@@ -259,6 +226,9 @@ mimir-boot/
 
 ## 📊 模块依赖关系
 
+<details>
+<summary>展开查看模块依赖图</summary>
+
 ```mermaid
 graph TD
     Root[mimir-boot<br/>根模块] --> Parent[mimir-boot-parent<br/>父 POM]
@@ -321,6 +291,8 @@ graph TD
   - 🟣 紫色：Starter 聚合模块
   - 🔴 粉色：测试模块
 
+</details>
+
 ## 📄 许可证
 
 本项目采用 [Apache License 2.0](LICENSE) 许可证。
@@ -339,12 +311,14 @@ graph TD
 
 工具职责、运行条件及各子命令见[工程工具说明](tools/engineering/README.md)。
 
-### 使用 GitHub Packages（消费者）
+## 使用 GitHub Packages（消费者）
 
 在使用方开发机/CI 的 `~/.m2/settings.xml` 配置凭据（无需改动本仓 POM）：
 
-```xml
+<details>
+<summary>查看 settings.xml 示例</summary>
 
+```xml
 <settings>
     <servers>
         <server>
@@ -356,10 +330,14 @@ graph TD
 </settings>
 ```
 
+</details>
+
 在使用方项目的 `pom.xml` 增加仓库（或放到其 `settings.xml` 的 `mirrors/profiles` 中统一管理）：
 
-```xml
+<details>
+<summary>查看仓库配置示例</summary>
 
+```xml
 <repositories>
     <repository>
         <id>github</id>
@@ -380,6 +358,18 @@ graph TD
 
 </repositories>
 ```
+
+</details>
+
+## 🔮 未来方向
+
+以下能力在探索中，尚未启动正式开发：
+
+- **服务治理**：限流、熔断、重试
+- **指标监控**：Metrics 采集与上报
+- **安全治理**：签名、token 透传、安全增强
+
+正式落地前需完成产品规格评审。
 
 ## 📞 联系我们
 
