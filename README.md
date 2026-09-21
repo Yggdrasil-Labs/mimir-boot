@@ -33,19 +33,19 @@
 
 | 模块                                     | 描述                           | 状态    |
 |----------------------------------------|------------------------------|-------|
-| `mimir-boot-parent`                    | 父 POM，提供插件版本和构建配置            | ✅ 已完成 |
-| `mimir-boot-bom`                       | 依赖版本统一管理（BOM）                | ✅ 已完成 |
-| `mimir-boot-common`                    | 公共模型与工具类                     | ✅ 已完成 |
-| `mimir-boot-starter-log`               | 日志启动器（Logback + 脱敏 + 访问日志）   | ✅ 已完成 |
-| `mimir-boot-starter-exception`         | 异常处理启动器（全局异常处理、统一响应）         | ✅ 已完成 |
-| `mimir-boot-starter-web`               | Web 层启动器（CORS、Trace、响应增强）    | ✅ 已完成 |
-| `mimir-boot-starter-mybatis`           | MyBatis 启动器（分页、审计、加密字段）      | ✅ 已完成 |
-| `mimir-boot-starter-mybatis-processor` | MyBatis 编译期处理器（生成 Mapper、Service 和 ServiceImpl） | ✅ 已完成 |
-| `mimir-boot-starter-nacos`             | Nacos 配置加密启动器（ENC() 格式解密）    | ✅ 已完成 |
-| `mimir-boot-starter-rpc-core`          | RPC 通用治理核心（Dubbo/Feign 通用能力）  | ✅ 已完成 |
-| `mimir-boot-starter-dubbo`             | Dubbo 专用治理（Dubbo 增强与治理）       | ✅ 已完成 |
-| `mimir-boot-starter-feign`              | Feign 专用治理（Feign 增强与治理）        | ✅ 已完成 |
-| `mimir-boot-starter-test`               | 测试基类与辅助工具                     | ✅ 已完成 |
+| [`mimir-boot-parent`](mimir-boot-parent/README.md) | 父 POM，提供插件版本和构建配置 | ✅ 已完成 |
+| [`mimir-boot-bom`](mimir-boot-bom/README.md) | 依赖版本统一管理（BOM） | ✅ 已完成 |
+| [`mimir-boot-common`](mimir-boot-common/README.md) | 公共模型与工具类 | ✅ 已完成 |
+| [`mimir-boot-starter-log`](mimir-boot-starters/mimir-boot-starter-log/README.md) | 日志启动器（Logback + 脱敏 + 访问日志） | ✅ 已完成 |
+| [`mimir-boot-starter-exception`](mimir-boot-starters/mimir-boot-starter-exception/README.md) | 异常处理启动器（全局异常处理、统一响应） | ✅ 已完成 |
+| [`mimir-boot-starter-web`](mimir-boot-starters/mimir-boot-starter-web/README.md) | Web 层启动器（CORS、Trace、响应增强） | ✅ 已完成 |
+| [`mimir-boot-starter-mybatis`](mimir-boot-starters/mimir-boot-starter-mybatis/README.md) | MyBatis 启动器（分页、审计、加密字段） | ✅ 已完成 |
+| [`mimir-boot-starter-mybatis-processor`](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) | MyBatis 编译期处理器（生成 Mapper、Service 和 ServiceImpl） | ✅ 已完成 |
+| [`mimir-boot-starter-nacos`](mimir-boot-starters/mimir-boot-starter-nacos/README.md) | Nacos 配置加密启动器（ENC() 格式解密） | ✅ 已完成 |
+| [`mimir-boot-starter-rpc-core`](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md) | RPC 通用治理核心（Dubbo/Feign 通用能力） | ✅ 已完成 |
+| [`mimir-boot-starter-dubbo`](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) | Dubbo 专用治理（Dubbo 增强与治理） | ✅ 已完成 |
+| [`mimir-boot-starter-feign`](mimir-boot-starters/mimir-boot-starter-feign/README.md) | Feign 专用治理（Feign 增强与治理） | ✅ 已完成 |
+| [`mimir-boot-starter-test`](mimir-boot-starters/mimir-boot-starter-test/README.md) | 测试基类与辅助工具 | ✅ 已完成 |
 
 ### 🧩 按场景组合提示
 
@@ -97,30 +97,7 @@
 </dependencyManagement>
 ```
 
-**注意**：如果使用 GitHub Packages，需要在 `~/.m2/settings.xml` 中配置认证：
-
-```xml
-<settings>
-  <servers>
-    <server>
-      <id>github</id>
-      <username>YOUR_GITHUB_USERNAME</username>
-      <password>YOUR_GITHUB_TOKEN</password>
-    </server>
-  </servers>
-</settings>
-```
-
-并在 `pom.xml` 中添加仓库配置：
-
-```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/Yggdrasil-Labs/mimir-boot</url>
-    </repository>
-</repositories>
-```
+**注意**：如需使用 GitHub Packages，请参阅文末[消费者配置说明](#使用-github-packages消费者)完成凭据与仓库配置。
 
 ### 2. 添加依赖
 
@@ -259,22 +236,6 @@ bash scripts/engineering.sh java
 
 详细文档请参考 [mimir-boot-starter-mybatis/README.md](mimir-boot-starters/mimir-boot-starter-mybatis/README.md)
 
-## 📚 模块文档
-
-- [mimir-boot-parent](mimir-boot-parent/README.md) - 父 POM，提供插件版本和构建配置
-- [mimir-boot-bom](mimir-boot-bom/README.md) - 依赖版本统一管理（BOM）
-- [mimir-boot-common](mimir-boot-common/README.md) - 公共组件说明
-- [mimir-boot-starter-log](mimir-boot-starters/mimir-boot-starter-log/README.md) - 日志启动器文档
-- [mimir-boot-starter-exception](mimir-boot-starters/mimir-boot-starter-exception/README.md) - 异常处理启动器文档
-- [mimir-boot-starter-web](mimir-boot-starters/mimir-boot-starter-web/README.md) - Web 层启动器文档
-- [mimir-boot-starter-mybatis](mimir-boot-starters/mimir-boot-starter-mybatis/README.md) - MyBatis 启动器文档
-- [mimir-boot-starter-mybatis-processor](mimir-boot-starters/mimir-boot-starter-mybatis-processor/README.md) - MyBatis 编译期处理器文档
-- [mimir-boot-starter-nacos](mimir-boot-starters/mimir-boot-starter-nacos/README.md) - Nacos 配置加密启动器文档
-- [mimir-boot-starter-test](mimir-boot-starters/mimir-boot-starter-test/README.md) - 测试启动器文档
-- [mimir-boot-starter-rpc-core](mimir-boot-starters/mimir-boot-starter-rpc-core/README.md) - RPC 通用治理核心文档
-- [mimir-boot-starter-dubbo](mimir-boot-starters/mimir-boot-starter-dubbo/README.md) - Dubbo 专用治理文档
-- [mimir-boot-starter-feign](mimir-boot-starters/mimir-boot-starter-feign/README.md) - Feign 专用治理文档
-
 ## 🏗️ 项目结构
 
 ```
@@ -367,19 +328,14 @@ graph TD
 ## 🛠️ CI / Release / 发布
 
 - **CI（.github/workflows/ci.yml）**
-  - 本地工作区与 CI 共用完整验收：`bash scripts/engineering.sh quality --mode full --source worktree`；pre-push 使用同一执行器检查提交快照
-  - 完整验收固定包含文档、发布契约、构建模型、隔离消费者、临时密钥签名，以及 Maven 测试和覆盖率报告核验
-  - 上传 Surefire/Failsafe 报告与 JaCoCo 覆盖率；最终 XML 在单元与集成测试结束后生成
-  - 提交前执行暂存快照的文档与 Java 格式检查；推送前执行待推送提交快照的完整验收
-  - 本地 full 默认 `RUN_SONAR=false`，只等价 CI 的基础检查；Sonar 仅在 push 到 `main`/`develop` 且同时存在 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和 `SONAR_PROJECT_KEY` 时自动执行
+  - 本地工作区与 CI 共用完整验收：`bash scripts/engineering.sh quality --mode full --source worktree`；pre-push 使用同一入口执行 quick 检查。
+  - 本地默认 `RUN_SONAR=false`；Sonar 仅在 push 到 `main`/`develop` 且配置 `SONAR_TOKEN`、`SONAR_ORGANIZATION` 和 `SONAR_PROJECT_KEY` 时执行。
 
 - **Release PR 与自动打 Tag（.github/workflows/release-please.yml）**
-  - 当 `main` 有新提交时，自动创建 “Release PR”（包含版本号变更与 CHANGELOG）
-  - 合并该 PR 后，由 `create-tag.yml` 创建 `vX.Y.Z` Tag；Tag 再触发 `release.yml`，在公开制品校验通过后创建 GitHub Release
+  - `main` 有新提交时自动创建 Release PR；合并后创建 `vX.Y.Z` Tag，并在公开制品校验通过后创建 GitHub Release。
 
 - **发布（.github/workflows/release.yml）**
-  - 基于 Tag 触发：发布前执行与本地相同的完整门禁；发布后再验证 Maven Central 公开制品可见性
-  - 按发布选择发布制品到 GitHub Packages（GPR）和/或 Maven Central；Maven Central 正式版需要显式 GPG 签名
+  - Tag 触发发布门禁，发布后验证 Maven Central 公开制品可见性；制品按发布选择发送到 GitHub Packages（GPR）和/或 Maven Central，正式版需显式 GPG 签名。
 
 工具职责、运行条件及各子命令见[工程工具说明](tools/engineering/README.md)。
 
