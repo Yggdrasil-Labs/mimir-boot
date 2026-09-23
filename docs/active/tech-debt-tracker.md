@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 技术债务追踪
@@ -24,7 +24,6 @@ updated: 2026-09-22
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-036](#td-036-parent-flatten-属性覆盖) | 发布 Parent 属性覆盖 | 发布 Parent / 构建 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-037](#td-037-okhttp-jvm-制品) | OkHttp JVM 制品坐标 | BOM / 依赖治理 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
-| [TD-038](#td-038-日志-json-脱敏) | 日志 JSON 脱敏 | starter-log / 数据安全 | 高 | 已规划，待实施 | YoungerYang-Y | 2026-09-10 | [SDD 与实施计划](./v2.3.0/log-json-masking/plan.md) |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-040](#td-040-mongodb-驱动族) | MongoDB 驱动族兼容 | BOM / MongoDB 兼容性 | 高 | 已规划，待实施 | YoungerYang-Y | 2026-09-13 | [SDD 与实施计划](./v2.3.0/mongodb-driver-alignment/plan.md) |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
@@ -76,10 +75,12 @@ updated: 2026-09-22
 
 <a id="td-038-日志-json-脱敏"></a>
 
-### TD-038：日志 JSON 脱敏
+### TD-038：日志 JSON 脱敏（已处理）
 
-- **现状与风险**：启用 `api_key`、`account` 等预置规则后，普通 `key=value` 能脱敏，带引号的 JSON 字段不匹配，敏感值可能写入日志。
-- **处置与验收**：统一字段型规则的引号感知处理，并覆盖 JSON、转义字符和普通赋值格式。
+- **原现状与风险**：启用 `api_key`、`account` 等预置规则后，普通 `key=value` 能脱敏，带引号的 JSON 字段不匹配，敏感值可能写入日志。
+- **处理结果**：10 组字段型规则统一通过字段扫描保护普通赋值和带引号键名的文本标量；默认规则集合仍为空，公开正则与配置语义未变。
+- **范围边界**：对象和数组值不保证完整脱敏；日志调用方仍须在记录前移除此类字段或预先脱敏。其他文本匹配边界见 [实施计划](./v2.3.0/log-json-masking/plan.md)。
+- **验收证据**：模块 `clean verify` 与完整本地质量报告均通过，具体命令、测试汇总和快照见[实施计划 T4](./v2.3.0/log-json-masking/plan.md#t4-全局验收与技术债状态)。本地验收不代表 CI、远端消费者或版本发布。
 
 <a id="td-039-nacos-解密覆盖层"></a>
 

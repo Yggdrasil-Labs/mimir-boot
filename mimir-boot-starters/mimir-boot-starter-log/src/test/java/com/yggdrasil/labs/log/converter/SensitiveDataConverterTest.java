@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,8 +20,12 @@ import org.junit.jupiter.api.Test;
 
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.LoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * 敏感数据转换器测试
@@ -180,12 +187,10 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, "id_card");
         SensitiveDataConverter.reloadConfig();
 
-        String message = "身份证: idCard=110101199001011234";
+        String message = "身份证: 110101199001011234, idCard=110101199001011234";
         String result = converter.maskSensitiveData(message);
 
-        assertNotNull(result);
-        assertTrue(result.contains("idCard="));
-        assertTrue(result.contains("****"));
+        assertEquals("身份证: ****, idCard=****", result);
     }
 
     @Test
@@ -721,6 +726,345 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         String result = newConverter.maskSensitiveData(message);
 
         assertTrue(result.contains("****"));
+    }
+
+    @Test
+    void masksEveryFieldAliasInJsonAndAssignmentFormsAndPreservesFollowingText() {
+        List<SensitiveDataPattern> fieldPatterns =
+                List.of(
+                        SensitiveDataPattern.PASSWORD,
+                        SensitiveDataPattern.TOKEN,
+                        SensitiveDataPattern.SECRET,
+                        SensitiveDataPattern.API_KEY,
+                        SensitiveDataPattern.ACCOUNT,
+                        SensitiveDataPattern.ID_CARD,
+                        SensitiveDataPattern.PHONE,
+                        SensitiveDataPattern.BANK_CARD,
+                        SensitiveDataPattern.EMAIL,
+                        SensitiveDataPattern.NAME);
+
+        for (SensitiveDataPattern fieldPattern : fieldPatterns) {
+            SensitiveDataConverter.publishConfiguration(
+                    List.of(fieldPattern.getName()), List.of(), "****");
+            for (String alias : SensitiveDataPattern.keyValueFieldNames(List.of(fieldPattern))) {
+                String json = "{\"" + alias + "\":\"sensitive-value\",\"tail\":\"sentinel\"}";
+                assertEquals(
+                        "{\"" + alias + "\":\"****\",\"tail\":\"sentinel\"}",
+                        converter.maskSensitiveData(json),
+                        fieldPattern.getName() + " JSON alias " + alias);
+
+                for (String separator : List.of("=", ":")) {
+                    String quotedMessage = alias + separator + "\"sensitive-value\", tail=sentinel";
+                    assertEquals(
+                            alias + separator + "\"****\", tail=sentinel",
+                            converter.maskSensitiveData(quotedMessage),
+                            fieldPattern.getName()
+                                    + " quoted assignment alias "
+                                    + alias
+                                    + separator);
+
+                    String unquotedSeparator = separator.equals(":") ? ": " : separator;
+                    String unquotedMessage =
+                            alias + unquotedSeparator + "sensitive-value, tail=sentinel";
+                    assertEquals(
+                            alias + unquotedSeparator + "****, tail=sentinel",
+                            converter.maskSensitiveData(unquotedMessage),
+                            fieldPattern.getName()
+                                    + " unquoted assignment alias "
+                                    + alias
+                                    + unquotedSeparator);
+                }
+            }
+        }
+    }
+
+    @Test
+    void leavesJsonUnchangedWhenNoFieldRuleIsEnabled() {
+        String message = "{\"account\":\"alice\"}";
+        List<List<String>> ruleSets =
+                List.of(
+                        List.of(),
+                        List.of(""),
+                        List.of(" "),
+                        List.of("\t"),
+                        List.of("\\t"),
+                        Arrays.asList((String) null),
+                        List.of("unknown-pattern"));
+
+        for (List<String> ruleSet : ruleSets) {
+            SensitiveDataConverter.publishConfiguration(ruleSet, List.of(), "****");
+            assertEquals(message, converter.maskSensitiveData(message), ruleSet.toString());
+        }
+    }
+
+    @Test
+    void masksCaseInsensitiveQuotedKeyAndScalarValuesExactly() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+
+        assertEquals(
+                "'ACCOUNT' : '****', tail=sentinel",
+                converter.maskSensitiveData("'ACCOUNT' : 'alice', tail=sentinel"));
+        assertEquals(
+                "account=****, tail=sentinel",
+                converter.maskSensitiveData("account=123, tail=sentinel"));
+        assertEquals(
+                "account=****, tail=sentinel",
+                converter.maskSensitiveData("account=true, tail=sentinel"));
+        assertEquals(
+                "account=****, tail=sentinel",
+                converter.maskSensitiveData("account=null, tail=sentinel"));
+    }
+
+    @Test
+    void masksQuotedValuesContainingSeparatorsAndBracketsAsOneScalar() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+
+        assertEquals(
+                "account=\"****\", tail=sentinel",
+                converter.maskSensitiveData("account=\"alice, bob ] }\", tail=sentinel"));
+    }
+
+    @Test
+    void honorsEscapedQuoteParityAndMasksUnclosedQuotedValuesToEndOfMessage() {
+        SensitiveDataConverter.publishConfiguration(List.of("api_key"), List.of(), "****");
+
+        assertEquals(
+                "api_key=\"****\", tail=sentinel",
+                converter.maskSensitiveData("api_key=\"secret\\\"still-secret\", tail=sentinel"));
+        assertEquals(
+                "api_key=\"****\", tail=sentinel",
+                converter.maskSensitiveData("api_key=\"secret\\\\\", tail=sentinel"));
+        assertEquals(
+                "api_key='****', tail=sentinel",
+                converter.maskSensitiveData("api_key='secret\\'still-secret', tail=sentinel"));
+        assertEquals(
+                "api_key=\"****\"",
+                converter.maskSensitiveData("api_key=\"secret\\\"still-secret, tail=sentinel"));
+        assertEquals(
+                "api_key=\"****\"", converter.maskSensitiveData("api_key=\"secret, tail=sentinel"));
+        assertEquals(
+                "api_key='****'", converter.maskSensitiveData("api_key='secret, tail=sentinel"));
+    }
+
+    @Test
+    void preservesUnquotedValueDelimitersAndFollowingText() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+
+        assertEquals("account=****}", converter.maskSensitiveData("account=alice}"));
+        assertEquals("account=****]", converter.maskSensitiveData("account=alice]"));
+        assertEquals(
+                "account=**** tail=sentinel",
+                converter.maskSensitiveData("account=alice tail=sentinel"));
+        assertEquals("account=****", converter.maskSensitiveData("account=alice"));
+    }
+
+    @Test
+    void preservesDocumentedSuffixMatchingAndRejectsRightSideNearMatches() {
+        SensitiveDataConverter.publishConfiguration(List.of("name", "account"), List.of(), "****");
+
+        assertEquals("service_name=****", converter.maskSensitiveData("service_name=orders"));
+        assertEquals("not_account=****", converter.maskSensitiveData("not_account=alice"));
+        assertEquals("account_extra=alice", converter.maskSensitiveData("account_extra=alice"));
+        assertEquals("account text alice", converter.maskSensitiveData("account text alice"));
+    }
+
+    @Test
+    void preservesMissingFieldValuesAndMasksEmptyQuotedValues() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+
+        assertEquals("account=", converter.maskSensitiveData("account="));
+        assertEquals(
+                "account=, tail=sentinel", converter.maskSensitiveData("account=, tail=sentinel"));
+        assertEquals("account=\"****\"", converter.maskSensitiveData("account=\"\""));
+        assertEquals("account='****'", converter.maskSensitiveData("account=''"));
+    }
+
+    @Test
+    void preservesNullAndEmptyMessagesWithFieldRulesEnabled() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+
+        assertNull(converter.maskSensitiveData(null));
+        assertEquals("", converter.maskSensitiveData(""));
+    }
+
+    @Test
+    void acceptsSingleUnpairedQuoteAfterFieldAlias() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+
+        assertEquals("account\"=****", converter.maskSensitiveData("account\"=alice"));
+    }
+
+    @Test
+    void keepsPureValuePresetRulesOnRegexPath() {
+        List<String> cases =
+                List.of(
+                        "110105194912310021",
+                        "13800138000",
+                        "6222021234567890123",
+                        "alice@example.com");
+        List<String> rules =
+                List.of("id_card_number", "phone_number", "bank_card_number", "email_address");
+
+        for (int index = 0; index < rules.size(); index++) {
+            SensitiveDataConverter.publishConfiguration(
+                    List.of(rules.get(index)), List.of(), "****");
+            assertEquals("****", converter.maskSensitiveData(cases.get(index)), rules.get(index));
+        }
+    }
+
+    @Test
+    void scansFieldsBeforeCustomRegexesAndRunsCustomRegexesOnTheScannedMessage() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of("alice"), "[MASK]");
+        assertEquals(
+                "account=[MASK], other=[MASK]",
+                converter.maskSensitiveData("account=alice, other=alice"));
+
+        SensitiveDataConverter.publishConfiguration(
+                List.of("account"), List.of("\\*{4},\\x20"), "****");
+        assertEquals(
+                "account=****other=alice",
+                converter.maskSensitiveData("account=alice, other=alice"));
+    }
+
+    @Test
+    void appliesNewCustomPatternSnapshotAndWarnsWhenAnotherPatternIsInvalid() {
+        SensitiveDataConverter.clearCustomPatterns();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(SensitiveDataConverter.class);
+        Level previousLevel = logger.getLevel();
+        ListAppender<ILoggingEvent> warningAppender = new ListAppender<>();
+        warningAppender.setContext(context);
+        warningAppender.start();
+        logger.setLevel(Level.WARN);
+        logger.addAppender(warningAppender);
+        try {
+            SensitiveDataConverter.publishConfiguration(List.of(), List.of("old-only"), "****");
+            assertEquals("**** new-only", converter.maskSensitiveData("old-only new-only"));
+
+            SensitiveDataConverter.publishConfiguration(
+                    List.of(), List.of("new-only", "sensitive-literal["), "****");
+            assertEquals("old-only ****", converter.maskSensitiveData("old-only new-only"));
+            ILoggingEvent warning =
+                    warningAppender.list.stream()
+                            .filter(event -> event.getLevel() == Level.WARN)
+                            .findFirst()
+                            .orElseThrow();
+            assertEquals(
+                    "Invalid custom mask pattern: invalid expression ignored",
+                    warning.getFormattedMessage());
+            assertFalse(warning.getFormattedMessage().contains("sensitive-literal"));
+            assertNull(warning.getThrowableProxy());
+        } finally {
+            logger.detachAppender(warningAppender);
+            warningAppender.stop();
+            logger.setLevel(previousLevel);
+            SensitiveDataConverter.clearCustomPatterns();
+        }
+    }
+
+    @Test
+    void warnsWithoutExposingInvalidProgrammaticPattern() {
+        SensitiveDataConverter.clearCustomPatterns();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(SensitiveDataConverter.class);
+        Level previousLevel = logger.getLevel();
+        ListAppender<ILoggingEvent> warningAppender = new ListAppender<>();
+        warningAppender.setContext(context);
+        warningAppender.start();
+        logger.setLevel(Level.WARN);
+        logger.addAppender(warningAppender);
+        try {
+            SensitiveDataConverter.addCustomPattern("sensitive-literal[");
+            assertEquals("visible", converter.maskSensitiveData("visible"));
+
+            ILoggingEvent warning =
+                    warningAppender.list.stream()
+                            .filter(event -> event.getLevel() == Level.WARN)
+                            .findFirst()
+                            .orElseThrow();
+            assertEquals(
+                    "Invalid programmatic mask pattern: invalid expression ignored",
+                    warning.getFormattedMessage());
+            assertFalse(warning.getFormattedMessage().contains("sensitive-literal"));
+            assertNull(warning.getThrowableProxy());
+        } finally {
+            logger.detachAppender(warningAppender);
+            warningAppender.stop();
+            logger.setLevel(previousLevel);
+            SensitiveDataConverter.clearCustomPatterns();
+        }
+    }
+
+    @Test
+    void formatsMessageArgumentsBeforeApplyingFieldMasking() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+        Logger logger = context.getLogger("SENSITIVE_FORMATTED_MESSAGE_TEST");
+        LoggingEvent event =
+                new LoggingEvent(
+                        SensitiveDataConverterTest.class.getName(),
+                        logger,
+                        Level.INFO,
+                        "account={} tail={}",
+                        null,
+                        new Object[] {"alice", "sentinel"});
+
+        assertEquals("account=**** tail=sentinel", converter.convert(event));
+    }
+
+    @Test
+    void publishesOnlyCompleteAccountOrTokenSnapshotsDuringConcurrentRefresh() throws Exception {
+        String message = "account=alice token=secret";
+        Set<String> allowedResults = Set.of("account=A token=secret", "account=alice token=B");
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "A");
+        CountDownLatch start = new CountDownLatch(1);
+        ConcurrentLinkedQueue<String> observedResults = new ConcurrentLinkedQueue<>();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> publisher =
+                    executor.submit(
+                            () -> {
+                                start.await();
+                                for (int index = 0; index < 500; index++) {
+                                    if (index % 2 == 0) {
+                                        SensitiveDataConverter.publishConfiguration(
+                                                List.of("token"), List.of(), "B");
+                                    } else {
+                                        SensitiveDataConverter.publishConfiguration(
+                                                List.of("account"), List.of(), "A");
+                                    }
+                                }
+                                return null;
+                            });
+            Future<?> reader =
+                    executor.submit(
+                            () -> {
+                                start.await();
+                                for (int index = 0; index < 500; index++) {
+                                    observedResults.add(converter.maskSensitiveData(message));
+                                }
+                                return null;
+                            });
+            start.countDown();
+            publisher.get(5, TimeUnit.SECONDS);
+            reader.get(5, TimeUnit.SECONDS);
+
+            assertFalse(observedResults.isEmpty());
+            observedResults.forEach(
+                    result ->
+                            assertTrue(
+                                    allowedResults.contains(result),
+                                    "Unexpected snapshot: " + result));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void clearsProgrammaticRegexRulesWithoutLeavingStaleConfiguration() {
+        SensitiveDataConverter.publishConfiguration(List.of(), List.of(), "****");
+        SensitiveDataConverter.addCustomPattern("alice");
+        assertEquals("other=****", converter.maskSensitiveData("other=alice"));
+
+        SensitiveDataConverter.clearCustomPatterns();
+        assertEquals("other=alice", converter.maskSensitiveData("other=alice"));
     }
 
     @Test

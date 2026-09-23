@@ -120,7 +120,7 @@ graph TD
 ## 当前能力边界
 
 - `mimir-boot-common` 新增三个 `fromCodeOrNull` 查询方法，既有 `fromCode` fallback 保持兼容。
-- 日志脱敏支持部分 JSON 字段、已登记的编码字段形式及私钥/访问密钥，并以完整快照发布配置；脱敏由接入方显式配置规则，`api_key`、`account` 等预置规则仍有 JSON 匹配缺口（TD-038）。
+- 日志脱敏以完整配置快照处理接入方显式启用的 10 组字段型规则，支持普通赋值和带引号键名的文本标量；它不解析完整 JSON，对象/数组值不保证完整保护，边界与调用方处置要求见日志 Starter README（TD-038 的标量缺口已补齐并通过本地验收，尚未随版本发布）。
 - RPC 适配层使用调用级上下文与异步生命周期；旧 `RpcTracerBridge.extract` 和 Hook 直调入口继续保留兼容。
 - Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；删除前缀时旧解密覆盖层仍可能残留（TD-039）。遗留 AES 入口仅供离线迁移并输出告警。
 - MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
