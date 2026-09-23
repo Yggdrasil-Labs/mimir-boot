@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-16
+updated: 2026-09-22
 ---
 
 # 技术债务追踪
@@ -24,9 +24,9 @@ updated: 2026-09-16
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-036](#td-036-parent-flatten-属性覆盖) | 发布 Parent 属性覆盖 | 发布 Parent / 构建 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-037](#td-037-okhttp-jvm-制品) | OkHttp JVM 制品坐标 | BOM / 依赖治理 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
-| [TD-038](#td-038-日志-json-脱敏) | 日志 JSON 脱敏 | starter-log / 数据安全 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
+| [TD-038](#td-038-日志-json-脱敏) | 日志 JSON 脱敏 | starter-log / 数据安全 | 高 | 已规划，待实施 | YoungerYang-Y | 2026-09-10 | [SDD 与实施计划](./v2.3.0/log-json-masking/plan.md) |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
-| [TD-040](#td-040-mongodb-驱动族) | MongoDB 驱动族兼容 | BOM / MongoDB 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
+| [TD-040](#td-040-mongodb-驱动族) | MongoDB 驱动族兼容 | BOM / MongoDB 兼容性 | 高 | 已规划，待实施 | YoungerYang-Y | 2026-09-13 | [SDD 与实施计划](./v2.3.0/mongodb-driver-alignment/plan.md) |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项证据闭环 |

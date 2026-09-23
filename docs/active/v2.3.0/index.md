@@ -1,7 +1,7 @@
 ---
 version: v2.3.0
 status: in-progress
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # v2.3.0 活跃需求
@@ -11,6 +11,8 @@ updated: 2026-09-20
 | 需求 | 状态 | 说明 |
 |---|---|---|
 | [Agent 文档治理与本地质量门禁](./docs-quality-governance/plan.md#当前状态与后续工作) | 进行中 | 文档内容修复及文档验收通过；尚未提交，T8 整体验收待完成 |
+| [日志 JSON 脱敏补全](./log-json-masking/plan.md) | 已规划，待实施 | [规格](./log-json-masking/spec.md)、[设计](./log-json-masking/design.md)、4 个串行任务；尚未开始实现 |
+| [MongoDB 驱动族兼容](./mongodb-driver-alignment/plan.md) | 已规划，待实施 | [规格](./mongodb-driver-alignment/spec.md)、[设计](./mongodb-driver-alignment/design.md)、4 个串行任务；尚未修改依赖 |
 
 ## 文档治理工作入口
 
