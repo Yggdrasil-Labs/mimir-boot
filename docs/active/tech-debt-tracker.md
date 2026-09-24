@@ -25,7 +25,6 @@ updated: 2026-09-23
 | [TD-036](#td-036-parent-flatten-属性覆盖) | 发布 Parent 属性覆盖 | 发布 Parent / 构建 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-037](#td-037-okhttp-jvm-制品) | OkHttp JVM 制品坐标 | BOM / 依赖治理 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
-| [TD-040](#td-040-mongodb-驱动族) | MongoDB 驱动族兼容 | BOM / MongoDB 兼容性 | 高 | 已规划，待实施 | YoungerYang-Y | 2026-09-13 | [SDD 与实施计划](./v2.3.0/mongodb-driver-alignment/plan.md) |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项证据闭环 |
@@ -91,10 +90,11 @@ updated: 2026-09-23
 
 <a id="td-040-mongodb-驱动族"></a>
 
-### TD-040：MongoDB 驱动族兼容
+### TD-040：MongoDB 驱动族兼容（已处理）
 
-- **现状与风险**：BOM 将 `mongodb-driver-sync` 固定为 `4.11.5`，但 `mongodb-driver-core`、`bson` 仍由 Spring Boot 管理为 `5.0.1`；`MongoClients.create(...)` 在连接前抛出 `NoClassDefFoundError: com/mongodb/connection/StreamFactory`。
-- **处置与验收**：统一 MongoDB 驱动族版本并验证 Spring Data 兼容性；增加只导入发布 BOM 的客户端初始化测试。
+- **处理结果**：移除 Mimir BOM 的 `mongodb.version` 与 `mongodb-driver-sync` 单项固定版本，MongoDB 驱动族由 Spring Boot BOM 管理为 `5.0.1`；TD-040 已从活跃清单移除。
+- **范围边界**：本地消费者覆盖 BOM、Parent 与 Spring Data 三种接入方式的依赖解析、同步客户端初始化和 `_id`/`name` 离线映射；不覆盖真实服务端、CRUD、线上发布或发布后消费者验证。
+- **验收证据**：[TD-040 处置记录与本地完整验收](./v2.3.0/mongodb-driver-alignment/plan.md#td-040-处置记录)。
 
 <a id="td-041-springdoc-boot-兼容性"></a>
 

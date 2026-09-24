@@ -101,7 +101,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-rpc-core` | `mimir-boot-starter-dubbo`、`mimir-boot-starter-feign` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-test` | 所有具测试的 Starter |
 
-### 仅管理（40 项）
+### 仅管理（39 项）
 
 | 类别 | 坐标 |
 |------|------|
@@ -123,7 +123,6 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | 缓存与消息 | `com.alicp.jetcache:jetcache-starter-caffeine` |
 | 任务与搜索 | `com.xuxueli:xxl-job-core` |
 | 任务与搜索 | `co.elastic.clients:elasticsearch-java` |
-| 任务与搜索 | `org.mongodb:mongodb-driver-sync` |
 | 工具 | `org.apache.commons:commons-lang3` |
 | 工具 | `org.apache.commons:commons-collections4` |
 | 工具 | `com.google.guava:guava` |
@@ -154,11 +153,16 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 
 下列坐标当前属于“仅管理”，不能依据 BOM 声明推断为已验证的运行时组合：
 
-- `org.mongodb:mongodb-driver-sync:4.11.5` 与 Spring Boot 管理的 MongoDB 驱动族存在版本不一致风险，接入前请在目标应用中验证。
 - `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1` 与当前 Spring Boot 3.3 基线存在兼容性风险，接入前请在目标应用中验证。
 - `com.squareup.okhttp3:okhttp:5.5.0` 的 JVM 消费坐标仍待确认，接入前请在目标应用中验证。
 
 接入方使用这些坐标前，应先完成独立的消费者编译或运行验证。
+
+### MongoDB 驱动兼容边界
+
+本 BOM 不再提供 `mongodb.version` 属性或 `mongodb-driver-sync` 的单项固定版本；MongoDB 驱动族由 Spring Boot 3.3.13 BOM 管理为 5.0.1。此前的 4.11.5→5.0.1 升级可能涉及旧 API 或 ABI 不兼容，消费者应重新编译，并检查上游破坏性变更后再升级。
+
+本地独立消费者验证覆盖 BOM、Parent 和 Spring Data 三种接入方式的依赖解析、同步客户端初始化，以及 Spring Data 对 `_id`/`name` 的离线映射。验证不连接真实 MongoDB 服务端，不覆盖 CRUD，也不代表线上发布或发布后消费者已验证。若消费者显式覆盖版本，应让整个 MongoDB 驱动族使用一致版本，并由消费者自行验证；不要只覆盖 `mongodb-driver-sync`。
 
 ## 🔧 配置说明
 

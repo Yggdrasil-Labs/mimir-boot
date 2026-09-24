@@ -12,7 +12,7 @@ updated: 2026-09-23
 |---|---|---|
 | [Agent 文档治理与本地质量门禁](./docs-quality-governance/plan.md#当前状态与后续工作) | 进行中 | 文档内容修复及文档验收通过；尚未提交，T8 整体验收待完成 |
 | [日志 JSON 脱敏补全](./log-json-masking/plan.md) | 实施及本地完整验收完成（未发布） | [规格](./log-json-masking/spec.md)、[设计](./log-json-masking/design.md)、4 个串行任务已完成；复合值边界见 README 与计划 |
-| [MongoDB 驱动族兼容](./mongodb-driver-alignment/plan.md) | 已规划，待实施 | [规格](./mongodb-driver-alignment/spec.md)、[设计](./mongodb-driver-alignment/design.md)、4 个串行任务；尚未修改依赖 |
+| [MongoDB 驱动族兼容](./mongodb-driver-alignment/plan.md) | 本地实施及完整验收完成（未发布） | [规格](./mongodb-driver-alignment/spec.md)、[设计](./mongodb-driver-alignment/design.md)、4 个串行任务和本地完整 quality 报告；发布状态见 [release.md](./release.md) |
 
 ## 文档治理工作入口
 

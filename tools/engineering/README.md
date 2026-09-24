@@ -41,7 +41,7 @@ full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 
 | `java` | Maven 构建及测试、覆盖率报告核验 |
 | `build-model` | 所有 Reactor 模块 default/maven-central 签名开关 |
 | `contracts` | 发布工作流、制品布局和本地 HTTP 故障场景 |
-| `consumer` | 隔离发布及下游 Parent/BOM 消费者验收 |
+| `consumer` | 隔离发布及下游 Parent/BOM/Spring Data 消费者验收；在线和隔离清单核对依赖解析，`clean verify` 与 Surefire 报告核对测试来源及结果，不启动 MongoDB 服务端 |
 | `signing --preheat` | 隔离缓存、一次性 GPG 密钥的签名验收 |
 | `public <x.y.z>` | 验证 Maven Central 公开 POM 坐标和 JAR |
 | `portal-state <JSON 文件>` | 解析 Portal 观察响应 |

@@ -1,4 +1,5 @@
 import { DOMParser } from '@xmldom/xmldom';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { copyThirdPartyMavenCache, defaultMavenBootstrapRepository, defaultMavenSeedRepository, preserveMetadata } from './maven-cache.mjs';
 
@@ -20,8 +21,10 @@ import {
     runMavenStage,
     runtime,
     settingsXml,
+    listFiles,
     writeText,
 } from './runtime.mjs';
+import { assertMongoDependencyList, writeMongoConsumerFixture } from './fixture-mongodb.mjs';
 import {
     starterArtifacts,
     writeBomConsumerFixture,
@@ -40,7 +43,24 @@ const RETRYABLE_MAVEN_STAGES = new Set([
     'bom-online-resolve',
     'bom-online-tree',
     'failure-online-resolve',
+    'mongo-bom-online-list',
+    'mongo-bom-online-clean-verify',
+    'mongo-bom-family-online-list',
+    'mongo-parent-online-list',
+    'mongo-parent-online-clean-verify',
+    'mongo-parent-bom-provenance',
+    'mongo-spring-data-online-list',
+    'mongo-spring-data-online-clean-verify',
 ]);
+
+const mongoSyncArtifacts = ['mongodb-driver-sync', 'mongodb-driver-core', 'bson'];
+const mongoFamilyArtifacts = ['bson', 'bson-kotlin', 'bson-record-codec', 'mongodb-driver-core', 'mongodb-driver-kotlin-coroutine', 'mongodb-driver-legacy', 'mongodb-driver-reactivestreams', 'mongodb-driver-sync'];
+const mongoVersion = '5.0.1';
+const mongoSuites = {
+    bom: 'io.github.yggdrasil.labs.fixture.MongoClientCompatibilityTest',
+    parent: 'io.github.yggdrasil.labs.fixture.MongoClientCompatibilityTest',
+    'spring-data': 'io.github.yggdrasil.labs.fixture.MongoSpringDataCompatibilityTest',
+};
 
 const parser = new DOMParser({
     onError: (level, message) => { throw new Error(`XML ${level}: ${message}`); },
@@ -69,6 +89,27 @@ async function readPomProperty(pom, property) {
     const values = Array.from(root.getElementsByTagNameNS(MAVEN_NAMESPACE, property)).map(text).filter(Boolean);
     if (values.length !== 1) fail(`${pom} 中的 ${property} 必须恰好定义一次且非空。`);
     return values[0];
+}
+
+function assertMongoSurefireReport(source, expectedClassName) {
+    if (typeof source !== 'string' || !source.trim()) fail('Mongo Surefire 报告缺失或为空');
+    if (typeof expectedClassName !== 'string' || !expectedClassName.trim()) fail('Mongo Surefire 报告缺少预期测试类名');
+    const document = parser.parseFromString(source, 'application/xml');
+    const report = document.documentElement;
+    if (!report || report.localName !== 'testsuite') fail('Mongo Surefire 报告 XML 必须以 testsuite 为根节点');
+    const actualClassName = report.getAttribute('name');
+    if (actualClassName !== expectedClassName) fail(`Mongo Surefire 测试类不匹配：期望 ${expectedClassName}，实际 ${actualClassName || 'missing'}`);
+    const counts = {};
+    for (const field of ['tests', 'failures', 'errors', 'skipped']) {
+        const value = report.getAttribute(field);
+        if (!/^[0-9]+$/u.test(value)) fail(`Mongo Surefire 报告 ${field} 计数无效：${value || 'missing'}`);
+        counts[field] = Number(value);
+    }
+    if (counts.tests < 3) fail(`Mongo Surefire 报告 tests=${counts.tests}，期望至少 3`);
+    for (const field of ['failures', 'errors', 'skipped']) {
+        if (counts[field] !== 0) fail(`Mongo Surefire 报告 ${field}=${counts[field]}，期望 0`);
+    }
+    return counts;
 }
 
 function proxySettings() {
@@ -122,6 +163,133 @@ async function assertPublishedArtifacts(repositoryDir, revision) {
         ...starterArtifacts,
     ];
     for (const artifact of required) await assertFixturePublishedArtifact(repositoryDir, revision, artifact);
+}
+
+async function runMongoList(stage, baseCommand, target, expectedArtifacts, logsDirectory) {
+    await runConsumerMaven(stage, [
+        ...baseCommand,
+        'dependency:list',
+        '-DincludeGroupIds=org.mongodb',
+        `-DoutputFile=${target}`,
+        '-DappendOutput=false',
+    ], logsDirectory);
+    const source = await runtime.readFile(target, 'utf8');
+    await copyMongoEvidenceFile(target, logsDirectory, path.basename(target));
+    assertMongoDependencyList(source, expectedArtifacts, mongoVersion);
+    return source;
+}
+
+async function copyMongoEvidenceFile(source, targetDirectory, name) {
+    if (!(await nonEmptyFile(source))) fail(`Mongo consumer 缺少证据文件：${source}`);
+    await runtime.cp(source, path.join(targetDirectory, name));
+}
+
+async function captureMongoProvenance({ mode, revision, repositoryDirectory, cacheDirectory, evidenceDirectory, requiredArtifacts }) {
+    await assertFixtureMimirRepositoryMarkers(cacheDirectory, requiredArtifacts);
+    const markerRoot = path.join(cacheDirectory, 'io/github/yggdrasil-labs');
+    const markers = [];
+    for (const file of (await listFiles(markerRoot)).filter((item) => path.basename(item) === '_remote.repositories').sort()) {
+        markers.push({ path: file, content: await runtime.readFile(file, 'utf8') });
+    }
+    const publishedBom = await findPublishedPom(repositoryDirectory, revision, 'mimir-boot-bom');
+    const cachedBom = path.join(cacheDirectory, 'io/github/yggdrasil-labs/mimir-boot-bom', revision, `mimir-boot-bom-${revision}.pom`);
+    if (!(await nonEmptyFile(cachedBom))) fail(`Mongo consumer cache 缺少候选 BOM：${cachedBom}`);
+    const publishedHash = createHash('sha256').update(await runtime.readFile(publishedBom)).digest('hex');
+    const cachedHash = createHash('sha256').update(await runtime.readFile(cachedBom)).digest('hex');
+    const fingerprintInput = { mode, revision, repositoryDirectory, markers, publishedBom, publishedHash, cachedBom, cachedHash };
+    const fingerprint = createHash('sha256').update(JSON.stringify(fingerprintInput)).digest('hex');
+    await writeText(path.join(evidenceDirectory, 'source-status.json'), `${JSON.stringify({
+        ...fingerprintInput,
+        bomImportedByFixture: mode !== 'parent',
+        publishedBom: { path: publishedBom, sha256: publishedHash },
+        cachedBom: { path: cachedBom, sha256: cachedHash },
+        fingerprint,
+    }, null, 2)}\n`);
+}
+
+async function runMongoConsumerMode({
+    mode,
+    revision,
+    repositoryDirectory,
+    workDirectory,
+    cacheDirectory,
+    sharedCacheDirectory,
+    onlineSettingsFile,
+    blockedSettingsFile,
+    mvnw,
+    logsDirectory,
+}) {
+    const fixtureDirectory = path.join(workDirectory, `mongo-${mode}-consumer`);
+    const evidenceDirectory = path.join(logsDirectory, `mongo-${mode}`);
+    await runtime.mkdir(evidenceDirectory, { recursive: true });
+    await writeMongoConsumerFixture(fixtureDirectory, revision, repositoryDirectory, mode);
+    await copyMongoEvidenceFile(path.join(fixtureDirectory, 'pom.xml'), evidenceDirectory, 'consumer-pom.xml');
+    const suite = mongoSuites[mode];
+    const suiteFile = `${suite.slice(suite.lastIndexOf('.') + 1)}.java`;
+    await copyMongoEvidenceFile(path.join(fixtureDirectory, 'src/test/java/io/github/yggdrasil/labs/fixture', suiteFile), evidenceDirectory, suiteFile);
+    await seedMavenCaches(sharedCacheDirectory, [cacheDirectory], { announce: false });
+    if (await fileExists(path.join(cacheDirectory, 'io/github/yggdrasil-labs'))) fail(`${mode} Mongo consumer cache 在首次解析前不应已有 Mimir 制品`);
+
+    const mvnwBase = [mvnw, '-B'];
+    const online = [...mvnwBase, '-s', onlineSettingsFile, '-f', path.join(fixtureDirectory, 'pom.xml'), `-Dmaven.repo.local=${cacheDirectory}`];
+    const offline = [...mvnwBase, '-o', '-s', blockedSettingsFile, '-f', path.join(fixtureDirectory, 'pom.xml'), `-Dmaven.repo.local=${cacheDirectory}`];
+    const expected = mongoSyncArtifacts;
+    const onlineList = path.join(fixtureDirectory, 'target/mongo-dependency-list-online.txt');
+    const isolatedList = path.join(fixtureDirectory, 'target/mongo-dependency-list-isolated.txt');
+    await runMongoList(`mongo-${mode}-online-list`, online, onlineList, expected, evidenceDirectory);
+    await copyMongoEvidenceFile(onlineList, evidenceDirectory, 'dependency-list-online.txt');
+
+    const reportPath = path.join(fixtureDirectory, 'target/surefire-reports', `TEST-${suite}.xml`);
+    await runtime.rm(reportPath, { force: true });
+    const onlineStarted = Date.now();
+    await runConsumerMaven(`mongo-${mode}-online-clean-verify`, [...online, 'clean', 'verify'], evidenceDirectory);
+    const onlineReport = await assertMongoReportFile(reportPath, suite, onlineStarted);
+    await copyMongoEvidenceFile(reportPath, evidenceDirectory, 'surefire-online.xml');
+
+    const requiredArtifacts = mode === 'bom'
+        ? ['mimir-boot-bom']
+        : mode === 'parent'
+            ? ['mimir-boot-parent', 'mimir-boot-starter-test', 'mimir-boot-bom']
+            : ['mimir-boot-bom', 'mimir-boot-starter-test'];
+    if (mode === 'parent') {
+        await runConsumerMaven('mongo-parent-bom-provenance', [
+            ...online,
+            'org.apache.maven.plugins:maven-dependency-plugin:3.11.0:get',
+            `-Dartifact=io.github.yggdrasil-labs:mimir-boot-bom:${revision}:pom`,
+            `-DremoteRepositories=fixture::default::file://${repositoryDirectory}`,
+        ], evidenceDirectory);
+    }
+    await captureMongoProvenance({ mode, revision, repositoryDirectory, cacheDirectory, evidenceDirectory, requiredArtifacts });
+    await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [cacheDirectory], announce: false });
+
+    await runMongoList(`mongo-${mode}-isolated-list`, offline, isolatedList, expected, evidenceDirectory);
+    await copyMongoEvidenceFile(isolatedList, evidenceDirectory, 'dependency-list-isolated.txt');
+    await runtime.rm(reportPath, { force: true });
+    const isolatedStarted = Date.now();
+    await runConsumerMaven(`mongo-${mode}-isolated-clean-verify`, [...offline, 'clean', 'verify'], evidenceDirectory);
+    const isolatedReport = await assertMongoReportFile(reportPath, suite, isolatedStarted);
+    await copyMongoEvidenceFile(reportPath, evidenceDirectory, 'surefire-isolated.xml');
+
+    if (mode === 'bom') {
+        const profileOnline = [...online, '-Pmongo-family'];
+        const profileOffline = [...offline, '-Pmongo-family'];
+        const familyOnline = path.join(fixtureDirectory, 'target/mongo-family-list-online.txt');
+        const familyOffline = path.join(fixtureDirectory, 'target/mongo-family-list-isolated.txt');
+        await runMongoList('mongo-bom-family-online-list', profileOnline, familyOnline, mongoFamilyArtifacts, evidenceDirectory);
+        await copyMongoEvidenceFile(familyOnline, evidenceDirectory, 'family-dependency-list-online.txt');
+        await runMongoList('mongo-bom-family-isolated-list', profileOffline, familyOffline, mongoFamilyArtifacts, evidenceDirectory);
+        await copyMongoEvidenceFile(familyOffline, evidenceDirectory, 'family-dependency-list-isolated.txt');
+    }
+
+    await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [cacheDirectory], announce: false });
+    process.stdout.write(`Mongo ${mode} online/isolated 消费通过：${onlineReport.tests}/${isolatedReport.tests} tests，5.0.1。\n`);
+}
+
+async function assertMongoReportFile(reportPath, suite, startedAt) {
+    if (!(await nonEmptyFile(reportPath))) fail(`Mongo consumer 缺少新鲜 Surefire 报告：${reportPath}`);
+    const information = await runtime.stat(reportPath);
+    if (information.mtimeMs < startedAt - 1000) fail(`Mongo consumer Surefire 报告不是本次 clean verify 生成：${reportPath}`);
+    return assertMongoSurefireReport(await runtime.readFile(reportPath, 'utf8'), suite);
 }
 
 async function runConsumerMaven(stage, command, logsDirectory) {
@@ -188,12 +356,18 @@ async function main() {
     const consumerDirectory = path.join(workDirectory, 'consumer');
     const bomConsumerDirectory = path.join(workDirectory, 'bom-only-consumer');
     const failureConsumerDirectory = path.join(workDirectory, 'failure-consumer');
+    const mongoBomDirectory = path.join(workDirectory, 'mongo-bom-consumer');
+    const mongoParentDirectory = path.join(workDirectory, 'mongo-parent-consumer');
+    const mongoSpringDataDirectory = path.join(workDirectory, 'mongo-spring-data-consumer');
     const repositoryDirectory = path.join(workDirectory, 'repository');
     const blockedRepositoryDirectory = path.join(workDirectory, 'blocked-remote');
     const producerCacheDirectory = path.join(workDirectory, 'producer-m2');
     const consumerCacheDirectory = path.join(workDirectory, 'consumer-m2');
     const bomConsumerCacheDirectory = path.join(workDirectory, 'bom-consumer-m2');
     const failureConsumerCacheDirectory = path.join(workDirectory, 'failure-consumer-m2');
+    const mongoBomCacheDirectory = path.join(workDirectory, 'mongo-bom-m2');
+    const mongoParentCacheDirectory = path.join(workDirectory, 'mongo-parent-m2');
+    const mongoSpringDataCacheDirectory = path.join(workDirectory, 'mongo-spring-data-m2');
     const sharedCacheDirectory = path.join(workDirectory, 'third-party-m2');
     const settingsFile = path.join(workDirectory, 'settings.xml');
     const blockedSettingsFile = path.join(workDirectory, 'blocked-settings.xml');
@@ -244,6 +418,25 @@ async function main() {
         await assertParentFailsafe(parentPom);
         const compactArtifacts = ['mimir-boot', 'mimir-boot-bom', 'mimir-boot-common', 'mimir-boot-starters', ...starterArtifacts];
         for (const artifact of compactArtifacts) await assertCompactPom(await findPublishedPom(repositoryDirectory, revision, artifact), artifact);
+
+        for (const [mode, directory, cacheDirectory] of [
+            ['bom', mongoBomDirectory, mongoBomCacheDirectory],
+            ['parent', mongoParentDirectory, mongoParentCacheDirectory],
+            ['spring-data', mongoSpringDataDirectory, mongoSpringDataCacheDirectory],
+        ]) {
+            await runMongoConsumerMode({
+                mode,
+                revision,
+                repositoryDirectory,
+                workDirectory,
+                cacheDirectory,
+                sharedCacheDirectory,
+                onlineSettingsFile: settingsFile,
+                blockedSettingsFile,
+                mvnw,
+                logsDirectory,
+            });
+        }
 
         await writeConsumerFixture(consumerDirectory, revision, repositoryDirectory);
         await seedMavenCaches(sharedCacheDirectory, [consumerCacheDirectory], { announce: false });
@@ -298,11 +491,11 @@ async function main() {
         if (!failureReportText.includes('AlwaysFailIT') || !failureReportText.includes('<failure')) fail('AlwaysFailIT Failsafe 报告未记录失败');
 
         await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [failureConsumerCacheDirectory], announce: false });
-        await backfillMavenCache({ targetDirectory: seedCacheDirectory, sourceDirectories: [producerCacheDirectory, consumerCacheDirectory, bomConsumerCacheDirectory, failureConsumerCacheDirectory] });
+        await backfillMavenCache({ targetDirectory: seedCacheDirectory, sourceDirectories: [producerCacheDirectory, consumerCacheDirectory, bomConsumerCacheDirectory, failureConsumerCacheDirectory, mongoBomCacheDirectory, mongoParentCacheDirectory, mongoSpringDataCacheDirectory] });
         completed = true;
-        process.stdout.write(`隔离发布消费者验证通过：Parent、独立 BOM-only consumer、starter flatten 抽查和故意失败 Failsafe 门禁均符合版本 ${revision}。\n`);
+        process.stdout.write(`隔离发布消费者验证通过：Parent、BOM-only、三类 Mongo consumer、starter flatten 抽查和故意失败 Failsafe 门禁均符合版本 ${revision}。\n`);
     } finally {
-        await finalizeConsumer({ completed, seedCacheDirectory, cacheDirectories: [producerCacheDirectory, consumerCacheDirectory, bomConsumerCacheDirectory, failureConsumerCacheDirectory], externalLogsDirectory, logsDirectory, workDirectory });
+        await finalizeConsumer({ completed, seedCacheDirectory, cacheDirectories: [producerCacheDirectory, consumerCacheDirectory, bomConsumerCacheDirectory, failureConsumerCacheDirectory, mongoBomCacheDirectory, mongoParentCacheDirectory, mongoSpringDataCacheDirectory], externalLogsDirectory, logsDirectory, workDirectory });
     }
 }
 
@@ -313,6 +506,7 @@ export {
     finalizeConsumer,
     assertCompactPom,
     assertParentFailsafe,
+    assertMongoSurefireReport,
     parsePom,
     readPomProperty,
 };

@@ -1,50 +1,61 @@
 ---
 id: mongodb-driver-alignment-plan
 version: v2.3.0
-status: draft
+status: completed_with_concerns
 owner: YoungerYang-Y
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-24
 ---
 
 # MongoDB 驱动族兼容 — 实施计划
 
-**Branch:** [待填充]
-**Baseline SHA:** [待填充]
+**Branch:** main
+**Baseline SHA:** a73c5c196cae3fc4710efb2f818ca411b725af6b
 **Plan Schema Version:** 2
-**Worktree Path:** [待填充]
-**Started At:** [待填充]
-**Updated At:** [待填充]
-**Effective Execution Mode:** [待填充]
+**Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
+**Started At:** 2026-09-24T08:02:01+08:00
+**Updated At:** 2026-09-24T11:46:37+08:00
+**Effective Execution Mode:** serial
+**Reason:** T1–T4 有顺序依赖，且共享 consumer 契约、发布产物和唯一工作区状态。
 **Resolved Path:** docs/active/v2.3.0/mongodb-driver-alignment/
 **Goal:** 消除默认发布消费者的 MongoDB 驱动混版，建立版本解析与同步/Spring Data 离线消费证据。
 **Architecture:** 删除 sync 单项覆盖，委托 Boot 基线；3 类消费者进入现有发布隔离和完整质量链。
 **Tech Stack:** Java 17、Boot 3.3.13、Spring Data MongoDB 4.3.13、MongoDB 5.0.1、受管 Node 22.22.3+、Maven Wrapper。
 
 **Plan Verdict:**
-
-- **Status:** pending
-- **Verified At:** null
-- **Evidence:** null
+<!-- markdownlint-disable MD032 -->
+- **Status:** completed_with_concerns
+- **Verified At:** 2026-09-24T11:46:37+08:00
+- **Evidence:** `/tmp/mimir-mongo-quality.e25QJF/quality-report.json` (`quality-1790220241059-736442`, passed); `/tmp/mimir-mongodb-docs-final.json` (passed); `git diff --check` (passed).
 - **Blocked Tasks:** none
-- **Concerns:** none
+- **Concerns:** 已接受 R-PLAN-SNAPSHOT-WAIVER 与 R-T2-SNAPSHOT-001；跳过执行计划快照比较，忽略构建产物差异。
+<!-- markdownlint-enable MD032 -->
 
 **Accepted Risks:**
 
 | Risk ID | Risk | Accepted By | Accepted At | Source |
-|---|---|---|---|---|
-| none | none | none | none | none |
+|---------|------|-------------|-------------|--------|
+| R-T2-SNAPSHOT-001 | The T2 consumer clean changed 759 ignored build artifacts outside the four declared source files; exact baseline copies were unavailable. User explicitly waived snapshot verification; generated outputs remain uncommitted. | YoungerYang-Y | 2026-09-24T10:53:54+08:00 | User request: 忽略执行计划的快照校验 |
+| R-PLAN-SNAPSHOT-WAIVER | Per-task and final manifest snapshot comparisons are intentionally skipped under user direction; this leaves no snapshot-based proof that generated or ignored files are unchanged. Visible tracked and untracked changes will still be reviewed through git status and diffs. | User | 2026-09-24T11:10:19+08:00 | User request: 忽略执行计划的快照校验 |
 
 ## Dispatch Ledger
 
-**Budget:** uninitialized; owner=start-execution; elapsed_budget=unknown; token_budget=unknown; budget_revision=initial
+**Budget:** planned_stages=8; max_active=3; max_attempts_per_stage=2; max_dispatches=16; elapsed_budget=unknown; token_budget=unknown; budget_revision=initial; owner=start-execution
 
 | objective | scope | actor_kind | role | model | started_at | finished_at | status | attempt | attempt_limit | elapsed | stop_reason | strategy_change | evidence | budget_revision |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+|-----------|-------|------------|------|-------|------------|-------------|--------|---------|---------------|---------|-------------|-----------------|----------|-----------------|
+| T1: 实现 MongoDB 消费者 fixture 与依赖版本检查器 | ["tools/engineering/src/release/fixture-mongodb.mjs","tools/engineering/src/release/verify-contracts.mjs"] | work | worker | gpt-6-luna | 2026-09-24T08:06:39+08:00 | 2026-09-24T08:15:18+08:00 | blocked | 1 | 2 | about 9 minutes | blocked | none | sandbox blocked nested Node output; escalated contracts command passed with retry fixture; continuing after environment diagnosis | initial |
+| T1: 实现 MongoDB 消费者 fixture 与依赖版本检查器 | ["tools/engineering/src/release/fixture-mongodb.mjs","tools/engineering/src/release/verify-contracts.mjs"] | work | worker | gpt-6-luna | 2026-09-24T08:15:30+08:00 | 2026-09-24T08:26:37+08:00 | done | 2 | 2 | about 11 minutes | completed | verify contracts outside sandbox | Red target assertions confirmed; controller reran escalated bash scripts/engineering.sh contracts with exit 0; 3/3 AC reported | initial |
+| Group A review: Mongo fixture and dependency contract | ["tools/engineering/src/release/fixture-mongodb.mjs","tools/engineering/src/release/verify-contracts.mjs"] | work | reviewer | gpt-6-luna | 2026-09-24T08:31:42+08:00 | 2026-09-24T08:34:09+08:00 | done | 1 | 2 | about 2 minutes | completed | none | independent reviewer PASS with no findings; snapshot diff contained two T1 files; test_result 1/1 | initial |
+| T2: 对齐 MongoDB driver family 与 consumer pipeline | ["mimir-boot-bom/pom.xml","tools/engineering/src/release/consumer.mjs","tools/engineering/src/release/verify-contracts.mjs","tools/engineering/src/release/fixture-mongodb.mjs"] | work | worker | gpt-6-luna | 2026-09-24T08:36:11+08:00 | 2026-09-24T09:18:08+08:00 | done | 1 | 2 | 41m57s | completed | none | Worker completed T2; effective old-BOM Red showed mongodb-driver-sync=4.11.5 vs bson/core=5.0.1; final contracts and consumer exit 0; six Mongo Surefire reports each tests=3/failures=errors=skipped=0; family online/isolated each 8 coordinates at 5.0.1; fixture and cache source markers verified. Evidence directory: /tmp/mimir-mongo-evidence.OQCgAx | initial |
+| Group B review: MongoDB driver family and consumer pipeline | ["mimir-boot-bom/pom.xml","tools/engineering/src/release/consumer.mjs","tools/engineering/src/release/verify-contracts.mjs","tools/engineering/src/release/fixture-mongodb.mjs"] | work | reviewer | gpt-6-luna | 2026-09-24T10:57:56+08:00 | 2026-09-24T11:00:51+08:00 | done | 1 | 2 | about 3 minutes | completed | none | Independent review PASS with no findings; reviewer checked four source files and T2 contracts/consumer evidence. No command rerun. User waived ignored-artifact snapshot validation. | initial |
+| T3: sync MongoDB compatibility and consumer documentation | ["mimir-boot-bom/README.md","ARCHITECTURE.md","tools/engineering/README.md","docs/active/v2.3.0/release.md"] | work | worker | gpt-6-luna | 2026-09-24T11:02:58+08:00 | 2026-09-24T11:10:19+08:00 | done | 1 | 2 | 7m21s | completed | none | Four declared docs updated. Full docs self-test passed: 77 files, 0 lint issues, exit 0. README table count matches BOM direct dependencyManagement at 15 verified + 39 managed-only = 54; verified set unchanged. Migration and consumer scope are bounded to T2 evidence; no server/CRUD/release claims. | initial |
+| Group C review: MongoDB compatibility and consumer documentation | ["mimir-boot-bom/README.md","ARCHITECTURE.md","tools/engineering/README.md","docs/active/v2.3.0/release.md"] | work | reviewer | gpt-6-luna | 2026-09-24T11:16:50+08:00 | 2026-09-24T11:18:21+08:00 | done | 1 | 2 | about 1m30s | completed | none | Independent review PASS with no findings. Reviewer confirmed README 15 verified + 39 managed-only matches BOM 54 direct entries; docs accurately limit claims to T2 local consumers, six Surefire reports have 3 tests and 0 failures/errors/skips, and no broken links. No command rerun; snapshot validation waived by user. | initial |
+| T4: close TD-040 after full quality verification | ["docs/active/tech-debt-tracker.md","docs/active/v2.3.0/index.md","docs/active/v2.3.0/mongodb-driver-alignment/plan.md"] | work | worker | gpt-6 | 2026-09-24T11:37:37+08:00 | 2026-09-24T11:46:37+08:00 | done | 1 | 2 | 9 minutes | completed | none | Full quality report quality-1790220241059-736442 passed; G1 source-status, BOM hash, selected-list, and Surefire evidence verified in that run. T4 docs and full docs self-test passed. | initial |
 
 ## Global Constraints
 
-- 本文仅规划，不能把 SDD 文档检查作为实施验收。用户确认执行后使用隔离 worktree；controller 填充元信息、建立 baseline manifest，保留已有日志脱敏 SDD 与其他用户修改。
+- 本文已获用户授权实施。用户明确要求在当前目录执行，canonical root 为 `/home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot`，不创建隔离 worktree；controller 建立 baseline manifest，保留已有日志脱敏 SDD 与其他用户修改。
 - Java 17、Boot 3.3.13、Spring Data MongoDB 4.3.13 不升级；当前驱动族契约固定 5.0.1，不从待测输出推导期望。
 - 新增生产模块/API/业务直接依赖均为 0；不改根 revision、发布坐标、profile、BOM 导入顺序、全局 Enforcer 或支持等级定义。
 - 删除 Mimir mongodb.version 与 sync 显式管理项，不新增 MongoDB BOM；公开披露 4.11.5→5.0.1 迁移和旧 API/ABI 风险。
@@ -53,17 +64,17 @@ updated: 2026-09-22
 - 离线表示不需要 MongoDB 服务端；Maven 预热可联网，最终验证禁外部仓库。测试不执行数据库操作、不连接业务库、不添加 Docker 前置。
 - 每个测试用独占 127.0.0.1 临时 ServerSocket 占住端口，不运行 Mongo 协议；URI 数据库 td040，连接/套接字/选择超时各 200ms。关闭所有客户端、上下文、端口，不把后台连接告警误判为失败。
 - 变更权限按任务 Files 限定；执行者不是独占代码库，不得回退他人改动或再次委派。默认有界工作交 luna-worker，任务串行，避免共享契约/consumer 文件冲突。
-- controller 独占本文执行记录和 `docs/active/v2.3.0/mongodb-driver-alignment/plan.md.snapshots.json`；每项执行前后记录 task input/output 快照，不在 SDD 阶段创建执行快照。
-- 不自动提交、推送、合并或发布。遇到无关失败记录并停在准确状态，不扩大到其他技术债修复。
+- controller 独占本文执行记录；用户明确豁免执行计划快照核对，因此不再保留 `plan.md.snapshots.json`，仅审阅可见 Git 状态与 diff。
+- 按用户于 2026-09-24 明确授权提交剩余本地变更；不推送、合并或发布。遇到无关失败记录并停在准确状态，不扩大到其他技术债修复。
 
 ## Dependency Graph
 
-| Task | Depends on | 可并行组 |
+| Task | 依赖 | 可并行组 |
 |---|---|---|
-| T1 消费者 fixture 与检查器 | 无 | A（单任务） |
-| T2 驱动对齐与门禁接入 | T1 | B（单任务） |
-| T3 接入说明和兼容边界同步 | T2 | C（单任务） |
-| T4 完整验收与技术债收口 | T3 | D（单任务） |
+| T1 | 无 | A（单任务） |
+| T2 | T1 | B（单任务） |
+| T3 | T2 | C（单任务） |
+| T4 | T3 | D（单任务） |
 
 无并行实施组；独立只读审查可与作者自检并行。
 
@@ -72,6 +83,8 @@ flowchart LR
     T1 --> T2 --> T3 --> T4
 ```
 
+---
+
 ### T1: 消费者 fixture 与检查器
 
 **Depends on:** 无
@@ -79,7 +92,7 @@ flowchart LR
 **Files:**
 
 - Create: `tools/engineering/src/release/fixture-mongodb.mjs`
-- Modify/Test: `tools/engineering/src/release/verify-contracts.mjs`
+- Modify: `tools/engineering/src/release/verify-contracts.mjs`
 
 **Interfaces:**
 
@@ -95,28 +108,28 @@ expectedArtifacts 元素仅是 artifactId，groupId 固定 org.mongodb；同步�
 
 **Acceptance Criteria:**
 
-- [ ] AC1: 清单正负例均有断言，sync=4.11.5/core=bson=5.0.1 抛错且包含失配坐标与两版本。
-- [ ] AC2: 3 种生成 POM 的接入方式、候选 revision/仓库、无 Mongo 显式版本、固定源路径/插件配置经结构断言成立；非法 mode/空参数拒绝；同目录同参数重复生成的路径集合与文件字节完全相同。
-- [ ] AC3: contracts 命令通过，新 fixture 在临时目录生成/清理，无源工作区输出；保留现有契约测试。
+- [x] AC1: 清单正负例均有断言，sync=4.11.5/core=bson=5.0.1 抛错且包含失配坐标与两版本。
+- [x] AC2: 3 种生成 POM 的接入方式、候选 revision/仓库、无 Mongo 显式版本、固定源路径/插件配置经结构断言成立；非法 mode/空参数拒绝；同目录同参数重复生成的路径集合与文件字节完全相同。
+- [x] AC3: contracts 命令通过，新 fixture 在临时目录生成/清理，无源工作区输出；保留现有契约测试。
 
 **Execution:**
 
-- **Status:** pending
-- **Attempts:** 0
+- **Status:** done
+- **Attempts:** 2
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Changed Files:** []
+- **Red Result:** {"commands":[{"cmd":"bash scripts/engineering.sh contracts","confirmed":true,"evidence":"清单目标 Red：合法 sync 清单在 checker 占位时因未实现行为失败，而非语法/import 错误。"},{"cmd":"bash scripts/engineering.sh contracts","confirmed":true,"evidence":"fixture 目标 Red：生成内容断言在 fixture 占位时因目标行为未实现失败；使用沙箱外执行。"}]}
+- **Verify Result:** {"commands":[{"cmd":"bash scripts/engineering.sh contracts","status":"pass","evidence":"主控在沙箱外复跑，exit 0；既有重试、发布工作流、制品布局、Portal 与公开制品契约均通过。"}]}
+- **AC Result:** {"pass":3,"total":3,"deferred":[]}
+- **Changed Files:** ["tools/engineering/src/release/fixture-mongodb.mjs","tools/engineering/src/release/verify-contracts.mjs"]
 - **Concerns:** none
 
 **Task Completion Gate:**
 
-- [ ] Red Result 存在且证明预期失败或前置状态。
-- [ ] Verify Result 存在且通过。
-- [ ] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
-- [ ] Changed Files 与 task input/output 快照差集相等且全部在声明范围。
-- [ ] Per-task AC checkbox synced。
+- [x] Red Result 存在且证明预期失败或前置状态。
+- [x] Verify Result 存在且通过。
+- [x] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
+- [x] Changed Files 与 task input/output 快照差集相等且全部在声明范围。
+- [x] Per-task AC checkbox synced。
 
 **Step 1: Red**
 
@@ -126,7 +139,7 @@ expectedArtifacts 元素仅是 artifactId，groupId 固定 org.mongodb；同步�
 
 新建 JS ESM 模块，使用 JSDoc 表达签名，不新增 npm 依赖：
 
-1. 解析 dependency:list：剥离行首空白/可选 [INFO] 前缀和尾部 空白加 `-- module ...`，接受 `org.mongodb:artifactId:jar:version:scope` 或 `org.mongodb:artifactId:jar:classifier:version:scope`；冒号字段非空，scope 为 compile/runtime/test/provided/system。忽略空行、标准标题和其他非 Mongo 日志，含 org.mongodb 的格式错误行拒绝；零记录拒绝，expectedArtifacts 非空且无重复。按 groupId:artifactId 判重复（不同 classifier/scope 也拒绝）；每个期望项恰好 1 条，所有 Mongo 选中版本为 5.0.1。不消费 dependency:tree omitted 文本。Error.message 为 `MONGO_DEPENDENCY_CONTRACT coordinate=<GA或input> actual=<实际版本或missing/duplicate/malformed> expected=<目标版本或格式/唯一性>`。
+1. 解析 dependency:list：剥离行首空白/可选 [INFO] 前缀和尾部空白加 `-- module ...` 及可选 `[auto]` 或 `(auto)` 注记，接受 `org.mongodb:artifactId:jar:version:scope` 或 `org.mongodb:artifactId:jar:classifier:version:scope`；冒号字段非空，scope 为 compile/runtime/test/provided/system。忽略空行、标准标题和其他非 Mongo 日志，含 org.mongodb 的格式错误行拒绝；零记录拒绝，expectedArtifacts 非空且无重复。按 groupId:artifactId 判重复（不同 classifier/scope 也拒绝）；每个期望项恰好 1 条，所有 Mongo 选中版本为 5.0.1。不消费 dependency:tree omitted 文本。Error.message 为 `MONGO_DEPENDENCY_CONTRACT coordinate=<GA或input> actual=<实际版本或missing/duplicate/malformed> expected=<目标版本或格式/唯一性>`。
 2. 生成 bom（只 import Mimir BOM）、parent（只继承候选 Parent，空 relativePath）、spring-data（只 import BOM + data-mongodb/test starter）三个 POM。测试依赖无版本。BOM-only 固定 compiler=3.16.0（release=17、parameters=true）、Surefire=3.6.0（failIfNoTests=true）、dependency=3.11.0，parent 继承当前版本。输出固定为 directory/pom.xml 与 directory/src/test/java/io/github/yggdrasil/labs/fixture/MongoClientCompatibilityTest.java（bom/parent）或 MongoSpringDataCompatibilityTest.java（spring-data）；Sample 为后者的静态内部类。revision/repositoryDir 参数写 POM，repository id=fixture，源文件不注入 revision；Spring runner 用 withPropertyValues 注入动态 spring.data.mongodb.uri 和 spring.data.mongodb.auto-index-creation=false。
 3. bom 的 mongo-family profile 额外声明其余 7 项族坐标，正常模式只引入 sync。POM 中仓库与 revision 正确 XML 转义。
 4. 两种同步模式生成 MongoClientCompatibilityTest：初始化/数据库名 td040、无 Mongo 服务端仍可创建关闭、非法 URI 参数异常，至少 3 个测试。同步 getDatabase 不发数据库请求。
@@ -141,9 +154,22 @@ expectedArtifacts 元素仅是 artifactId，groupId 固定 org.mongodb；同步�
 
 **AC Verification:**
 
-- AC1: 清单单元样本覆盖 3 项/8 项成功、4.11.5 混版、遗漏 bson、重复 sync、空输入、多余同族异版、可选 classifier/module 附注；子进程正常 exit=0、混版 exit=1 且 stderr 含坐标/两版本。
+- AC1: 清单单元样本覆盖 3 项/8 项成功、4.11.5 混版、遗漏 bson、重复 sync、空输入、多余同族异版、可选 classifier/module/[auto]/(auto) 附注；子进程正常 exit=0、混版 exit=1 且 stderr 含坐标/两版本。
 - AC2: XML 结构断言各 mode 的 parent/import/dependencies/profile/plugins 及精确版本；固定路径/目标 suite、未知 mode/空参数错误均有断言；重复写入比较路径集合与逐文件字节相等。
 - AC3: 命令退出 0、现有契约测试未删除，临时目录处理及真实 Changed Files 符合声明。
+
+**Execution Group:** A
+
+- **Group Change Snapshot:** ws-581e625d76ceed083c6dd67ca489fa281ba714db611d08f4fe61d2e055c54544
+
+**Group Review:**
+
+- **Verdict:** pass
+- **Round:** 1 / 3
+- **Reviewer:** external (gpt-6-luna)
+- **Review Scope:** declared task files and current working tree
+- **Evidence:** independent review PASS, no findings; snapshot diff exactly two T1 files; contracts exit 0 after output capture.
+- **Affected Tasks:** none
 
 ### T2: 驱动对齐与门禁接入
 
@@ -153,8 +179,10 @@ expectedArtifacts 元素仅是 artifactId，groupId 固定 org.mongodb；同步�
 
 - Modify: `mimir-boot-bom/pom.xml`
 - Modify: `tools/engineering/src/release/consumer.mjs`
-- Modify/Test: `tools/engineering/src/release/verify-contracts.mjs`
-- Modify（编译纠正限原契约）: `tools/engineering/src/release/fixture-mongodb.mjs`
+- Modify: `tools/engineering/src/release/verify-contracts.mjs`
+- Modify: `tools/engineering/src/release/fixture-mongodb.mjs`
+
+范围备注：fixture 修改限于 T2 所需的 family profile 实际依赖解析行为、真实 dependency:list `-- module ... [auto]`/`(auto)` 尾注解析及原契约编译适配，不扩展公开接口。预期坐标必须各出现一次；额外 org.mongodb 传递坐标仅在版本一致时接受，任何额外异版继续拒绝。
 
 **Interfaces:**
 
@@ -169,28 +197,28 @@ expectedArtifacts 元素仅是 artifactId，groupId 固定 org.mongodb；同步�
 
 **Acceptance Criteria:**
 
-- [ ] AC1: S01–S04 通过；bom/parent 三项均 5.0.1，bom profile 八项同版，负例仍拒绝；Spring Data 路径 core/bson/sync 同版。
-- [ ] AC2: S05–S10 在真实依赖上通过，两个同步 suite 和一个 Spring Data suite 各测试数至少 3、失败/错误/跳过均 0；无数据库操作。
-- [ ] AC3: 新目录/cache 在预热、隔离、来源标记、成功/失败缓存回填、finally 清理、证据复制链全部覆盖；原有 consumers 和故意失败 Failsafe 检查仍通过。
+- [x] AC1: S01–S04 通过；bom/parent 三项预期坐标均 5.0.1，bom profile 八项预期坐标同版，任何额外 org.mongodb 传递坐标也同版，负例仍拒绝；Spring Data 路径 core/bson/sync 同版。
+- [x] AC2: S05–S10 在真实依赖上通过，两个同步 suite 和一个 Spring Data suite 各测试数至少 3、失败/错误/跳过均 0；无数据库操作。
+- [x] AC3: 新目录/cache 在预热、隔离、来源标记、成功/失败缓存回填、finally 清理、证据复制链全部覆盖；原有 consumers 和故意失败 Failsafe 检查仍通过。
 
 **Execution:**
 
-- **Status:** pending
-- **Attempts:** 0
+- **Status:** done
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Changed Files:** []
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"MIMIR_RELEASE_LOG_DIRECTORY=/tmp/mimir-mongo-evidence.OQCgAx bash scripts/engineering.sh consumer (保留旧 BOM 覆盖)","exit_code":2,"confirmed":true,"evidence":"候选发布、解析及 dependency:list 均成功；目标断言报告 MONGO_DEPENDENCY_CONTRACT coordinate=org.mongodb:mongodb-driver-sync actual=4.11.5 expected=5.0.1，bson/core/bson-record-codec=5.0.1，确认真实依赖混版。"},{"cmd":"bash scripts/engineering.sh contracts","exit_code":1,"confirmed":true,"evidence":"新增真实 Maven `[auto]` 输出样例先以 malformed 失败，确认为解析器兼容 Red；之后分别为额外同版传递项和 `(auto)` 变体取得目标 Red。"}]}
+- **Verify Result:** {"commands":[{"cmd":"bash scripts/engineering.sh contracts","status":"pass","exit_code":0,"evidence":"主控在修复后沙箱外复跑通过；contracts 中 Mongo 清单/fixture/报告门禁与既有发布契约均通过。"},{"cmd":"MIMIR_RELEASE_LOG_DIRECTORY=/tmp/mimir-mongo-evidence.OQCgAx bash scripts/engineering.sh consumer","status":"pass","exit_code":0,"evidence":"T2 最终源状态的完整 consumer 流水线通过；三类 Mongo 模式 online/blocked-settings+offline list 与 clean verify 均通过，原有消费者、Parent 生命周期及 AlwaysFailIT 门禁通过。"}],"evidence":"证据目录 /tmp/mimir-mongo-evidence.OQCgAx；六份 Mongo Surefire XML 均 tests=3、failures=0、errors=0、skipped=0；family online/isolated 清单各 8 个预期坐标且版本均为 5.0.1；三模式来源标记均为 fixture，发布/缓存 BOM SHA-256 一致，parent bomImportedByFixture=false。"}
+- **AC Result:** {"pass":3,"total":3,"deferred":[]}
+- **Changed Files:** ["mimir-boot-bom/pom.xml","tools/engineering/src/release/consumer.mjs","tools/engineering/src/release/verify-contracts.mjs","tools/engineering/src/release/fixture-mongodb.mjs"]
+- **Concerns:** 用户于 2026-09-24 明确豁免快照校验。T2 consumer clean 使 759 个 ignored 构建产物与 input 不同（738 缺失、21 内容或权限变化）；仓库/worktree/tmp/Maven cache 无精确副本。Changed Files 保留四个声明源码路径；构建产物差异仅作已接受的执行副作用，不提交。
 
 **Task Completion Gate:**
 
-- [ ] Red Result 存在且证明预期失败或前置状态。
-- [ ] Verify Result 存在且通过。
-- [ ] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
-- [ ] Changed Files 与 task input/output 快照差集相等且全部在声明范围。
-- [ ] Per-task AC checkbox synced。
+- [x] Red Result 存在且证明预期失败或前置状态。
+- [x] Verify Result 存在且通过。
+- [x] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
+- [x] 快照差异门禁由用户明确豁免；差异已记录于 R-T2-SNAPSHOT-001。
+- [x] Per-task AC checkbox synced。
 
 **Step 1: Red**
 
@@ -201,7 +229,7 @@ expectedArtifacts 元素仅是 artifactId，groupId 固定 org.mongodb；同步�
 1. 删除 BOM `<mongodb.version>4.11.5</mongodb.version>` 以及 org.mongodb:mongodb-driver-sync 的完整显式管理条目，其他项保持不变；不替换成新的重复版本属性。
 2. 在 consumer 为 bom/parent/spring-data 分配各自唯一目录/cache；首次解析前缓存不得含 Mimir 制品，只从本次候选 file 仓库取得它们。
 3. 各模式 online 执行 dependency:list 和 clean verify，预热新插件/测试依赖；bom family profile online 单独解析。检查候选仓库来源标记后，以 blocked settings + offline 独立缓存再次 list/clean verify，family profile 再 isolated list。
-4. 正常 list 输出精确写新文件，includeGroupIds=org.mongodb、appendOutput=false；期望 3 项，profile 期望 8 项。所有已选 Mongo 项版本也必须统一，不放过传递的其他异版模块。
+4. 正常 list 输出精确写新文件，includeGroupIds=org.mongodb、appendOutput=false；bom/parent/spring-data 分别必须含 3 项预期坐标，profile 必须含 8 项预期坐标，每项恰好一次。输出还可能含 bson-record-codec 等额外 org.mongodb 传递坐标；只要坐标唯一且所有已选 Mongo 项版本统一即可接受，额外异版必须拒绝。
 5. 每个 isolated suite 检查精确类名、tests≥3、failures=errors=skipped=0；非法 URI 是成功执行的负例，不应让 suite 本身失败。缺报告/零测试不算成功。
 6. 增加适用 online 下载阶段到既有有限重试名单，但测试/版本断言失败不得重试。新增 cache 同时进入 shared/seed backfill 与 finalizeConsumer；同步 verifyConsumerCacheFlow 的覆盖。
 7. 将每个模式的清单、Surefire XML 及阶段日志复制到 logsDirectory/mongo-模式名 下，记录 revision/source 状态指纹、发布 BOM 与该模式缓存 BOM 的原始路径/SHA-256，供最终同轮溯源；遵循 MIMIR_KEEP_WORKDIR、MIMIR_RELEASE_LOG_DIRECTORY。异常时不丢原始诊断。
@@ -220,9 +248,22 @@ MIMIR_RELEASE_LOG_DIRECTORY="$mongo_evidence_dir" bash scripts/engineering.sh co
 
 **AC Verification:**
 
-- AC1: 保存 bom/parent/spring-data 选中清单与 profile 清单，逐项比对固定 5.0.1；contracts 的失配负例继续拒绝。
+- AC1: 保存 bom/parent/spring-data 选中清单与 profile 清单，确认全部预期坐标各出现一次且固定为 5.0.1，额外 org.mongodb 坐标同版；contracts 的额外异版负例继续拒绝。
 - AC2: 检查 MongoClientCompatibilityTest（两份）与 MongoSpringDataCompatibilityTest 的新鲜报告、测试名和计数；映射 _id/name、非法配置原因链均有断言。
 - AC3: 来源标记与隔离日志成立；新 cache 回填/清理的工具正负例通过，旧消费者报告仍可追踪。
+
+**Execution Group:** Group B
+
+- **Group Change Snapshot:** ws-88a36807c8ad266716cb1cba5d691a7c5fcea9da6dc4c2c9549110a0ddcaea16
+
+**Group Review:**
+
+- **Verdict:** pass
+- **Round:** 1 / 3
+- **Reviewer:** external (gpt-6-luna)
+- **Review Scope:** T2 declared source files; ignored build artifacts excluded under accepted risk R-T2-SNAPSHOT-001
+- **Evidence:** Independent review PASS with no findings; reviewer checked four source files and T2 contracts/consumer evidence. Contracts and consumer passed; user waived ignored-artifact snapshot validation.
+- **Affected Tasks:** none
 
 ### T3: 接入说明和兼容边界同步
 
@@ -249,27 +290,27 @@ MIMIR_RELEASE_LOG_DIRECTORY="$mongo_evidence_dir" bash scripts/engineering.sh co
 
 **Acceptance Criteria:**
 
-- [ ] AC1: BOM 直接“仅管理”表删除 sync 行，40→39，“已验证”15 项不变；用 XML 读取 BOM 直接 dependencyManagement 的 GA 集合，与两表合并的 GA 集合做相等比较，差集为空。
-- [ ] AC2: README/发布说明明确 4.11.5→5.0.1、旧属性/旧 API 迁移、验证边界；文档 full 与示例核对通过。
+- [x] AC1: BOM 直接“仅管理”表删除 sync 行，40→39，“已验证”15 项不变；用 XML 读取 BOM 直接 dependencyManagement 的 GA 集合，与两表合并的 GA 集合做相等比较，差集为空。
+- [x] AC2: README/发布说明明确 4.11.5→5.0.1、旧属性/旧 API 迁移、验证边界；文档 full 与示例核对通过。
 
 **Execution:**
 
-- **Status:** pending
-- **Attempts:** 0
+- **Status:** done
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Changed Files:** []
+- **Red Result:** {"commands":[{"cmd":"rg -n 'mongodb|MongoDB|TD-040|仅管理（40' mimir-boot-bom/README.md ARCHITECTURE.md tools/engineering/README.md docs/active/v2.3.0/release.md","exit_code":0,"confirmed":true,"evidence":"基线显示 BOM README 仅管理 40 项并把 mongodb-driver-sync 列为仅管理，保留 4.11.5 混版风险；ARCHITECTURE 仍将 TD-040 列入未解决缺口；tools/engineering/README.md 与 release.md 尚无 MongoDB consumer 说明。"}]}
+- **Verify Result:** {"commands":[{"cmd":"bash scripts/engineering.sh docs --root \"$PWD\" --mode full --self-test","exit_code":0,"summary":"77 files linted, 0 issues; earlier plan.md list spacing fixed and full rerun passed"},{"cmd":"git diff --check","exit_code":0,"summary":"no whitespace errors"}]}
+- **AC Result:** {"pass":2,"total":2,"deferred":[],"evidence":{"AC1":"Structured XML comparison: README GA union equals POM direct dependencyManagement; 54 total = 15 verified + 39 managed-only, verified set unchanged.","AC2":"Migration/version override/verification boundaries match T2 consumer evidence; no live server, CRUD, or release claims."}}
+- **Changed Files:** ["mimir-boot-bom/README.md","ARCHITECTURE.md","tools/engineering/README.md","docs/active/v2.3.0/release.md"]
 - **Concerns:** none
 
 **Task Completion Gate:**
 
-- [ ] Red Result 存在且证明预期失败或前置状态。
-- [ ] Verify Result 存在且通过。
-- [ ] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
-- [ ] Changed Files 与 task input/output 快照差集相等且全部在声明范围。
-- [ ] Per-task AC checkbox synced。
+- [x] Red Result 存在且证明预期失败或前置状态。
+- [x] Verify Result 存在且通过。
+- [x] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
+- [x] 实际可见修改文件均在声明范围；快照差异核对按用户明确要求豁免，见 R-PLAN-SNAPSHOT-WAIVER。
+- [x] Per-task AC checkbox synced。
 
 **Step 1: Red**
 
@@ -288,6 +329,19 @@ MIMIR_RELEASE_LOG_DIRECTORY="$mongo_evidence_dir" bash scripts/engineering.sh co
 - AC1: 提取 README 两表 GA 与 POM 直接管理 GA（含导入 BOM 本身，不展开传递项）做集合比较，差集为空，基数 15+39=54；记录比较结果，原 15 项集合不变。
 - AC2: 逐项比对迁移/范围声明与 T2 证据，保存文档检查汇总和退出码。
 
+**Execution Group:** Group C
+
+- **Group Change Snapshot:** ws-12faca31557fe21d82614025b1e5ed4124fc5bdfe96dbde8a9b5f9d1ce207865
+
+**Group Review:**
+
+- **Verdict:** pass
+- **Round:** 1 / 3
+- **Reviewer:** external (gpt-6-luna)
+- **Review Scope:** T3 declared docs and T2 consumer evidence; snapshot comparison waived under R-PLAN-SNAPSHOT-WAIVER
+- **Evidence:** Independent review PASS with no findings. Reviewer confirmed 15 verified + 39 managed-only entries match the BOM's 54 direct entries, scope claims stay within T2 evidence, six Surefire reports have 3 tests and no failures/errors/skips, and no broken links. Full docs check passed with 77 files and 0 lint issues.
+- **Affected Tasks:** none
+
 ### T4: 完整验收与技术债收口
 
 **Depends on:** T3
@@ -296,8 +350,7 @@ MIMIR_RELEASE_LOG_DIRECTORY="$mongo_evidence_dir" bash scripts/engineering.sh co
 
 - Modify: `docs/active/tech-debt-tracker.md`
 - Modify: `docs/active/v2.3.0/index.md`
-- Modify（controller）: `docs/active/v2.3.0/mongodb-driver-alignment/plan.md`
-- Create/Update（controller）: `docs/active/v2.3.0/mongodb-driver-alignment/plan.md.snapshots.json`
+- Modify: `docs/active/v2.3.0/mongodb-driver-alignment/plan.md`（controller 执行记录）
 
 **Interfaces:**
 
@@ -310,31 +363,31 @@ MIMIR_RELEASE_LOG_DIRECTORY="$mongo_evidence_dir" bash scripts/engineering.sh co
 
 **Acceptance Criteria:**
 
-- [ ] AC1: quality-report 中 docs-full、verify-build-model、release-contracts、release-consumer、release-signing、java-quality 六阶段均 passed；TD-040 证据链接指向本文 Execution 中实际存在的报告路径。
-- [ ] AC2: baseline/final manifest 差集覆盖所有新增、修改、删除、未跟踪、二进制和文件模式，实际 Changed Files 均获授权，已有用户改动未丢失。
+- [x] AC1: quality-report 中 docs-full、verify-build-model、release-contracts、release-consumer、release-signing、java-quality 六阶段均 passed；TD-040 证据链接指向本文 Execution 中实际存在的报告路径。
+- [x] AC2（快照比较按用户明确要求豁免）：`git status` 与 diff 中可见的新增和修改均属于获授权的任务文件；manifest 比较风险记录于 R-PLAN-SNAPSHOT-WAIVER。
 
 **Execution:**
 
-- **Status:** pending
-- **Attempts:** 0
+- **Status:** done
+- **Attempts:** 1
 - **Blocked Reason:** null
-- **Red Result:** null
-- **Verify Result:** null
-- **AC Result:** null
-- **Changed Files:** []
-- **Concerns:** none
+- **Red Result:** {"commands":[{"cmd":"rg -n -C 2 \"TD-040|MongoDB|mongodb\" docs/active/tech-debt-tracker.md docs/active/v2.3.0/index.md","exit_code":0,"confirmed":true,"evidence":"TD-040 remains listed as high severity and planned/not implemented; v2.3.0 index says implementation pending. T1-T3 execution and acceptance fields are complete. git status --short showed the Mongo implementation files and temporary plan snapshot JSON; snapshot comparison was waived by R-PLAN-SNAPSHOT-WAIVER."}]}
+- **Verify Result:** {"commands":[{"cmd":"bash scripts/engineering.sh docs --root \"$PWD\" --mode full --self-test --report /tmp/mimir-mongodb-docs-final.json","status":"pass","exit_code":0,"evidence":"报告 overall=passed；tool-self-test、markdown-format、internal-links、navigation 全部通过，findings=0。"},{"cmd":"git diff --check","status":"pass","exit_code":0,"evidence":"工作区差异空白检查通过。"}],"evidence":"完整质量报告 /tmp/mimir-mongo-quality.e25QJF/quality-report.json，runId=quality-1790220241059-736442，overall=passed；六个规定阶段均通过，java-tests/java-coverage 通过，java-sonar 因 RUN_SONAR=false 为 not_applicable。"}
+- **AC Result:** {"pass":2,"total":2,"deferred":[]}
+- **Changed Files:** ["docs/active/tech-debt-tracker.md","docs/active/v2.3.0/index.md","docs/active/v2.3.0/mongodb-driver-alignment/plan.md"]
+- **Concerns:** R-PLAN-SNAPSHOT-WAIVER 与 R-T2-SNAPSHOT-001 已记录；构建产物差异及未做快照比较不纳入提交。
 
 **Task Completion Gate:**
 
-- [ ] Red Result 存在且证明预期失败或前置状态。
-- [ ] Verify Result 存在且通过。
-- [ ] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
-- [ ] Changed Files 与 task input/output 快照差集相等且全部在声明范围。
-- [ ] Per-task AC checkbox synced。
+- [x] Red Result 存在且证明预期失败或前置状态。
+- [x] Verify Result 存在且通过。
+- [x] AC Result 中所有未延期 AC 均有通过证据，延期必须有用户风险接受记录。
+- [x] 可见 `git status`/diff 的 T4 变更均在声明范围；任务快照差异比较按用户要求豁免，见 R-PLAN-SNAPSHOT-WAIVER。
+- [x] Per-task AC checkbox synced。
 
 **Step 1: Red**
 
-记录 `git status --short` 与 baseline manifest；检查 T1–T3 执行字段与 AC。缺证据或适用阶段未运行时，不允许完成状态。
+记录 `git status --short`；检查 T1–T3 执行字段与 AC。快照检查按用户要求豁免；缺少其他证据或适用阶段未运行时，不允许完成状态。
 
 **Step 2: Green**
 
@@ -351,12 +404,30 @@ bash scripts/engineering.sh quality --mode full --source worktree --report "$mon
 
 **Step 3: Verify**
 
-状态回写后运行 `bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test` 与 `git diff --check`，生成最终 manifest。对照 baseline，T1–T4 Files 联集及 controller 元数据之外的新增变更不得放行；原有修改单列，不能回退。
+状态回写后运行 `bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test --report /tmp/mimir-mongodb-docs-final.json` 与 `git diff --check`。逐项核对 `git status --short` 中可见路径与 T1–T4 Files 联集及 controller 元数据；不运行 baseline/final manifest 快照比较，用户豁免已记录于 R-PLAN-SNAPSHOT-WAIVER。
 
 **AC Verification:**
 
 - AC1: 核对 quality-report 六个固定阶段 ID 的状态均 passed，测试失败/错误/跳过 0，新 Mongo suites 存在；未启用 Sonar 如实标不适用，不能称远端通过。读取每个证据路径确认非空，检查 TD-040 链接最终可达本文 Execution。
-- AC2: manifest 差集、git 状态、任务 Changed Files 逐项相符；controller 写 Plan Verdict=completed。未通过则 blocked；只有用户明确接受逐项剩余风险并记录 Accepted Risks 的稳定 ID、主体、ISO-8601 时间和 Source 证据，才可 completed_with_concerns。不自动提交。
+- AC2: 对可见 git 状态、diff 和任务 Changed Files 逐项核对；manifest 差异比较按用户明确要求豁免，见 R-PLAN-SNAPSHOT-WAIVER。其他 AC 全部通过后以 `completed_with_concerns` 收口，并保留该已接受风险；依用户既有授权提交剩余变更。
+
+<a id="td-040-处置记录"></a>
+
+## TD-040 处置记录
+
+TD-040 已从[活跃技术债清单](../../tech-debt-tracker.md)移除，旧锚点保留在该清单的已处理明细中。本次本地实施未发布；范围与升级边界见 [BOM README](../../../../mimir-boot-bom/README.md#mongodb-驱动兼容边界) 和 [release.md](../release.md)。
+
+完整门禁报告：`/tmp/mimir-mongo-quality.e25QJF/quality-report.json`，`runId=quality-1790220241059-736442`，overall=passed。六个必需阶段 `docs-full`、`verify-build-model`、`release-contracts`、`release-consumer`、`release-signing`、`java-quality` 均 passed；`java-tests` 与 `java-coverage` passed，`java-sonar` 按配置为 not_applicable（`RUN_SONAR=false`）。
+
+G1 同轮消费者证据目录：`/tmp/mimir-mongo-quality.e25QJF/quality-artifacts.hQy5kf/release-logs/consumer/`。各模式的 `source-status.json` 保留候选 revision、源状态指纹、发布 BOM 与隔离缓存 BOM 的原始路径及 SHA-256；临时 Maven BOM 文件随后清理，路径/哈希记录仍可读取。三种模式的发布与隔离 BOM 哈希均为 `fc850b9152ea74115d4b70e8ef707ffab8d72d189f48a8c8ea8204d64d7b56e5`。
+
+| 模式 | source fingerprint | 候选 revision | 发布/隔离缓存 BOM SHA-256 | selected-list 与 Surefire 证据 |
+|---|---|---|---|---|
+| BOM | `e8a3109b586c7f12d44cab4081a15c265e59d82bb7d94e206a9136b645a72ee4` | `2.2.2-SNAPSHOT` | 两者相等：`fc850b9152ea74115d4b70e8ef707ffab8d72d189f48a8c8ea8204d64d7b56e5` | `/tmp/mimir-mongo-quality.e25QJF/quality-artifacts.hQy5kf/release-logs/consumer/mongo-bom/source-status.json`；`dependency-list-online.txt`、`dependency-list-isolated.txt`、`mongo-dependency-list-online.txt`、`mongo-dependency-list-isolated.txt`、`family-dependency-list-online.txt`、`family-dependency-list-isolated.txt`、`surefire-online.xml`、`surefire-isolated.xml` |
+| Parent | `817eee36433d60cbaf2467c6e9a5c9d47b27a5ab7f558eb1c2fba1c64cc9645b` | `2.2.2-SNAPSHOT` | 两者相等：`fc850b9152ea74115d4b70e8ef707ffab8d72d189f48a8c8ea8204d64d7b56e5` | `/tmp/mimir-mongo-quality.e25QJF/quality-artifacts.hQy5kf/release-logs/consumer/mongo-parent/source-status.json`；`dependency-list-online.txt`、`dependency-list-isolated.txt`、`mongo-dependency-list-online.txt`、`mongo-dependency-list-isolated.txt`、`surefire-online.xml`、`surefire-isolated.xml` |
+| Spring Data | `510dc76fb90fc5f1ed6c174f44484c4f39b7253da934ca23a9f21d9b875687b5` | `2.2.2-SNAPSHOT` | 两者相等：`fc850b9152ea74115d4b70e8ef707ffab8d72d189f48a8c8ea8204d64d7b56e5` | `/tmp/mimir-mongo-quality.e25QJF/quality-artifacts.hQy5kf/release-logs/consumer/mongo-spring-data/source-status.json`；`dependency-list-online.txt`、`dependency-list-isolated.txt`、`mongo-dependency-list-online.txt`、`mongo-dependency-list-isolated.txt`、`surefire-online.xml`、`surefire-isolated.xml` |
+
+六份 Surefire XML 均为 tests=3、failures=0、errors=0、skipped=0。所有 source status、清单和 XML 均来自同一 quality run；Spring Data 映射和 MongoDB 客户端初始化只在离线/无服务端环境验证，不代表 CRUD 或生产行为。
 
 ## 场景到断言映射
 
@@ -381,4 +452,4 @@ bash scripts/engineering.sh quality --mode full --source worktree --report "$mon
 
 ## Acceptance Criteria
 
-- [ ] G1: 完成一条跨产物溯源链：对每个 mode 记录“baseline/source 状态指纹 → 候选 revision 与发布 BOM 的 SHA-256 → 同次隔离缓存 BOM 的相同 SHA-256 → 对应 selected-list 与 Surefire 报告路径 → README 验证范围 → TD-040 完成入口”；全部节点可读取、哈希相等、无跨轮证据混用。此为交付级一致性验收，不替代各任务局部通过条件。
+- [x] G1: 完成一条跨产物溯源链：对每个 mode 记录“baseline/source 状态指纹 → 候选 revision 与发布 BOM 的 SHA-256 → 同次隔离缓存 BOM 的相同 SHA-256 → 对应 selected-list 与 Surefire 报告路径 → README 验证范围 → TD-040 完成入口”；全部节点可读取、哈希相等、无跨轮证据混用。此为交付级一致性验收，不替代各任务局部通过条件。
