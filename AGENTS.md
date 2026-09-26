@@ -15,6 +15,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 5. 多文件变更、新功能、重构、架构/性能/安全相关调整，先给计划再实施。单文件局部调整、纯文档小修可直接执行。
 6. 所有回复、计划、说明、代码注释使用简体中文，代码标识符和专有名词除外。
 7. WSL 中如需 Node 运行时，先 `source ~/.nvm/nvm.sh`。
+8. 修改 `tools/` 前必须读取并遵守[工具准入约束](./tools/engineering/README.md#保留范围)。仅允许项目全局、跨需求和跨版本长期重复使用的工程工具及必要支持文件；禁止新增一次性验收、专项功能验证、迁移、排障或实施过程脚本，也禁止将这些逻辑嵌入既有通用工具。写入前须在当次变更说明中说明长期职责与实际复用入口；无法说明则不得写入。接入 CI、重复调用、改名或包装成通用函数均不构成准入依据。
 
 ## 导航
 
@@ -45,6 +46,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 |--------|--------|
 | 新增/升级第三方依赖版本 | `mimir-boot-bom/pom.xml` + [`工程规程`](./docs/engineering/development.md) |
 | 修改构建插件、质量门禁 | `mimir-boot-parent/pom.xml` + [`测试规程`](./docs/engineering/testing.md) |
+| 新增或修改 `tools/` 内任何内容 | 先核对[工具准入约束](./tools/engineering/README.md#保留范围)，包括既有脚本内部新增逻辑 |
 | 修改公共模型（异常/响应/分页/枚举） | `mimir-boot-common` |
 | 新增 Starter | [`新增 Starter 规程`](./docs/engineering/new-starter.md) |
 | 修改已有 Starter 自动装配 | 对应 starter 目录 |

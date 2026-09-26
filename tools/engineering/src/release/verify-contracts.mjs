@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOMParser } from '@xmldom/xmldom';
-import { assertFixtureMimirRepositoryMarkers, assertFixturePublishedArtifact } from './artifact-contract.mjs';
-import { assertMongoDependencyList, writeMongoConsumerFixture } from './fixture-mongodb.mjs';
-import { assertMongoSurefireReport } from './consumer.mjs';
+import { assertFixturePublishedArtifact } from './artifact-contract.mjs';
 import { copyThirdPartyMavenCache } from './maven-cache.mjs';
 import { verifyPublic } from './public.mjs';
 import { parsePortalState } from './portal-state.mjs';
@@ -18,40 +15,6 @@ import { errorExitCode, isTransientMavenTransferFailure, runMavenStage, toolEnvi
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const normalize = (text) => text.split('\n').map((line) => line.trim()).filter(Boolean).join('\n');
-const mongoArtifacts = ['bson', 'bson-kotlin', 'bson-record-codec', 'mongodb-driver-core', 'mongodb-driver-kotlin-coroutine', 'mongodb-driver-legacy', 'mongodb-driver-reactivestreams', 'mongodb-driver-sync'];
-const mongoSyncArtifacts = ['mongodb-driver-sync', 'mongodb-driver-core', 'bson'];
-const mavenNamespace = 'http://maven.apache.org/POM/4.0.0';
-const mongoXmlParser = new DOMParser({ onError: (level, message) => { throw new Error(`XML ${level}: ${message}`); } });
-
-function xmlRoot(source) {
-    const document = mongoXmlParser.parseFromString(source, 'application/xml');
-    assert.equal(document.documentElement?.namespaceURI, mavenNamespace);
-    assert.equal(document.documentElement?.localName, 'project');
-    return document.documentElement;
-}
-
-function xmlChildren(node, name) {
-    return Array.from(node.childNodes || []).filter((child) => child.nodeType === 1 && child.namespaceURI === mavenNamespace && child.localName === name);
-}
-
-function xmlText(node) {
-    return node?.textContent.trim() || '';
-}
-
-function descendants(node, name) {
-    return Array.from(node.getElementsByTagNameNS(mavenNamespace, name));
-}
-
-async function nestedFiles(directory, relative = '') {
-    const entries = await readdir(path.join(directory, relative), { withFileTypes: true });
-    const files = [];
-    for (const entry of entries) {
-        const current = path.join(relative, entry.name);
-        if (entry.isDirectory()) files.push(...await nestedFiles(directory, current));
-        else if (entry.isFile()) files.push(current.split(path.sep).join('/'));
-    }
-    return files.sort();
-}
 
 function block(source, heading) {
     const lines = source.split('\n');
@@ -211,182 +174,6 @@ async function verifyConsumerCacheFlow() {
     for (const cache of ['producerCacheDirectory', 'consumerCacheDirectory', 'bomConsumerCacheDirectory', 'failureConsumerCacheDirectory']) {
         assert.ok(source.includes(`backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [${cache}]`), `${cache} 必须回填到共享缓存`);
     }
-    assert.ok(source.includes('sourceDirectories: [cacheDirectory]'), 'Mongo 每个 consumer cache 必须共享同一预热回填路径');
-    assert.match(source, /bomImportedByFixture: mode !== 'parent'/u, '来源证据必须标明 parent fixture 未导入 BOM');
-    assert.match(source, /RETRYABLE_MAVEN_STAGES = new Set\([\s\S]*?'mongo-parent-bom-provenance'/u, 'parent provenance 在线下载阶段必须有限重试');
-    assert.match(source, /runConsumerMaven\('mongo-parent-bom-provenance'/u, 'parent provenance BOM 必须从实际候选仓库单独取回');
-    for (const cache of ['mongoBomCacheDirectory', 'mongoParentCacheDirectory', 'mongoSpringDataCacheDirectory']) {
-        assert.ok(source.includes(`['${cache === 'mongoBomCacheDirectory' ? 'bom' : cache === 'mongoParentCacheDirectory' ? 'parent' : 'spring-data'}',`) && source.includes(cache), `${cache} 必须绑定到对应 Mongo consumer 模式`);
-        assert.match(source, new RegExp(`sourceDirectories: \\[[^\\]]*${cache}`, 'u'), `${cache} 必须进入 seed 缓存回填`);
-        assert.match(source, new RegExp(`cacheDirectories: \\[[^\\]]*${cache}`, 'u'), `${cache} 必须纳入 finally 缓存恢复和清理`);
-    }
-}
-
-function capturedCommand(executable, args, options = {}) {
-    return new Promise((resolve, reject) => {
-        const child = spawn(executable, args, { cwd: root, ...options, stdio: ['ignore', 'pipe', 'pipe'] });
-        let stdout = '';
-        let stderr = '';
-        child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
-        child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
-        child.on('error', reject);
-        child.on('close', (code, signal) => resolve({ code, signal, stdout, stderr }));
-    });
-}
-
-async function verifyMongoDependencyContract(directory) {
-    const validSync = [
-        '[INFO] The following files have been resolved:',
-        '   org.mongodb:mongodb-driver-sync:jar:5.0.1:compile',
-        '[INFO] org.mongodb:mongodb-driver-core:jar:5.0.1:runtime -- module org.mongodb.driver.core [auto]',
-        'org.mongodb:bson-record-codec:jar:5.0.1:runtime -- module org.mongodb.bson.record.codec [auto]',
-        'org.mongodb:bson:jar:tests:5.0.1:test',
-        'com.example:ignored:jar:1.0:compile',
-    ].join('\n');
-    assert.doesNotThrow(() => assertMongoDependencyList(validSync, mongoSyncArtifacts, '5.0.1'));
-    assert.doesNotThrow(() => assertMongoDependencyList(`${validSync}\norg.mongodb:mongodb-driver-legacy:jar:5.0.1:runtime`, mongoSyncArtifacts, '5.0.1'));
-    assert.doesNotThrow(() => assertMongoDependencyList(`${validSync}\norg.mongodb:mongodb-driver-sync:jar:4.11.5:compile (omitted for conflict with 5.0.1)`, mongoSyncArtifacts, '5.0.1'));
-    const validFamily = mongoArtifacts.map((artifact) => artifact === 'mongodb-driver-legacy'
-        ? '[INFO] org.mongodb:mongodb-driver-legacy:jar:5.0.1:compile -- module mongodb.driver.legacy (auto)'
-        : `[INFO] org.mongodb:${artifact}:jar:5.0.1:compile`).join('\n');
-    assert.doesNotThrow(() => assertMongoDependencyList(validFamily, mongoArtifacts, '5.0.1'));
-    for (const [source, expected, version, pattern] of [
-        [validSync.replace('mongodb-driver-sync:jar:5.0.1', 'mongodb-driver-sync:jar:4.11.5'), mongoSyncArtifacts, '5.0.1', /org\.mongodb:mongodb-driver-sync.*4\.11\.5.*5\.0\.1/u],
-        [validSync.replace('org.mongodb:bson:jar:tests:5.0.1:test\n', ''), mongoSyncArtifacts, '5.0.1', /org\.mongodb:bson.*missing.*5\.0\.1/u],
-        [`${validSync}\norg.mongodb:mongodb-driver-sync:jar:5.0.1:runtime`, mongoSyncArtifacts, '5.0.1', /mongodb-driver-sync.*duplicate/u],
-        ['', mongoSyncArtifacts, '5.0.1', /MONGO_DEPENDENCY_CONTRACT/u],
-        [`${validSync}\norg.mongodb:bson:jar:4.11.5:compile`, mongoSyncArtifacts, '5.0.1', /org\.mongodb:bson.*4\.11\.5.*5\.0\.1/u],
-        [`${validSync}\norg.mongodb:mongodb-driver-legacy:jar:4.11.5:runtime`, mongoSyncArtifacts, '5.0.1', /org\.mongodb:mongodb-driver-legacy.*4\.11\.5.*5\.0\.1/u],
-        [`${validSync}\norg.mongodb:broken`, mongoSyncArtifacts, '5.0.1', /org\.mongodb:broken.*malformed/u],
-    ]) {
-        assert.throws(() => assertMongoDependencyList(source, expected, version), pattern);
-    }
-    assert.throws(() => assertMongoDependencyList(validSync, [], '5.0.1'), /expected=.*non-empty/u);
-    assert.throws(() => assertMongoDependencyList(validSync, ['bson', 'bson'], '5.0.1'), /expected=.*unique/u);
-
-    const moduleUrl = new URL('./fixture-mongodb.mjs', import.meta.url).href;
-    const script = (source) => `import { finishMain } from ${JSON.stringify(new URL('./runtime.mjs', import.meta.url).href)};\nimport { assertMongoDependencyList } from ${JSON.stringify(moduleUrl)};\nconst result = Promise.resolve().then(() => { try { assertMongoDependencyList(${JSON.stringify(source)}, ${JSON.stringify(mongoSyncArtifacts)}, '5.0.1'); } catch (error) { error.exitCode = 1; throw error; } });\nfinishMain(result);\nawait new Promise((resolve) => setTimeout(resolve, 10));`;
-    const validChild = await capturedCommand(process.execPath, ['--input-type=module', '--eval', script(validSync)]);
-    assert.equal(validChild.code, 0, validChild.stderr);
-    const invalidChild = await capturedCommand(process.execPath, ['--input-type=module', '--eval', script(validSync.replace('mongodb-driver-sync:jar:5.0.1', 'mongodb-driver-sync:jar:4.11.5'))]);
-    assert.equal(invalidChild.code, 1, invalidChild.stderr);
-    assert.match(invalidChild.stderr, /MONGO_DEPENDENCY_CONTRACT/u);
-    assert.match(invalidChild.stderr, /org\.mongodb:mongodb-driver-sync/u);
-    assert.match(invalidChild.stderr, /4\.11\.5/u);
-    assert.match(invalidChild.stderr, /5\.0\.1/u);
-    assert.equal((await readdir(directory)).length, 0);
-}
-
-async function verifyMongoConsumerFixtures(directory) {
-    const repository = path.join(directory, 'mongo&candidate-repository');
-    const revision = '2.3.0-RC&1';
-    const cases = [
-        { mode: 'bom', suite: 'MongoClientCompatibilityTest.java' },
-        { mode: 'parent', suite: 'MongoClientCompatibilityTest.java' },
-        { mode: 'spring-data', suite: 'MongoSpringDataCompatibilityTest.java' },
-    ];
-    for (const { mode, suite } of cases) {
-        const target = path.join(directory, `mongo-${mode}`);
-        await writeMongoConsumerFixture(target, revision, repository, mode);
-        const firstFiles = await nestedFiles(target);
-        assert.deepEqual(firstFiles, ['pom.xml', `src/test/java/io/github/yggdrasil/labs/fixture/${suite}`]);
-        const pom = await readFile(path.join(target, 'pom.xml'), 'utf8');
-        const rootNode = xmlRoot(pom);
-        assert.match(pom, /2\.3\.0-RC&amp;1/u, `${mode} 必须写入并转义候选 revision`);
-        assert.equal(descendants(rootNode, 'id').filter((element) => xmlText(element) === 'fixture').length, 1);
-        assert.equal(descendants(rootNode, 'url').filter((element) => xmlText(element) === `file://${repository}`).length, 1);
-        const mongoDependencies = xmlChildren(xmlChildren(rootNode, 'dependencies')[0], 'dependency').filter((dependency) =>
-            xmlChildren(dependency, 'groupId').some((element) => xmlText(element) === 'org.mongodb'));
-        assert.equal(mongoDependencies.some((dependency) => xmlChildren(dependency, 'version').length > 0), false, `${mode} 不得显式声明 Mongo 版本`);
-        if (mode === 'bom') {
-            assert.deepEqual(mongoDependencies.map((dependency) => xmlText(xmlChildren(dependency, 'artifactId')[0])), ['mongodb-driver-sync']);
-        }
-        if (mode === 'parent') {
-            const parent = xmlChildren(rootNode, 'parent')[0];
-            assert.ok(parent);
-            assert.equal(xmlText(xmlChildren(parent, 'artifactId')[0]), 'mimir-boot-parent');
-            assert.equal(xmlText(xmlChildren(parent, 'version')[0]), revision);
-            assert.equal(xmlChildren(parent, 'relativePath').length, 1);
-            assert.equal(xmlText(xmlChildren(parent, 'relativePath')[0]), '');
-            assert.equal(descendants(rootNode, 'artifactId').some((element) => xmlText(element) === 'mimir-boot-bom'), false);
-        } else {
-            const imports = descendants(rootNode, 'dependency').filter((dependency) =>
-                xmlChildren(dependency, 'groupId').some((element) => xmlText(element) === 'io.github.yggdrasil-labs')
-                && xmlChildren(dependency, 'artifactId').some((element) => xmlText(element) === 'mimir-boot-bom'));
-            assert.equal(imports.length, 1);
-            assert.equal(xmlText(xmlChildren(imports[0], 'type')[0]), 'pom');
-            assert.equal(xmlText(xmlChildren(imports[0], 'scope')[0]), 'import');
-            if (mode === 'spring-data') {
-                assert.ok(descendants(rootNode, 'artifactId').some((element) => xmlText(element) === 'spring-boot-starter-data-mongodb'));
-                assert.ok(descendants(rootNode, 'artifactId').some((element) => xmlText(element) === 'mimir-boot-starter-test'));
-            }
-        }
-        if (mode === 'bom') {
-            for (const [artifact, versionValue] of [['maven-compiler-plugin', '3.16.0'], ['maven-surefire-plugin', '3.6.0'], ['maven-dependency-plugin', '3.11.0']]) {
-                const plugin = descendants(rootNode, 'plugin').find((candidate) => xmlChildren(candidate, 'artifactId').some((element) => xmlText(element) === artifact));
-                assert.ok(plugin, `${artifact} 必须固定配置`);
-                assert.equal(xmlText(xmlChildren(plugin, 'version')[0]), versionValue);
-            }
-            assert.equal(descendants(rootNode, 'release').some((element) => xmlText(element) === '17'), true);
-            assert.equal(descendants(rootNode, 'parameters').some((element) => xmlText(element) === 'true'), true);
-            assert.equal(descendants(rootNode, 'failIfNoTests').some((element) => xmlText(element) === 'true'), true);
-            const familyProfile = descendants(rootNode, 'profile').find((profile) =>
-                xmlChildren(profile, 'id').some((element) => xmlText(element) === 'mongo-family'));
-            assert.ok(familyProfile, 'bom 必须提供 mongo-family profile');
-            const family = descendants(familyProfile, 'artifactId').map(xmlText).filter((artifact) => mongoArtifacts.includes(artifact));
-            assert.deepEqual(family.sort(), mongoArtifacts.filter((artifact) => artifact !== 'mongodb-driver-sync').sort());
-            const familyDependencies = descendants(familyProfile, 'dependency');
-            assert.equal(familyDependencies.length, 7);
-            for (const dependency of familyDependencies) assert.equal(xmlChildren(dependency, 'version').length, 0, 'family 坐标必须由候选 BOM 管理版本');
-        }
-        const java = await readFile(path.join(target, 'src/test/java/io/github/yggdrasil/labs/fixture', suite), 'utf8');
-        assert.match(java, /ServerSocket/u);
-        assert.match(java, /td040/u);
-        assert.match(java, /200/u);
-        if (mode === 'spring-data') {
-            assert.match(java, /MongoAutoConfiguration/u);
-            assert.match(java, /MongoDataAutoConfiguration/u);
-            assert.match(java, /class Sample/u);
-            assert.match(java, /auto-index-creation=false/u);
-            assert.match(java, /_id/u);
-            assert.match(java, /LinkageError/u);
-            assert.match(java, /spring\.data\.mongodb\.uri/u);
-        } else {
-            assert.match(java, /MongoClient/u);
-            assert.match(java, /IllegalArgumentException/u);
-        }
-        const before = new Map(await Promise.all(firstFiles.map(async (file) => [file, await readFile(path.join(target, file))])));
-        await writeMongoConsumerFixture(target, revision, repository, mode);
-        assert.deepEqual(await nestedFiles(target), firstFiles, `${mode} 重复生成路径必须稳定`);
-        for (const file of firstFiles) assert.deepEqual(await readFile(path.join(target, file)), before.get(file), `${mode}/${file} 字节必须稳定`);
-    }
-    for (const args of [
-        ['', '2.3.0', repository, 'bom'],
-        [path.join(directory, 'x'), '', repository, 'bom'],
-        [path.join(directory, 'x'), '2.3.0', '', 'bom'],
-        [path.join(directory, 'x'), '2.3.0', repository, 'nope'],
-    ]) await assert.rejects(writeMongoConsumerFixture(...args), /invalid|unknown|mode|parameter|参数/u);
-}
-
-async function verifyMongoReportContracts(directory) {
-    const className = 'io.github.yggdrasil.labs.fixture.MongoClientCompatibilityTest';
-    const report = `<testsuite name="${className}" tests="3" errors="0" skipped="0" failures="0"/>`;
-    assert.doesNotThrow(() => assertMongoSurefireReport(report, className));
-    for (const [source, expectedClass, pattern] of [
-        ['', className, /XML|报告/u],
-        [report.replace('tests="3"', 'tests="0"'), className, /tests.*3/u],
-        [report.replace('skipped="0"', 'skipped="1"'), className, /skipped.*0/u],
-        [report.replace('failures="0"', 'failures="1"'), className, /failures.*0/u],
-        [report, 'io.github.yggdrasil.labs.fixture.WrongTest', /测试类/u],
-    ]) assert.throws(() => assertMongoSurefireReport(source, expectedClass), pattern);
-
-    const cache = path.join(directory, 'mongo-marker-fixture');
-    const artifact = path.join(cache, 'io/github/yggdrasil-labs/mimir-boot-bom/2.3.0');
-    await mkdir(artifact, { recursive: true });
-    await writeFile(path.join(artifact, '_remote.repositories'), 'mimir-boot-bom-2.3.0.pom>fixture=\n');
-    await assertFixtureMimirRepositoryMarkers(cache, ['mimir-boot-bom']);
-    await writeFile(path.join(artifact, '_remote.repositories'), 'mimir-boot-bom-2.3.0.pom>central=\n');
-    await assert.rejects(assertFixtureMimirRepositoryMarkers(cache, ['mimir-boot-bom']), /只能标记为 fixture/u);
 }
 
 function verifyTransferClassification() {
@@ -512,9 +299,6 @@ async function verifyPublicFixture(directory) {
 export async function verifyContracts() {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'mimir-release-contracts-'));
     try {
-        await verifyMongoDependencyContract(directory);
-        await verifyMongoConsumerFixtures(directory);
-        await verifyMongoReportContracts(directory);
         await verifyWorkflow(directory);
         await verifyArtifactLayout(directory);
         await verifyConsumerCacheFlow();

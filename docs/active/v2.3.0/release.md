@@ -30,4 +30,4 @@ updated: 2026-09-23
 
 本地实施移除了 Mimir BOM 的 `mongodb.version` 属性和 `mongodb-driver-sync` 单项版本固定，由 Spring Boot 3.3.13 BOM 管理 MongoDB 驱动族 5.0.1，完成从旧版 4.11.5 的版本对齐。消费者若显式覆盖版本，应整族保持一致并自行验证；5.0.1 可能包含旧 API/ABI 不兼容变更，升级方须重新编译并核对上游变更说明。
 
-T2 本地验收通过 BOM、Parent、Spring Data 三种隔离消费者的依赖解析、同步客户端初始化和 Spring Data `_id`/`name` 离线映射验证。测试不连接真实 MongoDB 服务端，不覆盖 CRUD 或生产行为；这不是线上发布验证，也不表示该变更已发布。根 POM 仍为 `2.2.2-SNAPSHOT`，v2.3.0 尚未发布。
+T2 一次性本地验收通过 BOM、Parent、Spring Data 三种隔离消费者的依赖解析、同步客户端初始化和 Spring Data `_id`/`name` 离线映射验证。验收不连接真实 MongoDB 服务端，不覆盖 CRUD 或生产行为；专项 fixture 已在验收后清理，不属于常规工程 consumer/quality 门禁。这不是线上发布验证，也不表示该变更已发布。根 POM 仍为 `2.2.2-SNAPSHOT`，v2.3.0 尚未发布。

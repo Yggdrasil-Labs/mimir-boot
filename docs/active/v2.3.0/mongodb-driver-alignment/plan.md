@@ -4,7 +4,7 @@ version: v2.3.0
 status: completed_with_concerns
 owner: YoungerYang-Y
 created: 2026-09-22
-updated: 2026-09-24
+updated: 2026-09-26
 ---
 
 # MongoDB 驱动族兼容 — 实施计划
@@ -14,12 +14,12 @@ updated: 2026-09-24
 **Plan Schema Version:** 2
 **Worktree Path:** /home/yangyang/workspace/codes/Yggdrasil-Labs/mimir-boot
 **Started At:** 2026-09-24T08:02:01+08:00
-**Updated At:** 2026-09-24T11:46:37+08:00
+**Updated At:** 2026-09-26T09:32:08+08:00
 **Effective Execution Mode:** serial
 **Reason:** T1–T4 有顺序依赖，且共享 consumer 契约、发布产物和唯一工作区状态。
 **Resolved Path:** docs/active/v2.3.0/mongodb-driver-alignment/
 **Goal:** 消除默认发布消费者的 MongoDB 驱动混版，建立版本解析与同步/Spring Data 离线消费证据。
-**Architecture:** 删除 sync 单项覆盖，委托 Boot 基线；3 类消费者进入现有发布隔离和完整质量链。
+**Architecture:** 删除 sync 单项覆盖，委托 Boot 基线；通过一次性本地消费者验收记录 BOM、Parent 与 Spring Data 三种接入方式，不将专项 fixture 留在全局工程工具链。
 **Tech Stack:** Java 17、Boot 3.3.13、Spring Data MongoDB 4.3.13、MongoDB 5.0.1、受管 Node 22.22.3+、Maven Wrapper。
 
 **Plan Verdict:**
@@ -28,7 +28,7 @@ updated: 2026-09-24
 - **Verified At:** 2026-09-24T11:46:37+08:00
 - **Evidence:** `/tmp/mimir-mongo-quality.e25QJF/quality-report.json` (`quality-1790220241059-736442`, passed); `/tmp/mimir-mongodb-docs-final.json` (passed); `git diff --check` (passed).
 - **Blocked Tasks:** none
-- **Concerns:** 已接受 R-PLAN-SNAPSHOT-WAIVER 与 R-T2-SNAPSHOT-001；跳过执行计划快照比较，忽略构建产物差异。
+- **Concerns:** 已接受 R-PLAN-SNAPSHOT-WAIVER 与 R-T2-SNAPSHOT-001；跳过执行计划快照比较，忽略构建产物差异。MongoDB 专项验收只运行一次，相关 fixture 不保留为常规回归门禁。
 <!-- markdownlint-enable MD032 -->
 
 **Accepted Risks:**
@@ -60,7 +60,7 @@ updated: 2026-09-24
 - 新增生产模块/API/业务直接依赖均为 0；不改根 revision、发布坐标、profile、BOM 导入顺序、全局 Enforcer 或支持等级定义。
 - 删除 Mimir mongodb.version 与 sync 显式管理项，不新增 MongoDB BOM；公开披露 4.11.5→5.0.1 迁移和旧 API/ABI 风险。
 - 8 项 org.mongodb 坐标：bson、bson-kotlin、bson-record-codec、mongodb-driver-core、mongodb-driver-kotlin-coroutine、mongodb-driver-legacy、mongodb-driver-reactivestreams、mongodb-driver-sync。
-- 3 类独立消费者：bom、parent、spring-data；仅 from candidate repository，无相对父 POM 或预先缓存 Mimir 制品。
+- 一次性验收覆盖 bom、parent、spring-data 三类独立消费者；仅从 candidate repository 取 Mimir 制品，无相对父 POM 或预先缓存 Mimir 制品。专项 fixture 已在验收后删除，不纳入 `tools/engineering` 常规门禁。
 - 离线表示不需要 MongoDB 服务端；Maven 预热可联网，最终验证禁外部仓库。测试不执行数据库操作、不连接业务库、不添加 Docker 前置。
 - 每个测试用独占 127.0.0.1 临时 ServerSocket 占住端口，不运行 Mongo 协议；URI 数据库 td040，连接/套接字/选择超时各 200ms。关闭所有客户端、上下文、端口，不把后台连接告警误判为失败。
 - 变更权限按任务 Files 限定；执行者不是独占代码库，不得回退他人改动或再次委派。默认有界工作交 luna-worker，任务串行，避免共享契约/consumer 文件冲突。
@@ -428,6 +428,10 @@ G1 同轮消费者证据目录：`/tmp/mimir-mongo-quality.e25QJF/quality-artifa
 | Spring Data | `510dc76fb90fc5f1ed6c174f44484c4f39b7253da934ca23a9f21d9b875687b5` | `2.2.2-SNAPSHOT` | 两者相等：`fc850b9152ea74115d4b70e8ef707ffab8d72d189f48a8c8ea8204d64d7b56e5` | `/tmp/mimir-mongo-quality.e25QJF/quality-artifacts.hQy5kf/release-logs/consumer/mongo-spring-data/source-status.json`；`dependency-list-online.txt`、`dependency-list-isolated.txt`、`mongo-dependency-list-online.txt`、`mongo-dependency-list-isolated.txt`、`surefire-online.xml`、`surefire-isolated.xml` |
 
 六份 Surefire XML 均为 tests=3、failures=0、errors=0、skipped=0。所有 source status、清单和 XML 均来自同一 quality run；Spring Data 映射和 MongoDB 客户端初始化只在离线/无服务端环境验证，不代表 CRUD 或生产行为。
+
+### 验收工具保留范围调整
+
+2026-09-26，用户要求 TD-040 专项验收 fixture 不加入长期全局工程工具。已从 `tools/engineering/src/release` 删除 MongoDB fixture 与版本检查模块，并从 `consumer.mjs`、`verify-contracts.mjs` 和工程 README 移除对应接线与说明。T1/T2 的执行记录和上方 quality 报告是清理前的一次性验收证据；当前常规 `consumer` 与完整质量门禁不再执行 MongoDB 专项消费者验证。MongoDB BOM 版本修复及迁移说明保留。
 
 ## 场景到断言映射
 
