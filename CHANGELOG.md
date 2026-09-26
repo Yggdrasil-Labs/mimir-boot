@@ -1,5 +1,74 @@
 # Changelog
 
+## [2.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.1...v2.3.0) (2026-09-26)
+
+
+### ✨ Features
+
+* **docs:** 增加文档一致性检查与结果汇总 ([a2a1663](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a2a1663baeb054a368c348e32987e72fc7726b0c))
+* **quality:** 统一质量检查调度与快照验证 ([b2c1040](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b2c1040045c25d3c7a60a8825494d18528f70e4f))
+
+
+### 🐛 Bug Fixes
+
+* **build:** 修正 Java 质量门禁 ([56a58da](https://github.com/Yggdrasil-Labs/mimir-boot/commit/56a58dafe29d0c4380f97ac53686c89fc12ba5cb))
+* **docs:** 排除文档检查测试夹具 ([63f060b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/63f060bdb570ce811886c88796c34c8d659532ec))
+* **log:** 补齐字段型敏感信息脱敏 ([a73c5c1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a73c5c196cae3fc4710efb2f818ca411b725af6b))
+* **mongodb:** 对齐驱动族版本并补齐消费者验收 ([6c4d70a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6c4d70a7a7d79c4baac5044f0e33097f6ee7780c))
+* **quality:** 修复发布验收缓存与重试稳定性 ([16063e9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/16063e9c35f8ab42998f09e88bd08e4879683ddf))
+* **quality:** 将本地门禁切换为离线快速验收 ([be8b429](https://github.com/Yggdrasil-Labs/mimir-boot/commit/be8b4299998f812b0d5926ee5e42b8119f031d0f))
+* **release:** 以公开制品校验作为发布收尾门禁 ([f14a1f6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f14a1f676f4f0db32416bf36112aac325cbe610b))
+
+
+### 📝 Documentation
+
+* **governance:** 建立文档治理实施方案 ([f5e3871](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f5e387106f260b6f122ff5d74fa3803897bf1d4c))
+* **governance:** 归档 v2.2.1 文档 ([c11b51e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c11b51eee70397748e448cba8ee20f883b6d9a02))
+* **governance:** 重整项目文档治理体系 ([4941d41](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4941d41bf87bb7d1b74ced5f501223b70336ccdb))
+* **readme:** 优化根 README GitHub 展示 ([769be76](https://github.com/Yggdrasil-Labs/mimir-boot/commit/769be76a6b1111e54aa32f85c159b45fb4401303))
+* **readme:** 精简根 README 冗余内容 ([91fed88](https://github.com/Yggdrasil-Labs/mimir-boot/commit/91fed883ac7983f52a6523d0c9f8aa5c7e590efa))
+* **tech-debt:** 系统化技术债务追踪 ([bb7b25e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bb7b25e0798ac61a02b7134cbb4b4a5d3d0fb4b8))
+* **v2.3.0:** 新增日志脱敏与 MongoDB 方案 ([08ebe7e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/08ebe7e392197f79824411b72d065cbead51e3e4))
+* 修复文档复核问题 ([6275137](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6275137bd17b3c5543ed852ee3abec4bb9af16fb))
+* 修正文档漂移并统一维护约定 ([6cd3013](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6cd30130cee2d3fd9e2faa5bff3048ffcaf4942f))
+* 校准文档与实现边界 ([ba28c47](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ba28c47e22dccfb5379d6c6bbf9f942fdb5ba5ca))
+* 校准模块文档与实际实现 ([316393e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/316393ec70b5298dee4fd608cd54f0604dbdcd05))
+
+
+### ♻️ Code Refactoring
+
+* **quality:** 分层整理检查工具并精简文档策略 ([6ae7790](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6ae779007b02884f9345182f115e1d1a3facebec))
+* **quality:** 统一工程质量门禁与发布验收工具 ([ed8cdde](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ed8cdde5e613c6b211977d4d281a8c687cbd4c49))
+* **tools:** 清理专项验收逻辑并强化工具准入约束 ([377818c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/377818c55e64d52b57930b536b068072d3166e7b))
+
+
+### 🔨 Build System
+
+* **docs:** 建立 Maven 托管文档检查入口 ([33192a3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/33192a3bbce0f7f223cffc090a360dee7e6424c0))
+
+
+### 👷 Continuous Integration
+
+* **quality:** 复用本地质量检查与结果报告 ([f411638](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f411638a4e55d0e3f0e4b8ce76c65b6829a763ef))
+* **quality:** 收敛本地与持续集成质量门禁 ([4579ce1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4579ce1f3a5527fee5474c9a86abe68e2f8efda2))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.2.2-SNAPSHOT for next development cycle ([1f5a4db](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1f5a4dbefc85d197b8b39be6d89519a77f2769db))
+* **ci:** 升级 CI 与 Maven 构建工具版本 ([a2cf5b9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a2cf5b92d36ee1023bca0af570db168c99ce1f3e))
+* **deps:** 升级 fastjson2 与 SLF4J 版本 ([0c144bc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0c144bc0c1be8ae305ea8a9aff9fd43a5a4e27da))
+* **plan:** 初始化文档治理实施台账 ([5cb9d0e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5cb9d0e7d8cbd4f959daea8c392ebf51032f4408))
+* **plan:** 启动 Java 质量门禁任务 ([fa27d2e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fa27d2ee8d80f6e06927b1e63f823bf10977c0d8))
+* **plan:** 启动共享质量调度任务 ([2484aec](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2484aec88b18549b908f1adac88d4cd02225f5b9))
+* **plan:** 启动文档规则检查任务 ([db2366c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/db2366c6b8f77ac9fd58f9e2c91aa76d386da5ca))
+* **plan:** 并行启动本地门禁与 CI 收敛 ([905772c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/905772c76a9267ba1ef635e857ed1932e6a9330c))
+* **plan:** 记录 CI 质量入口实施结果 ([cff406d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cff406d54b9a544ff1d407c0d2bd6f32b0c8a2e0))
+* **plan:** 记录 Java 质量门禁实施结果 ([68f3771](https://github.com/Yggdrasil-Labs/mimir-boot/commit/68f3771222619a7d99b7f3dde0c10603f819fa9a))
+* **plan:** 记录共享质量调度实施结果 ([61867cf](https://github.com/Yggdrasil-Labs/mimir-boot/commit/61867cf9e0b4e8d8862beec876946b3ae3e067c0))
+* **plan:** 记录文档工具链实施结果 ([158da24](https://github.com/Yggdrasil-Labs/mimir-boot/commit/158da2490c07c158184564a159aabb3ae9c0a269))
+* **plan:** 记录文档规则检查结果 ([b17a78a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b17a78acf798e047369e3a3fd04213624c8ef5cf))
+
 ## [2.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.0...v2.2.1) (2026-09-12)
 
 
