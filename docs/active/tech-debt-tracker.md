@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 # 技术债务追踪
@@ -22,7 +22,6 @@ updated: 2026-09-23
 | [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-036](#td-036-parent-flatten-属性覆盖) | 发布 Parent 属性覆盖 | 发布 Parent / 构建 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-037](#td-037-okhttp-jvm-制品) | OkHttp JVM 制品坐标 | BOM / 依赖治理 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
@@ -60,10 +59,11 @@ updated: 2026-09-23
 
 <a id="td-036-parent-flatten-属性覆盖"></a>
 
-### TD-036：发布 Parent 属性覆盖
+### TD-036：发布 Parent 属性覆盖（已处理）
 
-- **现状与风险**：发布 Parent 的 flatten 配置在发布时解析 `pluginManagement` 属性；下游覆盖 `java.version`、编译插件版本或 JaCoCo 门槛不会影响插件实际配置。
-- **处置与验收**：保留可继承的延迟解析语义，并以真实发布消费者验证上述属性覆盖均生效。
+- **处理结果**：发布 Parent 的 `pluginManagement` 保留属性引用，`properties` 仍只保留 Parent 自身属性；Parent 单独声明 `spring.boot.version`，避免发布根 POM 省略该属性后插件版本无法解析。TD-036 已从活跃清单移除。
+- **本地验收**：旧 Parent 的隔离消费者仍得到 Java 17、编译插件 3.16.0、JaCoCo 门槛 0.60/0.50；将新生成的发布 POM 安装到隔离 Maven 仓库后，仅覆盖属性的消费者得到 Java 11、编译插件 3.15.0、门槛 0.31/0.27，并成功编译为 Java 11 字节码。分别提高指令或分支门槛时，JaCoCo 检查按新值失败；未覆盖的消费者仍得到原默认值。消费者在 `ci` profile 下的 effective POM 没有未解析属性。
+- **范围边界**：验收使用本地生成的发布 POM 和隔离 Maven 仓库，不代表 CI、Maven Central 或发布后外部消费者验证。
 
 <a id="td-037-okhttp-jvm-制品"></a>
 

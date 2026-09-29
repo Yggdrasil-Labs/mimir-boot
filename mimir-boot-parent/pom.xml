@@ -20,6 +20,8 @@
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <!-- 根 POM 发布时不保留属性；此值需与根 POM 的 Spring Boot 基线同步。 -->
+        <spring.boot.version>3.3.13</spring.boot.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
@@ -237,7 +239,8 @@
                             <parent>resolve</parent>
                             <dependencies>resolve</dependencies>
                             <dependencyManagement>resolve</dependencyManagement>
-                            <pluginManagement>resolve</pluginManagement>
+                            <!-- 插件配置中的属性引用由下游继承时再解析。 -->
+                            <pluginManagement>keep</pluginManagement>
                             <properties>keep</properties>
                             <profiles>resolve</profiles>
                             <build>keep</build>

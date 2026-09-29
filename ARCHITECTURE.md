@@ -127,6 +127,6 @@ graph TD
 - MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
 - 测试 Starter 不再通过类路径资源注入数据库副作用或固定应用名；Testcontainers 由接入方按场景显式引入。
 - 分页构造和转换存在不同校验边界；Jackson 绑定及直接 setter 路径不保证自动校正（TD-042）。
-- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。发布属性覆盖、部分受管依赖兼容性、覆盖率报告时序与格式扫描范围仍有缺口（TD-036、TD-037、TD-041、TD-043、TD-044）。
+- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。发布 Parent 属性覆盖已通过本地隔离消费者验证，尚未随版本发布；部分受管依赖兼容性、覆盖率报告时序与格式扫描范围仍有缺口（TD-037、TD-041、TD-043、TD-044）。
 
 已知问题的处置状态与验收标准统一维护在[技术债台账](./docs/active/tech-debt-tracker.md)。
