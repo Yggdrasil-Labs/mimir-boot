@@ -101,7 +101,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-rpc-core` | `mimir-boot-starter-dubbo`、`mimir-boot-starter-feign` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-test` | 所有具测试的 Starter |
 
-### 仅管理（39 项）
+### 仅管理（40 项）
 
 | 类别 | 坐标 |
 |------|------|
@@ -129,6 +129,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | 序列化与网络 | `com.esotericsoftware:kryo` |
 | 序列化与网络 | `com.google.protobuf:protobuf-java` |
 | 序列化与网络 | `com.squareup.okhttp3:okhttp` |
+| 序列化与网络 | `com.squareup.okhttp3:okhttp-jvm` |
 | 序列化与网络 | `com.squareup.retrofit2:retrofit` |
 | 文件与协调 | `org.apache.poi:poi` |
 | 文件与协调 | `com.itextpdf:itext-core` |
@@ -154,7 +155,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 下列坐标当前属于“仅管理”，不能依据 BOM 声明推断为已验证的运行时组合：
 
 - `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1` 与当前 Spring Boot 3.3 基线存在兼容性风险，接入前请在目标应用中验证。
-- `com.squareup.okhttp3:okhttp:5.5.0` 的 JVM 消费坐标仍待确认，接入前请在目标应用中验证。
+- `com.squareup.okhttp3:okhttp:5.5.0` 在 Maven/JVM 项目中不提供 `okhttp3` 类。需要 Java API 的消费者应声明 `com.squareup.okhttp3:okhttp-jvm`，版本由本 BOM 管理；原有 `okhttp` 依赖声明须由消费者改为 `okhttp-jvm`，BOM 不会自动替换坐标。本地独立消费者已通过 API 编译和回环 HTTP 调用，目标应用仍需按实际场景验证。
 
 接入方使用这些坐标前，应先完成独立的消费者编译或运行验证。
 

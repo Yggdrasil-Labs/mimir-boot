@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # 技术债务追踪
@@ -22,7 +22,6 @@ updated: 2026-09-29
 | [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-037](#td-037-okhttp-jvm-制品) | OkHttp JVM 制品坐标 | BOM / 依赖治理 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
@@ -67,10 +66,11 @@ updated: 2026-09-29
 
 <a id="td-037-okhttp-jvm-制品"></a>
 
-### TD-037：OkHttp JVM 制品坐标
+### TD-037：OkHttp JVM 制品坐标（已处理）
 
-- **现状与风险**：BOM 管理的 `com.squareup.okhttp3:okhttp:5.5.0` 不提供 Java 直接使用的 `okhttp3` 类；消费者仅导入 BOM 并声明该依赖时，编译 `OkHttpClient` 失败。
-- **处置与验收**：确认 JVM 制品坐标与版本组合，并添加只导入发布 BOM 的 API 编译和调用验证。
+- **处理结果**：BOM 增加 `com.squareup.okhttp3:okhttp-jvm:5.5.0`，保留原有 `okhttp` 版本管理；Maven/JVM 消费者须自行将依赖声明改为 `okhttp-jvm`。
+- **本地验收**：隔离消费者仅导入生成的发布 BOM，并声明无版本号的 `okhttp-jvm`。修改前 Maven 报缺少依赖版本；修改后消费者完成 Java 17 编译，使用 `OkHttpClient` 对本地回环服务发起请求并得到预期响应。
+- **范围边界**：验收使用本地生成的发布 POM 与隔离仓库，不代表 CI、真实发布或发布后外部消费者验证；本仓库 Reactor 仍未直接消费 OkHttp。
 
 <a id="td-038-日志-json-脱敏"></a>
 

@@ -1,7 +1,7 @@
 ---
 version: v2.3.0
 status: planned
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # Release — v2.3.0
@@ -31,3 +31,15 @@ updated: 2026-09-23
 本地实施移除了 Mimir BOM 的 `mongodb.version` 属性和 `mongodb-driver-sync` 单项版本固定，由 Spring Boot 3.3.13 BOM 管理 MongoDB 驱动族 5.0.1，完成从旧版 4.11.5 的版本对齐。消费者若显式覆盖版本，应整族保持一致并自行验证；5.0.1 可能包含旧 API/ABI 不兼容变更，升级方须重新编译并核对上游变更说明。
 
 T2 一次性本地验收通过 BOM、Parent、Spring Data 三种隔离消费者的依赖解析、同步客户端初始化和 Spring Data `_id`/`name` 离线映射验证。验收不连接真实 MongoDB 服务端，不覆盖 CRUD 或生产行为；专项 fixture 已在验收后清理，不属于常规工程 consumer/quality 门禁。这不是线上发布验证，也不表示该变更已发布。根 POM 仍为 `2.2.2-SNAPSHOT`，v2.3.0 尚未发布。
+
+## 发布 Parent 属性覆盖（TD-036，已修复，未发布）
+
+发布 Parent 的插件管理保留版本和 JaCoCo 门槛的属性引用，使下游仅覆盖属性即可调整编译插件版本、Java 目标版本和覆盖率门槛；Parent 自身补充 `spring.boot.version`，避免根 POM 扁平化后遗漏该属性。修复已提交为 `baafc35`。
+
+本地隔离消费者验证了覆盖属性与保留默认值两种路径，并检查 Java 11 字节码及 JaCoCo 指令、分支门槛生效。验收基于本地生成的发布 POM，不代表 CI、真实发布或发布后消费者验证。
+
+## OkHttp JVM 制品坐标（TD-037，已修复，未发布）
+
+BOM 新增 `com.squareup.okhttp3:okhttp-jvm:5.5.0` 的版本管理，保留原有 `okhttp` 坐标的版本管理。Maven/JVM 消费者需要将依赖声明改为 `okhttp-jvm` 才能直接使用 `OkHttpClient`；导入 BOM 不会自动替换原依赖坐标。
+
+本地隔离消费者仅导入生成的发布 BOM，验证了无版本号 `okhttp-jvm` 依赖的 Java 17 编译和回环 HTTP 调用；修改前同一消费者因缺少依赖版本而无法构建。验收不代表 CI、真实发布或发布后消费者验证，Reactor 内仍无 OkHttp 直接消费者。
