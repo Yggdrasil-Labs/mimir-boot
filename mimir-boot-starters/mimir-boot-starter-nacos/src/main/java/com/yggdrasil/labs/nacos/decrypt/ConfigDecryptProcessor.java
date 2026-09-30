@@ -58,14 +58,14 @@ public class ConfigDecryptProcessor {
      */
     public void process(ConfigurableEnvironment environment) {
         if (!Boolean.TRUE.equals(properties.getEnabled())) {
-            removeDecryptedPropertySources(environment);
+            clearDecryptedPropertySources(environment);
             log.debug("Nacos 配置加密脱敏功能已禁用");
             return;
         }
 
         boolean containsEncryptedProperty = containsEncryptedProperty(environment);
         if (!containsEncryptedProperty) {
-            removeDecryptedPropertySources(environment);
+            clearDecryptedPropertySources(environment);
             return;
         }
 
@@ -113,7 +113,7 @@ public class ConfigDecryptProcessor {
     private void replaceDecryptedPropertySources(
             ConfigurableEnvironment environment,
             List<DecryptedPropertySource> decryptedPropertySources) {
-        removeDecryptedPropertySources(environment);
+        clearDecryptedPropertySources(environment);
         for (DecryptedPropertySource decryptedPropertySource : decryptedPropertySources) {
             environment
                     .getPropertySources()
@@ -126,7 +126,8 @@ public class ConfigDecryptProcessor {
         }
     }
 
-    private void removeDecryptedPropertySources(ConfigurableEnvironment environment) {
+    /** 移除本处理器创建的解密覆盖层，保留原始属性源。 */
+    public static void clearDecryptedPropertySources(ConfigurableEnvironment environment) {
         List<String> propertySourceNames = new ArrayList<>();
         for (PropertySource<?> propertySource : environment.getPropertySources()) {
             if (isDecryptedPropertySource(propertySource)) {
@@ -136,7 +137,7 @@ public class ConfigDecryptProcessor {
         propertySourceNames.forEach(environment.getPropertySources()::remove);
     }
 
-    private boolean isDecryptedPropertySource(PropertySource<?> propertySource) {
+    private static boolean isDecryptedPropertySource(PropertySource<?> propertySource) {
         return propertySource.getName().startsWith(DECRYPTED_PROPERTIES_PREFIX);
     }
 

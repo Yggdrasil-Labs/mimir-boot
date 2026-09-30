@@ -116,7 +116,13 @@ public class ConfigController {
 }
 ```
 
-刷新监听器只有在 `mimir.boot.nacos.encrypt` 或兼容的 `mimir.nacos.encrypt` 前缀仍处于绑定状态时才会处理事件。若刷新时直接删除整个加密配置前缀，当前版本不会进入清理流程，旧的 `decryptedProperties:*` 覆盖层可能继续生效。
+刷新时如果 `mimir.boot.nacos.encrypt` 和兼容的 `mimir.nacos.encrypt` 前缀均不再绑定，监听器会移除旧的 `decryptedProperties:*` 解密覆盖层，原始属性源中的明文或下层配置随后生效；重新配置加密前缀后，会继续处理密文。
+
+若业务属性也被完全删除且没有下层值，Environment 不再返回旧值；Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定时，缺失的字段仍可能保留原值。业务需要移除旧值时，须按字段类型选择处置方式：
+
+- 对 `String` 字段，如果业务语义和校验规则允许空字符串，可显式配置 `app.secret: ""`，重新绑定后的值为 `""`。空字符串不等于 `null`，此方式也不适用于所有字段类型。
+- 需要恢复 `null` 或字段默认值时，应由应用在刷新逻辑中显式重置字段，或通过重启应用等方式创建并重新注入新的 Bean 实例。删除配置或配置 `null` 不能作为通用的字段清空保证。
+- 再次发布 `EnvironmentChangeEvent` 或调用 `ConfigurationPropertiesRebinder.rebind()` 只会对原 Bean 实例重新绑定，不属于创建新实例，也不会自动重置缺失字段。
 
 ### 3. 加密工具类
 

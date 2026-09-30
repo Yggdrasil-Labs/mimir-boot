@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.nacos.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,76 @@ class NacosEncryptRefreshIT {
             context.publishEvent(new EnvironmentChangeEvent(Set.of(PROPERTY_NAME)));
 
             assertCurrentSecret(context, "new-plaintext");
+        }
+    }
+
+    @Test
+    void shouldRebindWhenEncryptPrefixIsRemovedAndRestored() {
+        String key = ConfigCryptoUtils.generateKey();
+        MutableRefreshContext refreshContext = startWithEncryptedSecret(key, "old-plaintext");
+        try (ConfigurableApplicationContext context = refreshContext.context()) {
+            refreshContext.properties().remove(NacosEncryptProperties.PREFIX + ".key");
+            refreshContext.properties().put(PROPERTY_NAME, "new-plaintext");
+            context.publishEvent(
+                    new EnvironmentChangeEvent(
+                            Set.of(NacosEncryptProperties.PREFIX + ".key", PROPERTY_NAME)));
+
+            assertCurrentSecret(context, "new-plaintext");
+            assertNull(
+                    context.getEnvironment()
+                            .getPropertySources()
+                            .get("decryptedProperties:nacos-refresh"));
+
+            refreshContext.properties().put(NacosEncryptProperties.PREFIX + ".key", key);
+            refreshContext.properties().put(PROPERTY_NAME, encrypted("restored-secret", key));
+            context.publishEvent(
+                    new EnvironmentChangeEvent(
+                            Set.of(NacosEncryptProperties.PREFIX + ".key", PROPERTY_NAME)));
+
+            assertCurrentSecret(context, "restored-secret");
+        }
+    }
+
+    @Test
+    void shouldUseLowerPriorityPropertyWhenEncryptedSourceIsRemoved() {
+        String key = ConfigCryptoUtils.generateKey();
+        MutableRefreshContext refreshContext = startWithEncryptedSecret(key, "old-plaintext");
+        try (ConfigurableApplicationContext context = refreshContext.context()) {
+            context.getEnvironment()
+                    .getPropertySources()
+                    .addLast(
+                            new MapPropertySource(
+                                    "fallback", Map.of(PROPERTY_NAME, "fallback-secret")));
+            refreshContext.properties().remove(NacosEncryptProperties.PREFIX + ".key");
+            refreshContext.properties().remove(PROPERTY_NAME);
+            context.publishEvent(
+                    new EnvironmentChangeEvent(
+                            Set.of(NacosEncryptProperties.PREFIX + ".key", PROPERTY_NAME)));
+
+            assertCurrentSecret(context, "fallback-secret");
+            assertNull(
+                    context.getEnvironment()
+                            .getPropertySources()
+                            .get("decryptedProperties:nacos-refresh"));
+        }
+    }
+
+    @Test
+    void shouldClearDecryptedOverlayWhenEncryptedSourceIsRemovedWithoutFallback() {
+        String key = ConfigCryptoUtils.generateKey();
+        MutableRefreshContext refreshContext = startWithEncryptedSecret(key, "old-plaintext");
+        try (ConfigurableApplicationContext context = refreshContext.context()) {
+            refreshContext.properties().remove(NacosEncryptProperties.PREFIX + ".key");
+            refreshContext.properties().remove(PROPERTY_NAME);
+            context.publishEvent(
+                    new EnvironmentChangeEvent(
+                            Set.of(NacosEncryptProperties.PREFIX + ".key", PROPERTY_NAME)));
+
+            assertNull(context.getEnvironment().getProperty(PROPERTY_NAME));
+            assertNull(
+                    context.getEnvironment()
+                            .getPropertySources()
+                            .get("decryptedProperties:nacos-refresh"));
         }
     }
 

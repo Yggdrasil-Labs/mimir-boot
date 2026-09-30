@@ -22,7 +22,7 @@ updated: 2026-09-30
 | [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 待规划 | YoungerYang-Y | 2026-09-10 | 待制定修复计划 |
+| [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | 覆盖层已清理，待处理缺失属性的 Bean 绑定 |
 | [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项证据闭环 |
@@ -85,8 +85,9 @@ updated: 2026-09-30
 
 ### TD-039：Nacos 解密覆盖层清理
 
-- **现状与风险**：删除 Nacos 加密配置前缀时，刷新监听器不处理删除事件，也不移除旧 `decryptedProperties:*` 覆盖层；历史明文可继续覆盖底层配置。
-- **处置与验收**：在前缀消失时清理覆盖层，并验证删除、明文切换、重新加密和重新绑定场景。
+- **已修复范围**：删除 Nacos 加密配置前缀时，刷新监听器清理旧 `decryptedProperties:*` 覆盖层；Environment 随后读取原始明文、下层配置或缺失值。聚焦的监听器测试和刷新集成测试覆盖了明文切换、下层回退、完全删除、重新加密及存在值时的 Bean 重新绑定。
+- **剩余风险**：业务属性完全删除且没有下层值时，Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定后仍保留原字段值；本地负向测试已复现。该问题不再由解密覆盖层造成，但仍属于删除配置后的历史明文残留。
+- **处置与验收**：确定缺失属性的 Bean 清空或重建策略，并验证无回退值时 Bean 不再保留旧明文；当前版本不能据覆盖层清理结果宣告本项全部完成。
 
 <a id="td-040-mongodb-驱动族"></a>
 

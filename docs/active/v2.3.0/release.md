@@ -43,3 +43,9 @@ T2 一次性本地验收通过 BOM、Parent、Spring Data 三种隔离消费者�
 BOM 新增 `com.squareup.okhttp3:okhttp-jvm:5.5.0` 的版本管理，保留原有 `okhttp` 坐标的版本管理。Maven/JVM 消费者需要将依赖声明改为 `okhttp-jvm` 才能直接使用 `OkHttpClient`；导入 BOM 不会自动替换原依赖坐标。
 
 本地隔离消费者仅导入生成的发布 BOM，验证了无版本号 `okhttp-jvm` 依赖的 Java 17 编译和回环 HTTP 调用；修改前同一消费者因缺少依赖版本而无法构建。验收不代表 CI、真实发布或发布后消费者验证，Reactor 内仍无 OkHttp 直接消费者。
+
+## Nacos 解密覆盖层清理（TD-039，部分修复，未发布）
+
+刷新事件发生时，若新旧 Nacos 加密配置前缀均已消失，监听器会移除历史 `decryptedProperties:*` 覆盖层。原始明文和下层配置可以重新生效；恢复加密配置后仍会重新解密。本地聚焦测试已验证这些路径，以及业务属性完全删除时 Environment 不再返回旧明文。
+
+业务属性完全删除且没有下层值时，Spring Cloud 对已有 `@ConfigurationProperties` Bean 的重新绑定仍可能保留旧字段值，TD-039 因此尚未完全关闭。此处仅记录本地验证，不代表 CI、真实发布或发布后消费者验证。
