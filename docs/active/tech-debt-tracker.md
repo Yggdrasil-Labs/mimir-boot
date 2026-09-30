@@ -23,7 +23,6 @@ updated: 2026-09-30
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | 覆盖层已清理，待处理缺失属性的 Bean 绑定 |
-| [TD-041](#td-041-springdoc-boot-兼容性) | Springdoc 与 Boot 基线兼容 | BOM / Springdoc 兼容性 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项证据闭环 |
 | [TD-044](#td-044-spotless-子模块门禁) | Spotless 子模块格式门禁 | Parent / 格式门禁 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | 配置已调整，待专项负向验收 |
@@ -99,10 +98,11 @@ updated: 2026-09-30
 
 <a id="td-041-springdoc-boot-兼容性"></a>
 
-### TD-041：Springdoc 与 Boot 基线兼容
+### TD-041：Springdoc 与 Boot 基线兼容（已处理）
 
-- **现状与风险**：托管的 `springdoc-openapi-starter-webmvc-ui:2.9.1` 引用当前 `spring-webmvc:6.1.21` 不存在的 `LiteWebJarsResourceResolver`；加载 `SwaggerResourceResolver` 时抛出 `NoClassDefFoundError`。
-- **处置与验收**：选择与 Spring Boot 3.3 基线兼容的版本，并覆盖消费者启动、`/v3/api-docs` 与 Swagger UI 资源访问；框架基线升级仍需 RFC。
+- **原现状与风险**：托管的 `springdoc-openapi-starter-webmvc-ui:2.9.1` 引用当前 `spring-webmvc:6.1.21` 不存在的 `LiteWebJarsResourceResolver`；加载 `SwaggerResourceResolver` 时抛出 `NoClassDefFoundError`。
+- **处理结果**：默认版本已调整为 2.6.0，保持 Boot 3.3.13 基线；TD-041 已从活跃清单移除。迁移边界见 [BOM README](../../mimir-boot-bom/README.md#springdoc-与-boot-兼容边界)。
+- **验收证据**：两种隔离消费者通过真实 HTTP 验证启动、业务接口、OpenAPI 文档、Swagger UI 配置及页面、JS/CSS；本地完整质量门禁通过，具体命令和报告见[实施计划](./v2.3.0/springdoc-boot-alignment/plan.md#本地验收记录2026-09-30)。本地验收不代表 CI、真实发布或发布后消费者验证。
 
 <a id="td-042-分页参数校验"></a>
 

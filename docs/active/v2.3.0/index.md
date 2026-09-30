@@ -1,7 +1,7 @@
 ---
 version: v2.3.0
 status: in-progress
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # v2.3.0 活跃需求
@@ -13,6 +13,7 @@ updated: 2026-09-23
 | [Agent 文档治理与本地质量门禁](./docs-quality-governance/plan.md#当前状态与后续工作) | 进行中 | 文档内容修复及文档验收通过；尚未提交，T8 整体验收待完成 |
 | [日志 JSON 脱敏补全](./log-json-masking/plan.md) | 实施及本地完整验收完成（未发布） | [规格](./log-json-masking/spec.md)、[设计](./log-json-masking/design.md)、4 个串行任务已完成；复合值边界见 README 与计划 |
 | [MongoDB 驱动族兼容](./mongodb-driver-alignment/plan.md) | 本地实施及完整验收完成（未发布） | [规格](./mongodb-driver-alignment/spec.md)、[设计](./mongodb-driver-alignment/design.md)、4 个串行任务和本地完整 quality 报告；发布状态见 [release.md](./release.md) |
+| [Springdoc 与 Boot 基线兼容](./springdoc-boot-alignment/plan.md) | 本地实施及完整验收完成（未发布） | TD-041 已处置：保持 Boot 3.3 基线，Springdoc 2.6.0 通过两种消费者及完整 quality 验收 |
 
 ## 文档治理工作入口
 

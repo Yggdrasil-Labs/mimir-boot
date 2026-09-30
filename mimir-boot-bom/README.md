@@ -154,10 +154,17 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 
 下列坐标当前属于“仅管理”，不能依据 BOM 声明推断为已验证的运行时组合：
 
-- `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1` 与当前 Spring Boot 3.3 基线存在兼容性风险，接入前请在目标应用中验证。
 - `com.squareup.okhttp3:okhttp:5.5.0` 在 Maven/JVM 项目中不提供 `okhttp3` 类。需要 Java API 的消费者应声明 `com.squareup.okhttp3:okhttp-jvm`，版本由本 BOM 管理；原有 `okhttp` 依赖声明须由消费者改为 `okhttp-jvm`，BOM 不会自动替换坐标。本地独立消费者已通过 API 编译和回环 HTTP 调用，目标应用仍需按实际场景验证。
 
 接入方使用这些坐标前，应先完成独立的消费者编译或运行验证。
+
+### Springdoc 与 Boot 兼容边界
+
+本 BOM 将 `springdoc-openapi-starter-webmvc-ui` 默认版本从 2.9.1 调整为 2.6.0，以匹配 Spring Boot 3.3.13 / Spring Framework 6.1.21。[官方兼容矩阵](https://springdoc.org/v2/faq.html#what-is-the-compatibility-matrix-of-springdoc-openapi-with-spring-boot) 将 Boot 3.3.x 对应到 Springdoc 2.6.x；2.9.1 的 Swagger 资源解析器依赖当前基线不存在的 `LiteWebJarsResourceResolver`。
+
+依赖声明未指定版本的消费者将使用 2.6.0；使用 2.9.1 特有 API 或行为的应用需重新编译并验证迁移。显式固定 2.9.1 的消费者需自行调整依赖声明，BOM 不会替换显式版本；不要单独覆盖 Spring MVC 到 6.2 规避缺类。
+
+本地隔离消费者通过生成的发布 BOM，覆盖直接引入 Spring Boot Web 和与 Mimir Web Starter 联用两种方式，验证真实服务器启动、业务接口、`/v3/api-docs`、Swagger UI 配置及页面、JS/CSS 资源。该结果不覆盖目标应用自定义安全配置、代理、分组文档或其他接入方式，也不代表 CI、版本发布或发布后的消费者验证。验收证据见[实施计划](../docs/active/v2.3.0/springdoc-boot-alignment/plan.md)。
 
 ### MongoDB 驱动兼容边界
 

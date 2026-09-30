@@ -46,9 +46,9 @@ updates:
       # iText PDF
       - dependency-name: "com.itextpdf:itext-core"
         update-types: ["version-update:semver-major"]
-      # springdoc-openapi（3.x 需 Boot 4.x）
+      # Springdoc：Boot 3.3.x 对应 2.6.x，仅保留 patch；升级 Boot 基线时重新评估
       - dependency-name: "org.springdoc:springdoc-openapi-starter-webmvc-ui"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       # 消息队列
       - dependency-name: "org.apache.rocketmq:rocketmq-spring-boot-starter"
         update-types: ["version-update:semver-major"]
