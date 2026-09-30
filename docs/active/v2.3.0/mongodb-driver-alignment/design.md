@@ -11,7 +11,7 @@ updated: 2026-09-23
 
 ## Context
 
-[TD-040](../../tech-debt-tracker.md#td-040-mongodb-驱动族) 记录同步驱动初始化时缺少 StreamFactory。源码 BOM 的 `mongodb.version=4.11.5` 仅用于显式管理 sync；已导入的 Boot 3.3.13 管理 core/bson 为 5.0.1。该分裂与错误一致，本轮仅做静态核对，不冒充已运行复现。
+[TD-040](./plan.md#td-040-处置记录) 记录同步驱动初始化时缺少 StreamFactory。源码 BOM 的 `mongodb.version=4.11.5` 仅用于显式管理 sync；已导入的 Boot 3.3.13 管理 core/bson 为 5.0.1。该分裂与错误一致，本轮仅做静态核对，不冒充已运行复现。
 
 [Boot 官方依赖表](https://docs.spring.io/spring-boot/3.3/appendix/dependency-versions/coordinates.html) 与本地缓存的同版本发布 POM 均列出 MongoDB 驱动族 5.0.1、Spring Data MongoDB 4.3.13。[MongoDB 5.0 升级说明](https://www.mongodb.com/docs/drivers/java/sync/v5.0/reference/upgrade/) 明确存在 API/ABI 破坏性变更，包括移除 StreamFactory。选择回归 Boot 基线，而非推断任意同版本组合都已兼容。
 

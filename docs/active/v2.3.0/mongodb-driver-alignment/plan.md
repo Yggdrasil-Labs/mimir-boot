@@ -415,7 +415,7 @@ bash scripts/engineering.sh quality --mode full --source worktree --report "$mon
 
 ## TD-040 处置记录
 
-TD-040 已从[活跃技术债清单](../../tech-debt-tracker.md)移除，旧锚点保留在该清单的已处理明细中。本次本地实施未发布；范围与升级边界见 [BOM README](../../../../mimir-boot-bom/README.md#mongodb-驱动兼容边界) 和 [release.md](../release.md)。
+TD-040 已从活跃技术债清单移除，本节承接其历史处置与验收证据。本次本地实施未发布；范围与升级边界见 [BOM README](../../../../mimir-boot-bom/README.md#mongodb-驱动兼容边界) 和 [release.md](../release.md)。
 
 完整门禁报告：`/tmp/mimir-mongo-quality.e25QJF/quality-report.json`，`runId=quality-1790220241059-736442`，overall=passed。六个必需阶段 `docs-full`、`verify-build-model`、`release-contracts`、`release-consumer`、`release-signing`、`java-quality` 均 passed；`java-tests` 与 `java-coverage` passed，`java-sonar` 按配置为 not_applicable（`RUN_SONAR=false`）。
 
@@ -428,6 +428,10 @@ G1 同轮消费者证据目录：`/tmp/mimir-mongo-quality.e25QJF/quality-artifa
 | Spring Data | `510dc76fb90fc5f1ed6c174f44484c4f39b7253da934ca23a9f21d9b875687b5` | `2.2.2-SNAPSHOT` | 两者相等：`fc850b9152ea74115d4b70e8ef707ffab8d72d189f48a8c8ea8204d64d7b56e5` | `/tmp/mimir-mongo-quality.e25QJF/quality-artifacts.hQy5kf/release-logs/consumer/mongo-spring-data/source-status.json`；`dependency-list-online.txt`、`dependency-list-isolated.txt`、`mongo-dependency-list-online.txt`、`mongo-dependency-list-isolated.txt`、`surefire-online.xml`、`surefire-isolated.xml` |
 
 六份 Surefire XML 均为 tests=3、failures=0、errors=0、skipped=0。所有 source status、清单和 XML 均来自同一 quality run；Spring Data 映射和 MongoDB 客户端初始化只在离线/无服务端环境验证，不代表 CRUD 或生产行为。
+
+### 文档归属调整（2026-09-30）
+
+按用户采纳的技术债台账整理，已完成项从活跃台账移出；TD-040 的旧锚点曾保留在台账已处理明细中，现随该完成项迁出台账，历史入口改为本节。T4 当时记录的“保留历史锚点”是当时的执行方式，不构成今后必须继续将已完成项留在台账的约束。本次仅调整文档归属，不表示重新运行验收、CI 或发布；原有本地验收结论及未发布语义保持不变。
 
 ### 验收工具保留范围调整
 

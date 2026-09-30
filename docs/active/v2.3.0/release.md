@@ -34,18 +34,28 @@ T2 一次性本地验收通过 BOM、Parent、Spring Data 三种隔离消费者�
 
 ## 发布 Parent 属性覆盖（TD-036，已修复，未发布）
 
-发布 Parent 的插件管理保留版本和 JaCoCo 门槛的属性引用，使下游仅覆盖属性即可调整编译插件版本、Java 目标版本和覆盖率门槛；Parent 自身补充 `spring.boot.version`，避免根 POM 扁平化后遗漏该属性。修复已提交为 `baafc35`。
+发布 Parent 的 `pluginManagement` 保留版本和 JaCoCo 门槛的属性引用，使下游仅覆盖属性即可调整编译插件版本、Java 目标版本和覆盖率门槛；`properties` 仍只保留 Parent 自身属性，并补充 `spring.boot.version`，避免根 POM 扁平化后遗漏该属性。修复已提交为 `baafc35`。
 
-本地隔离消费者验证了覆盖属性与保留默认值两种路径，并检查 Java 11 字节码及 JaCoCo 指令、分支门槛生效。验收基于本地生成的发布 POM，不代表 CI、真实发布或发布后消费者验证。
+本地隔离消费者对照：旧 Parent 仍得到 Java 17、编译插件 3.16.0、JaCoCo 门槛 0.60/0.50；将新生成的发布 POM 安装到隔离 Maven 仓库后，仅覆盖属性的消费者得到 Java 11、编译插件 3.15.0、门槛 0.31/0.27，并成功编译为 Java 11 字节码。分别提高指令或分支门槛时，JaCoCo 检查按新值失败；未覆盖的消费者仍得到原默认值。消费者在 `ci` profile 下的 effective POM 没有未解析属性。
+
+验收基于本地生成的发布 POM 和隔离 Maven 仓库，不代表 CI、Maven Central 或发布后外部消费者验证。
 
 ## OkHttp JVM 制品坐标（TD-037，已修复，未发布）
 
 BOM 新增 `com.squareup.okhttp3:okhttp-jvm:5.5.0` 的版本管理，保留原有 `okhttp` 坐标的版本管理。Maven/JVM 消费者需要将依赖声明改为 `okhttp-jvm` 才能直接使用 `OkHttpClient`；导入 BOM 不会自动替换原依赖坐标。
 
-本地隔离消费者仅导入生成的发布 BOM，验证了无版本号 `okhttp-jvm` 依赖的 Java 17 编译和回环 HTTP 调用；修改前同一消费者因缺少依赖版本而无法构建。验收不代表 CI、真实发布或发布后消费者验证，Reactor 内仍无 OkHttp 直接消费者。
+本地隔离消费者仅导入生成的发布 BOM，并声明无版本号的 `okhttp-jvm`。修改前 Maven 报缺少依赖版本；修改后消费者完成 Java 17 编译，使用 `OkHttpClient` 对本地回环服务发起请求并得到预期响应。验收使用本地生成的发布 POM 与隔离 Maven 仓库，不代表 CI、真实发布或发布后外部消费者验证；Reactor 内仍无 OkHttp 直接消费者。
 
 ## Nacos 解密覆盖层清理（TD-039，部分修复，未发布）
 
 刷新事件发生时，若新旧 Nacos 加密配置前缀均已消失，监听器会移除历史 `decryptedProperties:*` 覆盖层。原始明文和下层配置可以重新生效；恢复加密配置后仍会重新解密。本地聚焦测试已验证这些路径，以及业务属性完全删除时 Environment 不再返回旧明文。
 
 业务属性完全删除且没有下层值时，Spring Cloud 对已有 `@ConfigurationProperties` Bean 的重新绑定仍可能保留旧字段值，TD-039 因此尚未完全关闭。此处仅记录本地验证，不代表 CI、真实发布或发布后消费者验证。
+
+## 技术债记录整理（2026-09-30）
+
+用户采纳统一规则：活跃台账只保留未闭环债务，关闭项的表格行、明细和旧锚点一并移除，先切换仓库内引用；编号永不复用。已完成记录归入已有计划或验收记录，无独立计划时由 release 承接；债务关闭与制品发布分别维护。
+
+本次迁出的五项记录分别由本页的 [TD-036](#发布-parent-属性覆盖td-036已修复未发布)、[TD-037](#okhttp-jvm-制品坐标td-037已修复未发布)、[日志脱敏计划 T4](./log-json-masking/plan.md#t4-全局验收与技术债状态)、[MongoDB TD-040 处置记录](./mongodb-driver-alignment/plan.md#td-040-处置记录)、[Springdoc 本地验收记录](./springdoc-boot-alignment/plan.md#本地验收记录2026-09-30)承接。TD-036、TD-037 的详细验收从原台账迁入本页；其余三项已有独立记录。旧计划中保留锚点的执行结论仍反映当时事实，本次仅改变后续文档归属，不重写历史验收结论。
+
+台账继续保留九项活跃债务。TD-043、TD-044 的早期专项证据已在治理计划 T3 记录；工具迁移后的 T8 最终快照验收仍待闭环，本次不关闭这两项。此次整理仅涉及文档，没有新的 Java、消费者、CI 或发布验证。

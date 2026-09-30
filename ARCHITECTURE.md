@@ -120,13 +120,13 @@ graph TD
 ## 当前能力边界
 
 - `mimir-boot-common` 新增三个 `fromCodeOrNull` 查询方法，既有 `fromCode` fallback 保持兼容。
-- 日志脱敏以完整配置快照处理接入方显式启用的 10 组字段型规则，支持普通赋值和带引号键名的文本标量；它不解析完整 JSON，对象/数组值不保证完整保护，边界与调用方处置要求见日志 Starter README（TD-038 的标量缺口已补齐并通过本地验收，尚未随版本发布）。
+- 日志脱敏以完整配置快照处理接入方显式启用的 10 组字段型规则，支持普通赋值和带引号键名的文本标量；它不解析完整 JSON，对象/数组值不保证完整保护，边界与调用方处置要求见[日志 Starter README](./mimir-boot-starters/mimir-boot-starter-log/README.md#敏感信息脱敏)。
 - MongoDB 驱动族由 Spring Boot BOM 管理为 5.0.1；消费者显式覆盖时应保持驱动族版本一致并自行验证。
 - RPC 适配层使用调用级上下文与异步生命周期；旧 `RpcTracerBridge.extract` 和 Hook 直调入口继续保留兼容。
 - Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；刷新时新旧前缀均不再绑定会清理旧解密覆盖层。业务属性完全删除且没有下层值时，已有 `@ConfigurationProperties` Bean 仍可能保留旧字段值，TD-039 尚未完全关闭；处置边界见 [Nacos Starter README](./mimir-boot-starters/mimir-boot-starter-nacos/README.md#2-配置动态刷新支持)。遗留 AES 入口仅供离线迁移并输出告警。
 - MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
 - 测试 Starter 不再通过类路径资源注入数据库副作用或固定应用名；Testcontainers 由接入方按场景显式引入。
 - 分页构造和转换存在不同校验边界；Jackson 绑定及直接 setter 路径不保证自动校正（TD-042）。
-- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。发布 Parent 属性覆盖和 OkHttp JVM 制品坐标已通过本地隔离消费者验证，尚未随版本发布；Springdoc 已调整到 Boot 3.3 兼容版本并通过本地专项消费者验证，兼容与迁移范围见 [BOM README](./mimir-boot-bom/README.md#springdoc-与-boot-兼容边界)。覆盖率报告时序与格式扫描范围仍有缺口（TD-043、TD-044）。
+- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。Springdoc 的 Boot 3.3 兼容与迁移范围见 [BOM README](./mimir-boot-bom/README.md#springdoc-与-boot-兼容边界)。覆盖率报告时序与格式扫描范围已调整并有早期本地专项记录，工具迁移后的最终快照验收仍待闭环（TD-043、TD-044）。
 
 已知问题的处置状态与验收标准统一维护在[技术债台账](./docs/active/tech-debt-tracker.md)。

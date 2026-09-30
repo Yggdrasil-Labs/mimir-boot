@@ -175,7 +175,7 @@ flowchart LR
 
 ## References
 
-- [技术债 TD-038](../../tech-debt-tracker.md#td-038-日志-json-脱敏)
+- [技术债 TD-038](./plan.md#t4-全局验收与技术债状态)
 - [日志 Starter](../../../../mimir-boot-starters/mimir-boot-starter-log/)
 - [安全约束](../../../standards/security.md)
 - [测试与质量指南](../../../engineering/testing.md)

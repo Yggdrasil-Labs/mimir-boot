@@ -68,10 +68,10 @@ updated: 2026-09-20
 | `docs/PRODUCT_SENSE.md#产品原则` | 产品原则 | `docs/standards/core-beliefs.md#9-接入体验优先` | 未核实 | 不保留 | 内容核对 | 删除旧文件；根 README 未作主体改写。 |
 | `docs/SONAR_QUALITY_DISCIPLINE.md` | Sonar 规则与操作规程 | `docs/standards/reliability.md`、`docs/engineering/testing.md` | 未核实 | 不保留 | 内容核对 | 删除旧文件。 |
 | `docs/QUALITY_SCORE.md#2-建议维度` | 主观评分模型 | 本矩阵的退役决定 | 未核实 | 不保留 | 内容核对 | 不再维护 A/B/C/D 或分数快照；使用可复核的门禁报告、人工语义审查和 TD 证据，不恢复评分表。 |
-| `docs/QUALITY_SCORE.md（当前观察：parent）` | 当前观察 | `docs/active/tech-debt-tracker.md#td-036-parent-flatten-属性覆盖`、`#td-043-jacoco-集成测试覆盖率`、`#td-044-spotless-子模块门禁` | 未核实 | 不保留 | 内容核对 | 仅保留仍活跃债项。 |
-| `docs/QUALITY_SCORE.md（当前观察：bom）` | 当前观察 | `docs/active/tech-debt-tracker.md#td-037-okhttp-jvm-制品`、`#td-040-mongodb-驱动族`、`#td-041-springdoc-boot-兼容性` | 未核实 | 不保留 | 内容核对 | 仅保留仍活跃债项。 |
+| `docs/QUALITY_SCORE.md（当前观察：parent）` | 当前观察 | 活跃：[TD-043](../../tech-debt-tracker.md#td-043-jacoco-集成测试覆盖率)、[TD-044](../../tech-debt-tracker.md#td-044-spotless-子模块门禁)；历史：[TD-036](../release.md#发布-parent-属性覆盖td-036已修复未发布) | 未核实 | 不保留 | 内容核对 | TD-036 已完成，历史记录见 release；仅保留仍活跃债项于台账。 |
+| `docs/QUALITY_SCORE.md（当前观察：bom）` | 当前观察 | 历史：[TD-037](../release.md#okhttp-jvm-制品坐标td-037已修复未发布)、[TD-040](../mongodb-driver-alignment/plan.md#td-040-处置记录)、[TD-041](../springdoc-boot-alignment/plan.md#本地验收记录2026-09-30) | 未核实 | 不保留 | 内容核对 | TD-037、TD-040、TD-041 已完成，历史记录分别见 release、MongoDB 与 Springdoc 计划。 |
 | `docs/QUALITY_SCORE.md（当前观察：common）` | 当前观察 | `docs/active/tech-debt-tracker.md#td-042-分页参数校验` | 未核实 | 不保留 | 内容核对 | 仅保留仍活跃债项。 |
-| `docs/QUALITY_SCORE.md（当前观察：Starter）` | 当前观察 | `docs/active/tech-debt-tracker.md#td-013-rpc-mdc-scope`、`#td-016-字段加密-aad`、`#td-023-rpc-hook-legacy-api`、`#td-038-日志-json-脱敏`、`#td-039-nacos-解密覆盖层`、`#td-045-日志断言索引边界`、`#td-046-测试清理顺序` | 未核实 | 不保留 | 内容核对 | 仅保留仍活跃债项。 |
+| `docs/QUALITY_SCORE.md（当前观察：Starter）` | 当前观察 | 活跃：[TD-013](../../tech-debt-tracker.md#td-013-rpc-mdc-scope)、[TD-016](../../tech-debt-tracker.md#td-016-字段加密-aad)、[TD-023](../../tech-debt-tracker.md#td-023-rpc-hook-legacy-api)、[TD-039](../../tech-debt-tracker.md#td-039-nacos-解密覆盖层)、[TD-045](../../tech-debt-tracker.md#td-045-日志断言索引边界)、[TD-046](../../tech-debt-tracker.md#td-046-测试清理顺序)；历史：[TD-038](../log-json-masking/plan.md#t4-全局验收与技术债状态) | 未核实 | 不保留 | 内容核对 | TD-038 已完成，历史验收见日志脱敏计划；仅保留仍活跃债项于台账。 |
 | `docs/QUALITY_SCORE.md（当前观察：文档体系）` | 当前观察 | `docs/index.md`、本迁移矩阵 | 未核实 | 不保留 | 内容核对 | 评分快照不再维护；以门禁和迁移证据为准。 |
 | `docs/product-specs/index.md` | 使用入口 | 根 README、`docs/index.md` | 未核实 | 不保留 | 内容核对 | 删除旧文件。 |
 | `docs/product-specs/new-user-onboarding.md` | 接入路径 | 根 README、模块 README、`docs/engineering/development.md` | 未核实 | 不保留 | 内容核对 | 删除旧文件。 |
