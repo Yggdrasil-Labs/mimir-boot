@@ -74,4 +74,37 @@ class BaseUnitTestTest extends BaseUnitTest {
 
         // tearDown 会在测试结束后清理
     }
+
+    @Test
+    void tearDownBase_clearsMdcWrittenByTearDownHook() {
+        BaseUnitTest testSubject =
+                new BaseUnitTest() {
+                    @Override
+                    protected void tearDown() {
+                        MDC.put("hookValue", "normal");
+                    }
+                };
+
+        testSubject.tearDownBase();
+
+        assertTrue(MDC.getCopyOfContextMap() == null || MDC.getCopyOfContextMap().isEmpty());
+    }
+
+    @Test
+    void tearDownBase_clearsMdcAndPropagatesTearDownException() {
+        RuntimeException expected = new IllegalStateException("tearDown failed");
+        BaseUnitTest testSubject =
+                new BaseUnitTest() {
+                    @Override
+                    protected void tearDown() {
+                        MDC.put("hookValue", "exceptional");
+                        throw expected;
+                    }
+                };
+
+        RuntimeException actual = assertThrows(RuntimeException.class, testSubject::tearDownBase);
+
+        assertSame(expected, actual);
+        assertTrue(MDC.getCopyOfContextMap() == null || MDC.getCopyOfContextMap().isEmpty());
+    }
 }

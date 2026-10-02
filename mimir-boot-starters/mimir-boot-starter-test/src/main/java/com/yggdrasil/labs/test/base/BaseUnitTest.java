@@ -47,10 +47,12 @@ public abstract class BaseUnitTest {
     /** 测试后清理 */
     @AfterEach
     void tearDownBase() {
-        // 清理测试环境
-        TestUtils.cleanupTestEnvironment();
-        // 子类可以重写此方法添加额外的清理逻辑
-        tearDown();
+        try {
+            // 子类可以重写此方法添加额外的清理逻辑
+            tearDown();
+        } finally {
+            TestUtils.cleanupTestEnvironment();
+        }
     }
 
     /** 子类可以重写此方法添加测试前的准备逻辑 */

@@ -67,3 +67,11 @@ BOM 新增 `com.squareup.okhttp3:okhttp-jvm:5.5.0` 的版本管理，保留原�
 2026-10-02 在 `fix/technical-debt-small` worktree 中先运行回归测试，确认 `getLogEvent(appender, -1)` 原先抛出 `IndexOutOfBoundsException`。修复后 `./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-test -am clean verify` 退出 0；`LogTestUtilsTest` 23 项通过，覆盖负索引、上界和空列表诊断。所选模块及 Common 依赖分别执行 151、61 项单元测试，失败、错误、跳过均为 0，格式和覆盖率检查通过；Failsafe 未发现集成用例，不将其描述为已验证的集成行为。
 
 TD-045 按上述约定范围关闭，记录迁入本页并移除台账旧锚点。本地验证不代表远程 CI、制品发布或发布后消费者验证。
+
+## 测试清理顺序（TD-046，已修复，未发布）
+
+`BaseUnitTest` 在自定义 `tearDown()` 后通过 `finally` 统一清理环境，覆盖正常返回和异常路径。自定义钩子抛出的异常实例继续向上传播。顺序变化使钩子能看到测试留下的 MDC；钩子写入的 MDC 在测试结束后也会清空，接入说明已同步到测试 Starter README。
+
+2026-10-02 本地回归先复现正常和异常钩子写入 MDC 后残留，两项断言均失败，异常原样传播断言通过。修复后与 TD-045 共用的模块 `clean verify` 验证中，`BaseUnitTestTest` 6 项通过；测试 Starter 151 项、Common 61 项单元测试的失败、错误、跳过均为 0，格式和覆盖率检查通过，Failsafe 无集成用例。首次沙箱内运行因 Mockito JVM attach 不可用而未进入目标行为，复现与验收均在沙箱外完成。
+
+TD-046 按上述约定范围关闭，记录迁入本页并移除台账旧锚点。本地结果不代表远程 CI、制品发布或发布后消费者验证。
