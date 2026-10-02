@@ -1,7 +1,7 @@
 ---
 version: v2.3.0
 status: planned
-updated: 2026-09-30
+updated: 2026-10-02
 ---
 
 # Release — v2.3.0
@@ -59,3 +59,11 @@ BOM 新增 `com.squareup.okhttp3:okhttp-jvm:5.5.0` 的版本管理，保留原�
 本次迁出的五项记录分别由本页的 [TD-036](#发布-parent-属性覆盖td-036已修复未发布)、[TD-037](#okhttp-jvm-制品坐标td-037已修复未发布)、[日志脱敏计划 T4](./log-json-masking/plan.md#t4-全局验收与技术债状态)、[MongoDB TD-040 处置记录](./mongodb-driver-alignment/plan.md#td-040-处置记录)、[Springdoc 本地验收记录](./springdoc-boot-alignment/plan.md#本地验收记录2026-09-30)承接。TD-036、TD-037 的详细验收从原台账迁入本页；其余三项已有独立记录。旧计划中保留锚点的执行结论仍反映当时事实，本次仅改变后续文档归属，不重写历史验收结论。
 
 台账继续保留九项活跃债务。TD-043、TD-044 的早期专项证据已在治理计划 T3 记录；工具迁移后的 T8 最终快照验收仍待闭环，本次不关闭这两项。此次整理仅涉及文档，没有新的 Java、消费者、CI 或发布验证。
+
+## 日志断言索引边界（TD-045，已修复，未发布）
+
+`LogTestUtils` 的公共取日志与断言入口通过同一个边界检查拒绝负索引和上界越界，统一抛出 `AssertionError`。负索引诊断包含实际索引和日志数量，已有上界消息保持兼容。正常索引行为不变。
+
+2026-10-02 在 `fix/technical-debt-small` worktree 中先运行回归测试，确认 `getLogEvent(appender, -1)` 原先抛出 `IndexOutOfBoundsException`。修复后 `./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-test -am clean verify` 退出 0；`LogTestUtilsTest` 23 项通过，覆盖负索引、上界和空列表诊断。所选模块及 Common 依赖分别执行 151、61 项单元测试，失败、错误、跳过均为 0，格式和覆盖率检查通过；Failsafe 未发现集成用例，不将其描述为已验证的集成行为。
+
+TD-045 按上述约定范围关闭，记录迁入本页并移除台账旧锚点。本地验证不代表远程 CI、制品发布或发布后消费者验证。
