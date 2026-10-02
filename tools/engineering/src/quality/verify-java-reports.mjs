@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DOMParser } from '@xmldom/xmldom';
 
 const SCHEMA_VERSION = 1;
 const SKIPPED_DIRECTORIES = new Set(['.git', '.worktrees', 'node_modules', 'target', '.maven-node']);
@@ -156,10 +157,17 @@ async function writeJson(file, value) {
 export async function recordArtifacts(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
+    if (!expected.cleanedAt) throw new Error('期望报告矩阵尚未清理旧构建产物');
     for (const module of expected.modules) {
         for (const artifact of Object.values(module.artifacts)) {
             const artifactPath = resolveArtifact(root, artifact.path);
             artifact.sha256 = await exists(artifactPath) ? await sha256(artifactPath) : null;
+        }
+        for (const [kind, type] of [['surefire', 'unit'], ['failsafe', 'integration']]) {
+            module.tests[type].reports = [];
+            for (const file of await reportFiles(root, `${module.path}/target/${kind}-reports`)) {
+                module.tests[type].reports.push({ path: relativePath(root, file), sha256: await sha256(file) });
+            }
         }
     }
     expected.recordedAt = new Date().toISOString();
@@ -170,9 +178,11 @@ export async function cleanExpected(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
     for (const module of expected.modules) {
+        for (const test of Object.values(module.tests)) test.reports = [];
         for (const artifact of Object.values(module.artifacts)) {
             const artifactPath = resolveArtifact(root, artifact.path);
             await rm(artifactPath, { force: true });
+            artifact.sha256 = null;
             if (await exists(artifactPath)) throw new Error(`无法清理旧产物：${artifact.path}`);
         }
     }
@@ -182,6 +192,7 @@ export async function cleanExpected(root, expectedPath) {
         }
     }
     expected.cleanedAt = new Date().toISOString();
+    delete expected.recordedAt;
     await writeJson(expectedPath, expected);
 }
 
@@ -200,18 +211,46 @@ async function validateTestReports(root, module, kind, findings) {
     const directory = module.path === '.' ? `target/${kind}-reports` : `${module.path}/target/${kind}-reports`;
     const reports = await reportFiles(root, directory);
     const expected = module.tests[kind === 'surefire' ? 'unit' : 'integration'];
+    const recorded = new Map((expected.reports || []).map((report) => [report.path, report.sha256]));
     if (expected.required && reports.length === 0) {
         findings.push({ rule: 'test-report-missing', module: module.path, message: `缺少 ${kind} 测试报告` });
     }
     for (const report of reports) {
-        const source = await readFile(report, 'utf8');
-        if (!/<testsuite\b[^>]*\btests=["'][1-9]\d*["']/u.test(source) || !/<\/testsuite>/u.test(source)) {
-            findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relativePath(root, report)} 为空或缺少有效测试套件` });
+        const relative = relativePath(root, report);
+        if (!recorded.get(relative) || recorded.get(relative) !== await sha256(report)) {
+            findings.push({ rule: 'test-report-stale', module: module.path, message: `${relative} 与本次构建清单摘要不一致` });
         }
-        if (/(?:failures|errors|skipped)="[1-9]\d*"/u.test(source) || /<(?:failure|error|skipped)(?:\s|\/|>)/u.test(source)) {
-            findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relativePath(root, report)} 包含失败、错误或跳过测试` });
+        recorded.delete(relative);
+        const source = await readFile(report, 'utf8');
+        try {
+            const suite = parseXml(source, 'testsuite');
+            if (counter(suite, 'tests') < 1) throw new Error('测试数量必须大于零');
+            for (const name of ['failures', 'errors', 'skipped']) {
+                if (counter(suite, name) !== 0) throw new Error('包含失败、错误或跳过测试');
+            }
+            for (const name of ['failure', 'error', 'skipped']) {
+                if (suite.getElementsByTagName(name).length) throw new Error('包含失败、错误或跳过测试');
+            }
+        } catch (error) {
+            findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relative}：${error.message}` });
         }
     }
+    for (const relative of recorded.keys()) {
+        findings.push({ rule: 'test-report-missing', module: module.path, message: `本次构建记录的报告已丢失：${relative}` });
+    }
+}
+
+function parseXml(source, rootName) {
+    const document = new DOMParser({ onError: (_level, message) => { throw new Error(message); } }).parseFromString(source, 'application/xml');
+    const root = document.documentElement;
+    if (!root || root.tagName !== rootName) throw new Error(`缺少有效 ${rootName} 根元素`);
+    return root;
+}
+
+function counter(element, name) {
+    const value = element.getAttribute(name);
+    if (!/^\d+$/u.test(value || '') || !Number.isSafeInteger(Number(value))) throw new Error(`无效计数 ${name}`);
+    return Number(value);
 }
 
 async function validateArtifact(root, module, artifactName, findings) {
@@ -231,6 +270,7 @@ async function validateArtifact(root, module, artifactName, findings) {
 export async function verifyReports(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
+    if (!expected.cleanedAt) throw new Error('期望报告矩阵尚未清理旧构建产物');
     if (!expected.recordedAt) throw new Error('期望报告矩阵尚未记录本次构建产物摘要');
     const findings = [];
     for (const module of expected.modules) {
@@ -240,10 +280,18 @@ export async function verifyReports(root, expectedPath) {
         await validateArtifact(root, module, 'jacocoExec', findings);
         if (xml) {
             const source = await readFile(xml, 'utf8');
-            const hasReportRoot = /<report\b[^>]*>[\s\S]*<\/report>/u.test(source);
-            const hasInstructionCounter = /<counter\b[^>]*\btype=["']INSTRUCTION["'][^>]*\/?\s*>/u.test(source);
-            const hasBranchCounter = /<counter\b[^>]*\btype=["']BRANCH["'][^>]*\/?\s*>/u.test(source);
-            if (!hasReportRoot || !hasInstructionCounter || !hasBranchCounter) findings.push({ rule: 'coverage-report-invalid', module: module.path, message: `${relativePath(root, xml)} 缺少有效 report 根元素或 INSTRUCTION/BRANCH counter` });
+            try {
+                const report = parseXml(source, 'report');
+                const counters = Array.from(report.childNodes).filter((node) => node.nodeType === 1 && node.tagName === 'counter');
+                for (const type of ['INSTRUCTION', 'BRANCH']) {
+                    const matches = counters.filter((node) => node.getAttribute('type') === type);
+                    if (matches.length !== 1) throw new Error(`缺少唯一的根级 ${type} counter`);
+                    counter(matches[0], 'missed');
+                    counter(matches[0], 'covered');
+                }
+            } catch (error) {
+                findings.push({ rule: 'coverage-report-invalid', module: module.path, message: `${relativePath(root, xml)}：${error.message}` });
+            }
         }
     }
     const testsStatus = findings.some((f) => f.rule.startsWith('test-report')) ? 'failed' : 'passed';
