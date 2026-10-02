@@ -3,12 +3,12 @@ id: docs-quality-governance-verification
 version: v2.3.0
 status: in-progress
 owner: 项目维护者
-updated: 2026-09-20
+updated: 2026-10-02
 ---
 
 # 文档治理验收记录
 
-本记录区分 T7 文档验收与 T8 整体验收。当前修复针对 2026-09-20 人工审查发现的文档问题，不修改 Java、POM、hook、脚本或工作流；未提交、推送、安装 hook 或执行发布。
+本记录区分 T7 文档验收与 T8 整体验收。2026-09-20 的修复针对人工审查发现的文档问题，未修改 Java、POM、hook、脚本或工作流，也未提交、推送、安装 hook 或执行发布。2026-10-02 的本地专项复核与修复另列于下方，不替代此前输入的记录。
 
 ## 输入与范围
 
@@ -80,7 +80,36 @@ git diff --check
 
 ## T8 剩余证据与边界
 
+以下为 2026-09-20 的剩余边界；2026-10-02 已补充的部分证据及仍未完成事项见下一节。
+
 - 本记录尚不代表 T8 完成；最终提交快照的完整质量门禁、当前场景断言映射及相关工程证据仍需按[实施计划](./plan.md#t8-独立验收与实施交付记录)核对。过时的 pre-push full 断言按计划记录替代依据，不重新实现。
 - 本轮没有重跑 Java、发布消费者、签名或真实 hook 故障注入；也未确认远程 CI、Sonar 项目设置与公开制品状态。既有工程测试结果只作为历史证据，不改写失败报告或宣称本次远端通过。
 - 不在文档迁移中关闭 TD-043/TD-044、不将 RFC 改为 verified；v2.2.1 的归档由本次独立收尾动作完成，相应状态与证据分开维护。
 - 临时 JSON 报告用于本地复核，不保证长期保留；提交前应将最终证据摘要写入本记录，或保留对应 CI artifact 链接。
+
+## 2026-10-02 专项复核与局部修复
+
+输入为 `fix/technical-debt-small` 的 `45955272b4fa2b1278bab47cc71aee7f5f418f30`，tree 为 `27a8d154dd7eb95f14c20c91589cf46bdd8f1b86`。专项检查在项目内普通副本执行，故障注入不修改源工作树；真实 push 仅发送至本地 bare fixture。该批证据不包含后续报告核验器修复。
+
+| 范围 | 本地结果 | 证据与限制 |
+|---|---|---|
+| B1/B3/B8 文档 | full、自检和 20 行迁移矩阵通过；orphan、格式与坏锚点、缺工具均按预期拒绝 | `/tmp/t8-docs-evidence/`；79 份 Markdown，78 份格式检查，CHANGELOG 按策略豁免。六份 v2.2.1 正文逐字不变；两份计划仅 TD 链接变化；历史 RFC 批准字段与主体不变。独立归档提交的发布依据未重新验证 |
+| B2 初始化 | 无全局 Node PATH 首次 setup 26.074 秒、重复 14.072 秒；冲突及缺 JDK 拒绝 | `/tmp/mimir-t8-hooks-evidence/`；重复执行配置与源码不变。复用官方运行时归档缓存，不证明全冷缓存联网准备；首次 npm 沙箱 EPERM 失败单独保留 |
+| B4/B5 真实 hook | 成功提交、新分支与 annotated tag 通过；错误索引、格式、缓存、非 HEAD 和多 ref 故障拒绝 | 同上，21 个独立场景；拒绝后 HEAD、暂存 blob/mode/stage、源码及本地 bare refs 不变。纯删除 51 毫秒、零 Maven；同 tree 同基线双 ref 仅一次 Spotless；所有 hook 零测试调用 |
+| B6 Spotless | 11 个源码模块 effective POM 均含 main/test；11 个 main 格式反例和 common test 反例均拒绝 | `/tmp/t8-maven-evidence/`；其余十模块 test 范围只有配置证据。移除反例后 reactor Spotless 通过 |
+| B6 JaCoCo | 仅由 IT 调用的方法进入最终 XML；阈值相等通过，略大阈值拒绝 | 同上；方法指令 covered=10/missed=0、分支 covered=2/missed=0；Surefire 61、Failsafe 1 均无失败或跳过。真实比例 0.70/0.50，阈值 0.7001/0.5001 分别拒绝；未改原始 0.60/0.50 门槛 |
+| 测试与覆盖率失败 | 真实失败单测、失败 IT、skipped、低覆盖率门禁均返回 1 | 同上；skipped 构建返回 0、报告核验拒绝。低覆盖率由 Maven 拒绝，汇总将测试/覆盖率记为 not_run，报告核验本身 passed，不能声称报告定位了阈值失败 |
+
+首次拒绝提交的 raw index 摘要变化保留于 hook 报告。独立无 hook 的 `git write-tree` 基线复现 cache-tree 元数据更新，暂存内容未变化；正常刷新 Git 缓存后的重跑 raw 字节也不变。未修改工具以补偿该元数据行为。
+
+文档 B7 仅验证共享 docs 子入口在本地与 `CI=true GITHUB_ACTIONS=true RUN_SONAR=false` 下的 checks、findings、tree 和配置摘要一致；不代表远程 CI 或完整 full 双方通过。B3-S2 当前没有自动归档 warning 生成器，只有真实 results API 的 warning 保留与 active/archive 前后摘要不变断言，属于有限替代证据。
+
+专项发现并局部修复两个实际问题：文档 CLI 在报告不可写时输出原始原因及恢复指引，仍返回 2；Java 核验器记录 Surefire/Failsafe XML 摘要并检测替换、新增或丢失，清理后使旧记录失效，使用现有 XML 解析器验证套件与根级覆盖计数。临时回归先复现五项错误放行，修复后十项正常/反例全部通过。修复后的真实全模块 Java 子检查返回 0，11 个源码模块记录 91 份单元和 9 份集成 XML；报告 `/tmp/mimir-report-fix/java-report.json`、清单 `build-manifest.json`。此 Java 验证输入包含报告核验器修改，启动后另行修改的文档 CLI 不属于该报告的配置快照。
+
+Maven 专项实际使用 OpenJDK 17.0.2、Maven 3.9.16、Node 22.22.3；hook 及上述 Java 修复验证使用 Temurin 17.0.19。不同进程的 JDK 补丁版本不合并描述。
+
+局部修复提交 `d8bede4cd484c0a573ce3a306e8fecf2de95a69c`、tree `22605d9328c8f33dd3a3c75a3b274e53e7e26fc9` 的完整快照门禁返回 0：文档、构建模型、发布契约、隔离消费者、临时签名、Java 测试与覆盖率均 passed，0 findings；默认 Sonar 为 not_applicable。报告 `/tmp/mimir-report-final-full-retry/quality-report.json` 标明 source=commit，UTC 起止为 09:29:34–09:40:54；Java 子清单记录 11 个源码模块、91 份单元与 9 份集成 XML。本节及设计、台账的后补文档不属于该提交快照，另外运行文档 full 与自检核验。
+
+同一提交首次启动返回 2，报告 `/tmp/mimir-report-final-full/quality-report.json` 和日志保留 `--bootstrap-duration 必须是非负整数`，当次未进入检查。日志没有原始参数，负差值只是根据 Bash 整数生成路径的推断，系统时钟回拨未核实。`/tmp/mimir-bootstrap-timer-probe.log` 的跟踪复查传入耗时 0 且 quick 通过；未修改实现的重跑才取得上述 full 通过结果，没有绕过校验或覆盖失败证据。
+
+T8 仍未完成，TD-043/TD-044 保持开放，RFC 不改为 verified。剩余至少包括：从 effective POM 生成完整期望矩阵、显式记录纯 POM/无源码豁免与 JaCoCo 排除；完整 27 场景的缺失/清理/中断/Sonar 断言映射；后续 T8 最终实施提交 full 首次与缓存耗时。远程 CI、Sonar、正式发布及发布后消费者未验证。临时证据可能被清理，本节摘要作为仓库内长期记录。
