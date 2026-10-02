@@ -75,3 +75,17 @@ TD-045 按上述约定范围关闭，记录迁入本页并移除台账旧锚点�
 2026-10-02 本地回归先复现正常和异常钩子写入 MDC 后残留，两项断言均失败，异常原样传播断言通过。修复后与 TD-045 共用的模块 `clean verify` 验证中，`BaseUnitTestTest` 6 项通过；测试 Starter 151 项、Common 61 项单元测试的失败、错误、跳过均为 0，格式和覆盖率检查通过，Failsafe 无集成用例。首次沙箱内运行因 Mockito JVM attach 不可用而未进入目标行为，复现与验收均在沙箱外完成。
 
 TD-046 按上述约定范围关闭，记录迁入本页并移除台账旧锚点。本地结果不代表远程 CI、制品发布或发布后消费者验证。
+
+## 分页参数校正边界（TD-042，已修复，未发布）
+
+`PageRequest` 的页码、页大小和排序方向 setter 复用原有 `validateAndCorrect()`，默认 Jackson 绑定及 `PageQuery.toPageRequest()` 读取的嵌套分页参数与带参构造一致。公开方法签名、JSON 字段、默认值及上限保持原有契约；行为变化是非法 setter/绑定输入立即校正，不再原样保留到显式校验。排序方向仍接受大小写 ASC/DESC，合法值保留原样，`getOffset()` 仍校验乘法溢出。
+
+2026-10-02 本地回归先确认 setter 写入 `-1` 后直接 getter 返回 `-1`，新增测试失败。修复后定向 `PageRequestTest`、`PageQueryTest` 共 11 项通过，覆盖负/零页码、零/负页大小、超大页大小、null、非法排序方向、Jackson 与构造一致性、嵌套绑定及引用一致性；模块 CI `clean verify` 中 Common 61 项单元测试通过，失败、错误、跳过均为 0。
+
+特殊字段访问、反射写入及历史 Java 序列化数据仍应显式校验，不扩大默认 setter 绑定的保证。TD-042 按上述约定范围关闭，记录迁入本页并移除台账旧锚点。
+
+本轮首批三项修复的本地完整验收：`bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-small-debt-full/quality-report.json` 在 2026-10-02 16:44 至 16:54 执行，退出 0。报告输入为 `worktree-c4945af552b2fa9e2dc0b587185d29b78c43f376bb38db846c9293719b268c77`；文档、构建模型、发布契约、隔离消费者、临时签名及 Java 必需检查均 passed。manifest 的 11 个源码模块对应本次 XML 共 1070 项单元测试、43 项集成测试，失败、错误、跳过均为 0；包含 MyBatis 分页转换回归。Sonar 为 `RUN_SONAR=false`，记为不适用。验收代码与待提交代码相同；期间补正测试 Starter 的重复文档说明，随后补入本摘要，最终文档另行 full 复验，不把原输入摘要冒称最终提交快照。
+
+附加 `docs-evolve` 结构检查退出 1，报日志规格 `verified` 状态不在其允许集合及 MongoDB 计划 HTML 注释被识别为占位符；两文件与基线 `bdcac51` 完全相同，本次未修改。项目文档 full 已通过，此附加检查不描述为通过。
+
+上述均为本地证据，不代表远程 CI、制品发布或发布后消费者验证。TD-043/TD-044 仍需完整 T8 场景验收，不能据本次普通 full 移出台账。

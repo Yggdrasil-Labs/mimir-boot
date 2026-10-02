@@ -28,7 +28,6 @@ updated: 2026-10-02
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | 覆盖层已清理，待处理缺失属性的 Bean 绑定 |
-| [TD-042](#td-042-分页参数校验) | 分页参数校验边界 | common / 分页绑定 | 高 | 待规划 | YoungerYang-Y | 2026-09-13 | 待制定修复计划 |
 | [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | [治理计划 T8](./v2.3.0/docs-quality-governance/plan.md#t8-独立验收与实施交付记录)，待迁移后最终快照验收 |
 | [TD-044](#td-044-spotless-子模块门禁) | Spotless 子模块格式门禁 | Parent / 格式门禁 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | [治理计划 T8](./v2.3.0/docs-quality-governance/plan.md#t8-独立验收与实施交付记录)，待迁移后最终快照验收 |
 
@@ -74,16 +73,6 @@ updated: 2026-10-02
 - **目标版本**：待排期。
 - **复查条件**：配置刷新、Bean 重新绑定或 Spring Cloud 基线调整时，复核完全删除且无下层值的旧明文残留。
 
-<a id="td-042-分页参数校验"></a>
-
-### TD-042：分页参数校验边界
-
-- **现状与风险**：`PageRequest` 的无参构造和 Lombok setter 不校正输入；Jackson 绑定后，直接 getter 与 `PageQuery.toPageRequest()` 可返回负页码和超大页大小，和 Common README 的自动校验描述不一致。
-- **已缓解范围**：`PageConverters.toMybatisPage()` 已显式校正，经过该转换器的路径不受影响。
-- **处置与验收**：统一绑定、构造与转换边界的校验契约，并对负页码、零页大小和超大页大小建立回归测试。
-- **目标版本**：待排期。
-- **复查条件**：分页模型、Jackson 绑定或转换器调整时，核对构造、setter、绑定和转换路径的一致性。
-
 <a id="td-043-jacoco-集成测试覆盖率"></a>
 
 ### TD-043：JaCoCo 集成测试覆盖率
@@ -113,3 +102,5 @@ TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 �
 2026-10-02 关闭 TD-045，修复与本地验收记录见[日志断言索引边界](./v2.3.0/release.md#日志断言索引边界td-045已修复未发布)。编号不再复用。
 
 2026-10-02 关闭 TD-046，修复与本地验收记录见[测试清理顺序](./v2.3.0/release.md#测试清理顺序td-046已修复未发布)。编号不再复用。
+
+2026-10-02 关闭 TD-042，修复与本地验收记录见[分页参数校正边界](./v2.3.0/release.md#分页参数校正边界td-042已修复未发布)。编号不再复用。

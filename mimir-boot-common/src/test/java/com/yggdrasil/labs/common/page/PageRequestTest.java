@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yggdrasil.labs.common.constant.CommonConstants;
 import com.yggdrasil.labs.common.enums.OrderDirection;
 
@@ -41,6 +42,53 @@ class PageRequestTest {
         PageRequest pr = new PageRequest(1L, CommonConstants.MAX_PAGE_SIZE + 100, null, "DESC");
         assertEquals(CommonConstants.MAX_PAGE_SIZE, pr.getPageSize());
         assertEquals(OrderDirection.DESC.getCode(), pr.getOrderDirection());
+    }
+
+    @Test
+    void setters_correct_values_before_direct_reads() {
+        PageRequest pr = new PageRequest();
+        pr.setPageIndex(-1L);
+        pr.setPageSize(0L);
+        pr.setOrderDirection("WRONG");
+
+        assertEquals(CommonConstants.DEFAULT_PAGE_NUMBER, pr.getPageIndex());
+        assertEquals(CommonConstants.DEFAULT_PAGE_SIZE, pr.getPageSize());
+        assertEquals(OrderDirection.ASC.getCode(), pr.getOrderDirection());
+
+        pr.setPageIndex(null);
+        pr.setPageSize(CommonConstants.MAX_PAGE_SIZE + 1);
+        pr.setOrderDirection(null);
+        assertEquals(CommonConstants.DEFAULT_PAGE_NUMBER, pr.getPageIndex());
+        assertEquals(CommonConstants.MAX_PAGE_SIZE, pr.getPageSize());
+        assertEquals(OrderDirection.ASC.getCode(), pr.getOrderDirection());
+
+        pr.setPageIndex(Long.MAX_VALUE);
+        pr.setPageSize(null);
+        pr.setOrderDirection("desc");
+        assertEquals(Long.MAX_VALUE, pr.getPageIndex());
+        assertEquals(CommonConstants.DEFAULT_PAGE_SIZE, pr.getPageSize());
+        assertEquals("desc", pr.getOrderDirection());
+    }
+
+    @Test
+    void jackson_binding_matches_constructor_correction() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        Long[][] inputs = {
+            {-1L, 0L}, {0L, -1L}, {null, null}, {2L, CommonConstants.MAX_PAGE_SIZE + 1}
+        };
+        for (Long[] input : inputs) {
+            String json =
+                    mapper.createObjectNode()
+                            .put("pageIndex", input[0])
+                            .put("pageSize", input[1])
+                            .put("orderDirection", "WRONG")
+                            .toString();
+            PageRequest bound = mapper.readValue(json, PageRequest.class);
+            PageRequest constructed = new PageRequest(input[0], input[1], null, "WRONG");
+
+            assertEquals(constructed, bound, json);
+            assertEquals(constructed.getOffset(), bound.getOffset(), json);
+        }
     }
 
     @Test
