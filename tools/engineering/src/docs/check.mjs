@@ -470,6 +470,10 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
             process.env.DOCS_SELF_TEST = 'true';
         }
         const report = await runDocsCheck(options);
+        if (report.reportWriteError) {
+            const finding = report.findings.find((entry) => entry.rule === 'report-write');
+            process.stderr.write(`${finding.message}\n请检查报告路径的父目录和写入权限，然后重新运行文档检查。\n`);
+        }
         process.exitCode = report.exitCode;
     } catch (error) {
         process.stderr.write(`文档检查失败：${error.message}\n`);
