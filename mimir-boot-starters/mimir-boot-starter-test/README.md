@@ -34,9 +34,7 @@ Mimir Boot 测试 Starter，提供统一的测试依赖管理、测试工具类�
 
 #### 单元测试
 
-`BaseUnitTest` 在每次测试开始前清理环境，再调用 `setUp()`；测试结束时先调用
-`tearDown()`，随后在 `finally` 中清理 MDC 等测试环境。自定义清理抛出的异常继续传播，
-统一清理仍会执行。`tearDown()` 现在可以读取测试留下的 MDC，钩子写入的 MDC 也会在结束后清空。
+自定义准备与清理钩子的执行顺序见 [BaseUnitTest](#baseunittest)。
 
 ```java
 import com.yggdrasil.labs.test.base.BaseUnitTest;
@@ -243,7 +241,9 @@ FilterChain chain = FilterChainMockBuilder.create()
 - 自动清理测试环境
 - 可重写的 `setUp()` 和 `tearDown()` 方法
 
-`tearDown()` 会在基类完成环境清理后执行。重写该方法时，应自行清理其中写入的 MDC 或其他线程级状态。
+每次测试开始前清理环境，再调用 `setUp()`；测试结束时先调用 `tearDown()`，随后在
+`finally` 中清理 MDC 等测试环境。自定义清理抛出的异常继续传播，统一清理仍会执行。
+`tearDown()` 可以读取测试留下的 MDC，钩子写入的 MDC 也会在结束后清空。
 
 #### BaseIntegrationTest
 
