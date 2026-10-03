@@ -83,11 +83,14 @@ Sonar 的变量为 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY`；
 | 结构化质量报告 | 输入 source/tree/commit、配置摘要、各必需检查状态与日志位置 |
 | Surefire XML | 本次实际执行的单元测试类、数量、失败、错误和跳过；不能代替集成测试结果 |
 | Failsafe XML | 本次实际执行的集成测试类及结果；旧文件或缺少目标用例不能证明本次覆盖 |
-| JaCoCo XML | 适用模块的 `target/site/jacoco/jacoco.xml` 新鲜且完整；阈值以 Parent POM 为准 |
+| Java 构建清单 | 本轮 `-Pci` effective POM 的 reactor、有效源码/选择器、报告路径、覆盖率排除与阈值；纯 POM/无源码模块有显式豁免理由 |
+| JaCoCo XML | 清单登记路径的根级计数与阈值一致，XML/exec 摘要属于本轮成功构建；默认路径为 `target/site/jacoco/jacoco.xml`，阈值以有效 POM 和 Parent 基线为准 |
 | CI 结果 | 对应 PR/提交的 workflow run 和 artifacts；本地报告不能代替 |
 | Sonar 结果 | 未启用时明确 `not_applicable`，不描述为远程通过 |
 
 完整 Java 门禁要求测试失败、错误、跳过均为 0。必需检查为 `failed`、`error` 或 `not_run` 均不能完成验收。`not_applicable` 仅用于条件确实不适用的项目，如默认关闭的 Sonar；不能据此跳过适用检查。
+
+Java 子检查先获取有效构建模型，再清理登记的旧产物，最后执行 `clean verify`。模型失败、适用插件被跳过、格式范围遗漏源码、测试 JVM 没有消费 JaCoCo agent 或报告清理失败均阻断构建。无法可靠表示的选择器和二次扫描限制会报错，不回退为固定测试命名规则。失败构建仅登记诊断产物；中断不生成成功清单。核验同时检查必需报告、摘要和登记阈值，失败构建留下的有效 XML 也不能单独证明整体验收成功。
 
 ### 验收结论怎么写
 

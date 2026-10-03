@@ -41,6 +41,8 @@ pre-push 对待推送的提交快照执行离线 quick，检查该提交中的�
 
 full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 会清理构建产物，因此 Maven 质量构建在最后执行，保留最终测试和 JaCoCo 报告。Java 子检查可单独运行 `bash scripts/engineering.sh java`；其 Maven 基础步骤是 `./mvnw -B -Pci clean verify`，完整入口会继续核验报告。
 
+Java 子检查通过本轮 `-Pci help:effective-pom` 建立完整 reactor 期望矩阵，记录有效测试选择器、报告路径、覆盖率范围和最低阈值，并明确纯 POM/无源码豁免。模型获取失败或检测到范围退化会返回执行错误。当前解析支持本项目的 POM/JAR 生命周期和 Ant 文件选择器；正则/方法/分组过滤、不同范围的重复执行、Spotless 二次范围限制等无法可靠表示的配置会明确拒绝。显式测试 `argLine` 只支持无引号/转义的简单参数，agent 属性引用必须是独立参数；默认未配置的 `argLine` 仍由测试插件读取 JaCoCo 属性。修改相关插件配置后，应先运行 Java 子检查，不能把模型拒绝当作检查豁免。
+
 本地 full 默认 `RUN_SONAR=false`，只等价 CI 基础检查，Sonar 在报告中标记为 `not_applicable`。只有已确认目标 Sonar 项目、分支和上传授权，并由受控环境提供 `RUN_SONAR=true`、`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 时，Java 子检查才会在 `clean verify` 通过且报告核验通过后，独立运行 `./mvnw -B -Pci sonar:sonar` 并等待 Quality Gate；不在文档或日志中写入凭据。CI 的凭据与 push 事件策略由工作流传入。公网制品验证只能在发布后进行，本地 fixture 验证检查器的成功、损坏制品、404 与重试行为。
 
 手动补偿迁移前的旧 tag 时，仅执行该 tag 自带的旧版 CI、消费者及已有签名契约；缺少必需旧入口则失败，不借用新分支代码。旧 tag 不具备新 Portal 解析器时跳过这项辅助观察，发布后的公开制品门禁仍必须通过；当前版本及自动发布不允许降级。
@@ -61,7 +63,7 @@ full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 
 ## 实现与产物
 
 - `src/docs/`：文档规则；`config/policy.json` 是 quick/full 共用的文档策略。
-- `src/quality/`：统一调度、Java 核验、结构化结果。
+- `src/quality/`：统一调度、Java 有效构建模型与报告核验、结构化结果。构建清单区分成功产物与失败诊断；清理失败或构建中断不能复用旧成功记录。
 - `src/release/`：发布消费者、签名、公开制品与验收 fixture；fixture 运行时写入唯一临时目录。
 - `scripts/lib/`：受管运行时准备、缓存锁、Git 快照及启动失败处理。
 

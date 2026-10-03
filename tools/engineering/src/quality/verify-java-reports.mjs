@@ -1,11 +1,15 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { DOMParser } from '@xmldom/xmldom';
+import { generateExpectedFromModel } from './java-build-model.mjs';
 
 const SCHEMA_VERSION = 1;
-const SKIPPED_DIRECTORIES = new Set(['.git', '.worktrees', 'node_modules', 'target', '.maven-node']);
+const execFileAsync = promisify(execFile);
 
 function usage() {
     return [
@@ -85,55 +89,20 @@ async function sha256(file) {
     return hash.digest('hex');
 }
 
-async function walk(root, relative = '', files = []) {
-    const directory = path.join(root, relative);
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-        if (entry.isDirectory() && SKIPPED_DIRECTORIES.has(entry.name)) continue;
-        const next = path.join(relative, entry.name);
-        if (entry.isDirectory() && next.split(path.sep).join('/').startsWith('scripts/tests/fixtures/')) continue;
-        if (entry.isDirectory()) await walk(root, next, files);
-        if (entry.isFile()) files.push(next.split(path.sep).join('/'));
+export async function generateExpected(root, runId, effectivePomSource = null) {
+    if (effectivePomSource !== null) return generateExpectedFromModel(root, runId, effectivePomSource);
+    const temporary = await mkdtemp(path.join(tmpdir(), 'mimir-java-model-'));
+    try {
+        const output = path.join(temporary, 'effective-pom.xml');
+        try {
+            await execFileAsync(path.join(root, 'mvnw'), ['-B', '-Pci', 'help:effective-pom', `-Doutput=${output}`], { cwd: root, maxBuffer: 16 * 1024 * 1024, timeout: 180000 });
+        } catch (error) {
+            throw new Error(`无法获取 Java 有效构建模型：${error.message}\n${error.stdout || ''}\n${error.stderr || ''}`);
+        }
+        return await generateExpectedFromModel(root, runId, await readFile(output, 'utf8'));
+    } finally {
+        await rm(temporary, { recursive: true, force: true });
     }
-    return files;
-}
-
-function modulePathFromSource(source) {
-    const marker = '/src/main/java/';
-    const index = source.indexOf(marker);
-    return index < 0 || index === 0 ? '.' : source.slice(0, index);
-}
-
-function countTestFiles(files, modulePath, matcher) {
-    const prefix = modulePath === '.' ? 'src/test/java/' : `${modulePath}/src/test/java/`;
-    return files.filter((file) => file.startsWith(prefix) && /\.java$/u.test(file) && matcher.test(path.posix.basename(file))).length;
-}
-
-export async function generateExpected(root, runId) {
-    const files = await walk(root);
-    const modules = new Set(files.filter((file) => (file.startsWith('src/main/java/') || file.includes('/src/main/java/')) && file.endsWith('.java')).map(modulePathFromSource));
-    return {
-        schemaVersion: SCHEMA_VERSION,
-        runId,
-        executionRoot: root,
-        startedAt: new Date().toISOString(),
-        modules: [...modules].sort().map((modulePath) => {
-            const base = modulePath === '.' ? '' : `${modulePath}/`;
-            const unitCount = countTestFiles(files, modulePath, /^(?!.*(?:IT|IntegrationTest)\.java$).*(?:Test|Tests)\.java$/u);
-            const integrationCount = countTestFiles(files, modulePath, /(?:IT|IntegrationTest)\.java$/u);
-            return {
-                path: modulePath,
-                javaSources: true,
-                tests: {
-                    unit: { required: unitCount > 0, reason: unitCount > 0 ? null : '未发现 Surefire 命名的单元测试源码' },
-                    integration: { required: integrationCount > 0, reason: integrationCount > 0 ? null : '未发现 Failsafe 命名的集成测试源码' },
-                },
-                artifacts: {
-                    jacocoXml: { path: `${base}target/site/jacoco/jacoco.xml`, sha256: null },
-                    jacocoExec: { path: `${base}target/jacoco.exec`, sha256: null },
-                },
-            };
-        }),
-    };
 }
 
 async function readExpected(expectedPath) {
@@ -143,7 +112,7 @@ async function readExpected(expectedPath) {
     } catch (error) {
         throw new Error(`无法读取期望报告矩阵：${error.message}`);
     }
-    if (expected.schemaVersion !== SCHEMA_VERSION || !expected.runId || !Array.isArray(expected.modules) || !expected.executionRoot) {
+    if (expected.schemaVersion !== SCHEMA_VERSION || !expected.runId || !Array.isArray(expected.modules) || !expected.modules.length || !expected.executionRoot) {
         throw new Error('期望报告矩阵缺少 schemaVersion、runId、executionRoot 或 modules');
     }
     return expected;
@@ -154,7 +123,12 @@ async function writeJson(file, value) {
     await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-export async function recordArtifacts(root, expectedPath) {
+function testReportDirectory(module, kind) {
+    const type = kind === 'surefire' ? 'unit' : 'integration';
+    return module.tests[type].reportsDirectory || path.posix.join(module.path, 'target', `${kind}-reports`);
+}
+
+export async function recordArtifacts(root, expectedPath, { buildSucceeded = true } = {}) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
     if (!expected.cleanedAt) throw new Error('期望报告矩阵尚未清理旧构建产物');
@@ -165,18 +139,27 @@ export async function recordArtifacts(root, expectedPath) {
         }
         for (const [kind, type] of [['surefire', 'unit'], ['failsafe', 'integration']]) {
             module.tests[type].reports = [];
-            for (const file of await reportFiles(root, `${module.path}/target/${kind}-reports`)) {
+            for (const file of await reportFiles(root, testReportDirectory(module, kind))) {
                 module.tests[type].reports.push({ path: relativePath(root, file), sha256: await sha256(file) });
             }
         }
     }
-    expected.recordedAt = new Date().toISOString();
+    expected.buildStatus = buildSucceeded ? 'passed' : 'failed';
+    delete expected.recordedAt;
+    delete expected.diagnosticsRecordedAt;
+    expected[buildSucceeded ? 'recordedAt' : 'diagnosticsRecordedAt'] = new Date().toISOString();
     await writeJson(expectedPath, expected);
 }
 
 export async function cleanExpected(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
+    // 在删除产物前使旧记录失效，后续清理失败也不能复用成功清单。
+    delete expected.cleanedAt;
+    delete expected.recordedAt;
+    delete expected.diagnosticsRecordedAt;
+    delete expected.buildStatus;
+    await writeJson(expectedPath, expected);
     for (const module of expected.modules) {
         for (const test of Object.values(module.tests)) test.reports = [];
         for (const artifact of Object.values(module.artifacts)) {
@@ -188,11 +171,13 @@ export async function cleanExpected(root, expectedPath) {
     }
     for (const module of expected.modules) {
         for (const kind of ['surefire', 'failsafe']) {
-            for (const file of await reportFiles(root, `${module.path}/target/${kind}-reports`)) await rm(file);
+            for (const file of await reportFiles(root, testReportDirectory(module, kind))) await rm(file);
         }
     }
     expected.cleanedAt = new Date().toISOString();
     delete expected.recordedAt;
+    delete expected.diagnosticsRecordedAt;
+    delete expected.buildStatus;
     await writeJson(expectedPath, expected);
 }
 
@@ -208,7 +193,7 @@ async function reportFiles(root, relativeDirectory) {
 }
 
 async function validateTestReports(root, module, kind, findings) {
-    const directory = module.path === '.' ? `target/${kind}-reports` : `${module.path}/target/${kind}-reports`;
+    const directory = testReportDirectory(module, kind);
     const reports = await reportFiles(root, directory);
     const expected = module.tests[kind === 'surefire' ? 'unit' : 'integration'];
     const recorded = new Map((expected.reports || []).map((report) => [report.path, report.sha256]));
@@ -271,11 +256,15 @@ export async function verifyReports(root, expectedPath) {
     const expected = await readExpected(expectedPath);
     if (path.resolve(expected.executionRoot) !== root) throw new Error('期望报告矩阵不属于当前执行根目录');
     if (!expected.cleanedAt) throw new Error('期望报告矩阵尚未清理旧构建产物');
-    if (!expected.recordedAt) throw new Error('期望报告矩阵尚未记录本次构建产物摘要');
+    if (!expected.recordedAt && !expected.diagnosticsRecordedAt) throw new Error('期望报告矩阵尚未记录本次构建产物摘要');
     const findings = [];
+    if (!expected.recordedAt || expected.buildStatus === 'failed') {
+        findings.push({ rule: 'build-not-completed', message: '当前清单仅保留失败构建的诊断产物，不能作为完整构建成功证据' });
+    }
     for (const module of expected.modules) {
         await validateTestReports(root, module, 'surefire', findings);
         await validateTestReports(root, module, 'failsafe', findings);
+        if (module.coverage?.required === false) continue;
         const xml = await validateArtifact(root, module, 'jacocoXml', findings);
         await validateArtifact(root, module, 'jacocoExec', findings);
         if (xml) {
@@ -286,8 +275,16 @@ export async function verifyReports(root, expectedPath) {
                 for (const type of ['INSTRUCTION', 'BRANCH']) {
                     const matches = counters.filter((node) => node.getAttribute('type') === type);
                     if (matches.length !== 1) throw new Error(`缺少唯一的根级 ${type} counter`);
-                    counter(matches[0], 'missed');
-                    counter(matches[0], 'covered');
+                    const missed = counter(matches[0], 'missed');
+                    const covered = counter(matches[0], 'covered');
+                    const minimum = module.coverage?.[type === 'INSTRUCTION' ? 'instructionMinimum' : 'branchMinimum'];
+                    if (minimum !== undefined && minimum !== null) {
+                        if (!Number.isFinite(minimum) || minimum < 0 || minimum > 1) throw new Error(`无效 ${type} 最低阈值`);
+                        if (missed + covered > 0 && covered / (missed + covered) < minimum) {
+                            findings.push({ rule: 'coverage-threshold-not-met', module: module.path,
+                                message: `${type} 覆盖率 ${covered}/${missed + covered} 低于登记阈值 ${minimum}` });
+                        }
+                    }
                 }
             } catch (error) {
                 findings.push({ rule: 'coverage-report-invalid', module: module.path, message: `${relativePath(root, xml)}：${error.message}` });
@@ -296,7 +293,7 @@ export async function verifyReports(root, expectedPath) {
     }
     const testsStatus = findings.some((f) => f.rule.startsWith('test-report')) ? 'failed' : 'passed';
     const coverageStatus = findings.some((f) => f.rule.startsWith('coverage-')) ? 'failed' : 'passed';
-    return { testsStatus, coverageStatus, sonarStatus: 'not_applicable', schemaVersion: SCHEMA_VERSION, runId: expected.runId, executionRoot: root, expectedPath, checks: expected.modules.map((module) => ({ id: `module:${module.path}`, status: findings.some((finding) => finding.module === module.path) ? 'failed' : 'passed' })), findings, overall: findings.length === 0 ? 'passed' : 'failed', exitCode: findings.length === 0 ? 0 : 1 };
+    return { testsStatus, coverageStatus, sonarStatus: 'not_applicable', schemaVersion: SCHEMA_VERSION, runId: expected.runId, executionRoot: root, expectedPath, checks: expected.modules.map((module) => ({ id: `module:${module.path}`, status: findings.some((finding) => finding.module === module.path) ? 'failed' : module.exemption && !module.tests.unit.required && !module.tests.integration.required ? 'not_applicable' : 'passed', reason: module.exemption || null })), findings, overall: findings.length === 0 ? 'passed' : 'failed', exitCode: findings.length === 0 ? 0 : 1 };
 }
 
 async function main() {

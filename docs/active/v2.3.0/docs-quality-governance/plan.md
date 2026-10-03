@@ -4,7 +4,7 @@ version: v2.3.0
 status: in-progress
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-20
+updated: 2026-10-03
 ---
 
 # Agent 文档治理与本地质量门禁 — 实施计划
@@ -703,6 +703,18 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 获当前任务提交授权后使用 `docs(governance): 收敛文档职责与 Agent 操作规程`；中文正文说明已完成内容，修复类附根因/方案/影响。Task-ID: T7 与 Red-Evidence JSON 记录对应证据。本 Task 独占有序实现提交链，不含 plan.md；controller 单独更新并提交 ledger。普通提交不包含 push 或 amend。
 
 ### T8: 独立验收与实施交付记录
+
+#### 2026-10-03 收尾实施范围
+
+本轮在基于 `2e833cd` 的 `fix/technical-debt-next` worktree 收尾 TD-043、TD-044，沿用既定行为和阈值，不变更 Java 公共 API、依赖版本或正式发布结构。历史 Execution 字段保留原始含义，当前完成证据归入 [verification.md](./verification.md)。
+
+1. 报告矩阵：修改 `tools/engineering/src/quality/verify-java-reports.mjs`，按需新增同目录的有效构建模型解析模块；通过 `-Pci help:effective-pom` 读取实际 reactor、源码/测试目录、测试包括/排除、报告路径、JaCoCo 排除与 Spotless 范围。显式列出纯 POM/无 Java 源码豁免；模型获取失败不能回退为固定命名规则或空矩阵。
+2. 构建与产物生命周期：修改 `tools/engineering/src/quality/java.mjs`，保留有日志、耗时和取消处理的 Maven 调度。失败或中断不能形成可通过的成功产物清单；必要报告缺失、清理失败、哈希失配继续拒绝。同步工程规程中受影响的事实。
+3. 专项验收：临时脚本与 fixture 放在临时目录或项目内忽略的独立副本，不写入 `tools/`。核对模型路径/选择规则反例、15 个模块及豁免、真实 Spotless/IT 覆盖及阈值、失败/跳过/缺报告/清理/中断、Sonar 未启用及已启用失败的分类。受控 Sonar 故障只验证本地调度，不能冒称远端 Quality Gate 通过。
+4. 场景与文档：在 `verification.md` 逐项映射 27 个当前场景，复用历史证据前核对相关实现未变；受影响场景以本轮新证据覆盖。同步版本入口、release、架构及债务链接，不重写历史验收结论。
+5. 最终验收：独立复审后，对实际实施提交执行完整快照 full，记录首次及同提交缓存运行耗时；检查 commit/tree/配置摘要与清单。只有全部适用条件满足，才关闭两项债务并更新 RFC 的本地验证状态；远程 CI、Sonar 和正式发布分别保持未验证。
+
+工具准入：有效模型解析与报告核验承担项目全局、跨版本持续运行的 Java 验收职责，实际复用入口为 `engineering.sh java`、完整 quality 以及 CI 共享入口。本轮不把一次性故障注入、场景映射或迁移代码嵌入工具。
 
 **Depends on:** T3, T5, T6, T7
 
