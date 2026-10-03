@@ -212,13 +212,12 @@ mimir:
 
 #### 使用加密 TypeHandler
 
-在实体类字段上使用对应的 TypeHandler：
+启用加密只注册供显式映射使用的 Handler，普通 `String`、`Long`、`Integer` 字段仍使用原有类型处理器。在需要加密的实体字段上指定对应 Handler，并启用 `autoResultMap` 以便查询结果也使用该 Handler：
 
 ```java
 import com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler;
-import org.apache.ibatis.type.TypeHandler;
 
-@TableName("user")
+@TableName(value = "user", autoResultMap = true)
 public class User {
     @TableId
     private Long id;
@@ -236,6 +235,10 @@ public class User {
     private Integer secretCode;
 }
 ```
+
+密文列应使用可容纳完整密文的字符类型，包括加密的 `Long`、`Integer` 字段。自定义 XML、结果映射及手工构造的参数需要显式配置对应 `typeHandler`；实体注解不会自动覆盖所有自定义 SQL。
+
+升级前请检查是否曾依赖旧版意外的全局类型注册保存密文。此类列需要补充显式字段映射或单独迁移；普通字段不会自动识别和解密既有密文。
 
 #### 自定义密钥提供器
 
