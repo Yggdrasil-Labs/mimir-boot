@@ -157,9 +157,30 @@ public class AppConfiguration {
 
 不要再通过 `@EnableConfigurationProperties(AppSettings.class)` 或组件扫描重复注册同一配置类型。此方式适用于可代理、可重新创建的 JavaBean；新目标重新执行初始化与绑定，业务需确认销毁、初始化及默认值符合预期。
 
-需要走 Spring Cloud 的完整刷新流程，例如 `ContextRefresher.refresh()`，其顺序是更新 Environment、发布 `EnvironmentChangeEvent`、使刷新作用域失效；单独发布环境事件不会重建目标。Nacos 的配置刷新事件会接入该流程，仍需在应用启用相应动态刷新。本地测试使用真实 ConfigData 刷新入口与可变属性源，不等同于 Nacos 服务端或生产验证。
+需要走 Spring Cloud 的完整刷新流程，例如 `ContextRefresher.refresh()`，其顺序是更新 Environment、发布 `EnvironmentChangeEvent`、使刷新作用域失效；单独发布环境事件不会重建目标。Nacos 的配置刷新事件会接入该流程，仍需在应用启用相应动态刷新。除可变属性源测试外，`NacosRefreshEventIT` 通过实际 Alibaba 事件监听器与 Boot 文件 ConfigData 重载验证该流程；测试未连接 Nacos 服务端，不能替代其网络加载、删除和推送验收。
 
 删除上层属性后有下层值时，新目标绑定下层值；完全缺失时恢复字段初始化值，例如 `secret=null`、`timeout=30`。解密失败会中断本次刷新，已创建目标及原解密覆盖层保留，原始属性源的新配置并不会整体回滚；修正配置后需再次完整刷新。业务不能缓存裸目标或字段快照来代替代理，否则仍可能使用旧值；重建也不保证擦除此前已被其他对象持有的明文。
+
+构造注入的业务服务应保存代理，每次使用时读取当前值，例如：
+
+```java
+@Service
+public class AppService {
+    private final AppConfiguration.AppSettings settings;
+
+    public AppService(AppConfiguration.AppSettings settings) {
+        this.settings = settings;
+    }
+
+    public String currentSecret() {
+        return settings.getSecret();
+    }
+}
+```
+
+成功刷新会销毁已创建的旧目标；下一次代理访问才创建、绑定并初始化新目标。初始化、绑定或校验失败可能在这次访问时暴露，不属于保留旧目标的解密失败情形，业务应按自身校验和可用性要求验收。销毁回调不能假定新目标已经创建。
+
+在当前 Spring Cloud Context 4.1.6 中，ConfigData 重载只替换或新增属性源；旧解密覆盖层可能在环境差异计算时遮住被删除的密文属性，直到环境事件监听器执行后才被清理。本地文件重载已观察到 `EnvironmentChangeEvent.keys` 漏报删除的 `app.secret`，但 Environment 最终值和完整刷新后的作用域目标正确。因此不要以该键集合包含删除项作为保证；按键选择性更新或缓存配置的消费者仍需单独处置，这一限制保留在 TD-039 中。
 
 ### 3. 加密工具类
 
