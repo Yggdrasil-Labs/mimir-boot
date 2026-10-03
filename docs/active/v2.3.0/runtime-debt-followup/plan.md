@@ -70,3 +70,21 @@ updated: 2026-10-03
 - 边界：测试使用真实 Spring Cloud 刷新实现及本地可变属性源，没有连接 Nacos 服务端；不能替代远程 CI、真实服务端删除/推送或生产消费方验证。业务需选择可重建 JavaBean 并持续访问注入代理，裸目标、历史字段快照及普通 Bean 的旧值不会由该方式统一清除。
 
 两阶段确定范围均已完成本地实施与验收；TD-013、TD-016、TD-023、TD-039 不据此整体关闭。后续协议或旧接口迁移应先明确身份、迁移周期和兼容验收，再按独立方案实施。
+
+## 第三阶段：TD-039 事件桥接与消费方生命周期
+
+1. 用临时配置文件及真实 Boot ConfigData 重载替换原地修改 Map 的场景，注册实际 Alibaba `NacosConfigRefreshEventListener`；从 `NacosConfigRefreshEvent` 进入 Spring Cloud 完整刷新流程，不直接调用刷新器。
+2. 构造注入业务消费者，验证稳定代理、删除后默认值、销毁与重新初始化、恢复配置及解密失败后的恢复。观察真实环境变更事件，区分属性源重载与仅修改已安装属性源。
+3. 完成 Nacos 模块验收并同步 README、债务台账和版本记录；保持普通 Bean 及真实 Nacos 服务端验收的剩余边界。本地 Docker daemon 当前不可连接，未提供测试服务前不宣称完成服务端删除/推送验证。
+
+此阶段只修改 Nacos 模块测试与对应文档，不修改运行时源码、POM 或 `tools/`。临时配置文件由 JUnit 管理；本地文件加载器不冒充 Nacos ConfigData 加载器。
+
+### 第三阶段本地验收（2026-10-03，未发布）
+
+- 新增 `NacosRefreshEventIT` 三项契约回归，使用实际 Alibaba `NacosConfigRefreshEventListener`、真实 SpringApplication readiness 和 Boot 文件 ConfigData 加载器，从 Nacos 配置事件进入 Spring Cloud 完整刷新。测试没有直接调用刷新器，没有在刷新前修改已安装属性源，也未连接 Nacos 服务端。
+- 覆盖配置删除后构造注入消费者恢复 null/默认值、消费者与代理身份保持、旧目标销毁及下次访问重新初始化、重新加密恢复、保留加密配置时下层回退，以及文件重载解密失败保留 live 配置和旧目标、修复后再次刷新。新增测试补验现有机制，不宣称新增运行时修复；第二阶段的普通 Bean Red 证据继续保留。
+- 聚焦三项 IT 通过，日志 `/tmp/mimir-nacos-event-focused.log`。完整命令 `./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify` 于 2026-10-03 13:09:35 +08:00 exit 0，5 个 reactor 模块均 SUCCESS；293 项单元测试及 13 项 IT，失败、错误、跳过均为 0，Spotless、Enforcer 和适用 JaCoCo 检查通过。日志 `/tmp/mimir-nacos-event-verify.log`。首次沙箱运行因 Mockito JVM agent attach 限制失败，最终在允许 attach 的环境重跑通过，没有跳过测试或降低门槛。
+- 状态指纹：基线 `e994d423256420526b249b513ccd65e07bfce779`；新 IT SHA-256 为 `e821cec45bb0ebae4e734e27fa1e9c600c6155970affc631548096b02bb4f9ee`；Java 17.0.19、Spring Boot 3.3.13、Cloud Context 4.1.6、Alibaba 2023.0.3.4。运行时源码与 POM 未改。
+- 已观察到的剩余问题：删除密文时，环境差异计算仍可能读取旧解密覆盖层，实际事件键集合漏报 `app.secret`；随后监听器清理覆盖层，最终 Environment 与完整刷新后的目标正确。当前测试不把漏报固化为正确契约；此问题与按键选择性更新、普通 Bean 及缓存消费者的处置一起保留在 TD-039，尚未修复。
+- 外部边界：本地 Docker daemon 不可连接，当前没有可用 Nacos 测试服务；未验证服务端删除/推送、Nacos 网络 ConfigData 加载、实际业务应用迁移、远程 CI 或发布后行为。第三阶段的本地范围完成，TD-039 仍为部分修复。
+- 独立复核：未发现本阶段范围内的 P0-P3 问题，各原始维度均为 4；按公共 review policy 加权为 4.0，结论 PASS。`bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test` exit 0，79 个 Markdown 文件、0 issues；`git diff --check` exit 0。该结果仅适用于本地阶段交付，不解除上述剩余债务。

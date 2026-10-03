@@ -12,6 +12,8 @@ updated: 2026-10-03
 
 后续已验证 Nacos 显式刷新作用域接入：使用 `@Bean @RefreshScope @ConfigurationProperties` 注册可重建 JavaBean，经真实 `ConfigDataContextRefresher.refresh()` 后，通过稳定代理访问新目标，缺失属性恢复初始化值或下层值；解密失败保留已有目标与解密覆盖层。此阶段交付消费方示例与契约测试，没有改变生产运行时或普通 Bean 的语义。Nacos 及依赖模块 `clean verify` 通过，293 项单元测试、10 项 IT，失败、错误、跳过均为 0；新 4 项 IT 包含普通 Bean 和单独环境事件控制。TD-039 保持部分修复，尚未验证真实服务端删除/推送与消费者迁移，详见[第二阶段验收](./runtime-debt-followup/plan.md#第二阶段本地验收2026-10-03未发布)。
 
+第三阶段补齐真实 Alibaba 事件桥接、Boot 文件 ConfigData 重载、构造注入消费者及初始化/销毁回归；Nacos 与依赖模块最新 `clean verify` 共 293 项单元测试、13 项 IT，失败、错误、跳过均为 0。此阶段未改运行时源码和 POM，也未连接 Nacos 服务端。观察到环境变更键集合可能漏报被旧解密覆盖层遮挡的密文删除项；最终 Environment 与完整刷新作用域正确，按键更新消费者仍需处置。TD-039 继续保持部分修复，详见[第三阶段验收](./runtime-debt-followup/plan.md#第三阶段本地验收2026-10-03未发布)。
+
 旧 extract-only RPC Bridge 的默认 `extractScope` 现在恢复提取期间净修改的 MDC 键，提取异常时也回滚并传播原异常；嵌套 scope 按 LIFO 在创建线程关闭。直接调用旧 `extract()` 和自定义 Span/ThreadLocal 生命周期仍需迁移，TD-013 保持兼容保留。
 
 三个字段加密 Handler 使用专用注册键，普通 String/Long/Integer 字段与应用自定义 Handler 不再被自动覆盖，显式加密映射保留 Spring 实例及 v1/v2 行为。README 补齐 `autoResultMap`、字符密文列和升级检查：依赖旧版意外全局加密行为的应用需要显式字段映射或迁移。此修复不提供字段/记录级 AAD，TD-016 不关闭。

@@ -70,6 +70,7 @@ updated: 2026-10-03
 - **显式重建接入**：2026-10-03 补齐 `@Bean @RefreshScope @ConfigurationProperties` 的可运行消费方示例及真实 `ConfigDataContextRefresher.refresh()` 契约测试。已接入、可重建且通过代理访问的 Bean 在成功完整刷新后恢复缺失字段的初始化值或下层值；单独环境事件不重建目标，解密失败保留已有目标与解密覆盖层。详见[Nacos README](../../mimir-boot-starters/mimir-boot-starter-nacos/README.md#显式重建配置-bean)及[本地验收](./v2.3.0/runtime-debt-followup/plan.md#第二阶段本地验收2026-10-03未发布)。
 - **剩余风险**：业务属性完全删除且没有下层值时，Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定后仍保留原字段值；本地负向测试已复现。该问题不再由解密覆盖层造成，但仍属于删除配置后的历史明文残留。
 - **处置与验收**：推动需要删除语义的配置 Bean 显式迁移到可重建作用域或业务重置策略，并验证实际消费路径无回退值时不再保留旧明文；普通 Bean、缓存裸目标和历史字段快照仍需处置。当前本地接入契约不能替代真实 Nacos 服务与消费者迁移验收，也不能宣告本项全部完成。
+- **事件与消费路径**：第三阶段新增真实 Alibaba 事件桥接、Boot 文件 ConfigData 重载、构造注入消费者及目标初始化/销毁的回归；未连接 Nacos 服务端，也未覆盖 Nacos 网络加载器。当前 Cloud Context 4.1.6 的环境差异计算可能被旧解密覆盖层遮挡，本地已观察到变更键漏报被删除的密文属性；最终 Environment 与完整刷新作用域正确，但按键更新、缓存字段或裸目标的消费者仍需迁移与验收。
 - **目标版本**：待排期。
 - **复查条件**：配置刷新、Bean 重新绑定或 Spring Cloud 基线调整时，复核完全删除且无下层值的旧明文残留。
 
