@@ -8,6 +8,14 @@ updated: 2026-10-03
 
 本目录记录[治理方案及实施](./index.md#文档治理工作入口)，文档迁移与 T8 的约定本地验收已完成，尚无本版本的发布验证记录。根 POM 仍为 `2.2.2-SNAPSHOT`；本目录编号仅用于组织计划。历史日期节保留当时的债务状态。
 
+## 运行时技术债后续修复（2026-10-03，未发布）
+
+旧 extract-only RPC Bridge 的默认 `extractScope` 现在恢复提取期间净修改的 MDC 键，提取异常时也回滚并传播原异常；嵌套 scope 按 LIFO 在创建线程关闭。直接调用旧 `extract()` 和自定义 Span/ThreadLocal 生命周期仍需迁移，TD-013 保持兼容保留。
+
+三个字段加密 Handler 使用专用注册键，普通 String/Long/Integer 字段与应用自定义 Handler 不再被自动覆盖，显式加密映射保留 Spring 实例及 v1/v2 行为。README 补齐 `autoResultMap`、字符密文列和升级检查：依赖旧版意外全局加密行为的应用需要显式字段映射或迁移。此修复不提供字段/记录级 AAD，TD-016 不关闭。
+
+MyBatis、RPC Core、Dubbo、Feign 及依赖模块的本地 `clean verify` 通过，794 项单元测试、37 项 IT，失败、错误、跳过均为 0，格式与适用覆盖率门禁通过；包括真实 H2 Mapper 和 Dubbo/Feign 调用。命令、状态指纹及剩余边界见[计划与验收](./runtime-debt-followup/plan.md#本地实施与验收2026-10-03未发布)。TD-023、TD-039 仍活跃；本记录不代表全仓库 full、远程 CI、制品发布或发布后消费者验证。
+
 ## 计划范围
 
 - 收敛 Agent 文档导航、工程规程和权威事实来源。
