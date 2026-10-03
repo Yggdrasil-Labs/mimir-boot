@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.nacos.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,6 +23,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.env.OriginTrackedMapPropertySource;
 import org.springframework.cloud.autoconfigure.ConfigurationPropertiesRebinderAutoConfiguration;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -30,6 +32,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.PropertySource;
 
 import com.alibaba.cloud.nacos.configdata.NacosConfigRefreshEventListener;
 import com.alibaba.cloud.nacos.refresh.NacosConfigRefreshEvent;
@@ -74,6 +77,66 @@ class NacosRefreshEventIT {
             assertEquals(2, lifecycle.destroyed);
             assertEquals("restored-secret", consumer.secret());
             assertEquals(3, lifecycle.initialized);
+        }
+    }
+
+    @Test
+    void shouldExposeKnownLimitationForDisappearedSourceAndRecoverAfterExplicitRemoval()
+            throws IOException {
+        String key = ConfigCryptoUtils.generateKey();
+        writeSnapshot(1, encryptedProperties("old-secret", key));
+        try (ConfigurableApplicationContext context = start(Map.of())) {
+            Consumer consumer = context.getBean(Consumer.class);
+            Settings proxy = consumer.settings;
+            Lifecycle lifecycle = context.getBean(Lifecycle.class);
+            PropertySource<?> rawSource =
+                    context.getEnvironment().getPropertySources().stream()
+                            .filter(source -> source instanceof OriginTrackedMapPropertySource)
+                            .filter(
+                                    source ->
+                                            "1"
+                                                    .equals(
+                                                            source.getProperty(
+                                                                    "td039.snapshot-version")))
+                            .findFirst()
+                            .orElseThrow();
+            assertEquals("old-secret", consumer.secret());
+            assertEquals(12, consumer.timeout());
+
+            // 不保留版本标记，让空文件重载时整个 ConfigData 属性源消失。
+            Files.writeString(directory.resolve("application.properties"), "");
+            refresh(context);
+
+            // 已知限制：完整刷新仍保留旧原始源，重建目标也继续绑定旧值。
+            assertEquals("1", context.getEnvironment().getProperty("td039.snapshot-version"));
+            assertEquals("old-secret", context.getEnvironment().getProperty("app.secret"));
+            assertNotNull(context.getEnvironment().getPropertySources().get(rawSource.getName()));
+            assertEquals(1, lifecycle.changedKeys.size());
+            assertEquals(1, lifecycle.destroyed);
+            assertEquals(1, lifecycle.initialized);
+            assertEquals("old-secret", consumer.secret());
+            assertEquals(12, consumer.timeout());
+            assertEquals(2, lifecycle.initialized);
+
+            // 仅清理此测试夹具的源，验证实时 Environment 确实删键后的恢复条件。
+            assertNotNull(
+                    context.getEnvironment().getPropertySources().remove(rawSource.getName()));
+            assertNotNull(
+                    context.getEnvironment()
+                            .getPropertySources()
+                            .remove("decryptedProperties:" + rawSource.getName()));
+            assertNull(context.getEnvironment().getProperty("app.secret"));
+            refresh(context);
+
+            assertNull(context.getEnvironment().getProperty("td039.snapshot-version"));
+            assertNull(context.getEnvironment().getProperty("app.secret"));
+            assertEquals(2, lifecycle.destroyed);
+            assertEquals(2, lifecycle.initialized);
+            assertNull(consumer.secret());
+            assertEquals(30, consumer.timeout());
+            assertEquals(3, lifecycle.initialized);
+            assertSame(proxy, consumer.settings);
+            assertSame(proxy, context.getBean(Settings.class));
         }
     }
 
