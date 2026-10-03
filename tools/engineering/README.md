@@ -43,6 +43,10 @@ full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 
 
 Java 子检查通过本轮 `-Pci help:effective-pom` 建立完整 reactor 期望矩阵，记录有效测试选择器、报告路径、覆盖率范围和最低阈值，并明确纯 POM/无源码豁免。模型获取失败或检测到范围退化会返回执行错误。当前解析支持本项目的 POM/JAR 生命周期和 Ant 文件选择器；正则/方法/分组过滤、不同范围的重复执行、Spotless 二次范围限制等无法可靠表示的配置会明确拒绝。显式测试 `argLine` 只支持无引号/转义的简单参数，agent 属性引用必须是独立参数；默认未配置的 `argLine` 仍由测试插件读取 JaCoCo 属性。修改相关插件配置后，应先运行 Java 子检查，不能把模型拒绝当作检查豁免。
 
+构建模型通过 JDK 语法树读取全部测试源码声明，按编译后的顶层类名应用有效选择器，源码文件名与类名不同时也纳入清单。报告核验再用本次 XML 的实际测试类路径执行 JUnit Jupiter 发现，逐个核对可运行顶层测试类的 `testcase@classname`；辅助类和抽象类不按源码文件数计算，继承、嵌套、参数化及工厂测试按所属顶层类聚合。该清单不证明类内所有方法或动态实例均执行，零用例报告仍不通过。缺失编译类、发现失败、额外引擎发现选中测试，以及改变发现语义的插件参数均明确拒绝。`JavaSourceInventory.java`、`java-source-inventory.mjs` 和 `TestInventory.java` 是长期构建模型与报告门禁的支持文件，Java 子检查与 full 共用，不是专项验收脚本。
+
+扫描发生在构建前，当前模型不支持动态追加源码根；有效 build-helper `add-source`/`add-test-source`、已知源码生成插件及已知源码生成注解处理器会明确拒绝。未知插件扩展不能据此获得完整性保证，接入前需补充模型支持。JaCoCo 比率最低值支持小数或百分比（如 `0.60` 与 `60%`），越界、降低基线或无法可靠表示的阈值拒绝。
+
 本地 full 默认 `RUN_SONAR=false`，只等价 CI 基础检查，Sonar 在报告中标记为 `not_applicable`。只有已确认目标 Sonar 项目、分支和上传授权，并由受控环境提供 `RUN_SONAR=true`、`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 时，Java 子检查才会在 `clean verify` 通过且报告核验通过后，独立运行 `./mvnw -B -Pci sonar:sonar` 并等待 Quality Gate；不在文档或日志中写入凭据。CI 的凭据与 push 事件策略由工作流传入。公网制品验证只能在发布后进行，本地 fixture 验证检查器的成功、损坏制品、404 与重试行为。
 
 手动补偿迁移前的旧 tag 时，仅执行该 tag 自带的旧版 CI、消费者及已有签名契约；缺少必需旧入口则失败，不借用新分支代码。旧 tag 不具备新 Portal 解析器时跳过这项辅助观察，发布后的公开制品门禁仍必须通过；当前版本及自动发布不允许降级。

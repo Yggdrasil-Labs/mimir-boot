@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMImplementation, DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { generateExpectedFromModel } from './java-build-model.mjs';
 
 const SCHEMA_VERSION = 1;
@@ -197,6 +197,8 @@ async function validateTestReports(root, module, kind, findings) {
     const reports = await reportFiles(root, directory);
     const expected = module.tests[kind === 'surefire' ? 'unit' : 'integration'];
     const recorded = new Map((expected.reports || []).map((report) => [report.path, report.sha256]));
+    const executedClasses = new Set();
+    const classpaths = new Set();
     if (expected.required && reports.length === 0) {
         findings.push({ rule: 'test-report-missing', module: module.path, message: `缺少 ${kind} 测试报告` });
     }
@@ -216,12 +218,67 @@ async function validateTestReports(root, module, kind, findings) {
             for (const name of ['failure', 'error', 'skipped']) {
                 if (suite.getElementsByTagName(name).length) throw new Error('包含失败、错误或跳过测试');
             }
+            const cases = Array.from(suite.getElementsByTagName('testcase'));
+            if (cases.length !== counter(suite, 'tests')) throw new Error('testcase 数量与 tests 计数不一致');
+            for (const test of cases) {
+                const name = test.getAttribute('classname');
+                if (!name) throw new Error('testcase 缺少 classname');
+                executedClasses.add(name);
+            }
+            for (const property of Array.from(suite.getElementsByTagName('property'))) {
+                if (property.getAttribute('name') === 'surefire.test.class.path') classpaths.add(property.getAttribute('value'));
+            }
         } catch (error) {
             findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relative}：${error.message}` });
         }
     }
     for (const relative of recorded.keys()) {
         findings.push({ rule: 'test-report-missing', module: module.path, message: `本次构建记录的报告已丢失：${relative}` });
+    }
+    if (expected.required && reports.length) {
+        try {
+            if (classpaths.size !== 1 || ![...classpaths][0]) throw new Error('缺少唯一的实际测试类路径');
+            const classes = await discoverTestClasses(root, expected, [...classpaths][0]);
+            if (!classes.length) throw new Error('选择器未发现可运行的 JUnit Jupiter 测试类');
+            for (const name of classes) {
+                if (![...executedClasses].some((actual) => actual === name || actual.startsWith(`${name}$`))) {
+                    findings.push({ rule: 'test-report-missing', module: module.path, message: `${kind} 缺少测试类执行证据：${name}` });
+                }
+            }
+        } catch (error) {
+            findings.push({ rule: 'test-report-discovery-error', module: module.path, message: `${kind}：${error.message}` });
+        }
+    }
+}
+
+async function discoverTestClasses(root, expected, classpath) {
+    if (!expected.sourceClasses?.length || !expected.testClassesDirectory) throw new Error('缺少源码测试类或编译测试目录期望');
+    const classesDirectory = resolveArtifact(root, expected.testClassesDirectory);
+    if (!classpath.split(path.delimiter).some((item) => path.resolve(item) === classesDirectory)) {
+        throw new Error('实际测试类路径未包含期望编译测试目录');
+    }
+    const temporary = await mkdtemp(path.join(tmpdir(), 'mimir-test-inventory-'));
+    try {
+        const request = new DOMImplementation().createDocument(null, 'request', null);
+        const append = (tag, value) => {
+            const element = request.createElement(tag);
+            element.appendChild(request.createTextNode(value));
+            request.documentElement.appendChild(element);
+        };
+        for (const name of expected.sourceClasses) append('candidate', name);
+        const input = path.join(temporary, 'request.xml');
+        const output = path.join(temporary, 'inventory.xml');
+        const helper = fileURLToPath(new URL('./TestInventory.java', import.meta.url));
+        await writeFile(input, new XMLSerializer().serializeToString(request), 'utf8');
+        try {
+            await execFileAsync('java', ['--class-path', classpath, helper, input, output, classesDirectory],
+                { cwd: root, timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
+        } catch (error) {
+            throw new Error(`测试清单发现失败：${error.stderr || error.message}`);
+        }
+        return Array.from(parseXml(await readFile(output, 'utf8'), 'inventory').getElementsByTagName('class')).map((item) => item.textContent);
+    } finally {
+        await rm(temporary, { recursive: true, force: true });
     }
 }
 

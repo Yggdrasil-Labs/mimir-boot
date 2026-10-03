@@ -3,6 +3,7 @@ import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { DOMParser } from '@xmldom/xmldom';
 import { matchesAny } from '../docs/policy.mjs';
+import { inventoryJavaSources } from './java-source-inventory.mjs';
 
 const NAMESPACE = 'http://maven.apache.org/POM/4.0.0';
 const PHASES = ['validate', 'initialize', 'generate-sources', 'process-sources', 'generate-resources',
@@ -19,6 +20,27 @@ const PLUGINS = {
     coverage: ['org.jacoco', 'jacoco-maven-plugin'],
     format: ['com.diffplug.spotless', 'spotless-maven-plugin'],
 };
+const SOURCE_GENERATORS = new Map([
+    ['org.codehaus.mojo:build-helper-maven-plugin', [['add-source', 'generate-sources'], ['add-test-source', 'generate-test-sources']]],
+    ['org.codehaus.mojo:jaxb2-maven-plugin', [['xjc', 'generate-sources'], ['testXjc', 'generate-test-sources']]],
+    ['org.jvnet.jaxb:jaxb-maven-plugin', [['generate', 'generate-sources']]],
+    ['org.jvnet.jaxb2.maven2:maven-jaxb2-plugin', [['generate', 'generate-sources']]],
+    ['org.apache.avro:avro-maven-plugin', [['schema', 'generate-sources'], ['protocol', 'generate-sources'], ['idl-protocol', 'generate-sources']]],
+    ['org.antlr:antlr4-maven-plugin', [['antlr4', 'generate-sources']]],
+    ['org.codehaus.mojo:antlr-maven-plugin', [['generate', 'generate-sources']]],
+    ['org.xolstice.maven.plugins:protobuf-maven-plugin', [['compile', 'generate-sources'], ['compile-custom', 'generate-sources'], ['test-compile', 'generate-test-sources'], ['test-compile-custom', 'generate-test-sources']]],
+    ['org.openapitools:openapi-generator-maven-plugin', [['generate', 'generate-sources']]],
+    ['io.swagger:swagger-codegen-maven-plugin', [['generate', 'generate-sources']]],
+    ['io.swagger.codegen.v3:swagger-codegen-maven-plugin', [['generate', 'generate-sources']]],
+    ['org.bsc.maven:maven-processor-plugin', [['process', 'generate-sources'], ['process-test', 'generate-test-sources']]],
+]);
+const JAVA_PROCESSORS = new Set([
+    'org.mapstruct:mapstruct-processor', 'com.querydsl:querydsl-apt',
+    'org.hibernate:hibernate-jpamodelgen', 'org.hibernate.orm:hibernate-jpamodelgen',
+    'com.google.auto.value:auto-value', 'org.immutables:value', 'com.google.dagger:dagger-compiler',
+    'io.github.yggdrasil-labs:mimir-boot-starter-mybatis-processor',
+]);
+const JAVA_PROCESSOR_CLASSES = /^(?:org\.mapstruct\.ap\.|com\.querydsl\.apt\.|org\.hibernate\.jpamodelgen\.|org\.hibernate\.processor\.|com\.google\.auto\.value\.processor\.|org\.immutables\.processor\.|dagger\.internal\.codegen\.|com\.yggdrasil\.labs\.mybatis\.processor\.)/u;
 
 function elements(node, ...names) {
     return names.reduce((nodes, name) => nodes.flatMap((parent) =>
@@ -209,6 +231,50 @@ function active(execution) {
     return PHASES.includes(execution.phase);
 }
 
+function requireStaticSourceRoots(module) {
+    let annotationProcessing = true;
+    for (const node of elements(module.model, 'build', 'plugins', 'plugin')) {
+        const artifact = text(node, 'artifactId');
+        const key = `${text(node, 'groupId') || 'org.apache.maven.plugins'}:${artifact}`;
+        const known = SOURCE_GENERATORS.get(key) || [];
+        const generated = known.some(([goal, phase]) => executions(node, goal, phase).some(active));
+        if (generated) {
+            throw new Error(`${module.path} 尚不支持 ${artifact} 生命周期追加源码根或源码生成，无法可靠生成 Java 期望`);
+        }
+        if (key !== 'org.apache.maven.plugins:maven-compiler-plugin') continue;
+        const invocations = ['compile', 'testCompile'].flatMap((goal) =>
+            executions(node, goal, goal === 'compile' ? 'compile' : 'test-compile').filter(active));
+        annotationProcessing = (invocations.length ? invocations.map((invocation) => invocation.get) : [config(node)])
+            .some((get) => value(get('proc')) !== 'none');
+        for (const get of [config(node), ...invocations.map((invocation) => invocation.get)]) {
+            for (const name of ['compileSourceRoots', 'testCompileSourceRoots']) {
+                if (get(name)) throw new Error(`${module.path} 尚不支持 compiler ${name} 额外源码根`);
+            }
+            if (value(get('proc')) === 'none') continue;
+            for (const processor of elements(get('annotationProcessorPaths'), 'path')) {
+                const coordinate = `${text(processor, 'groupId')}:${text(processor, 'artifactId')}`;
+                if (JAVA_PROCESSORS.has(coordinate)) throw new Error(`${module.path} 尚不支持注解处理器 ${coordinate} 的源码生成`);
+            }
+            for (const processor of elements(get('annotationProcessors'), 'annotationProcessor')) {
+                if (JAVA_PROCESSOR_CLASSES.test(value(processor) || '')) {
+                    throw new Error(`${module.path} 尚不支持显式注解处理器 ${value(processor)} 的源码生成`);
+                }
+            }
+            const args = [value(get('compilerArgument')), ...elements(get('compilerArgs'), 'arg').map(value),
+                ...Array.from(get('compilerArguments')?.childNodes || []).filter((item) => item.nodeType === 1)
+                    .map((item) => `-${item.localName} ${value(item) || ''}`)].filter(Boolean).join(' ');
+            if (/(?:^|\s)-(?:s(?:\s|=|$)|proc:only(?:\s|$))/u.test(args)
+                || args.split(/[\s,=]+/u).some((item) => JAVA_PROCESSOR_CLASSES.test(item))) {
+                throw new Error(`${module.path} 尚不支持 compiler 参数指定的注解处理器或生成源码根`);
+            }
+        }
+    }
+    for (const dependency of elements(module.model, 'dependencies', 'dependency')) {
+        const coordinate = `${text(dependency, 'groupId')}:${text(dependency, 'artifactId')}`;
+        if (annotationProcessing && JAVA_PROCESSORS.has(coordinate)) throw new Error(`${module.path} 尚不支持依赖注解处理器 ${coordinate} 的源码生成`);
+    }
+}
+
 function requireOneGoal(pluginNode, goal, phase, label) {
     const found = executions(pluginNode, goal, phase).filter(active);
     if (found.length !== 1) throw new Error(`${label} 必须唯一绑定 ${goal}，实际 ${found.length} 次`);
@@ -225,7 +291,7 @@ function sourceMatch(file, includes, excludes) {
         && !matchesAny(javaName, excludes.map((pattern) => pattern.replace(/\.class$/u, '.java')));
 }
 
-async function testExpectation(root, module, kind, files, testDirectory, buildDirectory) {
+async function testExpectation(root, module, kind, declarations, buildDirectory) {
     const node = plugin(module.model, kind);
     const goal = kind === 'unit' ? 'test' : 'integration-test';
     const defaultPhase = kind === 'unit' ? 'test' : 'integration-test';
@@ -235,12 +301,24 @@ async function testExpectation(root, module, kind, files, testDirectory, buildDi
     for (const invocation of all) {
         const get = invocation.get;
         for (const name of ['includesFile', 'excludesFile', 'test', 'suiteXmlFiles', 'dependenciesToScan',
-            'groups', 'excludedGroups', 'includeJUnit5Engines', 'excludeJUnit5Engines']) {
+            'groups', 'excludedGroups', 'includeJUnit5Engines', 'excludeJUnit5Engines',
+            'junitArtifactName', 'testNGArtifactName', 'provider', 'providers', 'systemPropertiesFile']) {
             if (get(name)) throw new Error(`${module.path} ${kind} 尚不支持 ${name}，无法可靠生成测试期望`);
+        }
+        if (one(get('properties'), 'configurationParameters')) {
+            throw new Error(`${module.path} ${kind} 尚不支持 JUnit configurationParameters，无法可靠生成测试期望`);
+        }
+        const systemProperties = [
+            ...Array.from(get('systemPropertyVariables')?.childNodes || []).filter((item) => item.nodeType === 1)
+                .map((item) => item.localName),
+            ...elements(get('systemProperties'), 'property').map((item) => text(item, 'name')),
+        ];
+        if (systemProperties.some((name) => name?.startsWith('junit.'))) {
+            throw new Error(`${module.path} ${kind} 尚不支持 junit.* JVM 系统属性，无法可靠生成测试期望`);
         }
         const includes = patterns(get('includes'), `${module.path} ${kind} includes`, DEFAULT_TESTS[kind]);
         const excludes = patterns(get('excludes'), `${module.path} ${kind} excludes`, ['**/*$*']);
-        const selected = files.filter((file) => sourceMatch(path.relative(testDirectory, file).split(path.sep).join('/'), includes, excludes));
+        const selected = declarations.filter(({ binaryName }) => sourceMatch(`${binaryName.replaceAll('.', '/')}.java`, includes, excludes));
         const skipped = flag(get, 'skip', module.props, 'maven.test.skip')
             || flag(get, 'skipTests', module.props)
             || kind === 'integration' && flag(get, 'skipITs', module.props);
@@ -251,12 +329,14 @@ async function testExpectation(root, module, kind, files, testDirectory, buildDi
         }
         const reportsDirectory = relative(root, await configuredPath(root, module.directory,
             value(get('reportsDirectory')) || path.join(buildDirectory, kind === 'unit' ? 'surefire-reports' : 'failsafe-reports'), 'reportsDirectory'));
-        choices.push({ includes, excludes, selected, reportsDirectory });
+        const testClassesDirectory = relative(root, await configuredPath(root, module.directory,
+            value(get('testClassesDirectory')) || text(module.model, 'build', 'testOutputDirectory'), 'testClassesDirectory'));
+        choices.push({ includes, excludes, selected, reportsDirectory, testClassesDirectory });
     }
     const first = choices[0];
-    if (choices.some((choice) => choice.reportsDirectory !== first.reportsDirectory
+    if (choices.some((choice) => choice.reportsDirectory !== first.reportsDirectory || choice.testClassesDirectory !== first.testClassesDirectory
         || !samePatterns(choice.includes, first.includes) || !samePatterns(choice.excludes, first.excludes))) {
-        throw new Error(`${module.path} ${kind} 多个执行的选择器或报告目录不同，当前期望模型无法可靠表示`);
+        throw new Error(`${module.path} ${kind} 多个执行的选择器、测试类目录或报告目录不同，当前期望模型无法可靠表示`);
     }
     if (first.selected.length && !bound.length) throw new Error(`${module.path} ${kind} 缺少实际生命周期插件执行`);
     if (first.selected.length && bound.some((item) => item.phase !== defaultPhase)) {
@@ -273,9 +353,31 @@ async function testExpectation(root, module, kind, files, testDirectory, buildDi
     return {
         required: first.selected.length > 0,
         reason: first.selected.length ? null : `有效 ${kind === 'unit' ? 'Surefire' : 'Failsafe'} 选择器未匹配 Java 测试源码`,
-        includes: first.includes, excludes: first.excludes, reportsDirectory: first.reportsDirectory,
-        sourceFiles: first.selected.map((file) => relative(root, file)), reports: [],
+        includes: first.includes, excludes: first.excludes, reportsDirectory: first.reportsDirectory, testClassesDirectory: first.testClassesDirectory,
+        sourceFiles: [...new Set(first.selected.map(({ sourceFile }) => relative(root, sourceFile)))].sort(),
+        sourceClasses: [...new Set(first.selected.map(({ binaryName }) => binaryName))].sort(), reports: [],
     };
+}
+
+function ratioMinimum(input, label) {
+    function decimal(source, percentage = false) {
+        const match = /^([+-]?)(\d+(?:\.\d*)?|\.\d+)(?:[eE]([+-]?\d+))?$/u.exec(source);
+        if (!match) throw new Error(`${label} minimum 必须是十进制数或百分比`);
+        const fraction = match[2].split('.')[1] || '';
+        const coefficient = match[2].replace('.', '').replace(/^0+/u, '');
+        if (!coefficient) return '0e0';
+        const digits = coefficient.replace(/0+$/u, '');
+        const exponent = BigInt(match[3] || '0') - BigInt(fraction.length) - (percentage ? 2n : 0n)
+            + BigInt(coefficient.length - digits.length);
+        return `${match[1] === '-' ? '-' : ''}${digits}e${exponent}`;
+    }
+    const percentage = input.endsWith('%');
+    const normalized = decimal(percentage ? input.slice(0, -1) : input, percentage);
+    const minimum = Number(normalized);
+    if (!Number.isFinite(minimum) || minimum < 0 || minimum > 1) throw new Error(`${label} minimum 必须在 0 到 1 之间`);
+    // 数值模型不能舍入后放行超范围值或降低继承阈值。
+    if (decimal(String(minimum)) !== normalized) throw new Error(`${label} minimum 精度无法可靠表示为验收阈值`);
+    return minimum;
 }
 
 function thresholds(get, label) {
@@ -288,8 +390,8 @@ function thresholds(get, label) {
         for (const limit of elements(rule, 'limits', 'limit')) {
             const counter = text(limit, 'counter') || 'INSTRUCTION';
             if (!['INSTRUCTION', 'BRANCH'].includes(counter) || (text(limit, 'value') || 'COVEREDRATIO') !== 'COVEREDRATIO') continue;
-            const minimum = Number(resolved(text(limit, 'minimum'), `${label} ${counter} minimum`));
-            if (!Number.isFinite(minimum) || minimum < 0 || minimum > 1) throw new Error(`${label} ${counter} minimum 必须在 0 到 1 之间`);
+            const input = resolved(text(limit, 'minimum'), `${label} ${counter} minimum`).trim();
+            const minimum = ratioMinimum(input, `${label} ${counter}`);
             limits.set(counter, Math.max(limits.get(counter) || 0, minimum));
         }
     }
@@ -443,19 +545,28 @@ export async function generateExpectedFromModel(root, runId, effectivePomSource)
     const startedAt = new Date().toISOString();
     const reactor = await mapReactor(root, projectModels(effectivePomSource));
     const modules = [];
+    const sourceModels = [];
     for (const module of reactor) {
         const packaging = text(module.model, 'packaging') || 'jar';
         if (!['pom', 'jar'].includes(packaging)) throw new Error(`${module.path} 尚不支持 packaging=${packaging} 的 Java 生命周期`);
+        requireStaticSourceRoots(module);
         const sourceDirectory = await configuredPath(root, module.directory, text(module.model, 'build', 'sourceDirectory'), 'sourceDirectory');
         const testDirectory = await configuredPath(root, module.directory, text(module.model, 'build', 'testSourceDirectory'), 'testSourceDirectory');
         const buildDirectory = await configuredPath(root, module.directory, text(module.model, 'build', 'directory'), 'build.directory');
         const main = await javaFiles(root, sourceDirectory);
         const tests = await javaFiles(root, testDirectory);
+        sourceModels.push({ ...module, packaging, buildDirectory, main, tests });
+    }
+    const declarations = await inventoryJavaSources(root, sourceModels.flatMap((module) => module.tests));
+    for (const module of sourceModels) {
+        const { packaging, buildDirectory, main, tests } = module;
         const javaSources = main.length + tests.length > 0;
         if (packaging === 'pom' && javaSources) throw new Error(`${module.path} 纯 POM 模块意外包含 Java 主源码或测试源码`);
         const exemption = packaging === 'pom' ? '纯 POM 模块，不产生 Java 编译和测试产物' : javaSources ? null : '有效源码目录没有 Java 主源码或测试源码';
-        const unit = await testExpectation(root, module, 'unit', tests, testDirectory, buildDirectory);
-        const integration = await testExpectation(root, module, 'integration', tests, testDirectory, buildDirectory);
+        const testFiles = new Set(tests);
+        const testDeclarations = declarations.filter(({ sourceFile }) => testFiles.has(sourceFile));
+        const unit = await testExpectation(root, module, 'unit', testDeclarations, buildDirectory);
+        const integration = await testExpectation(root, module, 'integration', testDeclarations, buildDirectory);
         const { coverage, artifacts } = await coverageExpectation(root, module, reactor, main, buildDirectory, { unit, integration });
         modules.push({ path: module.path, packaging, javaSources, exemption, tests: { unit, integration },
             coverage, format: formatExpectation(module, [...main, ...tests]), artifacts });
