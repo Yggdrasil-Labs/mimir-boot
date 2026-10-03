@@ -68,7 +68,7 @@ public class MicrometerTracerBridge implements RpcTracerBridge {
 }
 ```
 
-对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`，同时实现仍为接口必需的旧 `extract` 方法。旧 `extract` 入口的调用方仍需自行管理上下文生命周期；默认 `extractScope` 只是将旧入口适配为 noop scope，不保证未知自定义上下文的回滚，不能替代自定义实现。
+对需要在调用结束时恢复上下文的自定义 Bridge，应实现 `extractScope` 并返回可关闭的 `RpcTraceScope`，同时实现仍为接口必需的旧 `extract` 方法。旧 `extract` 入口的调用方仍需自行管理上下文生命周期。默认 `extractScope` 会恢复旧提取逻辑新增、删除或修改的 MDC 键，提取失败也会先回滚；调用结束后无关 MDC 键的变更会保留。scope 必须在创建线程关闭，嵌套调用按 LIFO 顺序关闭。默认适配不管理自定义 Span 或其他 ThreadLocal，此类 Bridge 仍需实现自己的 scope。
 
 ## 最佳实践
 

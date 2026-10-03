@@ -127,12 +127,39 @@ class RpcDubboFilterEndToEndTest {
 
     @Test
     void defaultMdcBridgeRestoresTraceContextForAsyncProviderCompletion() throws Exception {
+        assertAsyncProviderContextRestored(new MdcRpcTracerBridge());
+    }
+
+    @Test
+    void legacyExtractOnlyBridgeRestoresMdcForAsyncProviderCompletion() throws Exception {
+        RpcTracerBridge bridge =
+                new RpcTracerBridge() {
+                    private final MdcRpcTracerBridge delegate = new MdcRpcTracerBridge();
+
+                    @Override
+                    public Map<String, String> inject(RpcCallContext context) {
+                        return delegate.inject(context);
+                    }
+
+                    @Override
+                    public void extract(RpcCallContext context, Map<String, String> carrier) {
+                        delegate.extract(context, carrier);
+                        MDC.put("legacy-marker", "extracted-marker");
+                    }
+                };
+
+        AsyncCompletionHook hook = assertAsyncProviderContextRestored(bridge);
+
+        assertEquals("extracted-marker", hook.marker());
+    }
+
+    private AsyncCompletionHook assertAsyncProviderContextRestored(RpcTracerBridge bridge)
+            throws Exception {
         DubboProperties properties = new DubboProperties();
         properties.setEnabled(true);
         properties.setContextPropagationEnabled(true);
         AsyncCompletionHook hook = new AsyncCompletionHook();
-        RpcDubboSupportHolder.set(
-                new RpcHookChain(List.of(hook)), new MdcRpcTracerBridge(), properties);
+        RpcDubboSupportHolder.set(new RpcHookChain(List.of(hook)), bridge, properties);
         ExecutorService completionWorker = Executors.newSingleThreadExecutor();
         AtomicReference<CompletableFuture<String>> responseFuture = new AtomicReference<>();
         AsyncEchoService serviceImplementation =
@@ -169,12 +196,17 @@ class RpcDubboFilterEndToEndTest {
                             () -> {
                                 MDC.put(CommonConstants.TRACE_ID, "worker-trace-id");
                                 MDC.put(CommonConstants.REQUEST_ID, "worker-request-id");
+                                MDC.put("legacy-marker", "worker-marker");
                             })
                     .get(5, TimeUnit.SECONDS);
             MDC.put(CommonConstants.TRACE_ID, "consumer-async-trace-id");
             MDC.put(CommonConstants.REQUEST_ID, "consumer-async-request-id");
+            MDC.put("legacy-marker", "caller-marker");
 
             CompletableFuture<String> rpcResponse = reference.get().echoAsync("hello");
+            assertEquals("consumer-async-trace-id", MDC.get(CommonConstants.TRACE_ID));
+            assertEquals("consumer-async-request-id", MDC.get(CommonConstants.REQUEST_ID));
+            assertEquals("caller-marker", MDC.get("legacy-marker"));
             completionWorker
                     .submit(() -> responseFuture.get().complete("echo:hello"))
                     .get(5, TimeUnit.SECONDS);
@@ -185,6 +217,7 @@ class RpcDubboFilterEndToEndTest {
             assertEquals("consumer-async-request-id", hook.requestId());
             assertEquals("consumer-async-trace-id", MDC.get(CommonConstants.TRACE_ID));
             assertEquals("consumer-async-request-id", MDC.get(CommonConstants.REQUEST_ID));
+            assertEquals("caller-marker", MDC.get("legacy-marker"));
             assertEquals(
                     "worker-trace-id",
                     completionWorker
@@ -195,6 +228,12 @@ class RpcDubboFilterEndToEndTest {
                     completionWorker
                             .submit(() -> MDC.get(CommonConstants.REQUEST_ID))
                             .get(5, TimeUnit.SECONDS));
+            assertEquals(
+                    "worker-marker",
+                    completionWorker
+                            .submit(() -> MDC.get("legacy-marker"))
+                            .get(5, TimeUnit.SECONDS));
+            return hook;
         } finally {
             MDC.clear();
             completionWorker.shutdownNow();
@@ -216,6 +255,7 @@ class RpcDubboFilterEndToEndTest {
         private final CountDownLatch providerCompletion = new CountDownLatch(1);
         private final AtomicReference<String> traceId = new AtomicReference<>();
         private final AtomicReference<String> requestId = new AtomicReference<>();
+        private final AtomicReference<String> marker = new AtomicReference<>();
 
         @Override
         public void after(RpcCallContext context, RpcCallResult result) {
@@ -223,6 +263,7 @@ class RpcDubboFilterEndToEndTest {
             if ("consumer-async-trace-id".equals(currentTraceId)) {
                 traceId.set(currentTraceId);
                 requestId.set(MDC.get(CommonConstants.REQUEST_ID));
+                marker.set(MDC.get("legacy-marker"));
                 providerCompletion.countDown();
             }
         }
@@ -237,6 +278,10 @@ class RpcDubboFilterEndToEndTest {
 
         String requestId() {
             return requestId.get();
+        }
+
+        String marker() {
+            return marker.get();
         }
     }
 
