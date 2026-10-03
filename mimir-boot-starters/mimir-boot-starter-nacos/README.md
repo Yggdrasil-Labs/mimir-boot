@@ -121,8 +121,45 @@ public class ConfigController {
 若业务属性也被完全删除且没有下层值，Environment 不再返回旧值；Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定时，缺失的字段仍可能保留原值。业务需要移除旧值时，须按字段类型选择处置方式：
 
 - 对 `String` 字段，如果业务语义和校验规则允许空字符串，可显式配置 `app.secret: ""`，重新绑定后的值为 `""`。空字符串不等于 `null`，此方式也不适用于所有字段类型。
-- 需要恢复 `null` 或字段默认值时，应由应用在刷新逻辑中显式重置字段，或通过重启应用等方式创建并重新注入新的 Bean 实例。删除配置或配置 `null` 不能作为通用的字段清空保证。
+- 需要恢复 `null` 或字段默认值时，可显式选择下述刷新作用域重建方式，或由应用按业务规则重置字段。删除配置或配置 `null` 不能作为普通 Bean 的通用字段清空保证。
 - 再次发布 `EnvironmentChangeEvent` 或调用 `ConfigurationPropertiesRebinder.rebind()` 只会对原 Bean 实例重新绑定，不属于创建新实例，也不会自动重置缺失字段。
+
+#### 显式重建配置 Bean
+
+需要删除属性后恢复初始化值的可变配置 Bean，可以在工厂方法上同时声明 `@Bean`、`@RefreshScope` 和 `@ConfigurationProperties`。业务通过注入的代理访问配置；完整刷新成功后，下次访问会创建并重新绑定目标实例：
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+public class AppConfiguration {
+    @Bean
+    @RefreshScope
+    @ConfigurationProperties("app")
+    public AppSettings appSettings() {
+        return new AppSettings();
+    }
+
+    public static class AppSettings {
+        private String secret;
+        private int timeout = 30;
+
+        public String getSecret() { return secret; }
+        public void setSecret(String secret) { this.secret = secret; }
+        public int getTimeout() { return timeout; }
+        public void setTimeout(int timeout) { this.timeout = timeout; }
+    }
+}
+```
+
+不要再通过 `@EnableConfigurationProperties(AppSettings.class)` 或组件扫描重复注册同一配置类型。此方式适用于可代理、可重新创建的 JavaBean；新目标重新执行初始化与绑定，业务需确认销毁、初始化及默认值符合预期。
+
+需要走 Spring Cloud 的完整刷新流程，例如 `ContextRefresher.refresh()`，其顺序是更新 Environment、发布 `EnvironmentChangeEvent`、使刷新作用域失效；单独发布环境事件不会重建目标。Nacos 的配置刷新事件会接入该流程，仍需在应用启用相应动态刷新。本地测试使用真实 ConfigData 刷新入口与可变属性源，不等同于 Nacos 服务端或生产验证。
+
+删除上层属性后有下层值时，新目标绑定下层值；完全缺失时恢复字段初始化值，例如 `secret=null`、`timeout=30`。解密失败会中断本次刷新，已创建目标及原解密覆盖层保留，原始属性源的新配置并不会整体回滚；修正配置后需再次完整刷新。业务不能缓存裸目标或字段快照来代替代理，否则仍可能使用旧值；重建也不保证擦除此前已被其他对象持有的明文。
 
 ### 3. 加密工具类
 
