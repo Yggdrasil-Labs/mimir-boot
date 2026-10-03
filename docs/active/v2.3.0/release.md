@@ -10,9 +10,13 @@ updated: 2026-10-03
 
 ## 运行时技术债后续修复（2026-10-03，未发布）
 
-后续已验证 Nacos 显式刷新作用域接入：使用 `@Bean @RefreshScope @ConfigurationProperties` 注册可重建 JavaBean，经真实 `ConfigDataContextRefresher.refresh()` 后，通过稳定代理访问新目标，缺失属性恢复初始化值或下层值；解密失败保留已有目标与解密覆盖层。此阶段交付消费方示例与契约测试，没有改变生产运行时或普通 Bean 的语义。Nacos 及依赖模块 `clean verify` 通过，293 项单元测试、10 项 IT，失败、错误、跳过均为 0；新 4 项 IT 包含普通 Bean 和单独环境事件控制。TD-039 保持部分修复，尚未验证真实服务端删除/推送与消费者迁移，详见[第二阶段验收](./runtime-debt-followup/plan.md#第二阶段本地验收2026-10-03未发布)。
+后续已验证 Nacos 显式刷新作用域接入：使用 `@Bean @RefreshScope @ConfigurationProperties` 注册可重建 JavaBean，实时 Environment 真正删键后，经真实 `ConfigDataContextRefresher.refresh()`，通过稳定代理访问新目标，缺失属性恢复初始化值或下层值；解密失败保留已有目标与解密覆盖层。此阶段交付消费方示例与契约测试，没有改变生产运行时或普通 Bean 的语义。Nacos 及依赖模块 `clean verify` 通过，293 项单元测试、10 项 IT，失败、错误、跳过均为 0；新 4 项 IT 包含普通 Bean 和单独环境事件控制。TD-039 保持部分修复，尚未验证真实服务端删除/推送与消费者迁移，详见[第二阶段验收](./runtime-debt-followup/plan.md#第二阶段本地验收2026-10-03未发布)。
 
 第三阶段补齐真实 Alibaba 事件桥接、Boot 文件 ConfigData 重载、构造注入消费者及初始化/销毁回归；Nacos 与依赖模块最新 `clean verify` 共 293 项单元测试、13 项 IT，失败、错误、跳过均为 0。此阶段未改运行时源码和 POM，也未连接 Nacos 服务端。观察到环境变更键集合可能漏报被旧解密覆盖层遮挡的密文删除项；最终 Environment 与完整刷新作用域正确，按键更新消费者仍需处置。TD-039 继续保持部分修复，详见[第三阶段验收](./runtime-debt-followup/plan.md#第三阶段本地验收2026-10-03未发布)。
+
+整体复查补充整源消失边界：空文件重载可能使新属性源消失，Cloud Context 4.1.6 会保留旧原始源，重建目标仍读旧值；上述恢复保证只适用于实时 Environment 已真正删键的场景。新增负向回归及说明，没有修改生产刷新器；真实 Nacos 空 DataId/删除和消费者迁移仍待验收，TD-039 不关闭。
+
+第四阶段同时修复 Java 门禁：按全部测试源码声明和实际 JUnit Jupiter 发现逐类核对 XML，防止登记前少报仍通过；拒绝已知动态源码追加，兼容 JaCoCo 百分比并保留最低基线。异名测试类、继承、嵌套、工厂及发现失败的聚焦反例通过；最新本地完整 quality 于 2026-10-03 18:21:02 +08:00 exit 0，所有必需检查 passed，1086 项单元测试及 53 项 IT 无失败、错误或跳过。记录与未验证边界见[第四阶段验收](./runtime-debt-followup/plan.md#第四阶段本地验收2026-10-03未发布)；不代表远程 CI、Sonar、正式发布或真实 Nacos 服务端验收。
 
 旧 extract-only RPC Bridge 的默认 `extractScope` 现在恢复提取期间净修改的 MDC 键，提取异常时也回滚并传播原异常；嵌套 scope 按 LIFO 在创建线程关闭。直接调用旧 `extract()` 和自定义 Span/ThreadLocal 生命周期仍需迁移，TD-013 保持兼容保留。
 

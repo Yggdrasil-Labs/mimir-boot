@@ -31,7 +31,7 @@ updated: 2026-10-03
 - 默认适配只恢复旧 extract 净修改的 MDC 键，保留后续无关键变更；同一 scope 在创建线程关闭，失败线程不消耗原线程关闭权。
 - 普通 String/Long/Integer 的默认和应用自定义映射保留；显式加密参数与结果使用配置中的密钥、context 和写入版本，原公开构造器保留。
 - 对已有历史 v1/v2 密文、旧 extract、旧 Hook 和普通可变配置 Bean 的剩余风险如实记录；不关闭尚未满足完整迁移条件的债务。
-- 验证摘要写入本计划或版本 release；临时日志在 `/tmp`，不新增 tools 工具、一次性脚本或修改质量门槛。
+- 验证摘要写入本计划或版本 release；临时日志在 `/tmp`。前三阶段不新增 tools 工具；第四阶段仅补长期 Java 门禁的必要支持，不新增专项脚本或降低质量门槛。
 
 ## 本地实施与验收（2026-10-03，未发布）
 
@@ -88,3 +88,24 @@ updated: 2026-10-03
 - 已观察到的剩余问题：删除密文时，环境差异计算仍可能读取旧解密覆盖层，实际事件键集合漏报 `app.secret`；随后监听器清理覆盖层，最终 Environment 与完整刷新后的目标正确。当前测试不把漏报固化为正确契约；此问题与按键选择性更新、普通 Bean 及缓存消费者的处置一起保留在 TD-039，尚未修复。
 - 外部边界：本地 Docker daemon 不可连接，当前没有可用 Nacos 测试服务；未验证服务端删除/推送、Nacos 网络 ConfigData 加载、实际业务应用迁移、远程 CI 或发布后行为。第三阶段的本地范围完成，TD-039 仍为部分修复。
 - 独立复核：未发现本阶段范围内的 P0-P3 问题，各原始维度均为 4；按公共 review policy 加权为 4.0，结论 PASS。`bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test` exit 0，79 个 Markdown 文件、0 issues；`git diff --check` exit 0。该结果仅适用于本地阶段交付，不解除上述剩余债务。
+
+## 第四阶段：整体复查问题修复
+
+整体复查发现三项 P1 和一项 P2，本阶段按用户 `fixall` 指令修复：
+
+1. 测试报告完整性：从有效选择器匹配的源码及本次测试类路径发现实际可运行测试类，逐类核对 XML 执行证据；不能仅检查已有报告或比较文件数量。辅助类、抽象类、继承和嵌套测试需按实际测试引擎处理。
+2. 构建模型：明确拒绝无法可靠建模的动态源码根，防止扫描时空目录误获覆盖率豁免；兼容 JaCoCo 百分比阈值并保留原最低门槛。
+3. Nacos：将删除保证收紧为实时 Environment 真正删键的场景；补齐整源消失仍保留旧源的负向回归，不承诺已修复 Spring Cloud 的整源删除行为。
+4. 验证与提交：运行聚焦反例、全仓 Java 门禁、文档检查和独立复核，按工程门禁、Nacos 契约和验收文档分阶段提交。
+
+`tools/` 修改仅承担跨模块、跨版本持续运行的 Java 构建模型与报告完整性门禁，复用入口为 Java 子检查、完整 quality 和 CI。源码声明解析及 JUnit 发现支持文件属于该长期门禁；专项反例与临时日志保留在临时目录，不新增需求专用脚本。TD-039 继续保持部分修复，真实 Nacos 服务端和消费方迁移仍待验收。
+
+### 第四阶段本地验收（2026-10-03，未发布）
+
+- 报告完整性 Red：旧核验对构建登记前已缺失的 `CommonStatusTest` XML 返回通过；Green：正常 Common 报告通过，登记前临时移出该 XML 后按测试类身份判定缺失，退出失败，随后恢复产物。日志入口 `/tmp/mimir-report-completeness-probe.mjs`，不保留专项脚本到仓库。
+- 源码清单：JDK 语法树一次读取全部测试源码，再按编译后顶层类名匹配选择器；补齐异名 `Benchmark.java` 内 `HiddenTest/HiddenIT`、多种顶层类型、package-info、空输入、语法错误拒绝与来源去重，4 项临时回归通过。25 项构建模型回归在最终代码上通过，包括动态源码拒绝、百分比/小数等价、越界/降低阈值拒绝、测试类目录及发现配置边界。日志 `/tmp/mimir-source-inventory-probe.log`、`/tmp/mimir-java-build-model-fix-probe.log`。
+- JUnit 清单：继承、meta 注解、Nested、Factory、ParameterizedTest 和异名类仅输出实际可运行顶层类，辅助类与抽象类排除；主动抛错的测试方法没有执行。候选字节码缺失与参数依赖缺失均明确失败。证据 `/tmp/mimir-junit-inventory-fixture/summary.json`。此清单不证明类内方法或动态实例全量执行；未知源码生成扩展仍需先补模型支持。
+- Nacos：新增整源消失回归通过；空文件经实际事件桥接刷新后仍保留旧原始源、密文及绑定值，显式清理夹具原始源和解密层后默认值恢复。README、台账和 release 已收紧删除保证。生产刷新器未修改，整源消失仍是 TD-039 的已知限制，不把测试中的显式移源作为业务清理方案。
+- 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-fixall-final-full/quality-report.json` 于 2026-10-03 18:12:08 至 18:21:02 +08:00 完成，exit 0、0 findings，所有必需检查 passed。15 个模块、1086 项单元测试和 53 项 IT，失败、错误、跳过均为 0；包含新增的第四项 `NacosRefreshEventIT`。隔离消费者、48 个制品及附属制品的临时签名和失败 fixture 均通过。首轮全局 `MAVEN_ARGS=-o` 阻止临时本地 deploy，不能计作 full 通过；去掉此参数后完整重跑，没有跳过检查。
+- 输入：基线 `7ed569d` 之上的本工作区修复，tree `worktree-821ac93b2a1d64ea5b34f3ad56652dca4eedbecd7aa88341bbd55e8a03d4ab60`，configurationHash `615ea8b2422692148de124a51836cf08888125950653287d62e639d552e58d86`；Java 17.0.19、Node 22.22.3。有效模型代码 SHA-256 `fe59389764c34a6f3ac4f27e517b94166f074a0d23e9777378ea7edd741216d5`，报告核验代码 `91db3f383e6d7a2fb4756861a8fd94521cfb19b4f284931d8ff17e11b0575b0f`，Nacos IT `537329cdba17ab176ae5229969d6ac5f1841609164105bf7d7276ac2a7a738fd`。随后只补验收文档，不改变验证过的代码或构建输入；最终文档单独复验。
+- 独立复核：最新工程门禁、支持文件、Nacos IT 与说明未发现已确认的 P0-P3 问题。四项整体复查问题在约定本地范围内完成处置；本轮未启用 Sonar，未验证远程 CI、真实 Nacos 服务端、实际应用迁移或发布后行为，剩余债务继续保留。
