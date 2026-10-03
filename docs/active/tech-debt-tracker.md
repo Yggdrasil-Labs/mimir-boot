@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # 技术债务追踪
@@ -28,8 +28,6 @@ updated: 2026-10-02
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | 覆盖层已清理，待处理缺失属性的 Bean 绑定 |
-| [TD-043](#td-043-jacoco-集成测试覆盖率) | JaCoCo 集成测试覆盖率 | Parent / 覆盖率报告 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | [治理计划 T8](./v2.3.0/docs-quality-governance/plan.md#t8-独立验收与实施交付记录)，待迁移后最终快照验收 |
-| [TD-044](#td-044-spotless-子模块门禁) | Spotless 子模块格式门禁 | Parent / 格式门禁 | 中 | 验收中 | YoungerYang-Y | 2026-09-16 | [治理计划 T8](./v2.3.0/docs-quality-governance/plan.md#t8-独立验收与实施交付记录)，待迁移后最终快照验收 |
 
 ## 债务明细
 
@@ -73,28 +71,6 @@ updated: 2026-10-02
 - **目标版本**：待排期。
 - **复查条件**：配置刷新、Bean 重新绑定或 Spring Cloud 基线调整时，复核完全删除且无下层值的旧明文残留。
 
-<a id="td-043-jacoco-集成测试覆盖率"></a>
-
-### TD-043：JaCoCo 集成测试覆盖率
-
-- **历史问题**：JaCoCo `report` 曾绑定到 `test`，早于 Failsafe 集成测试，导致 XML 遗漏后续覆盖数据；历史重生成 Web 报告时，指令覆盖率从 `75.45%` 升至 `95.85%`，该数值不作为当前验收证据。
-- **当前状态**：`mimir-boot-parent/pom.xml` 已将 `report` 和 `check` 绑定到 `verify`，读取同一 `jacoco.exec`，执行数据按追加方式写入。[治理计划 T3](./v2.3.0/docs-quality-governance/plan.md#t3-spotless覆盖率时序和报告完整性) 已记录仅由 IT 执行的类进入最终 XML 的本地专项验收；该记录不代表后续工具迁移或远程 CI 已验证。
-- **最新证据**：2026-10-02 在固定提交副本复验仅 IT 方法的最终 XML 和真实阈值边界，见[专项记录](./v2.3.0/docs-quality-governance/verification.md#2026-10-02-专项复核与局部修复)。T8 期望矩阵等剩余条件仍未完成，本项继续开放。
-- **处置与验收**：按[治理计划 T8](./v2.3.0/docs-quality-governance/plan.md#t8-独立验收与实施交付记录)完成工具迁移后的最终提交快照 full 和当前场景断言映射，复核最终 XML 含 Failsafe 覆盖数据以及报告收集/上传路径；不能仅凭普通 full 通过关闭本项，远程 CI 未核实时明确标记未验证。
-- **目标版本**：待排期；关闭条件关联当前文档质量治理 T8，不以 `v2.3.0` 文档目录承诺发布版本。
-- **复查条件**：T8 收尾或 JaCoCo、Failsafe、工程报告收集/上传流程调整时，核对本地专项证据与最终快照的一致性。
-
-<a id="td-044-spotless-子模块门禁"></a>
-
-### TD-044：Spotless 子模块格式门禁
-
-- **历史问题**：根 POM 的 Spotless 活动配置 `__NO_SOURCES__` 曾被子模块继承，覆盖 Parent 的源码范围，造成检查未跳过但未扫描 Java 源码。
-- **当前状态**：根 `pom.xml` 已设置该配置 `inherited=false`。[治理计划 T3](./v2.3.0/docs-quality-governance/plan.md#t3-spotless覆盖率时序和报告完整性) 已记录子模块 effective POM 源码范围及真实错误格式反例返回非零的本地专项验收；该记录不代表后续工具迁移或远程 CI 已验证。
-- **最新证据**：2026-10-02 在固定提交副本复验 11 个源码模块配置及真实格式反例，见[专项记录](./v2.3.0/docs-quality-governance/verification.md#2026-10-02-专项复核与局部修复)。T8 全场景与最终快照条件仍未全部完成，本项继续开放。
-- **处置与验收**：按[治理计划 T8](./v2.3.0/docs-quality-governance/plan.md#t8-独立验收与实施交付记录)完成工具迁移后的最终提交快照 full 和当前场景断言映射，以子模块源码范围与真实错误格式反例复核门禁；不能仅凭正常格式检查通过关闭本项，远程 CI 未核实时明确标记未验证。
-- **目标版本**：待排期；关闭条件关联当前文档质量治理 T8，不以 `v2.3.0` 文档目录承诺发布版本。
-- **复查条件**：T8 收尾或 Spotless、Maven 插件继承、格式检查入口调整时，核对源码扫描范围与真实负向结果。
-
 ## 历史说明
 
 TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 的有效部分已在 v2.2.1 完成并从活跃清单移除。TD-030 至 TD-035 的主体修复与终审补丁已分阶段提交，并通过 [v2.2.1 底座质量强化计划](../archive/v2.2.1/foundation-quality-hardening/plan.md) 的本地 Final Gate。DG-1 保留旧枚举 fallback 的误判风险；DG-3 接受写入 v2 后不能回退到 v1-only 二进制。
@@ -106,3 +82,5 @@ TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 �
 2026-10-02 关闭 TD-046，修复与本地验收记录见[测试清理顺序](./v2.3.0/release.md#测试清理顺序td-046已修复未发布)。编号不再复用。
 
 2026-10-02 关闭 TD-042，修复与本地验收记录见[分页参数校正边界](./v2.3.0/release.md#分页参数校正边界td-042已修复未发布)。编号不再复用。
+
+2026-10-03 关闭 TD-043、TD-044，历史问题、迁移后修复与本地验收记录见[覆盖率与格式门禁](./v2.3.0/release.md#覆盖率与格式门禁td-043td-044已修复未发布)及其 T8 证据。编号不再复用；未发布状态由 release 跟踪。

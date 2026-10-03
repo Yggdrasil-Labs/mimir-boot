@@ -127,6 +127,6 @@ graph TD
 - MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
 - 测试 Starter 不再通过类路径资源注入数据库副作用或固定应用名；Testcontainers 由接入方按场景显式引入。
 - 分页构造、setter 和默认 Jackson 绑定使用同一校正规则；直接读取和 PageQuery 转换得到已校正参数，偏移量计算保留溢出检查。特殊字段访问及历史序列化数据的校验边界见 [Common README](./mimir-boot-common/README.md#pagerequest-使用说明)。
-- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。Springdoc 的 Boot 3.3 兼容与迁移范围见 [BOM README](./mimir-boot-bom/README.md#springdoc-与-boot-兼容边界)。覆盖率报告时序与格式扫描范围已调整并有早期本地专项记录，工具迁移后的最终快照验收仍待闭环（TD-043、TD-044）。
+- Parent 负责构建门禁、BOM 负责版本管理；consumer 与发布签名验证使用隔离验证路径。Springdoc 的 Boot 3.3 兼容与迁移范围见 [BOM README](./mimir-boot-bom/README.md#springdoc-与-boot-兼容边界)。Java 门禁从有效构建模型核对模块、格式范围与最终覆盖率报告，成功产物绑定同次构建，支持范围与失败处理见[测试规程](./docs/engineering/testing.md)。
 
 已知问题的处置状态与验收标准统一维护在[技术债台账](./docs/active/tech-debt-tracker.md)。

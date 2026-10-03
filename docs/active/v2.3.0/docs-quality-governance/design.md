@@ -1,15 +1,15 @@
 ---
 id: docs-quality-governance-design
 version: v2.3.0
-status: draft
+status: verified
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # Agent 文档治理与本地质量门禁 — 技术设计
 
-> 阅读边界：pre-push 契约已同步为提交快照上的离线 quick；CI 与发布仍执行 full。本设计定义目标契约，不代表所有验收已完成，剩余差距见[验收记录](./verification.md)。当前操作入口与触发条件以[测试与质量指南](../../../engineering/testing.md)及其链接的实现为准。
+> 阅读边界：pre-push 契约已同步为提交快照上的离线 quick；CI 与发布仍执行 full。本设计的约定本地验收已完成，证据、人工替代及外部未验证范围见[验收记录](./verification.md#2026-10-03-t8-收尾验收)。当前操作入口与支持配置边界以[测试与质量指南](../../../engineering/testing.md)及其链接的实现为准。
 
 ## Context
 
@@ -29,10 +29,10 @@ updated: 2026-10-02
 ## Non-Goal
 
 - 不改变业务公共 API、配置默认语义、依赖版本基线或发布仓库。
-- 不提高覆盖率百分比，不新增独立单元测试覆盖率指标，不让首版按改动范围省略推送全量验证。
+- 不降低覆盖率门槛，不新增独立单元测试覆盖率指标；推送采用提交快照 quick，完整行为验收由 CI、发布或显式本地 full 承担。
 - 不修改远端分支保护，不认为本地 hook 无法绕过；不根据 tag 自动归档版本，v2.2.1 的归档由独立收尾动作完成。
 - 不建设文档网站、不生成空目录、不重写历史事实，不修改个人技能库的固定路径规则。
-- 文档目录迁移及缺少专项证据的场景仍按计划跟踪；当前可执行入口见 Testing Strategy，命令存在不代表全部验收完成。
+- 当前可执行入口见 Testing Strategy；本地验证结果按验收记录的实际范围解释，不能由命令存在推断远端 CI 或制品发布通过。
 
 ## Architecture
 
