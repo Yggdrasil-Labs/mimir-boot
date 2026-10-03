@@ -50,3 +50,23 @@ updated: 2026-10-03
 验收对象为基线 `dbb6a23` 之上的本工作区 Java、POM 和测试变更；Java 17.0.19、MyBatis 3.5.19、MyBatis-Plus 3.5.17、H2 2.2.224。MyBatis POM SHA-256 为 `6e6f03fb849828df9a772f9be965a6f55ab4f3fbd67656089d6b41de2f6990c7`，新 RPC 兼容 scope 为 `fd3a45b2977161c3539b8b5d0c1fa03728728460a6fb31b3ccbbe1104201205c`。后续仅补验收文档，不改变上述构建输入。
 
 以上为本地模块验收，不代表全仓库 full、远程 CI、制品发布或发布后消费者验证。升级时还需检查是否有应用依赖旧版意外的全局加密注册；字段/记录 AAD 与旧接口迁移不能据此宣告完成。
+
+## 第二阶段：Nacos 显式重建接入
+
+用户要求继续实施并分阶段提交后，前三项成果分别提交为 `35f8979`（RPC）、`d0f961d`（MyBatis）、`d45f847`（验收文档）。第二阶段限定为现有 Spring Cloud 显式刷新作用域的消费方接入契约，不自动重建普通 Bean，不新增通用字段重置机制。
+
+1. 使用实际 `ConfigDataContextRefresher.refresh()` 和自动配置先复现普通 Bean 删除属性后的旧值残留，再在工厂方法显式增加 `@RefreshScope`；不直接调用 `refreshAll()` 代替真实刷新流程。
+2. 验证缺失属性恢复 null/初始化默认值，重复删除与重新加密、下层回退、稳定代理与目标重建，以及失败刷新保留已有目标；单独发布环境事件不能承诺刷新作用域重建。
+3. 将可运行的 `@Bean`、`@RefreshScope`、`@ConfigurationProperties` 示例及生命周期限制写入 Nacos README；完成模块 `clean verify`、独立复核和文档检查后分两次提交模块测试/说明与验收记录。
+
+计划提交：`test(nacos): 验证显式刷新作用域的配置删除语义`，仅 Nacos 模块 IT 与 README；`docs(debt): 记录配置重建接入与剩余迁移边界`，仅本计划、活跃索引、债务台账和 release。TD-039 对未接入刷新作用域的普通 Bean 仍保持部分修复；此阶段不以测试已存在机制为由关闭全部债务。TD-016 的密文协议与 TD-023 的公共旧 API 迁移仍需独立设计与迁移约定。
+
+### 第二阶段本地验收（2026-10-03，未发布）
+
+- Red：普通工厂 Bean 经真实 `ConfigDataContextRefresher.refresh()` 后，Environment 已无 `app.secret`，Bean 仍为 `old-secret`；1 项测试、1 failure、0 errors。日志 `/tmp/mimir-nacos-scope-red.log`。
+- Green：仅在消费方工厂方法显式增加 `@RefreshScope` 后，原回归恢复 null、数字初始值和空集合；随后新增目标身份、普通 Bean 控制、下层回退、恢复加密、仅删除业务属性、失败后保留旧目标与再次刷新、单独环境事件对照，最终 4 项新 IT 通过。
+- 完整验收：`./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify` 于 2026-10-03 11:23:27 +08:00 exit 0，5 个 reactor 模块均 SUCCESS；293 项单元测试、10 项 IT，失败、错误、跳过均为 0，Spotless、Enforcer、适用 JaCoCo 检查通过。日志 `/tmp/mimir-nacos-scope-verify.log`。
+- 状态：基线 `d45f847` 之上的新 IT 与 README；IT SHA-256 为 `ab6b8b57468ed608de8eca22284390454a4b3747a7ad1db9750381fef7c10d6e`。使用 Java 17.0.19、Spring Cloud Context 4.1.6、Alibaba 2023.0.3.4；运行时源码与 POM 未改。
+- 边界：测试使用真实 Spring Cloud 刷新实现及本地可变属性源，没有连接 Nacos 服务端；不能替代远程 CI、真实服务端删除/推送或生产消费方验证。业务需选择可重建 JavaBean 并持续访问注入代理，裸目标、历史字段快照及普通 Bean 的旧值不会由该方式统一清除。
+
+两阶段确定范围均已完成本地实施与验收；TD-013、TD-016、TD-023、TD-039 不据此整体关闭。后续协议或旧接口迁移应先明确身份、迁移周期和兼容验收，再按独立方案实施。
