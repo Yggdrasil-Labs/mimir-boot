@@ -9,7 +9,7 @@ import { DOMImplementation, DOMParser, XMLSerializer } from '@xmldom/xmldom';
 const execFileAsync = promisify(execFile);
 const JAVA_IDENTIFIER = /^[\p{ID_Start}_$][\p{ID_Continue}$]*$/u;
 
-/** 返回顶层 binaryName 及声明来源；范围选择由有效构建模型负责。 */
+/** 返回顶层及命名成员类型的 binaryName 与声明来源；范围选择由有效构建模型负责。 */
 export async function inventoryJavaSources(root, files) {
     if (!path.isAbsolute(root) || files.some((file) => !path.isAbsolute(file))) {
         throw new Error('源码清单的执行根目录和源码文件必须是绝对路径');

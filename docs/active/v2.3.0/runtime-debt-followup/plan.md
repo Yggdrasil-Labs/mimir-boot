@@ -4,7 +4,7 @@ version: v2.3.0
 status: completed
 owner: YoungerYang-Y
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-08
 ---
 
 # 运行时技术债后续修复
@@ -109,3 +109,21 @@ updated: 2026-10-03
 - 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-fixall-final-full/quality-report.json` 于 2026-10-03 18:12:08 至 18:21:02 +08:00 完成，exit 0、0 findings，所有必需检查 passed。15 个模块、1086 项单元测试和 53 项 IT，失败、错误、跳过均为 0；包含新增的第四项 `NacosRefreshEventIT`。隔离消费者、48 个制品及附属制品的临时签名和失败 fixture 均通过。首轮全局 `MAVEN_ARGS=-o` 阻止临时本地 deploy，不能计作 full 通过；去掉此参数后完整重跑，没有跳过检查。
 - 输入：基线 `7ed569d` 之上的本工作区修复，tree `worktree-821ac93b2a1d64ea5b34f3ad56652dca4eedbecd7aa88341bbd55e8a03d4ab60`，configurationHash `615ea8b2422692148de124a51836cf08888125950653287d62e639d552e58d86`；Java 17.0.19、Node 22.22.3。有效模型代码 SHA-256 `fe59389764c34a6f3ac4f27e517b94166f074a0d23e9777378ea7edd741216d5`，报告核验代码 `91db3f383e6d7a2fb4756861a8fd94521cfb19b4f284931d8ff17e11b0575b0f`，Nacos IT `537329cdba17ab176ae5229969d6ac5f1841609164105bf7d7276ac2a7a738fd`。随后只补验收文档，不改变验证过的代码或构建输入；最终文档单独复验。
 - 独立复核：最新工程门禁、支持文件、Nacos IT 与说明未发现已确认的 P0-P3 问题。四项整体复查问题在约定本地范围内完成处置；本轮未启用 Sonar，未验证远程 CI、真实 Nacos 服务端、实际应用迁移或发布后行为，剩余债务继续保留。
+
+## 第五阶段：测试选择器漏检修复
+
+2026-10-08 按用户指令修复重新 review 发现的 P1：合法裸类名、全限定类名及省略扩展名的测试规则被误判为空，命名成员类型未进入源码清单，导致显式 skip 和缺 XML 未阻断对应测试阶段。
+
+`tools/` 修改继续承担跨模块、跨版本的 Java 构建模型和报告完整性门禁，复用入口为 Java 子检查与 quality full。新增 `java-build-model.test.mjs` 是该通用模型的长期契约回归，显式维护入口见[工程工具](../../../../tools/engineering/README.md#检查清单)；临时项目与报告运行后清理。实际 Maven 和版本相关插件对照探针仅放在 `/tmp`，不进入工具目录。
+
+实施结果：测试选择器与文档/格式路径处理分离，按实际插件扫描层归一化类名、扩展名与 Ant 路径段；空配置回退默认规则，无法可靠建模的写法明确拒绝。JDK 源码清单递归登记顶层及命名成员类型的二进制名称，不纳入局部和匿名类。原报告核验继续逐类发现和检查执行证据，不因候选未执行而缩小期望。
+
+### 第五阶段本地验收（2026-10-08，未发布）
+
+- Red/Green：旧实现的类名选择、成员清单、排除规则及缺 XML 回归失败；中间实现另复现点转斜杠后的空段漏选。最终通过受管入口 `bash scripts/lib/engineering-tool.sh src/quality/java-build-model.test.mjs`，8 组契约回归全部通过，覆盖 Surefire/Failsafe、skip、缺报告、默认规则、成员类型及 Ant 路径边界。日志 `/tmp/mimir-p1-model-red.log`、`/tmp/mimir-p1-model-path-red.log`、`/tmp/mimir-p1-model-final.log`。
+- 实际扫描层对照：Surefire/Failsafe 3.6.0 的 63 个模式、52 个类，共 126 项目标对照；62 个已接受模式的 124 项 includes/excludes 比较均一致，含父包后缀、Unicode、成员类、扩展名及点转空段。含 `../` 的一条模式明确拒绝，未进入两项比较。结果 `/tmp/p1-model-matrix/{actual,model,diffs}.json`；该证据只覆盖扫描层。
+- 实际 Maven：7 个临时项目场景均执行测试、产出 XML 并正常通过核验，涵盖裸类名、FQN、省略扩展名、静态成员 `.java`/无扩展写法及 Failsafe。移走 XML 后全部失败；同时选中普通类与静态成员类时，保留普通类 XML、仅移走成员类 XML，核验准确报告 `example.Outer$InnerTest` 缺失。证据 `/tmp/mimir-p1-maven/summary.json` 和对应 Maven 日志。
+- 证据修订：此前 `.class` 的直接插件匹配与 Jupiter 发现不能推导完整 Maven 会执行。3.6.0 Jupiter provider 对原始规则另做二次过滤，`.class` includes 在实际 Maven 反例中退出成功但执行 0 测试。新模型仍保留候选，报告核验拒绝缺 XML，不静默豁免；负向证据 `/tmp/mimir-p1-maven-class/summary.json`。其他路径与空白项也可能受 provider 二次过滤影响；当前模型是保守候选范围，不声称精确复制 provider 的执行过滤，边界已同步到工具说明。
+- 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-p1-full-final/quality-report.json` 于 20:44:04 至 20:50:51 +08:00 完成，exit 0、0 findings，全部必需检查 passed。15 个模块、1086 项单元测试和 53 项 IT，失败、错误、跳过均为 0；包括报告、覆盖率、发布契约、隔离消费者及临时签名检查。此前受限沙箱首轮因 Maven 缓存只读等限制失败，不计作通过；随后以验收所需权限完整重跑。
+- 输入：HEAD `96c75b6` 上的工作区修复；full tree `worktree-f62caf8c39d9305eb45f0185a2d61bd1d505fcbc21b352fe485820a6e899e931`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`。模型代码 SHA-256 `9b8d447dcf1383b5dd31f4a753a25b1a467c70167889d0edc7b30743921a3b7f`、源码清单代码 `715d1b123a2c4571e5eb250f46fb0b8eb560b0a1e52ea465fd68354c6275b2aa`；Java 17.0.19、Node 22.22.3。full 后仅补充工具边界说明及本验收记录，文档单独复验；未改变验证过的代码和 Maven 配置。
+- 验收范围：本轮仅修复 P1 并完成本地验证，未启用 Sonar、验证远端 CI、真实 Nacos 服务或发布后消费者。TD-039 与其他已登记运行时债务维持原状态。

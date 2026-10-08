@@ -291,6 +291,59 @@ function sourceMatch(file, includes, excludes) {
         && !matchesAny(javaName, excludes.map((pattern) => pattern.replace(/\.class$/u, '.java')));
 }
 
+function testPatterns(node, label, defaults) {
+    const children = Array.from(node?.childNodes || []).filter((child) => child.nodeType === 1);
+    const inputs = children.length ? children.map(value) : value(node) ? [value(node)] : [];
+    const selectors = inputs.flatMap((input) => resolved(input, label).split(',')).map((input) => {
+        const pattern = input.trim();
+        // 不能沿用文档路径的修正规则：插件不会删除 ./、转换反斜杠或把目录补成 **。
+        if (!pattern || /[%#![\]{}\\]/u.test(pattern) || path.posix.isAbsolute(pattern)
+            || pattern.endsWith('/') || pattern.includes('//')
+            || pattern.split('/').some((part) => part === '.' || part === '..')) {
+            throw new Error(`${label} 包含不支持的测试选择器：${input}`);
+        }
+        return pattern;
+    });
+    // 插件对未配置及空配置均使用默认 includes/excludes，不能把空列表当作免测。
+    return selectors.length ? selectors : [...defaults];
+}
+
+function testPatternMatcher(input) {
+    // 对齐 Surefire/Failsafe ResolvedTest 的类名归一化，匹配对象是二进制 .class 路径。
+    let pattern = input.replace(/\.java$/u, '.class');
+    if (pattern.endsWith('.class')) {
+        pattern = `${pattern.slice(0, -6).replaceAll('.', '/')}.class`;
+    } else if (!pattern.includes('/')) {
+        if (pattern.endsWith('.*')) {
+            const prefix = pattern.slice(0, -2);
+            if (prefix.includes('.')) pattern = `${prefix.replaceAll('.', '/')}.*`;
+        } else {
+            pattern = pattern.replaceAll('.', '/');
+        }
+    }
+    if (!pattern.startsWith('**/')) pattern = `**/${pattern}`;
+    const compile = (glob) => {
+        // 类名点号转换也可能产生空段；Ant 分词时会忽略这些段。
+        const segments = glob.split('/').filter(Boolean);
+        let source = '^';
+        for (let index = 0; index < segments.length; index += 1) {
+            const segment = segments[index];
+            if (segment === '**') {
+                source += index === segments.length - 1 ? '.*' : '(?:[^/]+/)*';
+            } else {
+                source += segment.replace(/[.+^${}()|[\]\\]/gu, '\\$&')
+                    .replace(/\*/gu, '[^/]*').replace(/\?/gu, '[^/]');
+                if (index < segments.length - 1) source += '/';
+            }
+        }
+        // Ant 按 Java char 匹配 ?，不使用 Unicode code point 模式。
+        return new RegExp(`${source}$`);
+    };
+    const matchers = [compile(pattern)];
+    if (!pattern.endsWith('.class') && !pattern.endsWith('.*')) matchers.push(compile(`${pattern}.class`));
+    return (file) => matchers.some((matcher) => matcher.test(file));
+}
+
 async function testExpectation(root, module, kind, declarations, buildDirectory) {
     const node = plugin(module.model, kind);
     const goal = kind === 'unit' ? 'test' : 'integration-test';
@@ -316,9 +369,14 @@ async function testExpectation(root, module, kind, declarations, buildDirectory)
         if (systemProperties.some((name) => name?.startsWith('junit.'))) {
             throw new Error(`${module.path} ${kind} 尚不支持 junit.* JVM 系统属性，无法可靠生成测试期望`);
         }
-        const includes = patterns(get('includes'), `${module.path} ${kind} includes`, DEFAULT_TESTS[kind]);
-        const excludes = patterns(get('excludes'), `${module.path} ${kind} excludes`, ['**/*$*']);
-        const selected = declarations.filter(({ binaryName }) => sourceMatch(`${binaryName.replaceAll('.', '/')}.java`, includes, excludes));
+        const includes = testPatterns(get('includes'), `${module.path} ${kind} includes`, DEFAULT_TESTS[kind]);
+        const excludes = testPatterns(get('excludes'), `${module.path} ${kind} excludes`, ['**/*$*']);
+        const included = includes.map(testPatternMatcher);
+        const excluded = excludes.map(testPatternMatcher);
+        const selected = declarations.filter(({ binaryName }) => {
+            const file = `${binaryName.replaceAll('.', '/')}.class`;
+            return included.some((match) => match(file)) && !excluded.some((match) => match(file));
+        });
         const skipped = flag(get, 'skip', module.props, 'maven.test.skip')
             || flag(get, 'skipTests', module.props)
             || kind === 'integration' && flag(get, 'skipITs', module.props);

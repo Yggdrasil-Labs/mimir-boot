@@ -4,7 +4,7 @@ version: v2.3.0
 status: verified
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-10-03
+updated: 2026-10-08
 ---
 
 # Agent 文档治理与本地质量门禁 — 技术设计
@@ -116,6 +116,7 @@ flowchart TD
 - 指令/分支门槛仍为 0.60/0.50，BUNDLE 级；沿用既有 entity/dto/vo/Application 排除并在期望报告矩阵登记。纯 POM 或无可测源码模块可以豁免，必须带理由。
 - 核验接口：`bash scripts/lib/engineering-tool.sh src/quality/verify-java-reports.mjs --root <execution-root> --expected <expected-report-json> --report <result-json>`，实现位于 `tools/engineering/src/quality/verify-java-reports.mjs`。检测 Surefire/Failsafe XML 的 errors/failures/skipped，以及每个应产出报告模块的报告存在性、内容和当前运行归属。
 - 期望报告矩阵来源于本次有效 reactor、源码/测试清单及 effective POM 的包括/排除规则，保存在本次运行目录；不能从已经生成的报告反推应有报告。无某类测试的模块明确豁免；真实测试被 skip 不能豁免。
+- 测试选择独立对齐 Surefire/Failsafe 的类名、扩展名与 Ant 路径语义，不使用文档或格式检查的路径修正规则。源码清单包含顶层及命名成员类型的二进制名称；显式选中的静态成员测试类必须有自身报告证据。空规则回退插件默认值，无法可靠建模的写法明确拒绝，不能静默转成无测试豁免。源码中的局部、匿名类型不作为独立候选；JUnit 嵌套容器按实际引擎发现聚合。
 - 新鲜度：每次执行生成唯一 runId 与 build-manifest.json，记录 executionRoot、开始时间、expectedReports 和 expectedExec。Maven 启动前仅清理这些声明的旧报告/exec 路径并确认全部不存在，清理失败即 error；不删除源码。然后唯一调用 clean verify。仅在 Maven 成功、clean 阶段成功且应有产物重新出现时，计算产物 SHA-256 写入本次 manifest；核验器逐项比对路径、摘要及 runId，缺 manifest、清理失败、构建中断或外来旧报告均不能通过。时间戳只辅助诊断，不作为唯一归属依据。
 - Maven 失败时按阶段记录失败和依赖未执行；允许解析已产生报告用于定位，不会将其提升为通过。成功但缺少预期报告仍返回失败。
 - Sonar 不是同一次 Maven invocation：仅当 `RUN_SONAR=true` 且 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 由环境提供时，在 `clean verify` 成功并完成报告核验后独立执行 `./mvnw -B -Pci sonar:sonar`，并通过 `-Dsonar.qualitygate.wait=true` 等待 Quality Gate。缺少任一变量为配置错误；不记录凭据值。
