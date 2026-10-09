@@ -19,6 +19,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
+import javax.crypto.AEADBadTagException;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -200,6 +202,10 @@ class NacosLiveRefreshIT {
                 await(
                         () -> lifecycle.failures.size() > beforeFailure.failures(),
                         "未观察到真实推送完成的解密失败");
+                assertCurrentDecryptionFailure(
+                        lifecycle,
+                        beforeFailure.failures(),
+                        Set.of("live.required.secret", "live.fallback.secret"));
                 assertFailedRefreshKeepsSourcesAndTargets(context, lifecycle, beforeFailure);
                 assertSecrets(context, consumer, "stable-secret");
                 assertEquals("7", context.getEnvironment().getProperty("live.snapshot-version"));
@@ -381,6 +387,34 @@ class NacosLiveRefreshIT {
                 lifecycle.changedKeys.size(),
                 lifecycle.completions.size(),
                 lifecycle.failures.size());
+    }
+
+    static void assertCurrentDecryptionFailure(
+            Lifecycle lifecycle, int previousFailures, Set<String> expectedKeys) {
+        List<Throwable> failures = List.copyOf(lifecycle.failures);
+        assertTrue(failures.size() > previousFailures, "本轮未观察到解密失败");
+        for (Throwable failure : failures.subList(previousFailures, failures.size())) {
+            assertTrue(
+                    isExpectedAuthenticationFailure(failure, expectedKeys),
+                    "本轮异常不是预期业务键的 AES-GCM 认证失败");
+        }
+    }
+
+    private static boolean isExpectedAuthenticationFailure(
+            Throwable failure, Set<String> expectedKeys) {
+        boolean expectedProperty = false;
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            String message = cause.getMessage();
+            if (cause instanceof IllegalStateException
+                    && expectedKeys.stream()
+                            .anyMatch(key -> ("无法解密 Nacos 配置项: " + key).equals(message))) {
+                expectedProperty = true;
+            }
+            if (expectedProperty && cause instanceof AEADBadTagException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void assertFailedRefreshKeepsSourcesAndTargets(
