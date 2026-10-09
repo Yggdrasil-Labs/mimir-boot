@@ -8,14 +8,19 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
@@ -158,7 +163,7 @@ class NacosLiveRefreshIT {
                         null,
                         () -> {
                             assertTrue(publisher.removeConfig(dataId, group), "删除本轮独立 DataId 失败");
-                            assertNull(publisher.getConfig(dataId, group, 5000), "本轮 DataId 未删除");
+                            awaitRemoteContent(publisher, dataId, group, null, "本轮 DataId 未删除");
                         },
                         () -> assertInitialValues(context, consumer));
                 assertChangedKeys(
@@ -228,7 +233,7 @@ class NacosLiveRefreshIT {
         } finally {
             try {
                 assertTrue(publisher.removeConfig(dataId, group), "清理本轮独立配置失败");
-                assertNull(publisher.getConfig(dataId, group, 5000), "本轮独立配置仍存在");
+                awaitRemoteContent(publisher, dataId, group, null, "本轮独立配置仍存在");
             } finally {
                 try {
                     if (consumerService != null) {
@@ -298,7 +303,50 @@ class NacosLiveRefreshIT {
     private static void publish(
             ConfigService publisher, String dataId, String group, String content) throws Exception {
         assertTrue(publisher.publishConfig(dataId, group, content, "properties"), "发布本轮独立配置失败");
-        assertTrue(content.equals(publisher.getConfig(dataId, group, 5000)), "服务端内容与本轮推送不一致");
+        awaitRemoteContent(publisher, dataId, group, content, "服务端内容与本轮推送不一致");
+    }
+
+    private static void awaitRemoteContent(
+            ConfigService service, String dataId, String group, String expected, String failure)
+            throws Exception {
+        // 发布或删除成功不代表服务端异步缓存已可见，只轮询读回，不重发写入。
+        long deadline = System.nanoTime() + REFRESH_TIMEOUT.toNanos();
+        boolean matched = false;
+        long remaining;
+        String content = null;
+        while ((remaining = deadline - System.nanoTime()) > 0) {
+            long timeout = Math.min(5000, Math.max(1, TimeUnit.NANOSECONDS.toMillis(remaining)));
+            content = service.getConfig(dataId, group, timeout);
+            if (Objects.equals(expected, content)) {
+                matched = System.nanoTime() < deadline;
+                break;
+            }
+            Thread.sleep(50);
+        }
+        assertTrue(
+                matched,
+                failure
+                        + "，预期摘要="
+                        + contentFingerprint(expected)
+                        + "，末次读回摘要="
+                        + contentFingerprint(content));
+    }
+
+    private static String contentFingerprint(String content) throws Exception {
+        if (content == null) {
+            return "null";
+        }
+        String hash =
+                HexFormat.of()
+                        .formatHex(
+                                MessageDigest.getInstance("SHA-256")
+                                        .digest(content.getBytes(StandardCharsets.UTF_8)));
+        String version =
+                content.lines()
+                        .filter(line -> line.startsWith("live.snapshot-version="))
+                        .findFirst()
+                        .orElse("无版本标记");
+        return "长度=" + content.length() + ", SHA-256=" + hash + ", " + version;
     }
 
     private static ConfigurableApplicationContext start(
