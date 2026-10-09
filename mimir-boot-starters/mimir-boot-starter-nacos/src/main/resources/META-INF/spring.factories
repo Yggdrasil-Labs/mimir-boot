@@ -1,2 +1,8 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
 com.yggdrasil.labs.nacos.config.NacosEncryptEnvironmentPostProcessor
+
+org.springframework.boot.context.config.ConfigDataLocationResolver=\
+com.yggdrasil.labs.nacos.configdata.ManagedNacosConfigDataLocationResolver
+
+org.springframework.boot.context.config.ConfigDataLoader=\
+com.yggdrasil.labs.nacos.configdata.ManagedNacosConfigDataLoader

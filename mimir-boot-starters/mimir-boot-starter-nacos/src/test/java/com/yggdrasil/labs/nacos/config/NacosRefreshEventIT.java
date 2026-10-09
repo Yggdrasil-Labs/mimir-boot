@@ -70,6 +70,7 @@ class NacosRefreshEventIT {
             assertSame(proxy, context.getBean(Settings.class));
             assertTrue(lifecycle.changedKeys.get(0).contains("td039.snapshot-version"));
             assertTrue(lifecycle.changedKeys.get(0).contains("app.timeout"));
+            assertTrue(lifecycle.changedKeys.get(0).contains("app.secret"));
 
             writeSnapshot(3, encryptedProperties("restored-secret", key));
             refresh(context);
@@ -191,6 +192,57 @@ class NacosRefreshEventIT {
         }
     }
 
+    @Test
+    void shouldRestoreSourceReferencesWhenMergedApplicationSourceCannotDecrypt()
+            throws IOException {
+        String oldKey = ConfigCryptoUtils.generateKey();
+        writeSnapshot(1, encryptedProperties("old-secret", oldKey));
+        try (ConfigurableApplicationContext context = start(Map.of())) {
+            Consumer consumer = context.getBean(Consumer.class);
+            Lifecycle lifecycle = context.getBean(Lifecycle.class);
+            assertEquals("old-secret", consumer.secret());
+            context.getEnvironment()
+                    .getPropertySources()
+                    .addLast(
+                            new org.springframework.core.env.MapPropertySource(
+                                    "application-extension",
+                                    Map.of(
+                                            "app.extension-secret",
+                                            "ENC("
+                                                    + ConfigCryptoUtils.encrypt("extension", oldKey)
+                                                    + ")")));
+            context.getBean(NacosEncryptAutoConfiguration.class)
+                    .processDecrypt(context.getEnvironment());
+            List<PropertySource<?>> previous =
+                    context.getEnvironment().getPropertySources().stream().toList();
+            String nextKey = ConfigCryptoUtils.generateKey();
+            writeSnapshot(2, encryptedProperties("next-secret", nextKey));
+
+            assertThrows(IllegalStateException.class, () -> refresh(context));
+
+            List<PropertySource<?>> current =
+                    context.getEnvironment().getPropertySources().stream().toList();
+            assertEquals(previous.size(), current.size());
+            for (int i = 0; i < previous.size(); i++) {
+                assertSame(previous.get(i), current.get(i));
+            }
+            assertEquals("1", context.getEnvironment().getProperty("td039.snapshot-version"));
+            assertEquals("extension", context.getEnvironment().getProperty("app.extension-secret"));
+            assertEquals("old-secret", consumer.secret());
+            assertEquals(0, lifecycle.destroyed);
+            assertEquals(1, lifecycle.initialized);
+            assertTrue(lifecycle.changedKeys.isEmpty());
+
+            context.getEnvironment().getPropertySources().remove("application-extension");
+            refresh(context);
+
+            assertEquals("next-secret", consumer.secret());
+            assertNull(context.getEnvironment().getProperty("app.extension-secret"));
+            assertEquals(1, lifecycle.destroyed);
+            assertEquals(2, lifecycle.initialized);
+        }
+    }
+
     private Map<String, String> encryptedProperties(String value, String key) {
         return Map.of(
                 NacosEncryptProperties.PREFIX + ".key",
@@ -230,6 +282,7 @@ class NacosRefreshEventIT {
     @Configuration(proxyBeanMethods = false)
     @ImportAutoConfiguration({
         NacosEncryptAutoConfiguration.class,
+        NacosRefreshAutoConfiguration.class,
         RefreshAutoConfiguration.class,
         ConfigurationPropertiesRebinderAutoConfiguration.class
     })

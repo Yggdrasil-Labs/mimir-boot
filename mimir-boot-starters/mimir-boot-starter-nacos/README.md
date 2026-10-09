@@ -118,7 +118,7 @@ public class ConfigController {
 
 刷新时如果 `mimir.boot.nacos.encrypt` 和兼容的 `mimir.nacos.encrypt` 前缀均不再绑定，监听器会移除旧的 `decryptedProperties:*` 解密覆盖层，原始属性源中的明文或下层配置随后生效；重新配置加密前缀后，会继续处理密文。
 
-以下单键删除、下层回退与默认值恢复，以同名原始属性源仍被重新加载、业务键实际从运行中的 Environment 删除为前提；整个属性源消失不在此保证内，具体限制见本节末尾。
+默认 ConfigData 模式中，Starter 委托原 Nacos resolver/loader 处理 `spring.config.import=nacos:...`，为成功加载的标准枚举属性源记录归属；成功空配置保留不提供配置值的标记。在原 Cloud 刷新链计算差异前，同步这些 Nacos 源并重建解密层。因此单键删除、语义空配置、DataId 删除和 YAML 文档减少不会继续使用这些源中的旧配置，缺失值可回退到下层源。原 import 格式、group、preference、refreshEnabled 等参数继续生效。
 
 满足此前提后，若业务属性被完全删除且没有下层值，Environment 不再返回旧值；Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定时，缺失的字段仍可能保留原值。业务需要移除旧值时，须按字段类型选择处置方式：
 
@@ -161,7 +161,7 @@ public class AppConfiguration {
 
 需要走 Spring Cloud 的完整刷新流程，例如 `ContextRefresher.refresh()`，其顺序是更新 Environment、发布 `EnvironmentChangeEvent`、使刷新作用域失效；单独发布环境事件不会重建目标。Nacos 的配置刷新事件会接入该流程，仍需在应用启用相应动态刷新。除可变属性源测试外，`NacosRefreshEventIT` 通过实际 Alibaba 事件监听器与 Boot 文件 ConfigData 重载验证该流程；测试未连接 Nacos 服务端，不能替代其网络加载、删除和推送验收。
 
-在同名原始属性源重载后，上层属性已从实时 Environment 删除且有下层值时，新目标绑定下层值；实时 Environment 中完全缺失时恢复字段初始化值，例如 `secret=null`、`timeout=30`。解密失败会中断本次刷新，已创建目标及原解密覆盖层保留，原始属性源的新配置并不会整体回滚；修正配置后需再次完整刷新。业务不能缓存裸目标或字段快照来代替代理，否则仍可能使用旧值；重建也不保证擦除此前已被其他对象持有的明文。
+上层属性从实时 Environment 删除且有下层值时，新目标绑定下层值；完全缺失时恢复字段初始化值，例如 `secret=null`、`timeout=30`。默认刷新器在发布环境事件前遇到传播出的加载或解密异常时，恢复原属性源引用和顺序，保留已创建目标；修正后需再次完整刷新。此恢复不回滚外部提前修改的可变 Map 或 SDK 内部快照，不提供任意并发 Environment 读写的事务隔离。业务不能缓存裸目标或字段快照来代替代理，否则仍可能使用旧值；重建也不保证擦除其他对象持有的历史明文。
 
 构造注入的业务服务应保存代理，每次使用时读取当前值，例如：
 
@@ -182,9 +182,21 @@ public class AppService {
 
 成功刷新会销毁已创建的旧目标；下一次代理访问才创建、绑定并初始化新目标。初始化、绑定或校验失败可能在这次访问时暴露，不属于保留旧目标的解密失败情形，业务应按自身校验和可用性要求验收。销毁回调不能假定新目标已经创建。
 
-在当前 Spring Cloud Context 4.1.6 中，ConfigData 重载只替换或新增属性源。即使同名源仍被重载，旧解密覆盖层也可能在环境差异计算时遮住被删除的密文属性，直到环境事件监听器执行后才被清理。本地文件重载已观察到 `EnvironmentChangeEvent.keys` 漏报删除的 `app.secret`，但在该单键删除场景下，Environment 最终值和完整刷新后的作用域目标正确。因此不要以该键集合包含删除项作为保证；按键选择性更新或缓存配置的消费者仍需单独处置。
+默认 `NacosConfigDataContextRefresher` 在差异计算前完成解密层更新，删除不再被旧明文覆盖层遮挡。`EnvironmentChangeEvent.keys` 继续采用 Cloud 的有效值差异语义：删除导致有效值消失或变为不同下层值时包含该键；若有效值未变化，不承诺报告底层源的每次修改。缓存配置的消费者需按事件更新，或每次通过刷新代理读取。
 
-整个属性源消失时还有独立限制：本地将 ConfigData 文件清空后，重载结果不再包含该源，刷新器却不会移除实时 Environment 中的旧原始源；旧密文及其解密值因此仍可生效，完整刷新重建的目标仍会绑定旧值。`NacosRefreshEventIT` 通过真实事件桥接记录这一已知限制，并仅在测试夹具显式移除旧原始源及对应解密覆盖层后验证恢复默认值；这不是 Starter 自动清理的保证。真实 Nacos DataId 变空或删除存在类似风险，但尚未连接服务端验证。这两类限制继续保留在 TD-039 中。
+`optional:nacos:...` 的加载异常被上游吞掉时，不生成成功空标记，该资源的旧源保留；其他成功结果仍应用，完整刷新仍使 RefreshScope 失效。非 optional 的传播异常才使本次刷新失败。SDK 的 snapshot/failover 行为沿用原客户端，成功加载不等同于服务端线性一致读取。
+
+源清理只覆盖本 Starter 标记、且本次成功加载的标准 Nacos 源；自定义非枚举 parser 源、移除 import、改变资源身份和本地文件源消失不提供相同保证。`NacosRefreshEventIT` 保留空本地文件仍残留旧原始源的上游负向对照；`NacosManagedRefreshIT` 通过真实 Boot/Nacos ConfigData SPI、受控远程边界和注入消费者验证 Nacos 删除、多文档、失败及恢复，不代表服务端推送已验收。用户自定义 `ContextRefresher`、legacy bootstrap 或关闭 `spring.cloud.refresh.enabled` 时，不注册本默认刷新器；这些接入需应用自行满足对应契约。
+
+#### 真实 Nacos 服务验收
+
+常规测试不依赖外部服务，只排除新增的 `NacosLiveRefreshIT`；显式启用 `nacos-live` 后，它与原全部测试一起执行，缺少服务参数或凭据直接失败，不使用条件跳过。先配置 `NACOS_TEST_SERVER_ADDR`、`NACOS_TEST_USERNAME`、`NACOS_TEST_PASSWORD` 和可选 `NACOS_TEST_NAMESPACE`，再运行：
+
+```bash
+./mvnw -Pci,nacos-live -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify
+```
+
+测试创建唯一 group/DataId，经真实客户端发布和监听推送，验证 Environment、变更键、构造注入代理和生命周期，最后仅清理本轮配置。客户端不允许空字符串发布，注释 properties 验证的是语义空配置。真实服务验收与现有业务应用迁移仍需分别完成，TD-039 的最新证据见[技术债台账](../../docs/active/tech-debt-tracker.md#td-039-nacos-解密覆盖层)。
 
 ### 3. 加密工具类
 

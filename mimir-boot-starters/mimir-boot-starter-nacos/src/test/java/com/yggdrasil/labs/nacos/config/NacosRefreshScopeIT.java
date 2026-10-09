@@ -21,7 +21,6 @@ import org.springframework.cloud.autoconfigure.ConfigurationPropertiesRebinderAu
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
-import org.springframework.cloud.context.refresh.ConfigDataContextRefresher;
 import org.springframework.cloud.context.refresh.ContextRefresher;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -48,7 +47,7 @@ class NacosRefreshScopeIT {
             removeApplicationProperties(fixture);
             fixture.values().remove(NacosEncryptProperties.PREFIX + ".key");
             assertEquals(
-                    ConfigDataContextRefresher.class,
+                    NacosConfigDataContextRefresher.class,
                     context.getBean(ContextRefresher.class).getClass());
             context.getBean(ContextRefresher.class).refresh();
 
@@ -185,6 +184,7 @@ class NacosRefreshScopeIT {
     @Configuration(proxyBeanMethods = false)
     @ImportAutoConfiguration({
         NacosEncryptAutoConfiguration.class,
+        NacosRefreshAutoConfiguration.class,
         RefreshAutoConfiguration.class,
         ConfigurationPropertiesRebinderAutoConfiguration.class
     })
