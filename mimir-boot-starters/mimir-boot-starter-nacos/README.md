@@ -186,7 +186,7 @@ public class AppService {
 
 `optional:nacos:...` 的加载异常被上游吞掉时，不生成成功空标记，该资源的旧源保留；其他成功结果仍应用，完整刷新仍使 RefreshScope 失效。非 optional 的传播异常才使本次刷新失败。SDK 的 snapshot/failover 行为沿用原客户端，成功加载不等同于服务端线性一致读取。
 
-源清理只覆盖本 Starter 标记、且本次成功加载的标准 Nacos 源；自定义非枚举 parser 源、移除 import、改变资源身份和本地文件源消失不提供相同保证。`NacosRefreshEventIT` 保留空本地文件仍残留旧原始源的上游负向对照；`NacosManagedRefreshIT` 通过真实 Boot/Nacos ConfigData SPI、受控远程边界和注入消费者验证 Nacos 删除、多文档、失败及恢复，不代表服务端推送已验收。用户自定义 `ContextRefresher`、legacy bootstrap 或关闭 `spring.cloud.refresh.enabled` 时，不注册本默认刷新器；这些接入需应用自行满足对应契约。
+源清理只覆盖本 Starter 标记、且本次成功加载的标准 Nacos 源；自定义非枚举 parser 源、移除 import、改变资源身份和本地文件源消失不提供相同保证。`NacosRefreshEventIT` 保留空本地文件仍残留旧原始源的上游负向对照；`NacosManagedRefreshIT` 通过真实 Boot/Nacos ConfigData SPI、受控远程边界和注入消费者验证 Nacos 删除、多文档、失败及恢复，不代表服务端推送已验收。仅增强 Cloud 实际注册的默认 ConfigData 刷新器；用户自定义 `ContextRefresher`、legacy bootstrap、关闭 `spring.cloud.refresh.enabled` 或排除 `RefreshAutoConfiguration` 时退让。排除可通过 `@EnableAutoConfiguration(exclude = RefreshAutoConfiguration.class)` 或 `spring.autoconfigure.exclude` 配置，不要求额外排除本 Starter；自定义刷新接入需应用自行满足对应契约。
 
 #### 真实 Nacos 服务验收
 
@@ -196,7 +196,7 @@ public class AppService {
 ./mvnw -Pci,nacos-live -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify
 ```
 
-测试创建唯一 group/DataId，经真实客户端发布和监听推送，验证 Environment、变更键、构造注入代理和生命周期，最后仅清理本轮配置。客户端不允许空字符串发布，注释 properties 验证的是语义空配置。真实服务验收与现有业务应用迁移仍需分别完成，TD-039 的最新证据见[技术债台账](../../docs/active/tech-debt-tracker.md#td-039-nacos-解密覆盖层)。
+测试创建唯一 group/DataId，经真实客户端发布和监听推送，验证 Environment、变更键、构造注入代理和生命周期，最后仅清理本轮配置。错误密钥场景要求本轮预期配置键的解密认证异常，网络或无关监听器异常不能作为成功验收依据。客户端不允许空字符串发布，注释 properties 验证的是语义空配置。真实服务验收与现有业务应用迁移仍需分别完成，TD-039 的最新证据见[技术债台账](../../docs/active/tech-debt-tracker.md#td-039-nacos-解密覆盖层)。
 
 ### 3. 加密工具类
 

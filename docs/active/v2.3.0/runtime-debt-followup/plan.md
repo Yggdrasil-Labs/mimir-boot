@@ -164,3 +164,22 @@ optional 异常被上游吞掉时继续成功刷新，该资源旧源保留但�
 - 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-td039-full/quality-report.json` 于 10:45:18 至 10:52:21 +08:00 完成，exit 0，0 findings，全部必需检查 passed。15 个模块、1111 项单元测试及 55 项 IT，失败、错误、跳过均为 0；文档、实际构建模型、覆盖率、发布契约、隔离消费者、临时制品签名与失败 fixture 通过。未启用 Sonar，未验证远端 CI 或正式发布。
 - 输入与复核：基线 HEAD `e332fcf` 的工作区；full tree `worktree-ce350bbbf08c5bdd2de941d917971898bcac3e48e2f7e45917a4dc803bb215e9`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`，Java 17.0.19、Node 22.22.3。独立代码复审未发现 P0–P3，五维均为 4，按公共 policy 加权 4.0、PASS；其结论限于本地实现与证据。full 后仅补验收文档并单独复验，未改变验证过的 Java、POM 或资源。`ci,nacos-live` 实际 Maven 模型保留原 Surefire/Failsafe 选择器且清空新增外部测试排除，无跳过配置。
 - 外部边界：指定 Nacos 3.0.3 容器已启动，v3 readiness 实测 200/ok；服务启用认证，验收进程尚无凭据，nacos-live 尚未执行。真实推送、DataId 删除与异步失败恢复仍待认证验收；普通 Bean、缓存裸目标/字段快照及既有业务应用迁移继续保留，TD-039 不关闭。
+
+## 第七阶段：TD-039 复审问题修复
+
+用户要求 fixall，范围为上一轮复审的 P1 自动配置排除回归与 P2 解密失败验收误归因。沿用当前需求目录、版本和资源清理契约，不改变普通 Bean、外部认证或发布边界。
+
+1. 默认刷新装配兼容：修改 `NacosRefreshAutoConfiguration` 及必要的模块内自动配置支持类、META-INF 注册和 `NacosRefreshAutoConfigurationTest`。默认 Cloud 刷新基础设施参与时仍只有一个 Nacos ConfigData 刷新器；通过注解或 `spring.autoconfigure.exclude` 排除上游刷新配置时退让，不强制创建 RefreshScope、不要求应用额外排除 Nacos 配置。保留用户刷新器、legacy bootstrap 和 refresh.enabled=false 的边界。需先确认失败回归，再验证默认路径及应用级两种排除；采用正式 Spring/Boot 扩展入口，不以空 Bean 或全局覆盖旧定义兜底。
+2. 失败验收归因：修改 `NacosLiveRefreshIT` 与必要的本地断言单元回归，仅本轮新增、具有预期业务键及解密认证失败 cause 的异常可证明负向场景；网络/无关异常和历史解密异常均不能误判。使用实际加解密代码生成异常，ErrorHandler 保留同引用传播。两项实现的写入范围独立，统一 Maven/格式检查由主代理串行执行。
+
+验收：两项有意义 Red/Green、Nacos 模块完整构建、独立复审及适用完整质量检查；同步 RFC、README 和验收文档并按已有授权分阶段提交。真实 Nacos 仍待授权凭据，不将本地断言或常规模块通过写为网络验收；若修复需要改变公共配置或框架依赖，再重新评估范围。
+
+### 第七阶段本地验收（2026-10-09，真实服务待验收，未发布）
+
+- 自动配置有效 Red：应用仅排除 Cloud `RefreshAutoConfiguration`，启动回归 1 项 failure、0 errors、0 skipped，明确因缺少 RefreshScope 失败；日志 `/tmp/td039-fixall-exclusion-red3.log`。前置编译或格式失败不计行为复现。独立复审另发现后续自动配置的 subtype 条件评估早于普通 BFPP，新增回归 1 项 failure，日志 `/tmp/td039-fixall-conditional-red.log`。最终在定义注册阶段定制上游实际默认工厂定义，保留原名称、生命周期与工厂元数据；注解排除、配置项排除、跨选择器排除、同名用户工厂、提前子类注入及后续自动配置条件均通过。
+- 失败归因 Red → Green：独立临时回归确认旧计数判定误接受远程加载异常，日志 `/tmp/td039-live-assertions/red.log`；修复后只接受本轮预期键对应的认证失败，9 项常规单元回归涵盖网络、无关监听器、其他业务键、历史异常、损坏密文及 SDK 重复通知，保留异常原引用传播。主线程 Maven 聚焦 14 项测试无失败、错误或跳过，日志 `/tmp/td039-fixall-focused-green.log`；不能用断言测试代替真实推送。
+- 模块验收：`./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify` 于 14:34:44 +08:00 exit 0，5 个 reactor 模块均 SUCCESS；333 项单元测试、16 项 IT，失败、错误、跳过均为 0，其中 Nacos 119 项单元测试、16 项 IT。Spotless、Enforcer、适用 JaCoCo 检查通过，日志 `/tmp/td039-fixall-module-final-verify.log`。常规模式未运行 `NacosLiveRefreshIT`。
+- 独立复审：原自动配置条件问题经实际源码临时探针确认修正，默认实例化前无提前刷新器，初始化前后和销毁后处理各一次；失败归因临时编译及 9 项 JUnit 回归全部通过。最终两项复审无 P0–P3，安全性、正确性、完整性、可维护性、错误处理五维均为 4，按公共 policy 加权 4.0、PASS。其结论仅对应本地代码与证据，不覆盖 AOT/native 或真实服务。
+- 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-td039-fixall-final-full/quality-report.json` 于 14:36:20 至 14:42:51 +08:00 完成，exit 0、0 findings、全部必需检查 passed；15 个模块、1126 项单元测试及 55 项 IT，失败、错误、跳过均为 0。格式、适用覆盖率、构建模型、隔离消费者、临时签名和失败 fixture 均通过。较早候选的完整检查未完成，不计通过；最终实现已完整重跑。
+- 输入：基线 HEAD `e71fb72` 之上的工作区；full tree `worktree-48d99f1e48604902f0fd1f015bc6127e1e7cba065806fe459f581c9aaaf067e5`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`，Java 17.0.19、Node 22.22.3、Maven 3.9.16。自动配置源码 SHA-256 `a4de9fb07ecf80e82a376b20eed95a81e4fd14ee14b5e2652655fa3ac18906c7`，受验收文件指纹保存在 `/tmp/td039-fixall-final-input-fingerprints.json`，full 结束时未变化；随后只补验收文档与索引并单独复验，不改变已验证的 Java、POM 或资源。
+- 剩余边界：本轮验收进程未配置 Nacos 用户名与密码，`nacos-live` 未执行；真实推送、DataId 删除与异步失败恢复仍待认证验收，普通 Bean、缓存裸目标/字段快照及实际业务迁移继续保留。未启用 Sonar，未验证远端 CI、制品发布或发布后消费者。两项复审问题已本地修复，TD-039 仍为部分修复。
