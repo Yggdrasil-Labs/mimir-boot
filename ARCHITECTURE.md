@@ -123,7 +123,7 @@ graph TD
 - 日志脱敏以完整配置快照处理接入方显式启用的 10 组字段型规则，支持普通赋值和带引号键名的文本标量；它不解析完整 JSON，对象/数组值不保证完整保护，边界与调用方处置要求见[日志 Starter README](./mimir-boot-starters/mimir-boot-starter-log/README.md#敏感信息脱敏)。
 - MongoDB 驱动族由 Spring Boot BOM 管理为 5.0.1；消费者显式覆盖时应保持驱动族版本一致并自行验证。
 - RPC 适配层使用调用级上下文与异步生命周期；旧 `RpcTracerBridge.extract` 和 Hook 直调入口继续保留兼容。
-- Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；默认 ConfigData 刷新在差异计算前同步已成功加载的标准枚举 Nacos 源与解密层，支持语义空、删除及多文档收缩；旧 retain 源和 optional 失败不授权清理。新旧前缀均不再绑定会清理旧解密覆盖层。业务属性完全删除且没有下层值时，已有 `@ConfigurationProperties` Bean 仍可能保留旧字段值，TD-039 尚未完全关闭；处置边界见 [Nacos Starter README](./mimir-boot-starters/mimir-boot-starter-nacos/README.md#2-配置动态刷新支持)。遗留 AES 入口仅供离线迁移并输出告警。
+- Nacos 应用解密仅处理已绑定的 `mimir.boot.nacos.encrypt`（兼容旧前缀）配置；默认 ConfigData 刷新在差异计算前同步已成功加载的标准枚举 Nacos 源与解密层，支持语义空、删除及多文档收缩；旧 retain 源和 optional 失败不授权清理。新旧前缀均不再绑定会清理旧解密覆盖层。业务属性完全删除且没有下层值时，已有 `@ConfigurationProperties` Bean 仍可能保留旧字段值，消费者需显式选择可重建代理或业务重置策略；处置边界见 [Nacos Starter README](./mimir-boot-starters/mimir-boot-starter-nacos/README.md#2-配置动态刷新支持)。遗留 AES 入口仅供离线迁移并输出告警。
 - MyBatis v2 密文使用应用级 context 作为 AAD，`crypto-v2-write-enabled` 默认关闭；该绑定不提供字段或记录级完整性。
 - 测试 Starter 不再通过类路径资源注入数据库副作用或固定应用名；Testcontainers 由接入方按场景显式引入。
 - 分页构造、setter 和默认 Jackson 绑定使用同一校正规则；直接读取和 PageQuery 转换得到已校正参数，偏移量计算保留溢出检查。特殊字段访问及历史序列化数据的校验边界见 [Common README](./mimir-boot-common/README.md#pagerequest-使用说明)。

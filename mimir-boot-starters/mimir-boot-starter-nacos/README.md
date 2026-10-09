@@ -196,7 +196,7 @@ public class AppService {
 ./mvnw -Pci,nacos-live -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify
 ```
 
-测试创建唯一 group/DataId，经真实客户端发布和监听推送，验证 Environment、变更键、构造注入代理和生命周期，最后仅清理本轮配置。错误密钥场景要求本轮预期配置键的解密认证异常，网络或无关监听器异常不能作为成功验收依据。客户端不允许空字符串发布，注释 properties 验证的是语义空配置。真实服务验收与现有业务应用迁移仍需分别完成，TD-039 的最新证据见[技术债台账](../../docs/active/tech-debt-tracker.md#td-039-nacos-解密覆盖层)。
+测试创建唯一 group/DataId，经真实客户端发布和监听推送，验证 Environment、变更键、构造注入代理和生命周期，最后仅清理本轮配置。错误密钥场景要求本轮预期配置键的解密认证异常，网络或无关监听器异常不能作为成功验收依据。客户端不允许空字符串发布，注释 properties 验证的是语义空配置。框架的指定真实服务验收及关闭范围见[验收记录](../../docs/active/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；现有业务应用迁移由 [TD-047](../../docs/active/tech-debt-tracker.md#td-047-nacos-消费者迁移)独立跟踪，框架测试不替代应用验收。
 
 ### 3. 加密工具类
 
