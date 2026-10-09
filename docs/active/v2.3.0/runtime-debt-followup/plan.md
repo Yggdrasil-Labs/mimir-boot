@@ -1,10 +1,10 @@
 ---
 id: runtime-debt-followup-plan
 version: v2.3.0
-status: completed
+status: in-progress
 owner: YoungerYang-Y
 created: 2026-10-03
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 # 运行时技术债后续修复
@@ -127,3 +127,40 @@ updated: 2026-10-08
 - 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-p1-full-final/quality-report.json` 于 20:44:04 至 20:50:51 +08:00 完成，exit 0、0 findings，全部必需检查 passed。15 个模块、1086 项单元测试和 53 项 IT，失败、错误、跳过均为 0；包括报告、覆盖率、发布契约、隔离消费者及临时签名检查。此前受限沙箱首轮因 Maven 缓存只读等限制失败，不计作通过；随后以验收所需权限完整重跑。
 - 输入：HEAD `96c75b6` 上的工作区修复；full tree `worktree-f62caf8c39d9305eb45f0185a2d61bd1d505fcbc21b352fe485820a6e899e931`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`。模型代码 SHA-256 `9b8d447dcf1383b5dd31f4a753a25b1a467c70167889d0edc7b30743921a3b7f`、源码清单代码 `715d1b123a2c4571e5eb250f46fb0b8eb560b0a1e52ea465fd68354c6275b2aa`；Java 17.0.19、Node 22.22.3。full 后仅补充工具边界说明及本验收记录，文档单独复验；未改变验证过的代码和 Maven 配置。
 - 验收范围：本轮仅修复 P1 并完成本地验证，未启用 Sonar、验证远端 CI、真实 Nacos 服务或发布后消费者。TD-039 与其他已登记运行时债务维持原状态。
+
+## 第六阶段：TD-039 运行时同步与真实 Nacos 验收
+
+沿用 v2.3.0 活跃需求目录，不修改发布版本。用户授权启动本地 Nacos 3.0.3 容器并继续修复；关键决策、失败与并发边界见[属性源归属 RFC](../../../design-docs/arch-nacos-refresh-sources.md)。
+
+### 目标与行为契约
+
+默认 ConfigData 标准枚举 Nacos 源成功删键、语义空配置、DataId 删除或 YAML 文档减少后，不保留旧源和旧解密层；删除导致有效值变化时进入环境事件，注入 RefreshScope 代理的消费者恢复初始化值或下层值。optional 请求失败没有成功空标记，不授权删除；重载或解密失败恢复上一源列表和已创建目标。保留原 import 参数、优先级和全刷新链；有效值不变时不承诺底层每次修改的通知，自定义非枚举 parser 源保留原行为。
+
+optional 异常被上游吞掉时继续成功刷新，该资源旧源保留但作用域仍失效；上述失败恢复仅指传播到刷新器的异常。回归需分别断言这两种生命周期。
+
+普通 Bean、历史字段快照、自定义刷新器、legacy bootstrap 与动态移除 import 不静默改变语义。真实业务迁移和发布验收分别保留，不以测试项目代替现有应用迁移。
+
+### 串行任务与文件范围
+
+1. 真实服务 Red：修改 Nacos `pom.xml`，新增 `src/test/java/com/yggdrasil/labs/nacos/config/NacosLiveRefreshIT.java`。仅这个新增外部测试由默认 Failsafe 显式排除，nacos-live profile 移除该排除并继续运行原全部测试。无条件跳过或动态源集，缺服务或凭据明确失败；使用唯一测试配置和实际推送。
+2. 加载归属：新增模块 `src/main/java/com/yggdrasil/labs/nacos/configdata/` 内委托 resolver/resource/loader/属性源类，在 META-INF/spring.factories 注册；补模块单元回归，保留 options、枚举和 Origin，区分成功空结果与 optional 失败。
+3. 刷新同步：新增默认刷新器及自动配置，在 META-INF/spring 自动配置清单注册；差异计算前同步已成功加载的 Nacos 源和解密层，失败恢复原顺序。补单元/IT；本地文件整源消失保留上游负向对照，修改精确刷新器类型断言。
+4. 验收：常规模块完整检查、独立 nacos-live profile、独立代码复核及适用全仓完整检查；同步模块 README、RFC、台账、活跃索引和 release，分阶段提交。不得新增 tools 专项验收逻辑。
+
+### 验收与决策边界
+
+缺陷先确认 Red 再验证 Green。服务测试不手动发事件，分别观察 Environment、删除键、代理消费和生命周期；覆盖单键和加密前缀删除、语义空、DataId 删除、恢复、重复刷新、有无 fallback、失败解密及恢复。常规回归另覆盖 optional 失败、多文档减少、非 Nacos 源保留、用户刷新器退让；显式 retain 的旧文档不能视为本轮成功，optional 失败与移除 import 均保留旧文档，成功收缩时先清理旧副本文档再解密。
+
+后合并失败须独立验证：加入不会被 copyEnvironment 重载的应用附加 ENC 源，Nacos 新密钥与新密文在重载副本中解密成功，但合并后附加源仍用旧密钥导致解密失败。断言原始源和解密源的对象引用、顺序全部恢复，Environment 旧值、0 成功事件、0 目标销毁；修正后可再次完整刷新。既有重载副本中的失败不能替代此回归。
+
+外部测试通过 NACOS_TEST_SERVER_ADDR、NACOS_TEST_USERNAME、NACOS_TEST_PASSWORD、可选 NACOS_TEST_NAMESPACE 配置，密钥动态生成，最后仅删除本轮唯一配置。SDK 拒绝空字符串发布时，以注释 properties 验证语义空，不将其称为零字节发布。常规与 live profile 分别说明验收范围，不以常规通过代表外部服务通过。
+
+内部实现可在契约内调整。依赖升级、公共配置语义变更、扩大清理范围、自动重置普通 Bean 或跨 Starter 改动须重新对齐。未核实的现有业务迁移继续登记，不能将 TD-039 直接写为全部关闭。
+
+### 第六阶段本地验收（2026-10-09，真实服务待验收，未发布）
+
+- 有效 Red → Green：真实事件重载先复现密文删除键漏报，加载适配先复现空结果/正常结果无归属及 Origin immutable 丢失，独立复审另复现旧 retain 文档被当作成功加载而误删其他文档；修复后常规回归全部通过。日志位于 `/tmp/td039-keys-red.log`、`/tmp/mimir-td039-configdata-*-{red,green}.log`、`/tmp/td039-retained-red.log` 与本轮模块/full 报告。后合并应用附加源解密失败另有引用、顺序、旧值及零成功事件/目标销毁回归，不将其写成已有真实服务 Red。
+- 模块验收：Nacos 与依赖 `clean verify` exit 0，Nacos 模块 104 项单元测试、16 项 IT，无失败、错误或跳过；覆盖标准 SPI、多文档、retain、optional 失败/import 移除、异常恢复及自动配置退让。最新 live 文件在随后 full 中重新编译，常规模式明确排除新增外部测试。
+- 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-td039-full/quality-report.json` 于 10:45:18 至 10:52:21 +08:00 完成，exit 0，0 findings，全部必需检查 passed。15 个模块、1111 项单元测试及 55 项 IT，失败、错误、跳过均为 0；文档、实际构建模型、覆盖率、发布契约、隔离消费者、临时制品签名与失败 fixture 通过。未启用 Sonar，未验证远端 CI 或正式发布。
+- 输入与复核：基线 HEAD `e332fcf` 的工作区；full tree `worktree-ce350bbbf08c5bdd2de941d917971898bcac3e48e2f7e45917a4dc803bb215e9`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`，Java 17.0.19、Node 22.22.3。独立代码复审未发现 P0–P3，五维均为 4，按公共 policy 加权 4.0、PASS；其结论限于本地实现与证据。full 后仅补验收文档并单独复验，未改变验证过的 Java、POM 或资源。`ci,nacos-live` 实际 Maven 模型保留原 Surefire/Failsafe 选择器且清空新增外部测试排除，无跳过配置。
+- 外部边界：指定 Nacos 3.0.3 容器已启动，v3 readiness 实测 200/ok；服务启用认证，验收进程尚无凭据，nacos-live 尚未执行。真实推送、DataId 删除与异步失败恢复仍待认证验收；普通 Bean、缓存裸目标/字段快照及既有业务应用迁移继续保留，TD-039 不关闭。

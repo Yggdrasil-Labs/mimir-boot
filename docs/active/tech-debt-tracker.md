@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-03
+updated: 2026-10-09
 ---
 
 # 技术债务追踪
@@ -27,7 +27,7 @@ updated: 2026-10-03
 | [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | [显式重建接入与验收](./v2.3.0/runtime-debt-followup/plan.md#第二阶段nacos-显式重建接入)；普通 Bean 仍需迁移 |
+| [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | [运行时同步与验收](./v2.3.0/runtime-debt-followup/plan.md#第六阶段td-039-运行时同步与真实-nacos-验收)；真实服务与消费者迁移待验收 |
 
 ## 债务明细
 
@@ -70,8 +70,9 @@ updated: 2026-10-03
 - **显式重建接入**：2026-10-03 补齐 `@Bean @RefreshScope @ConfigurationProperties` 的可运行消费方示例及真实 `ConfigDataContextRefresher.refresh()` 契约测试。实时 Environment 真正删键后，已接入、可重建且通过代理访问的 Bean 在成功完整刷新后恢复缺失字段的初始化值或下层值；单独环境事件不重建目标，解密失败保留已有目标与解密覆盖层。详见[Nacos README](../../mimir-boot-starters/mimir-boot-starter-nacos/README.md#显式重建配置-bean)及[本地验收](./v2.3.0/runtime-debt-followup/plan.md#第二阶段本地验收2026-10-03未发布)。
 - **剩余风险**：业务属性完全删除且没有下层值时，Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定后仍保留原字段值；本地负向测试已复现。该问题不再由解密覆盖层造成，但仍属于删除配置后的历史明文残留。
 - **处置与验收**：推动需要删除语义的配置 Bean 显式迁移到可重建作用域或业务重置策略，并验证实际消费路径无回退值时不再保留旧明文；普通 Bean、缓存裸目标和历史字段快照仍需处置。当前本地接入契约不能替代真实 Nacos 服务与消费者迁移验收，也不能宣告本项全部完成。
-- **事件与消费路径**：第三阶段新增真实 Alibaba 事件桥接、Boot 文件 ConfigData 重载、构造注入消费者及目标初始化/销毁的回归；未连接 Nacos 服务端，也未覆盖 Nacos 网络加载器。当前 Cloud Context 4.1.6 的环境差异计算可能被旧解密覆盖层遮挡，本地已观察到变更键漏报被删除的密文属性；最终 Environment 与完整刷新作用域正确，但按键更新、缓存字段或裸目标的消费者仍需迁移与验收。
-- **整源消失边界**：第四阶段补齐空文件负向回归：Cloud Context 4.1.6 保留已消失的旧原始属性源，实时 Environment 未真正删键，即使重建目标也仍读旧值；现有机制不能统一解决此路径。显式移除夹具原始源及对应解密覆盖层后默认值恢复，仅用于确认根因，不作为生产自动清理方案。真实 Nacos 空 DataId/删除仍需服务端验收。
+- **运行时同步（2026-10-09）**：默认 ConfigData 模式新增委托加载适配与默认刷新器扩展，成功加载的标准枚举 Nacos 源拥有明确资源归属；差异计算前同步消失文档和解密层，删除导致有效值变化时进入事件键集合。成功空结果与 optional 失败分开处理；旧 retain 源不视为新加载成功。加载或解密异常传播时恢复旧源引用与顺序，并保留现有作用域目标；上游吞掉的 optional 异常仍执行完整刷新，旧源保留但目标会失效。模块完整构建及本地回归已通过，覆盖真实 Boot/Alibaba 加载与事件链；远端 ConfigService 为测试替身，不作为网络验收。
+- **剩余整源边界**：本地文件源消失、自定义非枚举 parser、移除 import 或更换资源身份不在自动删除契约内；自定义 ContextRefresher、legacy bootstrap 需自行接入。原本地文件空源负向回归保留，不能将 Nacos 的归属清理扩大到所有属性源。
+- **真实服务验收**：已启动用户指定的本地 Nacos 3.0.3，readiness 实测成功；服务启用认证，验收进程尚无授权凭据。外部 nacos-live 回归已补齐单键/前缀删除、语义空、DataId 删除、恢复、重复推送和解密失败，尚未在真实服务执行。容器可用不能替代网络配置与消费者迁移验收。
 - **目标版本**：待排期。
 - **复查条件**：配置刷新、Bean 重新绑定或 Spring Cloud 基线调整时，复核完全删除且无下层值的旧明文残留。
 

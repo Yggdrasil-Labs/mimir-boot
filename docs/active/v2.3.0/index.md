@@ -1,7 +1,7 @@
 ---
 version: v2.3.0
 status: in-progress
-updated: 2026-10-03
+updated: 2026-10-09
 ---
 
 # v2.3.0 活跃需求
@@ -14,7 +14,7 @@ updated: 2026-10-03
 | [日志 JSON 脱敏补全](./log-json-masking/plan.md) | 实施及本地完整验收完成（未发布） | [规格](./log-json-masking/spec.md)、[设计](./log-json-masking/design.md)、4 个串行任务已完成；复合值边界见 README 与计划 |
 | [MongoDB 驱动族兼容](./mongodb-driver-alignment/plan.md) | 本地实施及完整验收完成（未发布） | [规格](./mongodb-driver-alignment/spec.md)、[设计](./mongodb-driver-alignment/design.md)、4 个串行任务和本地完整 quality 报告；发布状态见 [release.md](./release.md) |
 | [Springdoc 与 Boot 基线兼容](./springdoc-boot-alignment/plan.md) | 本地实施及完整验收完成（未发布） | TD-041 已处置：保持 Boot 3.3 基线，Springdoc 2.6.0 通过两种消费者及完整 quality 验收 |
-| [运行时技术债后续修复](./runtime-debt-followup/plan.md) | 四阶段实施及本地验收完成（未发布） | RPC MDC 回滚、字段加密注册隔离、Nacos 接入契约及整体复查问题处置；最新完整 quality 通过，1139 项 Java 测试通过；迁移、整源消失与服务端验收边界保留 |
+| [运行时技术债后续修复](./runtime-debt-followup/plan.md) | 第六阶段本地实现与完整验收通过，真实服务待验收（未发布） | RPC MDC、字段加密注册及质量门禁已修复；TD-039 默认 Nacos 源同步与变更键修复，最新完整 quality 通过，1166 项常规 Java 测试通过；真实服务认证验收与消费者迁移待闭环 |
 
 ## 文档治理工作入口
 
