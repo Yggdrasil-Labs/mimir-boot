@@ -163,7 +163,7 @@ optional 异常被上游吞掉时继续成功刷新，该资源旧源保留但�
 - 模块验收：Nacos 与依赖 `clean verify` exit 0，Nacos 模块 104 项单元测试、16 项 IT，无失败、错误或跳过；覆盖标准 SPI、多文档、retain、optional 失败/import 移除、异常恢复及自动配置退让。最新 live 文件在随后 full 中重新编译，常规模式明确排除新增外部测试。
 - 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-td039-full/quality-report.json` 于 10:45:18 至 10:52:21 +08:00 完成，exit 0，0 findings，全部必需检查 passed。15 个模块、1111 项单元测试及 55 项 IT，失败、错误、跳过均为 0；文档、实际构建模型、覆盖率、发布契约、隔离消费者、临时制品签名与失败 fixture 通过。未启用 Sonar，未验证远端 CI 或正式发布。
 - 输入与复核：基线 HEAD `e332fcf` 的工作区；full tree `worktree-ce350bbbf08c5bdd2de941d917971898bcac3e48e2f7e45917a4dc803bb215e9`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`，Java 17.0.19、Node 22.22.3。独立代码复审未发现 P0–P3，五维均为 4，按公共 policy 加权 4.0、PASS；其结论限于本地实现与证据。full 后仅补验收文档并单独复验，未改变验证过的 Java、POM 或资源。`ci,nacos-live` 实际 Maven 模型保留原 Surefire/Failsafe 选择器且清空新增外部测试排除，无跳过配置。
-- 外部边界：指定 Nacos 3.0.3 容器已启动，v3 readiness 实测 200/ok；服务启用认证，验收进程尚无凭据，nacos-live 尚未执行。真实推送、DataId 删除与异步失败恢复仍待认证验收；普通 Bean、缓存裸目标/字段快照及既有业务应用迁移继续保留，TD-039 不关闭。
+- 外部边界：指定 Nacos 3.0.3 容器已启动，v3 readiness 实测 200/ok；服务启用认证，该阶段当时验收进程尚未配置凭据，nacos-live 未执行。真实推送、DataId 删除与异步失败恢复仍待认证验收；普通 Bean、缓存裸目标/字段快照及既有业务应用迁移继续保留，TD-039 不关闭。
 
 ## 第七阶段：TD-039 复审问题修复
 
@@ -172,7 +172,7 @@ optional 异常被上游吞掉时继续成功刷新，该资源旧源保留但�
 1. 默认刷新装配兼容：修改 `NacosRefreshAutoConfiguration` 及必要的模块内自动配置支持类、META-INF 注册和 `NacosRefreshAutoConfigurationTest`。默认 Cloud 刷新基础设施参与时仍只有一个 Nacos ConfigData 刷新器；通过注解或 `spring.autoconfigure.exclude` 排除上游刷新配置时退让，不强制创建 RefreshScope、不要求应用额外排除 Nacos 配置。保留用户刷新器、legacy bootstrap 和 refresh.enabled=false 的边界。需先确认失败回归，再验证默认路径及应用级两种排除；采用正式 Spring/Boot 扩展入口，不以空 Bean 或全局覆盖旧定义兜底。
 2. 失败验收归因：修改 `NacosLiveRefreshIT` 与必要的本地断言单元回归，仅本轮新增、具有预期业务键及解密认证失败 cause 的异常可证明负向场景；网络/无关异常和历史解密异常均不能误判。使用实际加解密代码生成异常，ErrorHandler 保留同引用传播。两项实现的写入范围独立，统一 Maven/格式检查由主代理串行执行。
 
-验收：两项有意义 Red/Green、Nacos 模块完整构建、独立复审及适用完整质量检查；同步 RFC、README 和验收文档并按已有授权分阶段提交。真实 Nacos 仍待授权凭据，不将本地断言或常规模块通过写为网络验收；若修复需要改变公共配置或框架依赖，再重新评估范围。
+验收：两项有意义 Red/Green、Nacos 模块完整构建、独立复审及适用完整质量检查；同步 RFC、README 和验收文档并按已有授权分阶段提交。该阶段当时验收进程尚未配置真实 Nacos 认证，不将本地断言或常规模块通过写为网络验收；若修复需要改变公共配置或框架依赖，再重新评估范围。
 
 ### 第七阶段本地验收（2026-10-09，真实服务待验收，未发布）
 
@@ -182,4 +182,24 @@ optional 异常被上游吞掉时继续成功刷新，该资源旧源保留但�
 - 独立复审：原自动配置条件问题经实际源码临时探针确认修正，默认实例化前无提前刷新器，初始化前后和销毁后处理各一次；失败归因临时编译及 9 项 JUnit 回归全部通过。最终两项复审无 P0–P3，安全性、正确性、完整性、可维护性、错误处理五维均为 4，按公共 policy 加权 4.0、PASS。其结论仅对应本地代码与证据，不覆盖 AOT/native 或真实服务。
 - 完整验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-td039-fixall-final-full/quality-report.json` 于 14:36:20 至 14:42:51 +08:00 完成，exit 0、0 findings、全部必需检查 passed；15 个模块、1126 项单元测试及 55 项 IT，失败、错误、跳过均为 0。格式、适用覆盖率、构建模型、隔离消费者、临时签名和失败 fixture 均通过。较早候选的完整检查未完成，不计通过；最终实现已完整重跑。
 - 输入：基线 HEAD `e71fb72` 之上的工作区；full tree `worktree-48d99f1e48604902f0fd1f015bc6127e1e7cba065806fe459f581c9aaaf067e5`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`，Java 17.0.19、Node 22.22.3、Maven 3.9.16。自动配置源码 SHA-256 `a4de9fb07ecf80e82a376b20eed95a81e4fd14ee14b5e2652655fa3ac18906c7`，受验收文件指纹保存在 `/tmp/td039-fixall-final-input-fingerprints.json`，full 结束时未变化；随后只补验收文档与索引并单独复验，不改变已验证的 Java、POM 或资源。
-- 剩余边界：本轮验收进程未配置 Nacos 用户名与密码，`nacos-live` 未执行；真实推送、DataId 删除与异步失败恢复仍待认证验收，普通 Bean、缓存裸目标/字段快照及实际业务迁移继续保留。未启用 Sonar，未验证远端 CI、制品发布或发布后消费者。两项复审问题已本地修复，TD-039 仍为部分修复。
+- 剩余边界：第七阶段验收当时进程未配置 Nacos 用户名与密码，`nacos-live` 未执行；真实推送、DataId 删除与异步失败恢复仍待认证验收，普通 Bean、缓存裸目标/字段快照及实际业务迁移继续保留。未启用 Sonar，未验证远端 CI、制品发布或发布后消费者。两项复审问题已本地修复，TD-039 仍为部分修复。
+
+## 第八阶段：TD-039 真实 Nacos 服务验收
+
+沿用已有真实服务与分阶段提交授权，自行检查容器实际启动参数和编排来源。容器标签记录的旧目录已移动；从当前 `valhalla-project/nidhogg-orchestration/docker/dev/env` 读取开发账号与密码，在内存中映射给验收进程，登录实测成功。不提交凭据、配置正文、令牌或动态测试密钥，不修改该编排项目。
+
+当前容器实际映射 8080、8848，9848 在容器内可达但未绑定主机；当前编排源声明该端口不等于运行容器已经映射。通过本机 `127.0.0.1:9848` 临时转发，经既有 Windows Docker CLI 的 `docker exec/nc` 连接原容器 SDK 端口，运行真实发布、查询和监听。未重建容器或更改认证、持久化及端口配置；专项探针与转发仅保留在 `/tmp`，不写入 `tools/`。
+
+本阶段只修正 `NacosLiveRefreshIT` 的读回等待和失败摘要。真实服务发布成功早于异步 dump 可见，发布、删除及最终清理使用单调时钟和剩余预算轮询精确结果，读取异常直接传播；截止后匹配不接受。不重发写入、不手动发事件，保留实际推送、变更键、消费者代理身份、初始化/销毁及本轮解密认证失败断言。测试修正与六份相关验收文档按既有授权分两次本地提交。
+
+### 第八阶段本地验收（2026-10-09，真实服务通过，未发布）
+
+- 有效 Red 与诊断：首次 `ci,nacos-live` 在初次发布成功后立即读回不一致，日志 `/tmp/td039-nacos-live-first-red.log`；独立真实 SDK 探针复现第一次 `null`，约 215 毫秒后长度与 SHA-256 精确匹配。对应 Nacos 3.0.3 的持久化后异步 dump 契约，不能把发布响应当作查询屏障。探针和修改后的测试均只清理各自唯一配置。
+- 真实服务结果：`./mvnw -o -Pci,nacos-live -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify` 于 17:19:10 至 17:19:49 +08:00 exit 0，5 个 reactor 模块均 SUCCESS；37 份 Surefire XML 对应 333 项单元测试，5 份 Failsafe XML 对应 17 项 IT，失败、错误、跳过均为 0，其中 Nacos 119 项单元测试、17 项 IT。`NacosLiveRefreshIT` 实际执行 1 项且未跳过，覆盖真实单键/前缀删除、语义空、DataId 删除、恢复、重复推送和解密失败保留后恢复；最终独立配置查询为 `null`，两项 SDK shutdown 及临时转发清理完成。日志 `/tmp/td039-nacos-live-authenticated.log`，不可混为常规模式的结果。
+- 输入与服务：基于 HEAD `486d803`、包含本阶段测试修正的工作区；live 文件 SHA-256 `dd2645b7c231544c079bf92cb35d97f3c11076936909bdf78234f564e3d06992`，397 份跟踪输入在运行前后未变。Nacos Server 3.0.3、SDK 2.4.3、Java 17.0.19、Boot 3.3.13、Cloud Context 4.1.6、Alibaba 2023.0.3.4；用户指定容器 `0953cfc9bd9965c13b80d31bde67996d99c9f6f48654368f2e47a4e26f47e299`，默认空间在服务端为 public。证据 `/tmp/td039-nacos-live-authenticated-evidence.json`，XML 与相关日志已保存到 `/tmp/td039-nacos-live-final-artifacts`，后续常规构建不覆盖此份服务证据。
+- 已观察到的外部失败：另一次候选重跑在版本 7 发布后等待超时，日志 `/tmp/td039-nacos-live-second-red.log`。服务器 `config-trace.log` 与 `config-dump.log` 显示旧缓存时间戳 `1791537230485`，新发布时间戳 `1791537230346` 落后 139 毫秒，触发 `dump-ignore: timestamp is outdated`；随后 SDK 查询持续返回旧 MD5。该失败单独保留，最终通过不能将它改写成成功，也不能证明已修复操作系统或服务时钟。测试没有通过重发、放宽内容比较或更改服务配置掩盖该边界；服务器日志摘录保留于 `/tmp/td039-failed-run-server-selected.log`。
+- 独立复核：最终测试增量未发现 P0–P3；安全性、正确性、完整性、可维护性、错误处理五维均为 4/5，按公共 policy 加权 4.0、PASS。等待延迟发布、删除及原读取异常传播另有临时模拟检查；主线程独立核对实际 profile、XML 与输入指纹，不将模拟检查替代真实服务验收。
+- 完整常规验收：`RUN_SONAR=false bash scripts/engineering.sh quality --mode full --source worktree --report /tmp/mimir-td039-live-final-full/quality-report.json` 于 17:27:27 至 17:33:59 +08:00 完成，exit 0、0 findings，全部必需检查 passed；15 个模块、99 份 Surefire XML 的 1126 项单元测试和 13 份 Failsafe XML 的 55 项常规 IT，失败、错误、跳过均为 0。Spotless、Enforcer、适用覆盖率、构建模型、发布契约、隔离消费者、临时签名和失败 fixture 通过。此 full 未启用 live，不代表全仓库测试均连接真实服务。
+- 完整输入：tree `worktree-e879038f08c9c979dc28e841327b5a58ee909be001019d4c4309a52faac80bd0`，configurationHash `aeb70a727d34365e0e8e4b245d211610bf7ac6ede6d86f46a12371b37b7df0d2`，Node 22.22.3、Java 17.0.19、Maven 3.9.16；full 结束时跟踪输入仍与 live 验收一致。随后仅回写六份文档并单独 full 复验，不改变已验证的 Java、POM 或资源。
+- 后补文档验收：`bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test --report /tmp/td039-live-final-docs-report.json` 于 17:41:30 至 17:41:32 +08:00 exit 0，80 份 Markdown、0 issues，工具自检、格式、内部链接及导航均 passed。随后仅补本条验收摘要并再次核对最终文档，不改动已通过的 Java 输入。
+- 剩余范围：实际业务应用是否已经迁移可重建 Bean、持续读取 RefreshScope 代理并满足自身初始化/销毁和绑定要求，尚未核实；普通 Bean、缓存裸目标和字段快照仍保留既有风险。临时通路不构成永久端口修复，本次回归不保证任意时间漂移下的服务端线性一致性。未启用 Sonar，未验证远端 CI、生产网络、正式发布或发布后消费者；TD-039 继续保持部分修复。

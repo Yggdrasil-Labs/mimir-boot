@@ -27,7 +27,7 @@ updated: 2026-10-09
 | [TD-013](#td-013-rpc-mdc-scope) | RPC MDC scope 兼容入口 | starter-rpc-core | 中 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
-| [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | [运行时同步与验收](./v2.3.0/runtime-debt-followup/plan.md#第六阶段td-039-运行时同步与真实-nacos-验收)；真实服务与消费者迁移待验收 |
+| [TD-039](#td-039-nacos-解密覆盖层) | Nacos 解密覆盖层清理 | starter-nacos / 配置刷新 | 高 | 部分修复 | YoungerYang-Y | 2026-09-10 | [真实服务验收](./v2.3.0/runtime-debt-followup/plan.md#第八阶段本地验收2026-10-09真实服务通过未发布)通过；实际消费者迁移待验收 |
 
 ## 债务明细
 
@@ -73,7 +73,7 @@ updated: 2026-10-09
 - **运行时同步（2026-10-09）**：默认 ConfigData 模式新增委托加载适配与默认刷新器扩展，成功加载的标准枚举 Nacos 源拥有明确资源归属；差异计算前同步消失文档和解密层，删除导致有效值变化时进入事件键集合。成功空结果与 optional 失败分开处理；旧 retain 源不视为新加载成功。加载或解密异常传播时恢复旧源引用与顺序，并保留现有作用域目标；上游吞掉的 optional 异常仍执行完整刷新，旧源保留但目标会失效。模块完整构建及本地回归已通过，覆盖真实 Boot/Alibaba 加载与事件链；远端 ConfigService 为测试替身，不作为网络验收。
 - **复审修复（2026-10-09）**：默认刷新器只定制 Cloud 实际注册的工厂定义，排除上游自动配置时正确退让，并保留后续子类类型条件、同名用户工厂及实例生命周期。真实服务负向断言只接受本轮预期键的认证失败，不再以加载或无关异常替代解密失败；常规单元回归和完整本地 quality 通过，证据见[第七阶段验收](./v2.3.0/runtime-debt-followup/plan.md#第七阶段本地验收2026-10-09真实服务待验收未发布)。
 - **剩余整源边界**：本地文件源消失、自定义非枚举 parser、移除 import 或更换资源身份不在自动删除契约内；自定义 ContextRefresher、legacy bootstrap 需自行接入。原本地文件空源负向回归保留，不能将 Nacos 的归属清理扩大到所有属性源。
-- **真实服务验收**：已启动用户指定的本地 Nacos 3.0.3，readiness 实测成功；服务启用认证，验收进程尚无授权凭据。外部 nacos-live 回归已补齐单键/前缀删除、语义空、DataId 删除、恢复、重复推送和解密失败，尚未在真实服务执行。容器可用不能替代网络配置与消费者迁移验收。
+- **真实服务验收（2026-10-09）**：从实际开发编排配置读取凭据并登录成功，指定本地 Nacos 3.0.3 的 `ci,nacos-live` 回归通过，333 项单元测试、17 项 IT 无失败、错误或跳过。覆盖真实单键/前缀删除、语义空、DataId 删除、恢复、重复推送及解密失败后的保留与恢复；发布和删除确认按预算轮询精确结果。使用临时本机 SDK 端口转发，未重建容器或更改认证、持久化及端口配置；清理成功。此前一次新时间戳落后于缓存触发服务端 `dump-ignore` 的失败另行记录，不宣称修复服务时钟或提供线性一致性；证据见[第八阶段验收](./v2.3.0/runtime-debt-followup/plan.md#第八阶段本地验收2026-10-09真实服务通过未发布)。实际业务消费者迁移仍未核实。
 - **目标版本**：待排期。
 - **复查条件**：配置刷新、Bean 重新绑定或 Spring Cloud 基线调整时，复核完全删除且无下层值的旧明文残留。
 
