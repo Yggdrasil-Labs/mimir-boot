@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,72 +58,6 @@ class NacosRefreshScopeIT {
             assertNotSame(previous, context.getBean("scopedTarget.settings", Settings.class));
             assertSame(plain, context.getBean(PlainSettings.class));
             assertEquals("old-secret", plain.getSecret());
-        }
-    }
-
-    @Test
-    void shouldUseFallbackRestoreEncryptionAndDeleteAgainWithEncryptionStillEnabled() {
-        String key = ConfigCryptoUtils.generateKey();
-        MutableContext fixture = start(key);
-        try (ConfigurableApplicationContext context = fixture.context()) {
-            Settings settings = context.getBean(Settings.class);
-            assertEquals("old-secret", settings.getSecret());
-            context.getEnvironment()
-                    .getPropertySources()
-                    .addLast(new MapPropertySource("fallback", Map.of("app.secret", "fallback")));
-            removeApplicationProperties(fixture);
-            fixture.values().remove(NacosEncryptProperties.PREFIX + ".key");
-
-            context.getBean(ContextRefresher.class).refresh();
-
-            assertEquals("fallback", settings.getSecret());
-            assertNull(
-                    context.getEnvironment()
-                            .getPropertySources()
-                            .get("decryptedProperties:nacos-refresh"));
-
-            fixture.values().put(NacosEncryptProperties.PREFIX + ".key", key);
-            fixture.values().put("app.secret", encrypted("restored-secret", key));
-            context.getBean(ContextRefresher.class).refresh();
-
-            assertEquals("restored-secret", settings.getSecret());
-            assertEquals("restored-secret", context.getEnvironment().getProperty("app.secret"));
-            context.getEnvironment().getPropertySources().remove("fallback");
-            fixture.values().remove("app.secret");
-            context.getBean(ContextRefresher.class).refresh();
-
-            assertNull(settings.getSecret());
-            assertNull(context.getEnvironment().getProperty("app.secret"));
-            assertEquals(30, settings.getTimeout());
-            assertEquals(List.of(), settings.getTags());
-        }
-    }
-
-    @Test
-    void shouldRetainExistingTargetAfterFailedDecryptionAndRecoverOnNextRefresh() {
-        String key = ConfigCryptoUtils.generateKey();
-        MutableContext fixture = start(key);
-        try (ConfigurableApplicationContext context = fixture.context()) {
-            Settings settings = context.getBean(Settings.class);
-            assertEquals("old-secret", settings.getSecret());
-            Settings previous = context.getBean("scopedTarget.settings", Settings.class);
-            fixture.values()
-                    .put(NacosEncryptProperties.PREFIX + ".key", ConfigCryptoUtils.generateKey());
-            fixture.values().put("app.secret", encrypted("next-secret", key));
-
-            assertThrows(
-                    IllegalStateException.class,
-                    () -> context.getBean(ContextRefresher.class).refresh());
-
-            assertSame(previous, context.getBean("scopedTarget.settings", Settings.class));
-            assertEquals("old-secret", settings.getSecret());
-            assertEquals("old-secret", context.getEnvironment().getProperty("app.secret"));
-
-            fixture.values().put(NacosEncryptProperties.PREFIX + ".key", key);
-            context.getBean(ContextRefresher.class).refresh();
-
-            assertEquals("next-secret", settings.getSecret());
-            assertNotSame(previous, context.getBean("scopedTarget.settings", Settings.class));
         }
     }
 

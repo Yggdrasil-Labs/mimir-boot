@@ -3,10 +3,15 @@ package com.yggdrasil.labs.nacos.config;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.PayloadApplicationEvent;
 import org.springframework.core.env.MapPropertySource;
@@ -40,93 +45,46 @@ class NacosLiveRefreshAssertionsTest {
         NacosLiveRefreshIT.assertCurrentDecryptionFailure(lifecycle, 0, EXPECTED_KEYS);
     }
 
-    @Test
-    void shouldRejectRemoteLoadFailureAsDecryptionEvidence() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidFailures")
+    void shouldRejectFailuresWithoutCurrentExpectedAuthenticationEvidence(
+            String scenario, int previousFailures, List<RuntimeException> failures) {
         NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(lifecycle, new IllegalStateException("远程加载失败"));
+        failures.forEach(failure -> recordFailure(lifecycle, failure));
 
         assertThrows(
                 AssertionError.class,
                 () ->
                         NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 0, EXPECTED_KEYS));
+                                lifecycle, previousFailures, EXPECTED_KEYS));
     }
 
-    @Test
-    void shouldRejectUnrelatedEventFailure() {
-        NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(lifecycle, new IllegalArgumentException("无关事件监听器失败"));
-
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 0, EXPECTED_KEYS));
-    }
-
-    @Test
-    void shouldRejectAuthenticationFailureForAnotherProperty() {
-        NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(lifecycle, authenticationFailure("unrelated.secret"));
-
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 0, EXPECTED_KEYS));
-    }
-
-    @Test
-    void shouldRejectHistoricalAuthenticationFailureWithoutCurrentFailure() {
-        NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(lifecycle, authenticationFailure("live.required.secret"));
-
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 1, EXPECTED_KEYS));
-    }
-
-    @Test
-    void shouldNotUseHistoricalAuthenticationFailureToExplainCurrentLoadFailure() {
-        NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(lifecycle, authenticationFailure("live.required.secret"));
-        recordFailure(lifecycle, new IllegalStateException("本轮远程加载失败"));
-
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 1, EXPECTED_KEYS));
-    }
-
-    @Test
-    void shouldRejectMalformedCiphertextAsWrongKeyAuthenticationEvidence() {
-        NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(
-                lifecycle,
-                decryptionFailure(
-                        "live.required.secret", "ENC(损坏密文)", ConfigCryptoUtils.generateKey()));
-
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 0, EXPECTED_KEYS));
-    }
-
-    @Test
-    void shouldRejectUnrelatedFailureAlongsideCurrentAuthenticationFailure() {
-        NacosLiveRefreshIT.Lifecycle lifecycle = new NacosLiveRefreshIT.Lifecycle();
-        recordFailure(lifecycle, authenticationFailure("live.required.secret"));
-        recordFailure(lifecycle, new IllegalStateException("本轮额外监听器异常"));
-
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        NacosLiveRefreshIT.assertCurrentDecryptionFailure(
-                                lifecycle, 0, EXPECTED_KEYS));
+    private static Stream<Arguments> invalidFailures() {
+        return Stream.of(
+                Arguments.of("远程加载失败", 0, List.of(new IllegalStateException("远程加载失败"))),
+                Arguments.of("无关事件异常", 0, List.of(new IllegalArgumentException("无关事件监听器失败"))),
+                Arguments.of("其他属性认证失败", 0, List.of(authenticationFailure("unrelated.secret"))),
+                Arguments.of("仅有历史认证失败", 1, List.of(authenticationFailure("live.required.secret"))),
+                Arguments.of(
+                        "历史认证失败不能解释本轮加载失败",
+                        1,
+                        List.of(
+                                authenticationFailure("live.required.secret"),
+                                new IllegalStateException("本轮远程加载失败"))),
+                Arguments.of(
+                        "损坏密文不能作为错误密钥证据",
+                        0,
+                        List.of(
+                                decryptionFailure(
+                                        "live.required.secret",
+                                        "ENC(损坏密文)",
+                                        ConfigCryptoUtils.generateKey()))),
+                Arguments.of(
+                        "本轮认证失败夹杂无关异常",
+                        0,
+                        List.of(
+                                authenticationFailure("live.required.secret"),
+                                new IllegalStateException("本轮额外监听器异常"))));
     }
 
     private static void recordFailure(
