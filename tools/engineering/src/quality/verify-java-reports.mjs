@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { DOMParser } from '@xmldom/xmldom';
-import { generateExpectedFromModel, selectTestClasses } from './java-build-model.mjs';
+import { generateExpectedFromModel, resolveBuildArtifact, selectTestClasses } from './java-build-model.mjs';
 
 const SCHEMA_VERSION = 1;
 const execFileAsync = promisify(execFile);
@@ -197,7 +197,7 @@ export async function cleanExpected(root, expectedPath) {
     for (const module of expected.modules) {
         for (const test of Object.values(module.tests)) test.reports = [];
         for (const artifact of Object.values(module.artifacts)) {
-            const artifactPath = resolveArtifact(root, artifact.path);
+            const artifactPath = await resolveBuildArtifact(root, module.path, artifact.path);
             await rm(artifactPath, { force: true });
             artifact.sha256 = null;
             if (await exists(artifactPath)) throw new Error(`无法清理旧产物：${artifact.path}`);
@@ -205,7 +205,11 @@ export async function cleanExpected(root, expectedPath) {
     }
     for (const module of expected.modules) {
         for (const kind of ['surefire', 'failsafe']) {
-            for (const file of await reportFiles(root, testReportDirectory(module, kind))) await rm(file);
+            const directory = testReportDirectory(module, kind);
+            await resolveBuildArtifact(root, module.path, directory);
+            for (const file of await reportFiles(root, directory)) {
+                await rm(await resolveBuildArtifact(root, module.path, file));
+            }
         }
     }
     expected.cleanedAt = new Date().toISOString();

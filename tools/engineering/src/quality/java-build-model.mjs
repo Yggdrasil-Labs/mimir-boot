@@ -106,6 +106,27 @@ async function configuredPath(root, directory, input, label) {
     return contained(root, path.resolve(directory, resolved(input, label)));
 }
 
+/** 可清理产物只允许位于所属模块的标准 target 内，不跟随符号链接。 */
+export async function resolveBuildArtifact(root, modulePath, file) {
+    const directory = path.resolve(root, modulePath);
+    await contained(root, directory);
+    if (await realpath(directory) !== directory) throw new Error(`产物所属模块不允许符号链接：${directory}`);
+    const absolute = path.resolve(root, file);
+    const name = relative(path.join(directory, 'target'), absolute);
+    if (name === '.') throw new Error('可清理产物不能是 target 目录本身');
+    let current = directory;
+    for (const segment of ['target', ...name.split('/')]) {
+        current = path.join(current, segment);
+        try {
+            if ((await lstat(current)).isSymbolicLink()) throw new Error(`产物路径不允许符号链接：${current}`);
+        } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+            break;
+        }
+    }
+    return absolute;
+}
+
 async function javaFiles(root, directory) {
     await contained(root, directory);
     let entries;
@@ -454,6 +475,7 @@ async function coverageExpectation(root, module, reactor, files, buildDirectory,
     requireAgentConsumption(module, agent, tests);
     const destination = await configuredPath(root, module.directory, value(agent.get('destFile'))
         || path.join(buildDirectory, 'jacoco.exec'), 'JaCoCo destFile');
+    await resolveBuildArtifact(root, module.path, destination);
     for (const invocation of [report, check]) {
         const data = await configuredPath(root, module.directory, value(invocation.get('dataFile'))
             || path.join(buildDirectory, 'jacoco.exec'), 'JaCoCo dataFile');
@@ -485,10 +507,11 @@ async function coverageExpectation(root, module, reactor, files, buildDirectory,
     const siteDirectory = text(module.model, 'reporting', 'outputDirectory') || path.join(buildDirectory, 'site');
     const outputDirectory = await configuredPath(root, module.directory,
         value(report.get('outputDirectory')) || path.join(siteDirectory, 'jacoco'), 'JaCoCo outputDirectory');
+    const xml = await resolveBuildArtifact(root, module.path, path.join(outputDirectory, 'jacoco.xml'));
     return {
         coverage: { required: true, reason: null, includes, excludes, ...minimums },
         artifacts: {
-            jacocoXml: { path: relative(root, path.join(outputDirectory, 'jacoco.xml')), sha256: null },
+            jacocoXml: { path: relative(root, xml), sha256: null },
             jacocoExec: { path: relative(root, destination), sha256: null },
         },
     };

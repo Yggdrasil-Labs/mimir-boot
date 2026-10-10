@@ -44,6 +44,8 @@ full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 
 
 Java 子检查通过本轮 `-Pci help:effective-pom` 获取完整 reactor，检查适用插件的执行阶段、扫描范围、报告路径和最低阈值，并明确纯 POM/无源码豁免。它只支持本仓库的 POM/JAR 模块、标准 `src/main/java`/`src/test/java` 和 `target` 输出目录，以及 Parent 的 `*Test`/`*Tests`、`*IT`/`*IntegrationTest` 规则；不模拟 Maven 通用选择器或额外执行 JUnit 发现。配置不在支持范围时明确失败，不能转成无测试豁免。
 
+可清理产物必须位于所属模块的标准 `target` 内；模型按此范围登记 JaCoCo 数据及 XML，清理入口再次核验全部产物和测试报告路径，不允许模块或产物路径经符号链接重定向。
+
 源码 reactor POM（含纯 POM 与 Parent）中声明 profile activation/file 一律拒绝，不论当前是否激活；不解析 Maven 通用 profile。
 
 测试源码的包路径、顶层类名和文件名必须一致，测试命名后缀保留给实际运行的测试类，辅助类或抽象基类不使用这些后缀。构建前按源码路径建立期望清单；成功 `clean verify` 后，所选编译测试类必须与源码清单一致，每个期望类都要有 XML `testcase@classname` 执行证据。异名或独立成员测试类无法对应源码时明确失败；普通嵌套报告按外层类聚合，嵌套类不得另行匹配本阶段包括/排除规则成为独立编译候选。单元测试中的嵌套类可用 `Scenario`，避免 `ScenarioTest`；若进入独立编译候选，则因缺少同名源码而拒绝。参数化执行由 Maven/JUnit 负责。该检查不证明类内所有方法或动态实例都执行，零用例、失败、错误或跳过报告均不通过。清单不从 XML 反推，报告数量不能替代逐类核验。
