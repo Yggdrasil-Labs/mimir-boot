@@ -21,7 +21,7 @@ async function fixture(run) {
         for (const name of files) await writeFile(path.join(source, `${name}.java`), `package example; class ${name} { static class Scenario {} }`);
         const model = async ({ compiler = '', unit = '', integration = '', format = '', formatConfiguration = '', coverage = '',
             unitIncludes = ['**/*Test.java', '**/*Tests.java'],
-            unitExcludes = ['**/*IT.java', '**/*IntegrationTest.java'], externalProfile = false, properties = '', formatExecution = '', integrationExecution = '',
+            unitExcludes = ['**/*IT.java', '**/*IntegrationTest.java'], externalProfile = false, properties = '', formatExecution = '', unitExecution = '', integrationExecution = '',
             testRoot = `${root}/src/test/java` } = {}) => {
             const pom = `<project xmlns="http://maven.apache.org/POM/4.0.0">
                 <modelVersion>4.0.0</modelVersion><groupId>fixture</groupId><artifactId>fixture</artifactId><version>1</version><properties>${properties}</properties>
@@ -31,7 +31,7 @@ async function fixture(run) {
                     <plugin><artifactId>maven-surefire-plugin</artifactId><configuration>
                         <includes>${unitIncludes.map((item) => `<include>${item}</include>`).join('')}</includes>
                         <excludes>${unitExcludes.map((item) => `<exclude>${item}</exclude>`).join('')}</excludes>${unit}
-                    </configuration><executions><execution><goals><goal>test</goal></goals></execution></executions></plugin>
+                    </configuration><executions><execution><goals><goal>test</goal></goals>${unitExecution}</execution></executions></plugin>
                     <plugin><artifactId>maven-failsafe-plugin</artifactId><configuration>
                         <includes><include>**/*IT.java</include><include>**/*IntegrationTest.java</include></includes>${integration}
                     </configuration><executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals>${integrationExecution}</execution></executions></plugin>
@@ -145,6 +145,23 @@ test('skip、关闭报告和发现过滤不能变成测试豁免', async () => {
             await assert.rejects(model({ properties: `<${name}>filter</${name}>` }), /不支持测试属性/u);
         }
         await assert.rejects(model({ format: '<excludes><exclude>**/ATest.java</exclude></excludes>' }), /Spotless/u);
+    });
+});
+
+test('测试 provider properties 非空时拒绝，不能通过嵌套配置过滤用例', async () => {
+    await fixture(async ({ model }) => {
+        for (const kind of ['unit', 'integration']) {
+            for (const scope of ['plugin', 'execution']) {
+                const options = (properties) => scope === 'plugin' ? { [kind]: properties }
+                    : { [`${kind}Execution`]: `<configuration>${properties}</configuration>` };
+                await model(options('<properties/>'));
+                for (const content of ['<groups>fast</groups>', '<excludegroups>slow</excludegroups>',
+                    '<configurationParameters>junit.jupiter.conditions.deactivate=*</configurationParameters>',
+                    '<customOption/>', 'custom=value']) {
+                    await assert.rejects(model(options(`<properties>${content}</properties>`)), /不支持.*provider properties/u);
+                }
+            }
+        }
     });
 });
 
@@ -281,6 +298,25 @@ test('普通 JVM 属性值中的参数文本不算门禁覆盖，独立覆盖参
         await validateBuildInputs(root, {});
         await writeFile(path.join(root, '.mvn/jvm.config'), `${values[0]}\n-DskipTests=true`);
         await assert.rejects(validateBuildInputs(root, {}), /不得覆盖/u);
+    });
+});
+
+test('带引号属性值中的空白分隔门禁参数文本仍保守拒绝', async () => {
+    await fixture(async ({ root }) => {
+        const ordinary = '-Dhttp.proxyPassword="ordinary value"';
+        const restricted = ['-Dhttp.proxyPassword="ordinary -Dtest=sample"',
+            '-Dhttp.proxyPassword="ordinary @options"', '-Dhttp.proxyPassword="ordinary -XX:VMOptionsFile=options"'];
+        for (const name of ['MAVEN_OPTS', 'MAVEN_DEBUG_OPTS', 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS']) {
+            await validateBuildInputs(root, { [name]: ordinary });
+            for (const input of restricted) await assert.rejects(validateBuildInputs(root, { [name]: input }), /不得覆盖/u);
+        }
+        await mkdir(path.join(root, '.mvn'));
+        await writeFile(path.join(root, '.mvn/jvm.config'), ordinary);
+        await validateBuildInputs(root, {});
+        for (const input of restricted) {
+            await writeFile(path.join(root, '.mvn/jvm.config'), input);
+            await assert.rejects(validateBuildInputs(root, {}), /jvm.config/u);
+        }
     });
 });
 

@@ -307,8 +307,11 @@ async function testExpectation(root, module, kind, declarations, buildDirectory,
             'excludedGroups', 'includeJUnit5Engines', 'excludeJUnit5Engines', 'junitArtifactName', 'testNGArtifactName', 'provider', 'providers', 'systemPropertiesFile']) {
             if (get(name)) throw new Error(`${module.path} ${kind} 不支持 ${name} 改变测试范围`);
         }
-        if (one(get('properties'), 'configurationParameters')
-            || Array.from(get('systemPropertyVariables')?.childNodes || []).some((item) => item.nodeType === 1 && item.localName.startsWith('junit.'))
+        const providerProperties = get('properties');
+        if (value(providerProperties) || Array.from(providerProperties?.childNodes || []).some((item) => item.nodeType === 1)) {
+            throw new Error(`${module.path} ${kind} 不支持非空 provider properties`);
+        }
+        if (Array.from(get('systemPropertyVariables')?.childNodes || []).some((item) => item.nodeType === 1 && item.localName.startsWith('junit.'))
             || elements(get('systemProperties'), 'property').some((item) => text(item, 'name')?.startsWith('junit.'))) {
             throw new Error(`${module.path} ${kind} 不支持 JUnit 发现参数`);
         }
