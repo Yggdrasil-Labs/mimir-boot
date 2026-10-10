@@ -88,7 +88,7 @@ Sonar 的变量为 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY`；
 | CI 结果 | 对应 PR/提交的 workflow run 和 artifacts；本地报告不能代替 |
 | Sonar 结果 | 未启用时明确 `not_applicable`，不描述为远程通过 |
 
-Java 子检查只支持仓库标准源码目录与 Parent 的测试命名规则。构建前按源码路径得到期望类，构建后扫描所选编译测试类，要求两者一致，再逐类核对 XML 用例；不能从已有报告反推期望。包路径、顶层类名与文件名必须一致，辅助类或抽象基类不使用测试后缀。普通嵌套报告按外层类聚合，嵌套类不得另行匹配本阶段包括/排除规则成为独立编译候选。单元测试中的嵌套类可用 `Scenario`，避免 `ScenarioTest`；若进入独立编译候选，则因缺少同名源码而拒绝。参数化执行由 Maven/JUnit 负责；不额外运行 Jupiter 发现，不支持异名或独立成员测试类，不证明每个方法或动态实例都执行。Surefire/Failsafe provider 的 `properties` 仅允许无子元素且文本为空的配置；包含子元素或非空文本时拒绝，不维护参数知识库。仅当存在具体 Failsafe IT 排除时，才要求完整 Parent 链每层的原始 `relativePath`（缺省 `../pom.xml`）解析后，其 realpath 与对应 reactor Parent 源码 POM 一致，并允许最小 profile 清空插件级 excludes；空值、无法定位或同坐标异源均失败且不豁免，不额外读取 reactor 外的 Parent XML 或缓存。执行级显式 IT 排除拒绝；这不表示非 reactor Parent 一概禁用。工具不包含功能专用逻辑。具体支持边界与长期契约回归入口见[工程工具](../../tools/engineering/README.md#检查清单)。
+Java 子检查只支持仓库标准源码目录与 Parent 的测试命名规则。构建前按源码路径得到期望类，构建后扫描所选编译测试类，要求两者一致，再逐类核对 XML 用例；不能从已有报告反推期望。包路径、顶层类名与文件名必须一致，辅助类或抽象基类不使用测试后缀。普通嵌套报告按外层类聚合，嵌套类不得另行匹配本阶段包括/排除规则成为独立编译候选。单元测试中的嵌套类可用 `Scenario`，避免 `ScenarioTest`；若进入独立编译候选，则因缺少同名源码而拒绝。参数化执行由 Maven/JUnit 负责；不额外运行 Jupiter 发现，不支持异名或独立成员测试类，不证明每个方法或动态实例都执行。Surefire/Failsafe provider 的 `properties` 仅允许无子元素且文本为空的配置；包含子元素或非空文本时拒绝，不维护参数知识库。仅当存在具体 Failsafe IT 排除时，才要求完整 Parent 链每层的原始 `relativePath`（缺省 `../pom.xml`）解析后，其 realpath 与对应 reactor Parent 源码 POM 一致，并允许最小 profile 清空插件级 excludes；空值、无法定位或同坐标异源均失败且不豁免，不额外读取 reactor 外的 Parent XML 或缓存。执行级显式 IT 排除拒绝；这不表示非 reactor Parent 一概禁用。工具不包含功能专用逻辑。具体支持边界与维护验证方式见[工程工具](../../tools/engineering/README.md#检查清单)。
 
 源码 reactor POM（含纯 POM 与 Parent）中声明 profile activation/file 一律拒绝，不论当前是否激活；不解析 Maven 通用 profile。
 
