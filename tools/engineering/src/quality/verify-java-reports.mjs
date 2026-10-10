@@ -127,7 +127,9 @@ export async function generateExpected(root, runId, effectivePomSource = null) {
     try {
         const output = path.join(temporary, 'effective-pom.xml');
         try {
-            await execFileAsync(path.join(root, 'mvnw'), ['-B', '-Pci', 'help:effective-pom', `-Doutput=${output}`], { cwd: root, maxBuffer: 16 * 1024 * 1024, timeout: 180000 });
+            await execFileAsync(path.join(root, 'mvnw'), ['-B', '-Pci', 'help:effective-pom', `-Doutput=${output}`], {
+                cwd: root, env: { ...process.env, MAVEN_SKIP_RC: '1' }, maxBuffer: 16 * 1024 * 1024, timeout: 180000,
+            });
         } catch (error) {
             throw new Error(`无法获取 Java 有效构建模型：${error.message}\n${error.stdout || ''}\n${error.stderr || ''}`);
         }

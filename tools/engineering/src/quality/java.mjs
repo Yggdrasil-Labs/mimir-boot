@@ -150,6 +150,7 @@ export async function runCommand({ command, args, cwd, logPath }) {
         try {
             child = spawn(command, args, {
                 cwd,
+                env: { ...process.env, MAVEN_SKIP_RC: '1' },
                 stdio: ['ignore', 'pipe', 'pipe'],
                 detached: process.platform !== 'win32',
             });

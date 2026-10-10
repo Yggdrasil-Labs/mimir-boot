@@ -202,6 +202,11 @@ function active(execution) {
 }
 
 function requireStandardBuild(module) {
+    for (const profile of elements(module.raw, 'profiles', 'profile')) {
+        if (one(profile, 'activation', 'file')) {
+            throw new Error(`${module.path} 不支持文件自动激活 profile：${text(profile, 'id')}`);
+        }
+    }
     for (const [name, suffix] of Object.entries({ sourceDirectory: 'src/main/java', testSourceDirectory: 'src/test/java',
         directory: 'target', outputDirectory: 'target/classes', testOutputDirectory: 'target/test-classes' })) {
         if (path.resolve(module.directory, text(module.model, 'build', name) || suffix) !== path.join(module.directory, suffix)) {
