@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { DOMImplementation, DOMParser, XMLSerializer } from '@xmldom/xmldom';
-import { generateExpectedFromModel } from './java-build-model.mjs';
+import { DOMParser } from '@xmldom/xmldom';
+import { generateExpectedFromModel, selectTestClasses } from './java-build-model.mjs';
 
 const SCHEMA_VERSION = 1;
 const execFileAsync = promisify(execFile);
@@ -89,7 +89,39 @@ async function sha256(file) {
     return hash.digest('hex');
 }
 
+export async function validateBuildInputs(root, environment = process.env) {
+    // 构建命令由统一入口固定；不解析可注入额外 goal/profile/reactor 的通用 Maven 参数。
+    if (environment.MAVEN_ARGS?.trim()) throw new Error('Java 门禁不支持 MAVEN_ARGS 注入额外构建参数');
+    for (const name of ['MAVEN_BASEDIR', 'MAVEN_PROJECTBASEDIR']) {
+        if (environment[name] && path.resolve(environment[name]) !== path.resolve(root)) {
+            throw new Error(`${name} 不得切换受检 Maven 配置目录`);
+        }
+    }
+    const mavenConfig = await readFile(path.join(root, '.mvn/maven.config'), 'utf8').catch((error) => {
+        if (error.code === 'ENOENT') return '';
+        throw error;
+    });
+    if (mavenConfig.split(/\r?\n/u).some((line) => line.trim() && !line.trim().startsWith('#'))) {
+        throw new Error('Java 门禁不支持 .mvn/maven.config 注入额外构建参数');
+    }
+    const jvmConfig = await readFile(path.join(root, '.mvn/jvm.config'), 'utf8').catch((error) => {
+        if (error.code === 'ENOENT') return '';
+        throw error;
+    });
+    const overrides = /(?:^|\s)-D(?:test|it\.test|skipTests|skipITs|maven\.(?:test|main|compiler)[.\w]*|surefire\.[.\w]+|failsafe\.[.\w]+|jacoco\.[.\w]+|spotless[.\w]*|junit\.[.\w]+|argLine|groups|excludedGroups|forkCount|forkMode|disableXmlReport|includeJUnit5Engines|excludeJUnit5Engines)(?=[=\s"']|$)/u;
+    for (const [name, input] of [['.mvn/jvm.config', jvmConfig], ...['MAVEN_OPTS', 'MAVEN_DEBUG_OPTS', 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS']
+        .map((name) => [name, environment[name] || ''])]) {
+        // 只保守检测禁用键与参数文件，不解释或重写 JVM/shell 参数。
+        const unquoted = input.replace(/["']/gu, '');
+        if (/-D[^\s=]*["']/u.test(input) || overrides.test(unquoted)
+            || /(?:^|\s)(?:@|-XX:VMOptionsFile=)/u.test(unquoted)) {
+            throw new Error(`${name} 不得覆盖测试、编译、覆盖率或格式门禁参数，也不支持含引号的属性键或参数文件`);
+        }
+    }
+}
+
 export async function generateExpected(root, runId, effectivePomSource = null) {
+    await validateBuildInputs(root);
     if (effectivePomSource !== null) return generateExpectedFromModel(root, runId, effectivePomSource);
     const temporary = await mkdtemp(path.join(tmpdir(), 'mimir-java-model-'));
     try {
@@ -198,7 +230,19 @@ async function validateTestReports(root, module, kind, findings) {
     const expected = module.tests[kind === 'surefire' ? 'unit' : 'integration'];
     const recorded = new Map((expected.reports || []).map((report) => [report.path, report.sha256]));
     const executedClasses = new Set();
-    const classpaths = new Set();
+    try {
+        const compiled = await compiledTestClasses(root, expected);
+        const sources = new Set(expected.sourceClasses);
+        for (const name of sources) {
+            if (!compiled.has(name)) findings.push({ rule: 'test-report-compiled-missing', module: module.path, message: `缺少编译测试类：${name}` });
+        }
+        for (const name of compiled) {
+            if (!sources.has(name)) findings.push({ rule: 'test-report-unsupported-class', module: module.path,
+                message: `编译测试类无法对应标准源码清单，不支持异名或独立成员测试类：${name}` });
+        }
+    } catch (error) {
+        findings.push({ rule: 'test-report-inventory-error', module: module.path, message: `${kind}：${error.message}` });
+    }
     if (expected.required && reports.length === 0) {
         findings.push({ rule: 'test-report-missing', module: module.path, message: `缺少 ${kind} 测试报告` });
     }
@@ -225,9 +269,6 @@ async function validateTestReports(root, module, kind, findings) {
                 if (!name) throw new Error('testcase 缺少 classname');
                 executedClasses.add(name);
             }
-            for (const property of Array.from(suite.getElementsByTagName('property'))) {
-                if (property.getAttribute('name') === 'surefire.test.class.path') classpaths.add(property.getAttribute('value'));
-            }
         } catch (error) {
             findings.push({ rule: 'test-report-invalid', module: module.path, message: `${relative}：${error.message}` });
         }
@@ -235,51 +276,37 @@ async function validateTestReports(root, module, kind, findings) {
     for (const relative of recorded.keys()) {
         findings.push({ rule: 'test-report-missing', module: module.path, message: `本次构建记录的报告已丢失：${relative}` });
     }
-    if (expected.required && reports.length) {
-        try {
-            if (classpaths.size !== 1 || ![...classpaths][0]) throw new Error('缺少唯一的实际测试类路径');
-            const classes = await discoverTestClasses(root, expected, [...classpaths][0]);
-            if (!classes.length) throw new Error('选择器未发现可运行的 JUnit Jupiter 测试类');
-            for (const name of classes) {
-                if (![...executedClasses].some((actual) => actual === name || actual.startsWith(`${name}$`))) {
-                    findings.push({ rule: 'test-report-missing', module: module.path, message: `${kind} 缺少测试类执行证据：${name}` });
-                }
-            }
-        } catch (error) {
-            findings.push({ rule: 'test-report-discovery-error', module: module.path, message: `${kind}：${error.message}` });
+    for (const name of expected.sourceClasses) {
+        if (![...executedClasses].some((actual) => actual === name || actual.startsWith(`${name}$`))) {
+            findings.push({ rule: 'test-report-missing', module: module.path, message: `${kind} 缺少测试类执行证据：${name}` });
+        }
+    }
+    for (const actual of executedClasses) {
+        if (!expected.sourceClasses.some((name) => actual === name || actual.startsWith(`${name}$`))) {
+            findings.push({ rule: 'test-report-unexpected-class', module: module.path, message: `${kind} 报告类不属于源码期望：${actual}` });
         }
     }
 }
 
-async function discoverTestClasses(root, expected, classpath) {
-    if (!expected.sourceClasses?.length || !expected.testClassesDirectory) throw new Error('缺少源码测试类或编译测试目录期望');
-    const classesDirectory = resolveArtifact(root, expected.testClassesDirectory);
-    if (!classpath.split(path.delimiter).some((item) => path.resolve(item) === classesDirectory)) {
-        throw new Error('实际测试类路径未包含期望编译测试目录');
-    }
-    const temporary = await mkdtemp(path.join(tmpdir(), 'mimir-test-inventory-'));
-    try {
-        const request = new DOMImplementation().createDocument(null, 'request', null);
-        const append = (tag, value) => {
-            const element = request.createElement(tag);
-            element.appendChild(request.createTextNode(value));
-            request.documentElement.appendChild(element);
-        };
-        for (const name of expected.sourceClasses) append('candidate', name);
-        const input = path.join(temporary, 'request.xml');
-        const output = path.join(temporary, 'inventory.xml');
-        const helper = fileURLToPath(new URL('./TestInventory.java', import.meta.url));
-        await writeFile(input, new XMLSerializer().serializeToString(request), 'utf8');
-        try {
-            await execFileAsync('java', ['--class-path', classpath, helper, input, output, classesDirectory],
-                { cwd: root, timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
-        } catch (error) {
-            throw new Error(`测试清单发现失败：${error.stderr || error.message}`);
+async function compiledTestClasses(root, expected) {
+    const directory = resolveArtifact(root, expected.testClassesDirectory);
+    const names = [];
+    async function visit(current) {
+        const entries = await readdir(current, { withFileTypes: true }).catch((error) => {
+            if (error.code === 'ENOENT') return [];
+            throw error;
+        });
+        for (const entry of entries) {
+            const file = path.join(current, entry.name);
+            if (entry.isSymbolicLink()) throw new Error(`编译测试目录不允许符号链接：${file}`);
+            if (entry.isDirectory()) await visit(file);
+            if (entry.isFile() && entry.name.endsWith('.class')) {
+                names.push(path.relative(directory, file).slice(0, -6).split(path.sep).join('.'));
+            }
         }
-        return Array.from(parseXml(await readFile(output, 'utf8'), 'inventory').getElementsByTagName('class')).map((item) => item.textContent);
-    } finally {
-        await rm(temporary, { recursive: true, force: true });
     }
+    await visit(directory);
+    return new Set(selectTestClasses(names, expected));
 }
 
 function parseXml(source, rootName) {

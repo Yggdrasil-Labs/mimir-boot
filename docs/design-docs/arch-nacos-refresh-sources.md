@@ -11,7 +11,7 @@ created: 2026-10-09
 
 Cloud Context 4.1.6 只新增、替换重载后的属性源，不删除消失的旧源；环境变更键又在解密监听器清理之前计算。Nacos 空配置、DataId 删除和 YAML 文档减少因此可能保留旧值或漏报删除键。
 
-目标是在本 Starter 默认 ConfigData 接入中，成功刷新后同步标准枚举 Nacos 原始源、解密层和有效值变更键，保留原 import 参数、格式、优先级与完整 RefreshScope 流程。普通 Bean 的重置由消费者显式选择；不清理应用自定义源，不修补所有本地文件源消失的行为。
+目标是在本 Starter 默认 ConfigData 接入中，成功刷新后同步标准枚举 Nacos 原始源和解密层，再沿用 Cloud 的可枚举属性原始值差异计算及完整 RefreshScope 流程；不承诺穷举占位符依赖造成的派生有效值变化键。保留原 import 参数、格式与优先级。普通 Bean 的重置由消费者显式选择；不清理应用自定义源，不修补所有本地文件源消失的行为。
 
 方案依据为实际 Boot 3.3.13、Cloud Context 4.1.6、Alibaba 2023.0.3.4、Nacos Client 2.4.3 的本地 API 与字节码，已完成本地实现和完整质量验收；指定本地 Nacos 3.0.3 的真实服务回归已通过。TD-039 按约定默认框架范围关闭，实际业务消费者迁移独立登记为 [TD-047](../active/tech-debt-tracker.md#td-047-nacos-消费者迁移)，仍待核实与验收。
 
@@ -41,7 +41,7 @@ Nacos 自动配置在 Cloud 刷新自动配置之后参与。ImportBeanDefinitio
 
 之后继续原 Cloud 差异计算、一次 EnvironmentChangeEvent、RefreshScope 失效。单独环境事件仍不重建目标；新目标在下次代理访问时创建，初始化、绑定、校验失败是独立边界。
 
-事件仍按有效值差异报告：删除导致缺失或回退为不同值时包含该键，有效值不变时不承诺通知每次底层修改。自定义非枚举 parser 源保留原对象/options，不提供标准枚举源的自动删除契约。
+Cloud Context 4.1.6 的事件键基于可枚举属性名及其原始值差异，不是解析后 Environment 全部有效值的差异。`app.secret=${x:fallback}` 删除 `x` 后，解析得到的 `app.secret` 可能变化，但事件键可能只有 `x`，不保证包含 `app.secret`。因此缓存消费者不能只依赖派生属性键通知；应在完整刷新时整体失效并重读配置，或通过 RefreshScope 代理读取。自定义非枚举 parser 源保留原对象/options，不提供标准枚举源的自动删除契约。
 
 ## 兼容与取舍
 

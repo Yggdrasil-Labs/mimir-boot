@@ -182,7 +182,7 @@ public class AppService {
 
 成功刷新会销毁已创建的旧目标；下一次代理访问才创建、绑定并初始化新目标。初始化、绑定或校验失败可能在这次访问时暴露，不属于保留旧目标的解密失败情形，业务应按自身校验和可用性要求验收。销毁回调不能假定新目标已经创建。
 
-默认 `NacosConfigDataContextRefresher` 在差异计算前完成解密层更新，删除不再被旧明文覆盖层遮挡。`EnvironmentChangeEvent.keys` 继续采用 Cloud 的有效值差异语义：删除导致有效值消失或变为不同下层值时包含该键；若有效值未变化，不承诺报告底层源的每次修改。缓存配置的消费者需按事件更新，或每次通过刷新代理读取。
+默认 `NacosConfigDataContextRefresher` 在差异计算前完成解密层更新，删除不再被旧明文覆盖层遮挡。`EnvironmentChangeEvent.keys` 沿用 Cloud Context 4.1.6 的可枚举属性原始值差异：它枚举 `EnumerablePropertySource` 提供的属性名并比较这些名称对应的值，不保证枚举占位符依赖导致的派生属性有效值变化。例如 `app.secret=${x:fallback}` 中删除 `x` 后，事件可能只包含 `x`，而不包含解析值已改变的 `app.secret`；即使派生值改变，也不能据此断言其键必在事件中。按键缓存不能只依赖派生键通知：应在每次完整刷新时整体失效并重读配置，或通过 `@RefreshScope` 代理读取当前配置。
 
 `optional:nacos:...` 的加载异常被上游吞掉时，不生成成功空标记，该资源的旧源保留；其他成功结果仍应用，完整刷新仍使 RefreshScope 失效。非 optional 的传播异常才使本次刷新失败。SDK 的 snapshot/failover 行为沿用原客户端，成功加载不等同于服务端线性一致读取。
 

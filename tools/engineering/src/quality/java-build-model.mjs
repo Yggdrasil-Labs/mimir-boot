@@ -3,7 +3,6 @@ import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { DOMParser } from '@xmldom/xmldom';
 import { matchesAny } from '../docs/policy.mjs';
-import { inventoryJavaSources } from './java-source-inventory.mjs';
 
 const NAMESPACE = 'http://maven.apache.org/POM/4.0.0';
 const PHASES = ['validate', 'initialize', 'generate-sources', 'process-sources', 'generate-resources',
@@ -11,8 +10,8 @@ const PHASES = ['validate', 'initialize', 'generate-sources', 'process-sources',
     'generate-test-resources', 'process-test-resources', 'test-compile', 'process-test-classes', 'test',
     'prepare-package', 'package', 'pre-integration-test', 'integration-test', 'post-integration-test', 'verify'];
 const DEFAULT_TESTS = {
-    unit: ['**/Test*.java', '**/*Test.java', '**/*Tests.java', '**/*TestCase.java'],
-    integration: ['**/IT*.java', '**/*IT.java', '**/*ITCase.java'],
+    unit: ['**/*Test.java', '**/*Tests.java'],
+    integration: ['**/*IT.java', '**/*IntegrationTest.java'],
 };
 const PLUGINS = {
     unit: ['org.apache.maven.plugins', 'maven-surefire-plugin'],
@@ -20,28 +19,6 @@ const PLUGINS = {
     coverage: ['org.jacoco', 'jacoco-maven-plugin'],
     format: ['com.diffplug.spotless', 'spotless-maven-plugin'],
 };
-const SOURCE_GENERATORS = new Map([
-    ['org.codehaus.mojo:build-helper-maven-plugin', [['add-source', 'generate-sources'], ['add-test-source', 'generate-test-sources']]],
-    ['org.codehaus.mojo:jaxb2-maven-plugin', [['xjc', 'generate-sources'], ['testXjc', 'generate-test-sources']]],
-    ['org.jvnet.jaxb:jaxb-maven-plugin', [['generate', 'generate-sources']]],
-    ['org.jvnet.jaxb2.maven2:maven-jaxb2-plugin', [['generate', 'generate-sources']]],
-    ['org.apache.avro:avro-maven-plugin', [['schema', 'generate-sources'], ['protocol', 'generate-sources'], ['idl-protocol', 'generate-sources']]],
-    ['org.antlr:antlr4-maven-plugin', [['antlr4', 'generate-sources']]],
-    ['org.codehaus.mojo:antlr-maven-plugin', [['generate', 'generate-sources']]],
-    ['org.xolstice.maven.plugins:protobuf-maven-plugin', [['compile', 'generate-sources'], ['compile-custom', 'generate-sources'], ['test-compile', 'generate-test-sources'], ['test-compile-custom', 'generate-test-sources']]],
-    ['org.openapitools:openapi-generator-maven-plugin', [['generate', 'generate-sources']]],
-    ['io.swagger:swagger-codegen-maven-plugin', [['generate', 'generate-sources']]],
-    ['io.swagger.codegen.v3:swagger-codegen-maven-plugin', [['generate', 'generate-sources']]],
-    ['org.bsc.maven:maven-processor-plugin', [['process', 'generate-sources'], ['process-test', 'generate-test-sources']]],
-]);
-const JAVA_PROCESSORS = new Set([
-    'org.mapstruct:mapstruct-processor', 'com.querydsl:querydsl-apt',
-    'org.hibernate:hibernate-jpamodelgen', 'org.hibernate.orm:hibernate-jpamodelgen',
-    'com.google.auto.value:auto-value', 'org.immutables:value', 'com.google.dagger:dagger-compiler',
-    'io.github.yggdrasil-labs:mimir-boot-starter-mybatis-processor',
-]);
-const JAVA_PROCESSOR_CLASSES = /^(?:org\.mapstruct\.ap\.|com\.querydsl\.apt\.|org\.hibernate\.jpamodelgen\.|org\.hibernate\.processor\.|com\.google\.auto\.value\.processor\.|org\.immutables\.processor\.|dagger\.internal\.codegen\.|com\.yggdrasil\.labs\.mybatis\.processor\.)/u;
-
 function elements(node, ...names) {
     return names.reduce((nodes, name) => nodes.flatMap((parent) =>
         Array.from(parent?.childNodes || []).filter((child) => child.nodeType === 1
@@ -166,7 +143,7 @@ async function mapReactor(root, models) {
         if (matches.length !== 1) throw new Error(`源码 POM 无法唯一映射 effective 模块：${relative(root, pom)}`);
         const match = matches[0];
         if (mapped.some((item) => item.model === match.model)) throw new Error(`同一 effective 模块映射多个源码 POM：${match.coordinate}`);
-        const module = { ...match, raw, directory: path.dirname(canonical), path: relative(root, path.dirname(canonical)) };
+        const module = { ...match, raw, pom: canonical, directory: path.dirname(canonical), path: relative(root, path.dirname(canonical)) };
         mapped.push(module);
         for (const entry of elements(match.model, 'modules', 'module')) {
             const modulePath = await configuredPath(root, module.directory, value(entry), `${module.path} module`);
@@ -205,16 +182,9 @@ function flag(get, name, props, property = name, fallback = false) {
 }
 
 function patterns(node, label, defaults = []) {
-    if (!node) return [...defaults];
-    const children = Array.from(node.childNodes).filter((child) => child.nodeType === 1);
-    const inputs = children.length ? children.map(value) : value(node) ? [value(node)] : [];
-    return inputs.flatMap((input) => resolved(input, label).split(',')).map((input) => {
-        let pattern = input.trim().replace(/\\/gu, '/').replace(/^\.\//u, '');
-        if (!pattern || /[%#![\]{}]/u.test(pattern) || path.posix.isAbsolute(pattern)
-            || pattern.split('/').includes('..')) throw new Error(`${label} 包含不支持的 Ant 选择器：${input}`);
-        if (pattern.endsWith('/')) pattern += '**';
-        return pattern;
-    });
+    const inputs = Array.from(node?.childNodes || []).filter((child) => child.nodeType === 1).map(value);
+    if (!inputs.length) return [...defaults];
+    return inputs.map((input) => resolved(input, label));
 }
 
 function executions(pluginNode, goal, defaultPhase) {
@@ -231,47 +201,50 @@ function active(execution) {
     return PHASES.includes(execution.phase);
 }
 
-function requireStaticSourceRoots(module) {
-    let annotationProcessing = true;
-    for (const node of elements(module.model, 'build', 'plugins', 'plugin')) {
-        const artifact = text(node, 'artifactId');
-        const key = `${text(node, 'groupId') || 'org.apache.maven.plugins'}:${artifact}`;
-        const known = SOURCE_GENERATORS.get(key) || [];
-        const generated = known.some(([goal, phase]) => executions(node, goal, phase).some(active));
-        if (generated) {
-            throw new Error(`${module.path} 尚不支持 ${artifact} 生命周期追加源码根或源码生成，无法可靠生成 Java 期望`);
+function requireStandardBuild(module) {
+    for (const [name, suffix] of Object.entries({ sourceDirectory: 'src/main/java', testSourceDirectory: 'src/test/java',
+        directory: 'target', outputDirectory: 'target/classes', testOutputDirectory: 'target/test-classes' })) {
+        if (path.resolve(module.directory, text(module.model, 'build', name) || suffix) !== path.join(module.directory, suffix)) {
+            throw new Error(`${module.path} 不支持自定义 build.${name}`);
         }
-        if (key !== 'org.apache.maven.plugins:maven-compiler-plugin') continue;
-        const invocations = ['compile', 'testCompile'].flatMap((goal) =>
-            executions(node, goal, goal === 'compile' ? 'compile' : 'test-compile').filter(active));
-        annotationProcessing = (invocations.length ? invocations.map((invocation) => invocation.get) : [config(node)])
-            .some((get) => value(get('proc')) !== 'none');
-        for (const get of [config(node), ...invocations.map((invocation) => invocation.get)]) {
-            for (const name of ['compileSourceRoots', 'testCompileSourceRoots']) {
-                if (get(name)) throw new Error(`${module.path} 尚不支持 compiler ${name} 额外源码根`);
-            }
-            if (value(get('proc')) === 'none') continue;
-            for (const processor of elements(get('annotationProcessorPaths'), 'path')) {
-                const coordinate = `${text(processor, 'groupId')}:${text(processor, 'artifactId')}`;
-                if (JAVA_PROCESSORS.has(coordinate)) throw new Error(`${module.path} 尚不支持注解处理器 ${coordinate} 的源码生成`);
-            }
-            for (const processor of elements(get('annotationProcessors'), 'annotationProcessor')) {
-                if (JAVA_PROCESSOR_CLASSES.test(value(processor) || '')) {
-                    throw new Error(`${module.path} 尚不支持显式注解处理器 ${value(processor)} 的源码生成`);
-                }
-            }
-            const args = [value(get('compilerArgument')), ...elements(get('compilerArgs'), 'arg').map(value),
-                ...Array.from(get('compilerArguments')?.childNodes || []).filter((item) => item.nodeType === 1)
-                    .map((item) => `-${item.localName} ${value(item) || ''}`)].filter(Boolean).join(' ');
-            if (/(?:^|\s)-(?:s(?:\s|=|$)|proc:only(?:\s|$))/u.test(args)
-                || args.split(/[\s,=]+/u).some((item) => JAVA_PROCESSOR_CLASSES.test(item))) {
-                throw new Error(`${module.path} 尚不支持 compiler 参数指定的注解处理器或生成源码根`);
+    }
+    // 有效 POM 会把插件配置复制到执行节点；只按源码声明拒绝无法由插件级 profile 清空的排除。
+    for (const model of [module.raw, ...elements(module.raw, 'profiles', 'profile')]) {
+        const nodes = [...elements(model, 'build', 'plugins', 'plugin'), ...elements(model, 'build', 'pluginManagement', 'plugins', 'plugin')];
+        for (const node of nodes) {
+            if ((text(node, 'groupId') || 'org.apache.maven.plugins') !== PLUGINS.integration[0]
+                || text(node, 'artifactId') !== PLUGINS.integration[1]) continue;
+            if (elements(node, 'executions', 'execution', 'configuration', 'excludes')
+                .some((excludes) => patterns(excludes, `${module.path} Failsafe 执行级 excludes`)
+                    .some((item) => item !== '**/*$*'))) {
+                throw new Error(`${module.path} Failsafe 不支持执行级显式 IT 排除，只允许插件级外部测试例外`);
             }
         }
     }
-    for (const dependency of elements(module.model, 'dependencies', 'dependency')) {
-        const coordinate = `${text(dependency, 'groupId')}:${text(dependency, 'artifactId')}`;
-        if (annotationProcessing && JAVA_PROCESSORS.has(coordinate)) throw new Error(`${module.path} 尚不支持依赖注解处理器 ${coordinate} 的源码生成`);
+    for (const node of elements(module.model, 'build', 'plugins', 'plugin')) {
+        if (text(node, 'artifactId') === 'build-helper-maven-plugin'
+            && ['add-source', 'add-test-source'].some((goal) => executions(node, goal, 'generate-sources').some(active))) {
+            throw new Error(`${module.path} 不支持动态追加源码根`);
+        }
+        if (text(node, 'artifactId') !== 'maven-compiler-plugin') continue;
+        const gets = [config(node), ...['compile', 'testCompile'].flatMap((goal) =>
+            executions(node, goal, goal === 'compile' ? 'compile' : 'test-compile').filter(active).map((item) => item.get))];
+        for (const get of gets) {
+            for (const name of ['includes', 'excludes', 'testIncludes', 'testExcludes', 'compileSourceRoots', 'testCompileSourceRoots']) {
+                if (get(name)) throw new Error(`${module.path} 不支持 compiler ${name} 改变源码范围`);
+            }
+            if (flag(get, 'skipMain', module.props, 'maven.main.skip') || (value(get('proc')) ?? module.props.get('maven.compiler.proc')) === 'only'
+                || /(?:^|\s)-proc:only(?:\s|$)/u.test([value(get('compilerArgument')),
+                    ...elements(get('compilerArgs'), 'arg').map(value)].filter(Boolean).join(' '))) {
+                throw new Error(`${module.path} 不支持 compiler skipMain/proc:only 跳过编译`);
+            }
+            for (const name of ['compilerArgument', 'compilerArguments', 'testCompilerArgument', 'testCompilerArguments']) {
+                if (get(name)) throw new Error(`${module.path} 不支持 compiler ${name} 自定义编译参数`);
+            }
+            if (elements(get('compilerArgs'), 'arg').some((item) => value(item) !== '-parameters')) {
+                throw new Error(`${module.path} compilerArgs 仅支持现有 -parameters 参数`);
+            }
+        }
     }
 }
 
@@ -285,157 +258,117 @@ function samePatterns(first, second) {
     return JSON.stringify([...new Set(first)].sort()) === JSON.stringify([...new Set(second)].sort());
 }
 
-function sourceMatch(file, includes, excludes) {
-    const javaName = file.replace(/\.class$/u, '.java');
-    return matchesAny(javaName, includes.map((pattern) => pattern.replace(/\.class$/u, '.java')))
-        && !matchesAny(javaName, excludes.map((pattern) => pattern.replace(/\.class$/u, '.java')));
-}
-
-function testPatterns(node, label, defaults) {
-    const children = Array.from(node?.childNodes || []).filter((child) => child.nodeType === 1);
-    const inputs = children.length ? children.map(value) : value(node) ? [value(node)] : [];
-    const selectors = inputs.flatMap((input) => resolved(input, label).split(',')).map((input) => {
-        const pattern = input.trim();
-        // 不能沿用文档路径的修正规则：插件不会删除 ./、转换反斜杠或把目录补成 **。
-        if (!pattern || /[%#![\]{}\\]/u.test(pattern) || path.posix.isAbsolute(pattern)
-            || pattern.endsWith('/') || pattern.includes('//')
-            || pattern.split('/').some((part) => part === '.' || part === '..')) {
-            throw new Error(`${label} 包含不支持的测试选择器：${input}`);
-        }
-        return pattern;
+/** 仅匹配仓库已约束的文件规则，不解释 Maven 的通用类名/方法选择语法。 */
+export function selectTestClasses(names, { includes, excludes }) {
+    return names.filter((name) => {
+        const file = `${name.replaceAll('.', '/')}.java`;
+        return matchesAny(file, includes) && !matchesAny(file, excludes);
     });
-    // 插件对未配置及空配置均使用默认 includes/excludes，不能把空列表当作免测。
-    return selectors.length ? selectors : [...defaults];
 }
 
-function testPatternMatcher(input) {
-    // 对齐 Surefire/Failsafe ResolvedTest 的类名归一化，匹配对象是二进制 .class 路径。
-    let pattern = input.replace(/\.java$/u, '.class');
-    if (pattern.endsWith('.class')) {
-        pattern = `${pattern.slice(0, -6).replaceAll('.', '/')}.class`;
-    } else if (!pattern.includes('/')) {
-        if (pattern.endsWith('.*')) {
-            const prefix = pattern.slice(0, -2);
-            if (prefix.includes('.')) pattern = `${prefix.replaceAll('.', '/')}.*`;
-        } else {
-            pattern = pattern.replaceAll('.', '/');
-        }
+function hasExternalTestProfile(module) {
+    return elements(module.raw, 'profiles', 'profile').some((profile) => {
+        const node = plugin(profile, 'integration');
+        const configuration = one(node, 'configuration');
+        const excludes = one(configuration, 'excludes');
+        const only = (parent, names) => Array.from(parent?.childNodes || []).every((child) => child.nodeType !== 1 || names.includes(child.localName));
+        return text(profile, 'id') && only(profile, ['id', 'build']) && only(one(profile, 'build'), ['plugins'])
+            && elements(profile, 'build', 'plugins', 'plugin').length === 1 && only(node, ['groupId', 'artifactId', 'configuration'])
+            && only(configuration, ['excludes']) && excludes?.getAttribute('combine.self') === 'override'
+            && !value(excludes) && !Array.from(excludes.childNodes).some((child) => child.nodeType === 1);
+    });
+}
+
+async function testExpectation(root, module, kind, declarations, buildDirectory, reactor) {
+    const node = plugin(module.model, kind);
+    const phase = kind === 'unit' ? 'test' : 'integration-test';
+    const bound = executions(node, phase, phase).filter(active);
+    const gets = bound.length ? bound.map((item) => item.get) : [config(node)];
+    for (const name of ['test', 'it.test', 'groups', 'excludedGroups', 'argLine',
+        ...['surefire', 'failsafe'].flatMap((prefix) => ['includesFile', 'excludesFile', 'includeJUnit5Engines',
+            'excludeJUnit5Engines', 'systemPropertiesFile'].map((name) => `${prefix}.${name}`))]) {
+        if (module.props.get(name)) throw new Error(`${module.path} 不支持测试属性 ${name} 改变执行范围或 JVM 参数`);
     }
-    if (!pattern.startsWith('**/')) pattern = `**/${pattern}`;
-    const compile = (glob) => {
-        // 类名点号转换也可能产生空段；Ant 分词时会忽略这些段。
-        const segments = glob.split('/').filter(Boolean);
-        let source = '^';
-        for (let index = 0; index < segments.length; index += 1) {
-            const segment = segments[index];
-            if (segment === '**') {
-                source += index === segments.length - 1 ? '.*' : '(?:[^/]+/)*';
-            } else {
-                source += segment.replace(/[.+^${}()|[\]\\]/gu, '\\$&')
-                    .replace(/\*/gu, '[^/]*').replace(/\?/gu, '[^/]');
-                if (index < segments.length - 1) source += '/';
+    const choices = gets.map((get) => {
+        const includes = patterns(get('includes'), `${module.path} ${kind} includes`);
+        if (declarations.length && !samePatterns(includes, DEFAULT_TESTS[kind])) {
+            throw new Error(`${module.path} ${kind} includes 必须使用 Parent 的标准测试命名规则`);
+        }
+        const excludes = patterns(get('excludes'), `${module.path} ${kind} excludes`, ['**/*$*']);
+        if (kind === 'unit' && declarations.length && !samePatterns(excludes, DEFAULT_TESTS.integration)) {
+            throw new Error(`${module.path} Surefire excludes 必须仅排除标准集成测试命名规则`);
+        }
+        if (kind === 'integration' && excludes.some((item) => item !== '**/*$*')) {
+            if (excludes.some((item) => !/^\*\*\/[\p{L}_][\p{L}\p{N}_]*(?:IT|IntegrationTest)\.java$/u.test(item)) || !hasExternalTestProfile(module)) {
+                throw new Error(`${module.path} Failsafe 具体类排除必须有显式 profile 重新启用，不支持其他范围缩小`);
             }
         }
-        // Ant 按 Java char 匹配 ?，不使用 Unicode code point 模式。
-        return new RegExp(`${source}$`);
-    };
-    const matchers = [compile(pattern)];
-    if (!pattern.endsWith('.class') && !pattern.endsWith('.*')) matchers.push(compile(`${pattern}.class`));
-    return (file) => matchers.some((matcher) => matcher.test(file));
-}
-
-async function testExpectation(root, module, kind, declarations, buildDirectory) {
-    const node = plugin(module.model, kind);
-    const goal = kind === 'unit' ? 'test' : 'integration-test';
-    const defaultPhase = kind === 'unit' ? 'test' : 'integration-test';
-    const bound = executions(node, goal, defaultPhase).filter(active);
-    const all = bound.length ? bound : [{ get: config(node), phase: defaultPhase }];
-    const choices = [];
-    for (const invocation of all) {
-        const get = invocation.get;
-        for (const name of ['includesFile', 'excludesFile', 'test', 'suiteXmlFiles', 'dependenciesToScan',
-            'groups', 'excludedGroups', 'includeJUnit5Engines', 'excludeJUnit5Engines',
-            'junitArtifactName', 'testNGArtifactName', 'provider', 'providers', 'systemPropertiesFile']) {
-            if (get(name)) throw new Error(`${module.path} ${kind} 尚不支持 ${name}，无法可靠生成测试期望`);
+        for (const name of ['includesFile', 'excludesFile', 'test', 'suiteXmlFiles', 'dependenciesToScan', 'groups',
+            'excludedGroups', 'includeJUnit5Engines', 'excludeJUnit5Engines', 'junitArtifactName', 'testNGArtifactName', 'provider', 'providers', 'systemPropertiesFile']) {
+            if (get(name)) throw new Error(`${module.path} ${kind} 不支持 ${name} 改变测试范围`);
         }
-        if (one(get('properties'), 'configurationParameters')) {
-            throw new Error(`${module.path} ${kind} 尚不支持 JUnit configurationParameters，无法可靠生成测试期望`);
+        if (one(get('properties'), 'configurationParameters')
+            || Array.from(get('systemPropertyVariables')?.childNodes || []).some((item) => item.nodeType === 1 && item.localName.startsWith('junit.'))
+            || elements(get('systemProperties'), 'property').some((item) => text(item, 'name')?.startsWith('junit.'))) {
+            throw new Error(`${module.path} ${kind} 不支持 JUnit 发现参数`);
         }
-        const systemProperties = [
-            ...Array.from(get('systemPropertyVariables')?.childNodes || []).filter((item) => item.nodeType === 1)
-                .map((item) => item.localName),
-            ...elements(get('systemProperties'), 'property').map((item) => text(item, 'name')),
-        ];
-        if (systemProperties.some((name) => name?.startsWith('junit.'))) {
-            throw new Error(`${module.path} ${kind} 尚不支持 junit.* JVM 系统属性，无法可靠生成测试期望`);
-        }
-        const includes = testPatterns(get('includes'), `${module.path} ${kind} includes`, DEFAULT_TESTS[kind]);
-        const excludes = testPatterns(get('excludes'), `${module.path} ${kind} excludes`, ['**/*$*']);
-        const included = includes.map(testPatternMatcher);
-        const excluded = excludes.map(testPatternMatcher);
-        const selected = declarations.filter(({ binaryName }) => {
-            const file = `${binaryName.replaceAll('.', '/')}.class`;
-            return included.some((match) => match(file)) && !excluded.some((match) => match(file));
-        });
-        const skipped = flag(get, 'skip', module.props, 'maven.test.skip')
-            || flag(get, 'skipTests', module.props)
-            || kind === 'integration' && flag(get, 'skipITs', module.props);
-        if (selected.length && skipped) throw new Error(`${module.path} ${kind} 有匹配测试源码却配置了 skip`);
-        if (selected.length && (flag(get, 'disableXmlReport', module.props)
-            || boolean(text(get('statelessTestsetReporter'), 'disable'), 'statelessTestsetReporter.disable'))) {
+        if (flag(get, 'skip', module.props, 'maven.test.skip') || flag(get, 'skipTests', module.props)
+            || flag(get, 'skipITs', module.props)) throw new Error(`${module.path} ${kind} 配置了 skip`);
+        if (flag(get, 'disableXmlReport', module.props) || boolean(text(get('statelessTestsetReporter'), 'disable'), 'XML reporter.disable')) {
             throw new Error(`${module.path} ${kind} 不允许关闭 XML 报告`);
         }
-        const reportsDirectory = relative(root, await configuredPath(root, module.directory,
-            value(get('reportsDirectory')) || path.join(buildDirectory, kind === 'unit' ? 'surefire-reports' : 'failsafe-reports'), 'reportsDirectory'));
-        const testClassesDirectory = relative(root, await configuredPath(root, module.directory,
-            value(get('testClassesDirectory')) || text(module.model, 'build', 'testOutputDirectory'), 'testClassesDirectory'));
-        choices.push({ includes, excludes, selected, reportsDirectory, testClassesDirectory });
+        const reportsDirectory = path.join(buildDirectory, kind === 'unit' ? 'surefire-reports' : 'failsafe-reports');
+        const testClassesDirectory = path.join(buildDirectory, 'test-classes');
+        for (const [name, expected] of Object.entries({ reportsDirectory, testClassesDirectory })) {
+            if (value(get(name)) && path.resolve(module.directory, resolved(value(get(name)), name)) !== expected) {
+                throw new Error(`${module.path} ${kind} 不支持自定义 ${name}`);
+            }
+        }
+        return { includes: includes.length ? includes : DEFAULT_TESTS[kind], excludes,
+            reportsDirectory: relative(root, reportsDirectory), testClassesDirectory: relative(root, testClassesDirectory) };
+    });
+    if (choices.some((choice) => JSON.stringify(choice) !== JSON.stringify(choices[0]))) {
+        throw new Error(`${module.path} ${kind} 不支持不同配置的重复执行`);
     }
-    const first = choices[0];
-    if (choices.some((choice) => choice.reportsDirectory !== first.reportsDirectory || choice.testClassesDirectory !== first.testClassesDirectory
-        || !samePatterns(choice.includes, first.includes) || !samePatterns(choice.excludes, first.excludes))) {
-        throw new Error(`${module.path} ${kind} 多个执行的选择器、测试类目录或报告目录不同，当前期望模型无法可靠表示`);
-    }
-    if (first.selected.length && !bound.length) throw new Error(`${module.path} ${kind} 缺少实际生命周期插件执行`);
-    if (first.selected.length && bound.some((item) => item.phase !== defaultPhase)) {
-        throw new Error(`${module.path} ${kind} 测试必须绑定 ${defaultPhase} 阶段，保证覆盖率生成前完成`);
-    }
-    if (first.selected.length && kind === 'integration') {
-        const verification = executions(node, 'verify', 'verify').filter(active);
-        if (!verification.length || verification.some((item) => item.phase !== 'verify')) throw new Error(`${module.path} Failsafe verify 未绑定 verify 阶段`);
-        for (const item of verification) {
-            if (flag(item.get, 'skip', module.props, 'maven.test.skip') || flag(item.get, 'skipTests', module.props)
-                || flag(item.get, 'skipITs', module.props)) throw new Error(`${module.path} Failsafe verify 配置了 skip`);
+    if (kind === 'integration' && choices[0].excludes.some((item) => item !== '**/*$*')) {
+        // 排除例外必须能核实整条继承链；只定位已映射的源码 POM，不读取外部 Parent 或缓存。
+        const seen = new Set();
+        for (let current = module; current;) {
+            if (seen.has(current.coordinate)) throw new Error(`${module.path} Failsafe Parent 继承关系存在循环`);
+            seen.add(current.coordinate);
+            const parent = one(current.model, 'parent');
+            if (!parent) break;
+            const parentCoordinate = ['groupId', 'artifactId', 'version']
+                .map((name) => resolved(text(parent, name), 'Parent 坐标')).join(':');
+            const parentModule = reactor.find((item) => item.coordinate === parentCoordinate);
+            if (!parentModule) throw new Error(`${module.path} Failsafe 具体 IT 排除无法核实非 Reactor Parent 的来源：${parentCoordinate}`);
+            const relativePath = one(current.raw, 'parent', 'relativePath');
+            if (relativePath && !value(relativePath)) throw new Error(`${module.path} Failsafe Parent 的空 relativePath 无法核实源码来源`);
+            const source = resolved(value(relativePath) || '../pom.xml', 'Parent relativePath', current.props);
+            const actual = await realpath(await configuredPath(root, current.directory, source, 'Parent relativePath'));
+            if (actual !== parentModule.pom) throw new Error(`${module.path} Failsafe Parent 来源与 Reactor 源码 POM 不一致：${parentCoordinate}`);
+            current = parentModule;
         }
     }
-    return {
-        required: first.selected.length > 0,
-        reason: first.selected.length ? null : `有效 ${kind === 'unit' ? 'Surefire' : 'Failsafe'} 选择器未匹配 Java 测试源码`,
-        includes: first.includes, excludes: first.excludes, reportsDirectory: first.reportsDirectory, testClassesDirectory: first.testClassesDirectory,
-        sourceFiles: [...new Set(first.selected.map(({ sourceFile }) => relative(root, sourceFile)))].sort(),
-        sourceClasses: [...new Set(first.selected.map(({ binaryName }) => binaryName))].sort(), reports: [],
-    };
+    const selected = new Set(selectTestClasses(declarations.map((item) => item.binaryName), choices[0]));
+    if (selected.size && (bound.length !== 1 || bound[0].phase !== phase)) throw new Error(`${module.path} ${kind} 必须唯一绑定 ${phase}`);
+    if (selected.size && kind === 'integration') {
+        const verification = requireOneGoal(node, 'verify', 'verify', module.path);
+        if (verification.phase !== 'verify' || flag(verification.get, 'skip', module.props, 'maven.test.skip')
+            || flag(verification.get, 'skipTests', module.props) || flag(verification.get, 'skipITs', module.props)) {
+            throw new Error(`${module.path} Failsafe verify 不得跳过或改变阶段`);
+        }
+    }
+    return { required: selected.size > 0, reason: selected.size ? null : '标准源码清单在本轮配置中没有此类测试', ...choices[0],
+        sourceFiles: declarations.filter((item) => selected.has(item.binaryName)).map((item) => relative(root, item.sourceFile)).sort(),
+        sourceClasses: [...selected].sort(), reports: [] };
 }
 
 function ratioMinimum(input, label) {
-    function decimal(source, percentage = false) {
-        const match = /^([+-]?)(\d+(?:\.\d*)?|\.\d+)(?:[eE]([+-]?\d+))?$/u.exec(source);
-        if (!match) throw new Error(`${label} minimum 必须是十进制数或百分比`);
-        const fraction = match[2].split('.')[1] || '';
-        const coefficient = match[2].replace('.', '').replace(/^0+/u, '');
-        if (!coefficient) return '0e0';
-        const digits = coefficient.replace(/0+$/u, '');
-        const exponent = BigInt(match[3] || '0') - BigInt(fraction.length) - (percentage ? 2n : 0n)
-            + BigInt(coefficient.length - digits.length);
-        return `${match[1] === '-' ? '-' : ''}${digits}e${exponent}`;
+    if (!/^(?:0(?:\.\d{1,6})?|1(?:\.0{1,6})?)$/u.test(input)) {
+        throw new Error(`${label} minimum 仅支持 0 到 1、至多六位小数的比率`);
     }
-    const percentage = input.endsWith('%');
-    const normalized = decimal(percentage ? input.slice(0, -1) : input, percentage);
-    const minimum = Number(normalized);
-    if (!Number.isFinite(minimum) || minimum < 0 || minimum > 1) throw new Error(`${label} minimum 必须在 0 到 1 之间`);
-    // 数值模型不能舍入后放行超范围值或降低继承阈值。
-    if (decimal(String(minimum)) !== normalized) throw new Error(`${label} minimum 精度无法可靠表示为验收阈值`);
-    return minimum;
+    return Number(input);
 }
 
 function thresholds(get, label) {
@@ -475,23 +408,18 @@ function coverageBaseline(module, reactor) {
 }
 
 function requireAgentConsumption(module, agent, tests) {
-    const propertyName = resolved(value(agent.get('propertyName')) || module.props.get('jacoco.propertyName') || 'argLine', 'JaCoCo propertyName', module.props);
+    const propertyName = value(agent.get('propertyName')) || module.props.get('jacoco.propertyName') || 'argLine';
+    if (propertyName !== 'argLine') throw new Error(`${module.path} JaCoCo 只支持默认 argLine 属性`);
     for (const kind of ['unit', 'integration']) {
         if (!tests[kind].required) continue;
-        const goal = kind === 'unit' ? 'test' : 'integration-test';
-        for (const invocation of executions(plugin(module.model, kind), goal, kind === 'unit' ? 'test' : 'integration-test').filter(active)) {
+        const phase = kind === 'unit' ? 'test' : 'integration-test';
+        for (const invocation of executions(plugin(module.model, kind), phase, phase).filter(active)) {
             const get = invocation.get;
             const forkCount = value(get('forkCount')) || module.props.get('forkCount') || '1';
-            if (!/^\d+(?:\.\d+)?C?$/u.test(forkCount) || Number(forkCount.replace(/C$/u, '')) <= 0
-                || value(get('forkMode')) === 'never') throw new Error(`${module.path} ${kind} 必须 fork 测试 JVM 才能采集 JaCoCo`);
-            const argLine = value(get('argLine'));
-            if (argLine === null && propertyName === 'argLine') continue;
-            if (argLine && /['"\\]/u.test(argLine)) {
-                throw new Error(`${module.path} ${kind} 尚不支持带引号或转义的 argLine，无法确认 agent 是独立 JVM 参数`);
+            if (!/^\d+(?:\.\d+)?C?$/u.test(forkCount) || Number(forkCount.replace(/C$/u, '')) <= 0 || value(get('forkMode')) === 'never') {
+                throw new Error(`${module.path} ${kind} 必须 fork 测试 JVM 才能采集 JaCoCo`);
             }
-            if (!argLine || ![`@{${propertyName}}`, `\${${propertyName}}`].some((reference) => argLine.split(/\s+/u).includes(reference))) {
-                throw new Error(`${module.path} ${kind} argLine 未引用 JaCoCo agent 属性 ${propertyName}`);
-            }
+            if (get('argLine')) throw new Error(`${module.path} ${kind} 不支持自定义 argLine，使用默认 JaCoCo agent 属性`);
         }
     }
 }
@@ -533,7 +461,9 @@ async function coverageExpectation(root, module, reactor, files, buildDirectory,
     const excludes = patterns(report.get('excludes'), `${module.path} JaCoCo excludes`);
     const baselineIncludes = patterns(baselineGet('includes'), 'JaCoCo 基线 includes', ['**/*']);
     const baselineExcludes = patterns(baselineGet('excludes'), 'JaCoCo 基线 excludes');
-    if (!samePatterns(includes, baselineIncludes) || excludes.some((exclude) => !baselineExcludes.includes(exclude))) {
+    const allowedExcludes = ['**/entity/**', '**/dto/**', '**/vo/**', '**/Application.class'];
+    if (!samePatterns(includes, ['**/*']) || !samePatterns(includes, baselineIncludes)
+        || excludes.some((exclude) => !allowedExcludes.includes(exclude) || !baselineExcludes.includes(exclude))) {
         throw new Error(`${module.path} JaCoCo 扫描范围低于继承基线`);
     }
     for (const invocation of [agent, check]) {
@@ -556,42 +486,38 @@ async function coverageExpectation(root, module, reactor, files, buildDirectory,
     };
 }
 
-function formatExpectation(module, files) {
-    const node = plugin(module.model, 'format');
-    const bound = executions(node, 'check', 'verify').filter(active);
-    if (!files.length) {
-        const get = bound[0]?.get || config(node);
-        return { required: false, reason: '没有 Java 源码，无 Java 格式检查对象',
-            includes: patterns(one(get('java'), 'includes'), `${module.path} Spotless includes`),
-            excludes: patterns(one(get('java'), 'excludes'), `${module.path} Spotless excludes`),
-            skip: flag(get, 'skip', module.props, 'spotless.skip')
-                || flag(get, 'checkSkip', module.props, 'spotless.check.skip')
-                || boolean(module.props.get('spotless.java.skip') || null, 'spotless.java.skip')
-                || boolean(text(get('java'), 'skip'), 'Spotless java.skip') };
-    }
-    if (!bound.length) throw new Error(`${module.path} 缺少实际 Spotless check 生命周期执行`);
-    const choices = bound.map((invocation) => {
+async function formatExpectation(module, files) {
+    if (!files.length) return { required: false, reason: '没有 Java 源码', includes: [], excludes: [], skip: false };
+    const bound = executions(plugin(module.model, 'format'), 'check', 'validate').filter(active);
+    if (!bound.length) throw new Error(`${module.path} 缺少 Spotless check 执行`);
+    const choices = await Promise.all(bound.map(async (invocation) => {
         const get = invocation.get;
+        if (invocation.phase !== 'validate' || !get('java')) throw new Error(`${module.path} Spotless Java check 必须绑定 validate`);
+        const baseDir = value(get('baseDir'));
+        if (baseDir) {
+            const directory = resolved(baseDir, 'Spotless baseDir');
+            const actual = await realpath(path.isAbsolute(directory) ? directory : `${module.directory}${path.sep}${directory}`);
+            if (actual !== module.directory) throw new Error(`${module.path} Spotless baseDir 必须指向模块目录`);
+        }
         if (flag(get, 'skip', module.props, 'spotless.skip') || flag(get, 'checkSkip', module.props, 'spotless.check.skip')
             || boolean(module.props.get('spotless.java.skip') || null, 'spotless.java.skip') || boolean(text(get('java'), 'skip'), 'Spotless java.skip')) {
             throw new Error(`${module.path} Spotless Java 配置了 skip`);
         }
-        if (value(get('filePatterns')) || module.props.get('spotlessFiles')
-            || value(get('ratchetFrom')) || text(get('java'), 'ratchetFrom')) {
-            throw new Error(`${module.path} Spotless 尚不支持 filePatterns/spotlessFiles/ratchetFrom 二次范围限制`);
+        if (value(get('filePatterns')) || module.props.get('spotlessFiles') || value(get('ratchetFrom')) || text(get('java'), 'ratchetFrom')) {
+            throw new Error(`${module.path} Spotless 不支持二次范围限制`);
         }
-        const includes = patterns(one(get('java'), 'includes'), `${module.path} Spotless includes`, ['src/main/java/**/*.java', 'src/test/java/**/*.java']);
-        const excludes = patterns(one(get('java'), 'excludes'), `${module.path} Spotless excludes`);
-        if (!get('java')) throw new Error(`${module.path} Spotless 未配置 Java formatter`);
-        const missing = files.filter((file) => !sourceMatch(path.relative(module.directory, file).split(path.sep).join('/'), includes, excludes));
-        if (missing.length) throw new Error(`${module.path} Spotless 没有覆盖全部 Java 主源码/测试源码：${path.relative(module.directory, missing[0])}`);
+        const includes = patterns(one(get('java'), 'includes'), 'Spotless includes');
+        const excludes = patterns(one(get('java'), 'excludes'), 'Spotless excludes');
+        const allowed = ['**/target/**/*.java', '**/generated/**/*.java', '**/generated-sources/**/*.java'];
+        if (!samePatterns(includes, ['src/main/java/**/*.java', 'src/test/java/**/*.java']) || excludes.some((item) => !allowed.includes(item))) {
+            throw new Error(`${module.path} Spotless 必须覆盖标准主源码和测试源码，仅排除生成目录`);
+        }
         return { includes, excludes };
-    });
-    const first = choices[0];
-    if (choices.some((choice) => !samePatterns(choice.includes, first.includes) || !samePatterns(choice.excludes, first.excludes))) {
-        throw new Error(`${module.path} Spotless 多个 check 的 Java 扫描范围不同`);
+    }));
+    if (choices.some((choice) => !samePatterns(choice.includes, choices[0].includes) || !samePatterns(choice.excludes, choices[0].excludes))) {
+        throw new Error(`${module.path} Spotless 不支持不同范围的重复执行`);
     }
-    return { required: true, reason: null, ...first, skip: false };
+    return { required: true, reason: null, ...choices[0], skip: false };
 }
 
 /** 基于本轮实际 effective POM 和源码生成验收期望，不从构建产物推导适用范围。 */
@@ -607,7 +533,7 @@ export async function generateExpectedFromModel(root, runId, effectivePomSource)
     for (const module of reactor) {
         const packaging = text(module.model, 'packaging') || 'jar';
         if (!['pom', 'jar'].includes(packaging)) throw new Error(`${module.path} 尚不支持 packaging=${packaging} 的 Java 生命周期`);
-        requireStaticSourceRoots(module);
+        requireStandardBuild(module);
         const sourceDirectory = await configuredPath(root, module.directory, text(module.model, 'build', 'sourceDirectory'), 'sourceDirectory');
         const testDirectory = await configuredPath(root, module.directory, text(module.model, 'build', 'testSourceDirectory'), 'testSourceDirectory');
         const buildDirectory = await configuredPath(root, module.directory, text(module.model, 'build', 'directory'), 'build.directory');
@@ -615,7 +541,8 @@ export async function generateExpectedFromModel(root, runId, effectivePomSource)
         const tests = await javaFiles(root, testDirectory);
         sourceModels.push({ ...module, packaging, buildDirectory, main, tests });
     }
-    const declarations = await inventoryJavaSources(root, sourceModels.flatMap((module) => module.tests));
+    const declarations = sourceModels.flatMap((module) => module.tests.map((sourceFile) => ({ sourceFile,
+        binaryName: path.relative(path.join(module.directory, 'src/test/java'), sourceFile).slice(0, -5).split(path.sep).join('.') })));
     for (const module of sourceModels) {
         const { packaging, buildDirectory, main, tests } = module;
         const javaSources = main.length + tests.length > 0;
@@ -623,11 +550,11 @@ export async function generateExpectedFromModel(root, runId, effectivePomSource)
         const exemption = packaging === 'pom' ? '纯 POM 模块，不产生 Java 编译和测试产物' : javaSources ? null : '有效源码目录没有 Java 主源码或测试源码';
         const testFiles = new Set(tests);
         const testDeclarations = declarations.filter(({ sourceFile }) => testFiles.has(sourceFile));
-        const unit = await testExpectation(root, module, 'unit', testDeclarations, buildDirectory);
-        const integration = await testExpectation(root, module, 'integration', testDeclarations, buildDirectory);
+        const unit = await testExpectation(root, module, 'unit', testDeclarations, buildDirectory, reactor);
+        const integration = await testExpectation(root, module, 'integration', testDeclarations, buildDirectory, reactor);
         const { coverage, artifacts } = await coverageExpectation(root, module, reactor, main, buildDirectory, { unit, integration });
         modules.push({ path: module.path, packaging, javaSources, exemption, tests: { unit, integration },
-            coverage, format: formatExpectation(module, [...main, ...tests]), artifacts });
+            coverage, format: await formatExpectation(module, [...main, ...tests]), artifacts });
     }
     const artifactPaths = modules.flatMap((module) => Object.values(module.artifacts).map((artifact) => artifact.path));
     if (new Set(artifactPaths).size !== artifactPaths.length) throw new Error('不同 Reactor 模块的 JaCoCo 产物路径发生重叠');

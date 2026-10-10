@@ -17,6 +17,7 @@ import {
     cleanExpected,
     generateExpected,
     recordArtifacts,
+    validateBuildInputs,
     verifyReports,
 } from './verify-java-reports.mjs';
 
@@ -380,6 +381,7 @@ async function runJavaQualityInternal(options) {
     const modelArgs = ['-B', '-Pci', 'help:effective-pom', `-Doutput=${effectivePomPath}`];
     let modelResult;
     try {
+        await validateBuildInputs(options.root);
         await rm(effectivePomPath, { force: true });
         await rm(expectedPath, { force: true });
         modelResult = await runCommand({ command: path.join(options.root, 'mvnw'), args: modelArgs, cwd: options.root, logPath: modelLog });

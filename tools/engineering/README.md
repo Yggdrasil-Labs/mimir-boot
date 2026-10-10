@@ -41,15 +41,17 @@ pre-push 对待推送的提交快照执行离线 quick，检查该提交中的�
 
 full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 会清理构建产物，因此 Maven 质量构建在最后执行，保留最终测试和 JaCoCo 报告。Java 子检查可单独运行 `bash scripts/engineering.sh java`；其 Maven 基础步骤是 `./mvnw -B -Pci clean verify`，完整入口会继续核验报告。
 
-Java 子检查通过本轮 `-Pci help:effective-pom` 建立完整 reactor 期望矩阵，记录有效测试选择器、报告路径、覆盖率范围和最低阈值，并明确纯 POM/无源码豁免。模型获取失败或检测到范围退化会返回执行错误。当前解析支持本项目的 POM/JAR 生命周期和 Ant 选择器；测试规则独立按 Surefire/Failsafe 归一化，支持裸类名、全限定类名、路径、`.java`/`.class` 及省略扩展名，只有整段 `**` 跨目录。空 includes/excludes 回退插件默认规则，显式非空 excludes 替代默认排除。测试规则中的 `./`、反斜杠、重复斜杠、目录尾斜杠及空逗号项会明确拒绝，不静默修正。正则/方法/分组过滤、不同范围的重复执行、Spotless 二次范围限制等无法可靠表示的配置也会明确拒绝。显式测试 `argLine` 只支持无引号/转义的简单参数，agent 属性引用必须是独立参数；默认未配置的 `argLine` 仍由测试插件读取 JaCoCo 属性。修改相关插件配置后，应先运行 Java 子检查，不能把模型拒绝当作检查豁免。
+Java 子检查通过本轮 `-Pci help:effective-pom` 获取完整 reactor，检查适用插件的执行阶段、扫描范围、报告路径和最低阈值，并明确纯 POM/无源码豁免。它只支持本仓库的 POM/JAR 模块、标准 `src/main/java`/`src/test/java` 和 `target` 输出目录，以及 Parent 的 `*Test`/`*Tests`、`*IT`/`*IntegrationTest` 规则；不模拟 Maven 通用选择器或额外执行 JUnit 发现。配置不在支持范围时明确失败，不能转成无测试豁免。
 
-构建模型通过 JDK 语法树读取全部测试源码的顶层及命名成员声明，按编译后的二进制类名应用有效选择器，源码文件名与类名不同时也纳入清单。默认 `$` 排除仅在插件未配置非空 excludes 时适用；显式选中的静态成员类按 `Outer$InnerTest` 建模，局部及匿名类不纳入源码清单。报告核验再用本次 XML 的实际测试类路径执行 JUnit Jupiter 发现，逐个核对可运行测试类的 `testcase@classname`；辅助类和抽象类不按源码文件数计算，JUnit `@Nested` 按所属外层测试类聚合，独立选中的静态成员测试类保留自身二进制名称。该清单不证明类内所有方法或动态实例均执行，零用例报告仍不通过。缺失编译类、发现失败、额外引擎发现选中测试，以及改变发现语义的插件参数均明确拒绝。`JavaSourceInventory.java`、`java-source-inventory.mjs` 和 `TestInventory.java` 是长期构建模型与报告门禁的支持文件，Java 子检查与 full 共用，不是专项验收脚本。
+测试源码的包路径、顶层类名和文件名必须一致，测试命名后缀保留给实际运行的测试类，辅助类或抽象基类不使用这些后缀。构建前按源码路径建立期望清单；成功 `clean verify` 后，所选编译测试类必须与源码清单一致，每个期望类都要有 XML `testcase@classname` 执行证据。异名或独立成员测试类无法对应源码时明确失败；普通嵌套报告按外层类聚合，嵌套类不得另行匹配本阶段包括/排除规则成为独立编译候选。单元测试中的嵌套类可用 `Scenario`，避免 `ScenarioTest`；若进入独立编译候选，则因缺少同名源码而拒绝。参数化执行由 Maven/JUnit 负责。该检查不证明类内所有方法或动态实例都执行，零用例、失败、错误或跳过报告均不通过。清单不从 XML 反推，报告数量不能替代逐类核验。
 
-维护 Java 门禁时，可用 `bash scripts/lib/engineering-tool.sh src/quality/java-build-model.test.mjs` 运行模型与报告契约回归，覆盖选择器、成员类型、skip 拒绝及缺报告失败；该通用测试夹具长期维护，临时项目和报告在运行后清理。它不替代 Java 子检查的真实 Maven 构建。
+Surefire 只允许 Parent 的标准包括/排除规则；Failsafe 默认排除成员类。仅当存在具体 IT 类文件排除时，才允许由模块最小 profile 清空插件级 excludes；完整 Parent 链每层的原始 `relativePath`（缺省 `../pom.xml`）解析后，其 realpath 必须与对应 reactor Parent 源码 POM 一致。空 `relativePath`、无法定位或同坐标异源均明确失败且不豁免；不额外读取 reactor 外的 Parent XML 或缓存。此条件不表示非 reactor Parent 一概禁用。执行级显式 IT 排除仍拒绝。该 profile 仅允许一个 Failsafe 插件，其配置只清空插件级 excludes，不含自动激活、属性覆盖、skip、过滤或额外执行。外部服务例外由模块 POM 管理，工具不包含功能专用分支。方法、标签、引擎过滤、关闭 XML、skip 和不同配置的重复执行均拒绝，包括经 POM 属性注入的参数。
 
-模型建立的是保守的扫描候选，不承诺所有候选都会执行。当前 Parent 对应的 Surefire/Failsafe Jupiter provider 对 `.class` includes 另有二次类名过滤，本地验证会得到零用例；静态成员类验收使用 `.java` 或省略扩展名。原始路径及带空白的逗号项也可能受二次过滤影响；若实际执行范围小于候选范围，报告完整性检查会保守拒绝，需要收紧选择器。扫描层匹配不能作为执行证据，这类零用例或缺报告构建不会转为无测试豁免。
+compiler 源码过滤、自定义源码根、跳过主编译及 `proc:only` 会明确拒绝；自定义 compiler 参数不解释，`compilerArgs` 只保留现有 `-parameters`。不维护源码生成插件或注解处理器知识库；动态追加源码根不属于支持契约，未知生成插件接入前需另行评审，不能据此工具获得生成源码完整性保证。JaCoCo 继续要求默认 agent 属性（不支持自定义 argLine）、最终报告、check、相同 exec、数据追加及不降低 Parent 阈值，比例只支持 0 到 1、至多六位小数；排除仅限既有 entity/dto/vo/Application 范围。Spotless 覆盖标准主源码与测试源码，仅允许既有生成目录排除；插件级和执行级 `baseDir` 的实际路径必须为模块目录。
 
-扫描发生在构建前，当前模型不支持动态追加源码根；有效 build-helper `add-source`/`add-test-source`、已知源码生成插件及已知源码生成注解处理器会明确拒绝。未知插件扩展不能据此获得完整性保证，接入前需补充模型支持。JaCoCo 比率最低值支持小数或百分比（如 `0.60` 与 `60%`），越界、降低基线或无法可靠表示的阈值拒绝。
+统一入口固定 Maven 命令，不接受 `MAVEN_ARGS` 或 `.mvn/maven.config` 注入额外参数；`MAVEN_BASEDIR`/`MAVEN_PROJECTBASEDIR` 不能切换配置目录。JVM 输入通道为 `.mvn/jvm.config` 及 `MAVEN_OPTS`、`MAVEN_DEBUG_OPTS`、`JAVA_TOOL_OPTIONS`、`JDK_JAVA_OPTIONS`、`_JAVA_OPTIONS`；门禁属性覆盖、`@` 参数文件和 `-XX:VMOptionsFile=` 入口均拒绝，不模拟通用 JVM/shell 参数解析，也不读取这些参数指向的文件。对 JVM 输入还保守拒绝属性键包含引号的写法；普通内存或网络参数及属性值中的合法引号仍可使用。模型、清理、构建中断或核验失败均阻断；成功产物与失败诊断分开记录，清理前先使旧成功记录失效，XML/exec 的 SHA-256 绑定本轮构建。
+
+`java-build-model.mjs` 与报告核验器承担跨模块、跨版本的构建范围和报告完整性检查，长期由 Java 子检查与 full 复用。维护时运行 `bash scripts/lib/engineering-tool.sh src/quality/java-build-model.test.mjs` 验证标准编译类、缺单类报告、范围缩小、输入覆盖和旧产物等契约；临时项目与报告运行后清理。这些回归不替代真实 Maven 构建，不承载具体功能的专项验收。
 
 本地 full 默认 `RUN_SONAR=false`，只等价 CI 基础检查，Sonar 在报告中标记为 `not_applicable`。只有已确认目标 Sonar 项目、分支和上传授权，并由受控环境提供 `RUN_SONAR=true`、`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 时，Java 子检查才会在 `clean verify` 通过且报告核验通过后，独立运行 `./mvnw -B -Pci sonar:sonar` 并等待 Quality Gate；不在文档或日志中写入凭据。CI 的凭据与 push 事件策略由工作流传入。公网制品验证只能在发布后进行，本地 fixture 验证检查器的成功、损坏制品、404 与重试行为。
 
