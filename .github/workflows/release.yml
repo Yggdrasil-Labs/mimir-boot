@@ -99,6 +99,9 @@ jobs:
 
       - name: Run shared quality gate
         if: hashFiles('scripts/engineering.sh') != ''
+        env:
+          # setup-java 默认向此变量追加 -ntp，Java 门禁要求 Maven 命令参数固定。
+          MAVEN_ARGS: ''
         run: bash scripts/engineering.sh quality --mode full --source worktree --report "${RUNNER_TEMP}/mimir-quality/quality-report.json"
 
       # 仅兼容手动补偿迁移前的不可变 tag；新版本不得降级到旧入口。
@@ -117,7 +120,7 @@ jobs:
 
       - name: Upload quality report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4
         with:
           name: release-quality-report
           path: ${{ runner.temp }}/mimir-quality

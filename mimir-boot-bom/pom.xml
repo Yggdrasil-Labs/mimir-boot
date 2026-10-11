@@ -38,7 +38,7 @@
         <javapoet.version>1.13.0</javapoet.version>
 
         <!-- 日志相关 -->
-        <slf4j.version>2.0.19</slf4j.version>
+        <slf4j.version>2.0.20</slf4j.version>
 
         <!-- 测试相关 -->
         <testcontainers.version>1.21.4</testcontainers.version>
@@ -65,16 +65,16 @@
         <jetcache.version>2.7.9</jetcache.version>
 
         <!-- 搜索引擎和NoSQL -->
-        <elasticsearch.version>8.11.0</elasticsearch.version>
+        <elasticsearch.version>9.5.5</elasticsearch.version>
 
         <!-- 其他工具 -->
-        <commons.lang3.version>3.20.0</commons.lang3.version>
+        <commons.lang3.version>3.21.0</commons.lang3.version>
         <commons.collections4.version>4.6.0</commons.collections4.version>
         <guava.version>33.7.2-jre</guava.version>
 
         <!-- 序列化相关 -->
         <kryo.version>5.6.2</kryo.version>
-        <protobuf.version>4.36.1</protobuf.version>
+        <protobuf.version>4.36.2</protobuf.version>
 
         <!-- 网络相关 -->
         <okhttp.version>5.5.0</okhttp.version>

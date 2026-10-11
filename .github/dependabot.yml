@@ -141,6 +141,29 @@ updates:
           - "org.apache.maven:apache-maven"
         update-types: ["minor", "patch"]
 
+  # 工程工具 npm 依赖更新
+  - package-ecosystem: "npm"
+    directory: "/tools/engineering"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "YoungerYang-Y"
+    assignees:
+      - "YoungerYang-Y"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "📦 deps"
+    groups:
+      engineering-npm-minor-patch:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
+
   # GitHub Actions 更新
   - package-ecosystem: "github-actions"
     directory: "/"
