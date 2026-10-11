@@ -11,7 +11,15 @@
   },
   "devDependencies": {
     "@xmldom/xmldom": "0.9.12",
-    "markdown-it": "14.3.0",
-    "markdownlint-cli2": "0.23.2"
+    "markdown-it": "14.3.1",
+    "markdownlint-cli2": "0.23.3"
+  },
+  "overrides": {
+    "markdownlint-cli2": {
+      "smol-toml": "1.9.0"
+    },
+    "micromark-extension-math": {
+      "katex": "0.18.2"
+    }
   }
 }
