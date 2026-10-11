@@ -13,7 +13,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.DefaultBootstrapContext;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
-import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
@@ -62,13 +61,8 @@ class ManagedNacosConfigDataTest {
                 environment.getPropertySources().stream()
                         .anyMatch(
                                 source ->
-                                        source.getClass()
-                                                        .getSimpleName()
-                                                        .equals("ManagedNacosPropertySource")
-                                                && source
-                                                        instanceof
-                                                        EnumerablePropertySource<?> enumerable
-                                                && enumerable.getPropertyNames().length == 0),
+                                        source instanceof ManagedNacosPropertySource managed
+                                                && managed.getPropertyNames().length == 0),
                 "成功空 Nacos 结果应保留可辨认的零键归属标记");
     }
 
