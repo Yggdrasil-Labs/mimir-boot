@@ -64,6 +64,24 @@ public class PageRequest implements Serializable {
         validateAndCorrect();
     }
 
+    /** 设置页码并校正无效值 */
+    public void setPageIndex(Long pageIndex) {
+        this.pageIndex = pageIndex;
+        validateAndCorrect();
+    }
+
+    /** 设置页大小并校正无效值或限制上限 */
+    public void setPageSize(Long pageSize) {
+        this.pageSize = pageSize;
+        validateAndCorrect();
+    }
+
+    /** 设置排序方向并校正无效值 */
+    public void setOrderDirection(String orderDirection) {
+        this.orderDirection = orderDirection;
+        validateAndCorrect();
+    }
+
     /**
      * 获取偏移量
      *

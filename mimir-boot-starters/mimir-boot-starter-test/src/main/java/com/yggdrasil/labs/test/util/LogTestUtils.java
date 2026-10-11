@@ -116,8 +116,12 @@ public final class LogTestUtils {
         if (appender == null || appender.list == null) {
             throw new AssertionError("ListAppender 或日志列表为 null");
         }
-        if (index >= appender.list.size()) {
-            throw new AssertionError("日志索引超出范围: " + index + " >= " + appender.list.size());
+        int logCount = appender.list.size();
+        if (index < 0) {
+            throw new AssertionError("日志索引超出范围: index=" + index + ", 日志数量=" + logCount);
+        }
+        if (index >= logCount) {
+            throw new AssertionError("日志索引超出范围: " + index + " >= " + logCount);
         }
         return appender.list.get(index);
     }

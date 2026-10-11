@@ -99,6 +99,9 @@ jobs:
 
       - name: Run shared quality gate
         if: hashFiles('scripts/engineering.sh') != ''
+        env:
+          # setup-java 默认向此变量追加 -ntp，Java 门禁要求 Maven 命令参数固定。
+          MAVEN_ARGS: ''
         run: bash scripts/engineering.sh quality --mode full --source worktree --report "${RUNNER_TEMP}/mimir-quality/quality-report.json"
 
       # 仅兼容手动补偿迁移前的不可变 tag；新版本不得降级到旧入口。

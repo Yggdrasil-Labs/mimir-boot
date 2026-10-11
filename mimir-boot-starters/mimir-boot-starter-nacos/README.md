@@ -118,11 +118,85 @@ public class ConfigController {
 
 刷新时如果 `mimir.boot.nacos.encrypt` 和兼容的 `mimir.nacos.encrypt` 前缀均不再绑定，监听器会移除旧的 `decryptedProperties:*` 解密覆盖层，原始属性源中的明文或下层配置随后生效；重新配置加密前缀后，会继续处理密文。
 
-若业务属性也被完全删除且没有下层值，Environment 不再返回旧值；Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定时，缺失的字段仍可能保留原值。业务需要移除旧值时，须按字段类型选择处置方式：
+默认 ConfigData 模式中，Starter 委托原 Nacos resolver/loader 处理 `spring.config.import=nacos:...`，为成功加载的标准枚举属性源记录归属；成功空配置保留不提供配置值的标记。在原 Cloud 刷新链计算差异前，同步这些 Nacos 源并重建解密层。因此单键删除、语义空配置、DataId 删除和 YAML 文档减少不会继续使用这些源中的旧配置，缺失值可回退到下层源。原 import 格式、group、preference、refreshEnabled 等参数继续生效。
+
+满足此前提后，若业务属性被完全删除且没有下层值，Environment 不再返回旧值；Spring Cloud 对已存在的 `@ConfigurationProperties` Bean 重新绑定时，缺失的字段仍可能保留原值。业务需要移除旧值时，须按字段类型选择处置方式：
 
 - 对 `String` 字段，如果业务语义和校验规则允许空字符串，可显式配置 `app.secret: ""`，重新绑定后的值为 `""`。空字符串不等于 `null`，此方式也不适用于所有字段类型。
-- 需要恢复 `null` 或字段默认值时，应由应用在刷新逻辑中显式重置字段，或通过重启应用等方式创建并重新注入新的 Bean 实例。删除配置或配置 `null` 不能作为通用的字段清空保证。
+- 需要恢复 `null` 或字段默认值时，可显式选择下述刷新作用域重建方式，或由应用按业务规则重置字段。删除配置或配置 `null` 不能作为普通 Bean 的通用字段清空保证。
 - 再次发布 `EnvironmentChangeEvent` 或调用 `ConfigurationPropertiesRebinder.rebind()` 只会对原 Bean 实例重新绑定，不属于创建新实例，也不会自动重置缺失字段。
+
+#### 显式重建配置 Bean
+
+需要删除属性后恢复初始化值的可变配置 Bean，可以在工厂方法上同时声明 `@Bean`、`@RefreshScope` 和 `@ConfigurationProperties`。业务通过注入的代理访问配置；完整刷新成功后，下次访问会创建并重新绑定目标实例：
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+public class AppConfiguration {
+    @Bean
+    @RefreshScope
+    @ConfigurationProperties("app")
+    public AppSettings appSettings() {
+        return new AppSettings();
+    }
+
+    public static class AppSettings {
+        private String secret;
+        private int timeout = 30;
+
+        public String getSecret() { return secret; }
+        public void setSecret(String secret) { this.secret = secret; }
+        public int getTimeout() { return timeout; }
+        public void setTimeout(int timeout) { this.timeout = timeout; }
+    }
+}
+```
+
+不要再通过 `@EnableConfigurationProperties(AppSettings.class)` 或组件扫描重复注册同一配置类型。此方式适用于可代理、可重新创建的 JavaBean；新目标重新执行初始化与绑定，业务需确认销毁、初始化及默认值符合预期。
+
+需要走 Spring Cloud 的完整刷新流程，例如 `ContextRefresher.refresh()`，其顺序是更新 Environment、发布 `EnvironmentChangeEvent`、使刷新作用域失效；单独发布环境事件不会重建目标。Nacos 的配置刷新事件会接入该流程，仍需在应用启用相应动态刷新。除可变属性源测试外，`NacosRefreshEventIT` 通过实际 Alibaba 事件监听器与 Boot 文件 ConfigData 重载验证该流程；测试未连接 Nacos 服务端，不能替代其网络加载、删除和推送验收。
+
+上层属性从实时 Environment 删除且有下层值时，新目标绑定下层值；完全缺失时恢复字段初始化值，例如 `secret=null`、`timeout=30`。默认刷新器在发布环境事件前遇到传播出的加载或解密异常时，恢复原属性源引用和顺序，保留已创建目标；修正后需再次完整刷新。此恢复不回滚外部提前修改的可变 Map 或 SDK 内部快照，不提供任意并发 Environment 读写的事务隔离。业务不能缓存裸目标或字段快照来代替代理，否则仍可能使用旧值；重建也不保证擦除其他对象持有的历史明文。
+
+构造注入的业务服务应保存代理，每次使用时读取当前值，例如：
+
+```java
+@Service
+public class AppService {
+    private final AppConfiguration.AppSettings settings;
+
+    public AppService(AppConfiguration.AppSettings settings) {
+        this.settings = settings;
+    }
+
+    public String currentSecret() {
+        return settings.getSecret();
+    }
+}
+```
+
+成功刷新会销毁已创建的旧目标；下一次代理访问才创建、绑定并初始化新目标。初始化、绑定或校验失败可能在这次访问时暴露，不属于保留旧目标的解密失败情形，业务应按自身校验和可用性要求验收。销毁回调不能假定新目标已经创建。
+
+默认 `NacosConfigDataContextRefresher` 在差异计算前完成解密层更新，删除不再被旧明文覆盖层遮挡。`EnvironmentChangeEvent.keys` 沿用 Cloud Context 4.1.6 的可枚举属性原始值差异：它枚举 `EnumerablePropertySource` 提供的属性名并比较这些名称对应的值，不保证枚举占位符依赖导致的派生属性有效值变化。例如 `app.secret=${x:fallback}` 中删除 `x` 后，事件可能只包含 `x`，而不包含解析值已改变的 `app.secret`；即使派生值改变，也不能据此断言其键必在事件中。按键缓存不能只依赖派生键通知：应在每次完整刷新时整体失效并重读配置，或通过 `@RefreshScope` 代理读取当前配置。
+
+`optional:nacos:...` 的加载异常被上游吞掉时，不生成成功空标记，该资源的旧源保留；其他成功结果仍应用，完整刷新仍使 RefreshScope 失效。非 optional 的传播异常才使本次刷新失败。SDK 的 snapshot/failover 行为沿用原客户端，成功加载不等同于服务端线性一致读取。
+
+源清理只覆盖本 Starter 标记、且本次成功加载的标准 Nacos 源；自定义非枚举 parser 源、移除 import、改变资源身份和本地文件源消失不提供相同保证。`NacosRefreshEventIT` 保留空本地文件仍残留旧原始源的上游负向对照；`NacosManagedRefreshIT` 通过真实 Boot/Nacos ConfigData SPI、受控远程边界和注入消费者验证 Nacos 删除、多文档、失败及恢复，不代表服务端推送已验收。仅增强 Cloud 实际注册的默认 ConfigData 刷新器；用户自定义 `ContextRefresher`、legacy bootstrap、关闭 `spring.cloud.refresh.enabled` 或排除 `RefreshAutoConfiguration` 时退让。排除可通过 `@EnableAutoConfiguration(exclude = RefreshAutoConfiguration.class)` 或 `spring.autoconfigure.exclude` 配置，不要求额外排除本 Starter；自定义刷新接入需应用自行满足对应契约。
+
+#### 真实 Nacos 服务验收
+
+常规测试不依赖外部服务，只排除新增的 `NacosLiveRefreshIT`；显式启用 `nacos-live` 后，它与原全部测试一起执行，缺少服务参数或凭据直接失败，不使用条件跳过。先配置 `NACOS_TEST_SERVER_ADDR`、`NACOS_TEST_USERNAME`、`NACOS_TEST_PASSWORD` 和可选 `NACOS_TEST_NAMESPACE`，再运行：
+
+```bash
+./mvnw -Pci,nacos-live -pl mimir-boot-starters/mimir-boot-starter-nacos -am clean verify
+```
+
+测试创建唯一 group/DataId，经真实客户端发布和监听推送，验证 Environment、变更键、构造注入代理和生命周期，最后仅清理本轮配置。错误密钥场景要求本轮预期配置键的解密认证异常，网络或无关监听器异常不能作为成功验收依据。客户端不允许空字符串发布，注释 properties 验证的是语义空配置。框架的指定真实服务验收及关闭范围见[验收记录](../../docs/active/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；现有业务应用迁移由 [TD-047](../../docs/active/tech-debt-tracker.md#td-047-nacos-消费者迁移)独立跟踪，框架测试不替代应用验收。
 
 ### 3. 加密工具类
 
