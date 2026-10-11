@@ -22,6 +22,16 @@
 
     <build>
         <plugins>
+            <!-- 外部服务测试仅显式启用；常规集成测试继续沿用 Parent 的选择器。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/NacosLiveRefreshIT.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <!-- 普通制品沿用精简发布 POM，避免继承 Parent 的构建插件。 -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -38,6 +48,23 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>nacos-live</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes combine.self="override" />
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <dependencies>
         <!-- Mimir Boot Common -->
