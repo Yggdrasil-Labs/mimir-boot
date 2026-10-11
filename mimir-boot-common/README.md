@@ -79,7 +79,7 @@ return R.fail("20001", "用户不存在");
 
 ### 3. 分页
 
-- **PageRequest** - 分页请求参数（构造工厂会校验；绑定后的对象需显式触发校验）
+- **PageRequest** - 分页请求参数（构造、setter 与默认 Jackson 绑定均自动校正）
 
 ```java
 // 带参数构造会自动校验参数
@@ -100,15 +100,15 @@ PageRequest sortedRequest = PageRequest.of(1L, 10L, "createTime", "DESC");
 
 **自动校验规则：**
 
-- 带参数构造方法和 `PageRequest.of()` 会调用 `validateAndCorrect()`：
+- 带参数构造、`PageRequest.of()`、页码/页大小/排序方向 setter 均调用 `validateAndCorrect()`，默认 Jackson 绑定通过 setter 使用同一规则：
   - `pageIndex` 必须 >= 1，否则修正为默认值 1
   - `pageSize` 必须在 1 到 MAX_PAGE_SIZE(1000) 之间，否则修正为默认值 10 或最大值
   - `orderDirection` 必须是 ASC 或 DESC，否则修正为 ASC
 
 **注意事项：**
 
-- 无参构造只设置默认字段值，不会为后续 setter 或 Jackson 绑定自动校验；绑定请求参数后应显式调用 `validateAndCorrect()`，或在计算偏移量前调用 `getOffset()`
-- 直接读取 `getPageIndex()`、`getPageSize()` 时不会触发校验；计算偏移量前应调用 `getOffset()`
+- 无参构造设置有效默认值；setter 写入后立即校正，直接 getter 和 `PageQuery.toPageRequest()` 可读取已校正的值。与旧行为相比，非法输入不再原样保留到显式校验时。
+- `validateAndCorrect()` 仍可显式调用，`getOffset()` 仍再次校验并在乘法溢出时抛出 `IllegalArgumentException`。反射直接写字段、自定义 Jackson 字段访问和历史 Java 序列化数据不属于 setter 绑定保证范围，读取后应显式校验。
 
 - **PageResult** - 分页结果
 
@@ -223,12 +223,11 @@ public class UserVO extends BaseVO {
 ### 2. 使用示例
 
 ```java
-// Controller 层：查询参数绑定后，需显式校验
+// Controller 层：默认参数绑定通过 setter 自动校正
 @RestController
 public class UserController {
     @GetMapping("/users")
     public R<PageResult<User>> getUsers(PageRequest pageRequest) {
-        pageRequest.validateAndCorrect();
         PageResult<User> result = userService.list(pageRequest);
         return R.success(result);
     }

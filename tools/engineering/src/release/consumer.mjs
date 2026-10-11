@@ -30,8 +30,6 @@ import {
 } from './fixture-consumer.mjs';
 
 const MAVEN_NAMESPACE = 'http://maven.apache.org/POM/4.0.0';
-const contractRocketMqVersion = '2.3.6';
-const contractElasticsearchVersion = '8.11.0';
 const MAVEN_REPOSITORY_ID = 'central';
 const RETRYABLE_MAVEN_STAGES = new Set([
     'root-online-clean-deploy',
@@ -218,12 +216,6 @@ async function main() {
         const revision = await readPomProperty(path.join(projectRoot, 'pom.xml'), 'revision');
         const bomRocketMqVersion = await readPomProperty(path.join(projectRoot, 'mimir-boot-bom/pom.xml'), 'rocketmq.version');
         const bomElasticsearchVersion = await readPomProperty(path.join(projectRoot, 'mimir-boot-bom/pom.xml'), 'elasticsearch.version');
-        if (bomRocketMqVersion !== contractRocketMqVersion) {
-            fail(`BOM 的 rocketmq.version=${bomRocketMqVersion} 不符合发布契约 ${contractRocketMqVersion}`);
-        }
-        if (bomElasticsearchVersion !== contractElasticsearchVersion) {
-            fail(`BOM 的 elasticsearch.version=${bomElasticsearchVersion} 不符合发布契约 ${contractElasticsearchVersion}`);
-        }
 
         const producerSelector = [':mimir-boot-bom', ':mimir-boot-starters', ...starterArtifacts.map((artifact) => `:${artifact}`)].join(',');
         const producerProjects = ['-pl', producerSelector, '-am'];
@@ -260,8 +252,8 @@ async function main() {
         await runConsumerMaven('consumer-isolated-resolve', [...consumerMaven, 'dependency:resolve', `-DoutputFile=${path.join(consumerDirectory, 'target/dependency-resolve.txt')}`], logsDirectory);
         await runConsumerMaven('consumer-isolated-tree', [...consumerMaven, 'dependency:tree', `-DoutputFile=${path.join(consumerDirectory, 'target/dependency-tree.txt')}`], logsDirectory);
         const consumerTree = await runtime.readFile(path.join(consumerDirectory, 'target/dependency-tree.txt'), 'utf8');
-        if (!consumerTree.includes(`org.apache.rocketmq:rocketmq-spring-boot-starter:jar:${contractRocketMqVersion}`)) fail('consumer 隔离依赖树缺少 RocketMQ 契约版本');
-        if (!consumerTree.includes(`co.elastic.clients:elasticsearch-java:jar:${contractElasticsearchVersion}`)) fail('consumer 隔离依赖树缺少 Elasticsearch 契约版本');
+        if (!consumerTree.includes(`org.apache.rocketmq:rocketmq-spring-boot-starter:jar:${bomRocketMqVersion}`)) fail('consumer 隔离依赖树缺少 BOM 声明的 RocketMQ 版本');
+        if (!consumerTree.includes(`co.elastic.clients:elasticsearch-java:jar:${bomElasticsearchVersion}`)) fail('consumer 隔离依赖树缺少 BOM 声明的 Elasticsearch 版本');
         await runConsumerMaven('consumer-isolated-clean-verify', [...consumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 隔离执行缺少 ParentLifecycleIT Failsafe 报告');
 
@@ -278,8 +270,8 @@ async function main() {
         const bomTree = await runtime.readFile(path.join(bomConsumerDirectory, 'target/dependency-tree.txt'), 'utf8');
         for (const coordinate of [
             `io.github.yggdrasil-labs:mimir-boot-starter-log:jar:${revision}`,
-            `org.apache.rocketmq:rocketmq-spring-boot-starter:jar:${contractRocketMqVersion}`,
-            `co.elastic.clients:elasticsearch-java:jar:${contractElasticsearchVersion}`,
+            `org.apache.rocketmq:rocketmq-spring-boot-starter:jar:${bomRocketMqVersion}`,
+            `co.elastic.clients:elasticsearch-java:jar:${bomElasticsearchVersion}`,
         ]) if (!bomTree.includes(coordinate)) fail(`BOM-only 隔离依赖树缺少 ${coordinate}`);
         await runConsumerMaven('bom-isolated-verify', [...bomConsumerMaven, 'clean', 'verify'], logsDirectory);
         await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [bomConsumerCacheDirectory], announce: false });

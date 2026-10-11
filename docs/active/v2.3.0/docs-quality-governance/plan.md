@@ -1,10 +1,10 @@
 ---
 id: docs-quality-governance-plan
 version: v2.3.0
-status: in-progress
+status: completed
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-20
+updated: 2026-10-03
 ---
 
 # Agent 文档治理与本地质量门禁 — 实施计划
@@ -23,7 +23,7 @@ updated: 2026-09-20
 **Execution Mode Reason:** 当前继续文档修复；独立文件组可并行，主代理统一校验。不创建或合并 worktree。
 **Ledger Mode:** controller-commits
 
-用户已批准在当前目录继续实施。历史任务保留当时的执行记录；当前状态见下表及 T7/T8。本计划不授权自动提交、push、merge、rebase 或其他历史改写。
+用户曾批准在当前目录继续实施；上述运行字段及下方 Plan Verdict、Dispatch Ledger、各任务 Execution/Completion Gate 保留当时记录或模板含义，不作为当前运行账本维护。当前状态见下表与 [T8 收尾验收](./verification.md#2026-10-03-t8-收尾验收)。本计划不授权自动提交、push、merge、rebase 或其他历史改写。
 
 **Plan Verdict:**
 
@@ -41,7 +41,7 @@ updated: 2026-09-20
 
 ## 当前执行范围
 
-质量门禁已完成并单独提交；当前继续执行文档职责归位。提交与推送 hook 分别对暂存区和待推送提交执行离线 quick；CI、发布工作流与显式本地 full 执行完整验收。当前操作与触发条件见[工程指南](../../../engineering/development.md)和[测试与质量](../../../engineering/testing.md)。下方任务保留前序实施证据，其中“pre-push 全量”已被日常离线 quick 的实施调整取代，不能据此认定 T8 已交付。保留文档自检、业务 Java 测试与发布消费者契约，不新增独立工具测试目录。
+质量门禁、文档迁移及 T8 约定本地验收已完成，未发布。提交与推送 hook 分别对暂存区和待推送提交执行离线 quick；CI、发布工作流与显式本地 full 执行完整验收。当前操作与触发条件见[工程指南](../../../engineering/development.md)和[测试与质量](../../../engineering/testing.md)。下方任务保留前序实施证据，其中“pre-push 全量”已被日常离线 quick 的实施调整取代；当前交付结论以新验收记录为准。保留文档自检、业务 Java 测试与发布消费者契约，不新增独立工具测试目录。
 
 **2026-09-16 当前实现补充：** 工具实现已收敛为 `tools/engineering/src/docs/`、`src/quality/` 与 `src/release/`；技术债 ID 注册表及自动校验已移除。下方涉及旧 tools/docs-check 路径、平铺脚本、`debt.mjs`、`debt-id-registry.json` 的任务记录是当时的历史执行证据，不再描述当前接口；以设计文档和实际目录为准。
 
@@ -50,8 +50,8 @@ updated: 2026-09-20
 | 范围 | 当前状态 | 如何继续 |
 |---|---|---|
 | T1–T6 工程实现 | 已有提交；下方 Execution 保留当时记录 | 不按旧脚本路径、旧 pre-push full 或编号注册表要求重新实施；当前行为以工程指南和实现为准 |
-| T7 文档迁移 | 文档内容修复与验收通过，未提交 | 验收记录已回填；提交需单独授权，不将未提交状态写成整个任务完成 |
-| T8 整体验收 | 尚未完成 | 文档复验不替代最终提交快照的 full、场景证据核对与远程状态说明 |
+| T7 文档迁移 | 已提交并通过文档及语义验收 | 迁移提交 `4941d41`；历史 Execution 中未提交是当时状态，后续修订归对应记录 |
+| T8 整体验收 | 约定本地范围完成，未发布 | 实施提交 `41d8b7a` 两次完整快照 full 通过；27 场景及替代依据见 verification；外部状态未验证 |
 
 本轮修复范围：待执行规则对齐、Sonar 纪律承接、评分模型退役说明、场景组合建议、Product Spec 的按需建立条件、模块路径与文档元信息。既有失败报告不改写；当前文档检查与后续整体验收分别记录在 [verification.md](./verification.md)。没有授权时不提交或推送。
 
@@ -704,6 +704,18 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 
 ### T8: 独立验收与实施交付记录
 
+#### 2026-10-03 收尾实施范围
+
+本轮在基于 `2e833cd` 的 `fix/technical-debt-next` worktree 收尾 TD-043、TD-044，沿用既定行为和阈值，不变更 Java 公共 API、依赖版本或正式发布结构。历史 Execution 字段保留原始含义，当前完成证据归入 [verification.md](./verification.md)。
+
+1. 报告矩阵：修改 `tools/engineering/src/quality/verify-java-reports.mjs`，按需新增同目录的有效构建模型解析模块；通过 `-Pci help:effective-pom` 读取实际 reactor、源码/测试目录、测试包括/排除、报告路径、JaCoCo 排除与 Spotless 范围。显式列出纯 POM/无 Java 源码豁免；模型获取失败不能回退为固定命名规则或空矩阵。
+2. 构建与产物生命周期：修改 `tools/engineering/src/quality/java.mjs`，保留有日志、耗时和取消处理的 Maven 调度。失败或中断不能形成可通过的成功产物清单；必要报告缺失、清理失败、哈希失配继续拒绝。同步工程规程中受影响的事实。
+3. 专项验收：临时脚本与 fixture 放在临时目录或项目内忽略的独立副本，不写入 `tools/`。核对模型路径/选择规则反例、15 个模块及豁免、真实 Spotless/IT 覆盖及阈值、失败/跳过/缺报告/清理/中断、Sonar 未启用及已启用失败的分类。受控 Sonar 故障只验证本地调度，不能冒称远端 Quality Gate 通过。
+4. 场景与文档：在 `verification.md` 逐项映射 27 个当前场景，复用历史证据前核对相关实现未变；受影响场景以本轮新证据覆盖。同步版本入口、release、架构及债务链接，不重写历史验收结论。
+5. 最终验收：独立复审后，对实际实施提交执行完整快照 full，记录首次及同提交缓存运行耗时；检查 commit/tree/配置摘要与清单。只有全部适用条件满足，才关闭两项债务并更新 RFC 的本地验证状态；远程 CI、Sonar 和正式发布分别保持未验证。
+
+工具准入：有效模型解析与报告核验承担项目全局、跨版本持续运行的 Java 验收职责，实际复用入口为 `engineering.sh java`、完整 quality 以及 CI 共享入口。本轮不把一次性故障注入、场景映射或迁移代码嵌入工具。
+
 **Depends on:** T3, T5, T6, T7
 
 **Files:**
@@ -726,9 +738,9 @@ AC4：逐行检查 migration.md 执行表的所有字段及 QUALITY_SCORE 观察
 
 **Acceptance Criteria:**
 
-- [ ] AC1: 27 个 Scenario 均有成功/失败断言或指定人工语义证据，真实 git commit/push 反例和真实 Spotless/JaCoCo 反例通过。
-- [ ] AC2: 最终提交快照的 full 检查成功，每个应有报告模块完整；记录首次与缓存命中耗时，不将 tool mock 当作最终证据。
-- [ ] AC3: 仅 TD-043/TD-044 在完整证据下移出活跃清单并保留决策记录；远程 CI 和发布状态未核对时明确未验证；仅全部迁移和门禁验收通过后将 RFC 及设计索引状态同步为 verified。
+- [x] AC1: 27 个 Scenario 均有成功/失败断言或指定人工语义证据，真实 git commit/push 反例和真实 Spotless/JaCoCo 反例通过。
+- [x] AC2: 最终提交快照的 full 检查成功，每个应有报告模块完整；记录首次与缓存命中耗时，不将 tool mock 当作最终证据。
+- [x] AC3: 仅 TD-043/TD-044 在完整证据下移出活跃清单并保留决策记录；远程 CI 和发布状态未核对时明确未验证；仅全部迁移和门禁验收通过后将 RFC 及设计索引状态同步为 verified。
 
 **Execution:**
 
@@ -782,9 +794,9 @@ AC1：下面映射表每个 S 都有证据；AC2：提交/tree/配置摘要与�
 | B2-S2 | T5 | 重复 setup 幂等且多 worktree 独立 |
 | B2-S3 | T1, T5 | 下载/缓存/hook 冲突返回 2 且不写配置 |
 | B3-S1 | T2 | 必需文档检查全部 passed，退出 0 |
-| B3-S2 | T2 | warning 不短路且不自动归档 |
+| B3-S2 | T2 | 指定人工语义替代：归档/发布人工核对、检查只读；warning API 保持提示级别，不声称自动归档提示 E2E |
 | B3-S3 | T2, T4 | 格式和链接错误均列出，退出 1 |
-| B3-S4 | T2, T4 | 缺工具 error、依赖 not_run，退出 2 |
+| B3-S4 | T2, T4 | 缺工具 error，退出 2；独立链接/导航继续检查，真正依赖缺失才 not_run |
 | B4-S1 | T5 | 正常 git commit 成功，测试调用次数为 0 |
 | B4-S2 | T4, T5 | 暂存错误而工作区修复仍拒绝提交 |
 | B4-S3 | T3, T5 | 格式错误/缺工具失败，索引不变 |
@@ -813,7 +825,7 @@ AC1：下面映射表每个 S 都有证据；AC2：提交/tree/配置摘要与�
 
 ## Acceptance Criteria
 
-- [ ] GAC1: 在无全局 Node 的 Java 17 环境显式初始化后，真实提交和推送自动执行检查；暂存或待推送内容错误会被拦截，工作区内容不能替代被检版本。
-- [ ] GAC2: 同一交付提交在本地 full 和 CI 共享入口中使用相同规则；所有必需检查有结果，失败、缺工具、缺报告、未执行均不能得到成功。
-- [ ] GAC3: Spotless 真实扫描全部适用源码模块，单元/IT 全量通过，JaCoCo 最终报告和阈值校验一致，TD-043/TD-044 有真实负向与正向证据。
-- [ ] GAC4: Agent 可按任务找到权威约束与操作规程，人可通过 README 接入；迁移矩阵、链接、台账、历史语义与既定版本/徽章约定全部满足。
+- [x] GAC1: 在无全局 Node 的 Java 17 环境显式初始化后，真实提交和推送自动执行检查；暂存或待推送内容错误会被拦截，工作区内容不能替代被检版本。
+- [x] GAC2: 同一交付提交在本地 full 和 CI 共享入口中使用相同规则；所有必需检查有结果，失败、缺工具、缺报告、未执行均不能得到成功。
+- [x] GAC3: Spotless 真实扫描全部适用源码模块，单元/IT 全量通过，JaCoCo 最终报告和阈值校验一致，TD-043/TD-044 有真实负向与正向证据。
+- [x] GAC4: Agent 可按任务找到权威约束与操作规程，人可通过 README 接入；迁移矩阵、链接、台账、历史语义与既定版本/徽章约定全部满足。

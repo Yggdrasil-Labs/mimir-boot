@@ -1,17 +1,17 @@
 ---
 id: arch-docs-quality-governance
-status: draft
+status: verified
 owner: 项目维护者
 tags: [architecture, documentation, agent, quality]
 created: 2026-09-14
-updated: 2026-09-20
+updated: 2026-10-03
 ---
 
 # 文档体系与质量门禁治理 RFC
 
 ## 状态与范围
 
-本文档记录已获用户同意方向的治理方案。当前迁移与最终验收尚未完成，状态保留为 `draft`；批准方向与实施完成是两个不同事实。它只约束仓库内文档的职责、迁移边界和质量检查方式，不修改 Java 代码、公开 API、依赖方向、发布结构或外部技能目录。
+本文档记录已获用户同意方向并完成本地落地验证的治理方案，状态为 `verified`；验收范围与证据见 [T8 收尾记录](../active/v2.3.0/docs-quality-governance/verification.md#2026-10-03-t8-收尾验收)。远程 CI、Sonar Quality Gate、正式发布及发布后消费者未核实。它只约束仓库内文档的职责、迁移边界和质量检查方式，不修改 Java 代码、公开 API、依赖方向、发布结构或外部技能目录。
 
 本 RFC 的需求、设计和执行记录分别见：
 
@@ -103,7 +103,7 @@ docs/
 5. 本地 hook 与 CI 使用共享检查实现，按各阶段选择 quick 或 full；相同模式、输入和条件采用相同判定规则。任一必需检查未执行或执行出错时整体不得报告通过；quick 成功不代表完整验收通过。
 6. `git diff --check` 和统一完整验收均有可复核输出；文档格式、链接、导航、发布及 Maven 子检查分别记录，失败项在 `active/` 记录，不伪造为已完成。
 
-本 RFC 在迁移和门禁全部落地、索引已同步、代码与文档抽样复核通过后，才可由维护者将 `status` 从 `draft` 更新为 `verified`。当前草案不授权目录迁移、Git hook 安装、提交或推送。
+本 RFC 的 `verified` 只表示迁移及约定本地门禁验收完成，人工替代与外部未验证范围由验收记录维护。RFC 状态本身不授权目录迁移、Git hook 安装、提交或推送。
 
 ## 反模式
 

@@ -155,9 +155,7 @@ public class SensitiveDataConverter extends ClassicConverter {
             }
         }
         for (SensitiveDataPattern pattern : selectedPatterns) {
-            if (pattern != SensitiveDataPattern.PASSWORD
-                    && pattern != SensitiveDataPattern.TOKEN
-                    && pattern != SensitiveDataPattern.SECRET) {
+            if (SensitiveDataPattern.keyValueFieldNames(List.of(pattern)).isEmpty()) {
                 compilePatterns(
                         target, List.of(pattern.getPattern()), "Invalid preset mask pattern: ");
             }
@@ -176,8 +174,8 @@ public class SensitiveDataConverter extends ClassicConverter {
             }
             try {
                 target.add(Pattern.compile(expression.trim()));
-            } catch (RuntimeException exception) {
-                LOGGER.warn("{}{}", errorPrefix, expression, exception);
+            } catch (RuntimeException ignored) {
+                LOGGER.warn("{}invalid expression ignored", errorPrefix);
             }
         }
     }
@@ -242,9 +240,6 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     private static SensitiveFieldValue findSensitiveFieldValue(
             String message, int index, List<String> fieldNames) {
-        if (!isPotentialFieldInitial(message.charAt(index))) {
-            return null;
-        }
         String fieldName = matchingFieldName(message, index, fieldNames);
         if (fieldName == null) {
             return null;
@@ -289,13 +284,6 @@ public class SensitiveDataConverter extends ClassicConverter {
             }
         }
         return null;
-    }
-
-    private static boolean isPotentialFieldInitial(char value) {
-        return switch (value) {
-            case 'a', 'A', 'p', 'P', 's', 'S', 't', 'T', '%', '密', '私' -> true;
-            default -> false;
-        };
     }
 
     private static boolean sameAsciiCase(char left, char right) {

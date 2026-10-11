@@ -358,7 +358,11 @@ mimir:
 | `bank_card_number` | 纯银行卡号 | 6222021234567890 |
 | `email_address` | 纯邮箱地址 | <user@example.com> |
 
-`password`、`token`、`secret` 规则支持常见的带引号 JSON 字段；`api_key`、`account` 等规则当前按普通 `key=value` 形式匹配，带引号的 JSON 字段可能无法命中。敏感日志请在业务侧验证实际格式。
+启用后，10 组字段型预置规则——`password`、`token`、`secret`、`api_key`、`account`、`id_card`、`phone`、`bank_card`、`email`、`name`——都会扫描普通 `key=value`/`key: value` 日志和带引号键名的文本标量，例如 `{"account":"alice","tail":"sentinel"}` 会变成 `{"account":"****","tail":"sentinel"}`。该功能按日志文本边界工作，不解析或验证完整 JSON；默认仍不启用任何规则。
+
+字段别名沿用不检查左边界的后缀匹配，启用 `account` 时 `not_account=alice` 也会被遮罩，而 `account_extra=alice` 保持不变。空引用值 `account=""` 会变成 `account="****"`；数字、布尔值和 `null` 按文本替换，输出不保证仍是合法 JSON。未闭合的带引号值会一直脱敏到消息末尾。字段扫描后，纯值、自定义和编程式正则仍会处理完整扫描结果，因此可匹配替换文本、普通日志文本以及扫描器未完整保护的复合值残余。
+
+对象和数组值不保证完整脱敏。例如 `{"account":["alice","bob"]}` 可能只遮住前半段并留下后续内容，也可能破坏原结构。业务代码必须在写日志前移除此类字段或预先脱敏，不能依赖转换器保护复合值。
 
 **编程式扩展**：
 
@@ -805,6 +809,8 @@ log.info("手机号：13812345678");
 log.info("token=abc123xyz");
 // 自动输出：token=****
 ```
+
+默认没有规则启用，脱敏只覆盖启用规则且符合文本边界的值。对象和数组字段值不保证完整保护；记录此类日志前应移除或预先脱敏敏感字段。
 
 #### 手动避免
 

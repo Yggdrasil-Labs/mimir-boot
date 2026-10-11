@@ -347,7 +347,9 @@ mvn enforcer:enforce
 
 ### 使用 `${revision}` 占位符
 
-项目使用 `flatten-maven-plugin` 支持 `${revision}` 版本占位符，便于统一管理版本号。发布 Parent 时，flatten 会解析并固化部分 `pluginManagement` 配置；下游项目通过属性覆盖编译插件版本、Java 版本或 JaCoCo 门槛时，应以已发布 Parent 的实际 POM 为准。
+项目使用 `flatten-maven-plugin` 支持 `${revision}` 版本占位符，便于统一管理版本号。发布 Parent 时，flatten 会解析 Parent 版本与依赖管理，并保留 `pluginManagement` 中的属性引用。下游项目可在自己的 `<properties>` 中覆盖 `java.version`、`maven.compiler.plugin.version`、`jacoco.instruction.minimum` 和 `jacoco.branch.minimum`；`java.version` 控制编译插件的 source 和 target，目标版本仍需与使用的 JDK 和依赖兼容。
+
+发布根 POM 不保留属性，因此 Parent 单独声明 `spring.boot.version` 供 Spring Boot Maven Plugin 继承；升级 Spring Boot 基线时，需要同步修改根 POM 和 Parent 中的该属性。
 
 在根 POM 中定义：
 

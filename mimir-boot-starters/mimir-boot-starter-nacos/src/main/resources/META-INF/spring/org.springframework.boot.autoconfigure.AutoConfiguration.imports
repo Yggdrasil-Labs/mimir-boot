@@ -1,2 +1,3 @@
 com.yggdrasil.labs.nacos.config.NacosEncryptAutoConfiguration
+com.yggdrasil.labs.nacos.config.NacosRefreshAutoConfiguration
 
