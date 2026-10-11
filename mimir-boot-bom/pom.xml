@@ -73,7 +73,7 @@
         <guava.version>33.7.1-jre</guava.version>
 
         <!-- 序列化相关 -->
-        <kryo.version>5.6.2</kryo.version>
+        <kryo.version>5.7.1</kryo.version>
         <protobuf.version>4.36.2</protobuf.version>
 
         <!-- 网络相关 -->
