@@ -78,6 +78,14 @@ public enum SensitiveDataPattern {
                     "accessKey",
                     "%73ecretKey",
                     "私钥");
+    private static final List<String> API_KEY_KEYS = List.of("apikey", "api_key", "app_key");
+    private static final List<String> ACCOUNT_KEYS =
+            List.of("account", "accountId", "account_id", "账号");
+    private static final List<String> ID_CARD_KEYS = List.of("idcard", "id_card", "身份证");
+    private static final List<String> PHONE_KEYS = List.of("phone", "mobile", "tel", "手机", "电话");
+    private static final List<String> BANK_CARD_KEYS = List.of("bankcard", "bank_card", "银行卡");
+    private static final List<String> EMAIL_KEYS = List.of("email", "mail");
+    private static final List<String> NAME_KEYS = List.of("name", "realname", "真实姓名");
 
     /** 规则名称 */
     private final String name;
@@ -106,6 +114,13 @@ public enum SensitiveDataPattern {
                         case PASSWORD -> PASSWORD_KEYS;
                         case TOKEN -> TOKEN_KEYS;
                         case SECRET -> SECRET_KEYS;
+                        case API_KEY -> API_KEY_KEYS;
+                        case ACCOUNT -> ACCOUNT_KEYS;
+                        case ID_CARD -> ID_CARD_KEYS;
+                        case PHONE -> PHONE_KEYS;
+                        case BANK_CARD -> BANK_CARD_KEYS;
+                        case EMAIL -> EMAIL_KEYS;
+                        case NAME -> NAME_KEYS;
                         default -> List.of();
                     };
             keys.addAll(fieldNames);

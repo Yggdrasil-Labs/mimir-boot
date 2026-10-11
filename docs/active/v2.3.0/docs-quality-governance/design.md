@@ -1,15 +1,15 @@
 ---
 id: docs-quality-governance-design
 version: v2.3.0
-status: draft
+status: verified
 owner: YoungerYang-Y
 created: 2026-09-14
-updated: 2026-09-16
+updated: 2026-10-10
 ---
 
 # Agent 文档治理与本地质量门禁 — 技术设计
 
-> 阅读边界：下方保留初始方案。后续日常离线检查调整已将 pre-push 从 full 改为提交快照上的 quick；CI 与发布仍执行 full。当前操作入口与触发条件以[测试与质量指南](../../../engineering/testing.md)及其链接的实现为准。
+> 阅读边界：pre-push 契约已同步为提交快照上的离线 quick；CI 与发布仍执行 full。本设计的约定本地验收已完成，证据、人工替代及外部未验证范围见[验收记录](./verification.md#2026-10-03-t8-收尾验收)。当前操作入口与支持配置边界以[测试与质量指南](../../../engineering/testing.md)及其链接的实现为准。
 
 ## Context
 
@@ -29,10 +29,10 @@ updated: 2026-09-16
 ## Non-Goal
 
 - 不改变业务公共 API、配置默认语义、依赖版本基线或发布仓库。
-- 不提高覆盖率百分比，不新增独立单元测试覆盖率指标，不让首版按改动范围省略推送全量验证。
+- 不降低覆盖率门槛，不新增独立单元测试覆盖率指标；推送采用提交快照 quick，完整行为验收由 CI、发布或显式本地 full 承担。
 - 不修改远端分支保护，不认为本地 hook 无法绕过；不根据 tag 自动归档版本，v2.2.1 的归档由独立收尾动作完成。
 - 不建设文档网站、不生成空目录、不重写历史事实，不修改个人技能库的固定路径规则。
-- 文档目录迁移及缺少专项证据的场景仍按计划跟踪；当前可执行入口见 Testing Strategy，命令存在不代表全部验收完成。
+- 当前可执行入口见 Testing Strategy；本地验证结果按验收记录的实际范围解释，不能由命令存在推断远端 CI 或制品发布通过。
 
 ## Architecture
 
@@ -42,9 +42,11 @@ flowchart TD
     Commit[pre-commit] --> Index[暂存区快照]
     Push[pre-push] --> Refs[待推送提交快照]
     CI[CI checkout] --> Workspace[CI 工作区]
-    Index --> Runner[共享质量检查入口]
-    Refs --> Runner
-    Workspace --> Runner
+    Index --> Quick[离线 quick]
+    Refs --> Quick
+    Workspace --> Runner[共享完整质量检查入口]
+    Quick --> Format[文档与 Java 格式检查]
+    Format --> Summary
     Maven --> Docs[文档检查器]
     Runner --> Docs
     Runner --> Java[Spotless 与 Maven 测试门禁]
@@ -95,15 +97,15 @@ flowchart TD
 - Java 使用快照的 `./mvnw -Pci spotless:check`，不添加 `-N`，覆盖多模块源码，不编译、不执行测试。文档使用 IC-02 的 format 模式，Maven 属性 `-Ddocs.mode=format`；full 验收使用 `bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test`。没有相关文件变化时记录原因明确的 `not_applicable`。
 - 工具缓存不匹配暂存锁文件时拒绝检查并提示重新初始化。已格式化但未暂存的内容不得影响结果；失败不创建 commit，退出码沿用统一结果。
 
-### IC-04 推送前完整检查（B5）
+### IC-04 推送前快速检查（B5）
 
 - 接口：`.githooks/pre-push <remote-name> <remote-location>`，从 stdin 读取 Git 提供的 `<local-ref> <local-oid> <remote-ref> <remote-oid>` 行；不自行猜测 origin/main。
-- 非删除引用将 local OID 解析到 commit（含 annotated tag）；不能解析为 commit 的对象返回明确不支持错误。每个不同 tree OID 在本次执行中最多完整检查一次；删除行只记录 `not_applicable`。
-- 调用：`bash scripts/engineering.sh quality --mode full --source commit --commit <sha>`；新分支也检查完整目标树，不依赖旧远端 SHA 可用，不为取范围执行 fetch。
+- 非删除引用将 local OID 解析到 commit（含 annotated tag）；不能解析为 commit 的对象返回明确不支持错误。同一 tree 和变更基线在本次执行中可复用 quick 结果；删除行只记录 `not_applicable`。
+- 调用：`bash scripts/engineering.sh quality --mode quick --source commit --commit <sha>`；新分支按完整目标树确定适用格式检查，不依赖旧远端 SHA 可用，不为取范围执行 fetch。
 - 完整快照含待推送提交的构建脚本、配置和工具锁；快照缺失检查契约时返回明确失败，不用当前工作区脚本冒充被推送版本规则。旧版本标签的补推属于单独评估操作，不能静默放行。
-- 调度算法：当前 hook 只读取 ref 并导出目标树到临时目录；随后切换到该目录，执行其中的 `bash scripts/engineering.sh quality --mode full --source worktree`，通过由导出器提供的只读运行清单传递 source=commit、commit/tree 和文件清单。`--source commit` 命令也必须执行同样的导出和重新调用过程，不能仅把 root 参数传给当前工作区的检查实现。隔离子进程清除 Git 仓库定位环境变量，所有 Maven、policy、脚本及锁文件均取自目标树；缺入口立即失败，禁止回退当前版本。运行清单路径由 `QUALITY_SNAPSHOT_MANIFEST` 传入，包含 originRoot、source、commit、tree、files、changedFiles（完整模式可为空数组），消费者只读并核对导出内容。
+- 调度算法：当前 hook 只读取 ref 并导出目标树到临时目录；随后切换到该目录，执行其中的 `bash scripts/engineering.sh quality --mode quick --source worktree`，通过由导出器提供的只读运行清单传递 source=commit、commit/tree 和文件清单。`--source commit` 命令也必须执行同样的导出和重新调用过程，不能仅把 root 参数传给当前工作区的检查实现。隔离子进程清除 Git 仓库定位环境变量，所有 Maven、policy、脚本及锁文件均取自目标树；缺入口立即失败，禁止回退当前版本。运行清单路径由 `QUALITY_SNAPSHOT_MANIFEST` 传入，包含 originRoot、source、commit、tree、files、changedFiles；quick 根据变更基线选择适用格式检查，消费者只读并核对导出内容。
 - 快照执行不会触碰当前 worktree 的 target、源文件或索引。一次多引用推送任一目标失败即整体拒绝；日志中记录受检 ref、commit 和 tree。
-- 同一运行内可以复用同一 tree 的结果；首版不缓存跨运行的质量通过结论，只缓存依赖和工具。
+- 同一运行内只复用 tree 与变更基线均相同的结果；首版不缓存跨运行的质量通过结论，只缓存依赖和工具。完整测试、报告及发布契约验收由显式 full、CI 和发布工作流执行。
 
 ### IC-05 Java 完整质量与报告核验（B6）
 
@@ -113,7 +115,8 @@ flowchart TD
 - `check` 读取执行数据判定阈值，并非读取 XML；report 生成的最终 XML 是上传和 Sonar 的输入。二者分别验证，不能只移动 report 就认为阈值检查已经合格。
 - 指令/分支门槛仍为 0.60/0.50，BUNDLE 级；沿用既有 entity/dto/vo/Application 排除并在期望报告矩阵登记。纯 POM 或无可测源码模块可以豁免，必须带理由。
 - 核验接口：`bash scripts/lib/engineering-tool.sh src/quality/verify-java-reports.mjs --root <execution-root> --expected <expected-report-json> --report <result-json>`，实现位于 `tools/engineering/src/quality/verify-java-reports.mjs`。检测 Surefire/Failsafe XML 的 errors/failures/skipped，以及每个应产出报告模块的报告存在性、内容和当前运行归属。
-- 期望报告矩阵来源于本次有效 reactor、源码/测试清单及 effective POM 的包括/排除规则，保存在本次运行目录；不能从已经生成的报告反推应有报告。无某类测试的模块明确豁免；真实测试被 skip 不能豁免。
+- 期望报告矩阵来源于本次有效 reactor、标准源码路径及受支持的 effective POM 规则，保存在本次运行目录；不能从已经生成的报告反推应有报告。构建前建立源码期望 S，构建后扫描所选编译测试类 C，要求 S=C，再逐类验证 XML 执行证据。无某类测试的模块明确豁免；缺编译类、未知独立测试类或真实测试被 skip 不能豁免。
+- 2026-10-10 范围修订：仅支持 POM/JAR 生命周期、标准源码/输出目录及 Parent 的 *Test/*Tests、*IT/*IntegrationTest 命名规则。包路径、顶层类名和文件名一致，测试后缀不用于辅助类或抽象基类；不解析 Java AST，不模拟通用 Maven 选择器，不额外执行 JUnit 发现。源码 reactor POM（含纯 POM 与 Parent）中声明 profile activation/file 一律拒绝，不论当前是否激活；不解析 Maven 通用 profile。普通嵌套报告按外层类聚合；嵌套类不得另行匹配本阶段包括/排除规则成为独立编译候选。单元测试中的嵌套类可用 `Scenario`，避免 `ScenarioTest`；若进入独立编译候选，则因缺少同名源码而拒绝。异名或独立成员候选明确失败；类级证据不承诺所有方法或动态实例均执行。Surefire/Failsafe provider 的 `properties` 仅允许无子元素且文本为空的配置；包含子元素或非空文本时拒绝，不维护参数知识库。仅当存在具体 Failsafe IT 排除时，才允许由最小 profile 清空插件级 excludes；完整 Parent 链每层的原始 `relativePath`（缺省 `../pom.xml`）解析后，其 realpath 必须与对应 reactor Parent 源码 POM 一致。空值、无法定位或同坐标异源均失败且不豁免，不额外读取 reactor 外的 Parent XML 或缓存。执行级显式 IT 排除仍拒绝；此条件不表示非 reactor Parent 一概禁用。JVM 输入通道包括 `.mvn/jvm.config` 和 `MAVEN_OPTS`、`MAVEN_DEBUG_OPTS`、`JAVA_TOOL_OPTIONS`、`JDK_JAVA_OPTIONS`、`_JAVA_OPTIONS`；明确拒绝 `@` 参数文件和 `-XX:VMOptionsFile=` 入口，不读取其指向文件或模拟通用 JVM/shell 参数解析。Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar 及独立 `generateExpected`）固定设置 `MAVEN_SKIP_RC=1`，禁用系统和用户 mavenrc 加载；父环境的其他输入仍按既有规则验证，此设置不改变用户手动运行 `mvnw` 的行为。属性键包含引号的写法保守拒绝；属性值中的引号本身允许，但值中若出现空白分隔的门禁覆盖或参数文件文本，即使位于引号内也会被保守拒绝，不应视为支持输入。compiler 过滤、跳过编译、测试方法/标签/引擎过滤和门禁属性覆盖均拒绝；JaCoCo 与 Spotless 只支持既有范围。具体输入限制见[工程工具](../../../../tools/engineering/README.md#检查清单)。
 - 新鲜度：每次执行生成唯一 runId 与 build-manifest.json，记录 executionRoot、开始时间、expectedReports 和 expectedExec。Maven 启动前仅清理这些声明的旧报告/exec 路径并确认全部不存在，清理失败即 error；不删除源码。然后唯一调用 clean verify。仅在 Maven 成功、clean 阶段成功且应有产物重新出现时，计算产物 SHA-256 写入本次 manifest；核验器逐项比对路径、摘要及 runId，缺 manifest、清理失败、构建中断或外来旧报告均不能通过。时间戳只辅助诊断，不作为唯一归属依据。
 - Maven 失败时按阶段记录失败和依赖未执行；允许解析已产生报告用于定位，不会将其提升为通过。成功但缺少预期报告仍返回失败。
 - Sonar 不是同一次 Maven invocation：仅当 `RUN_SONAR=true` 且 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 由环境提供时，在 `clean verify` 成功并完成报告核验后独立执行 `./mvnw -B -Pci sonar:sonar`，并通过 `-Dsonar.qualitygate.wait=true` 等待 Quality Gate。缺少任一变量为配置错误；不记录凭据值。
@@ -182,7 +185,7 @@ flowchart TD
 | 覆盖率 | 每适用模块指令 ≥ 0.60、分支 ≥ 0.50，沿用现有 POM |
 | 可复现性 | 工具使用精确版本与锁文件；本地/CI 无两份独立阈值配置 |
 | 隔离性 | hook 前后源码/索引/未跟踪内容变更数为 0；只写本次缓存、快照、报告 |
-| 性能 | 不承诺秒级时限；记录首次准备及缓存命中耗时，提交前不运行测试，推送前全量 |
+| 性能 | 不承诺秒级时限；记录首次准备及缓存命中耗时，提交与推送前均为离线 quick，不运行测试 |
 | 平台 | 本轮验证 Linux/WSL、Java 17、仓库 Maven Wrapper；不宣称未验证的原生 Windows 支持 |
 | 边界 | 0 个全局 Git 配置写入，0 个发布 Parent 正常路径的 Node 依赖 |
 
@@ -194,7 +197,7 @@ flowchart TD
 | 全局 npm 或 npm prepare 安装 hook | 接入代码较少 | 需要开发者管理全局运行时且安装副作用不透明；不采用 |
 | Docker 检查器 | 工具环境易固定 | 增加 Docker 可用性、挂载与启动成本；不作为默认 |
 | 改用纯 Java Markdown 检查器 | 无 Node 工具链 | 需重验规则等价性和链接解析行为；本轮不替换 |
-| 每次 commit 全量测试 | 提交阶段就能发现测试失败 | 打断频繁提交；全量门禁放 pre-push |
+| 每次 commit 全量测试 | 提交阶段就能发现测试失败 | 打断频繁提交；完整门禁由显式 full、CI 和发布工作流承担 |
 | hook 扫描当前工作区 | 实现简单 | 无法证明暂存/待推送内容合格；拒绝 |
 
 ## Testing Strategy
@@ -204,7 +207,7 @@ flowchart TD
 | IC-01 | `bash scripts/setup-dev.sh`；临时 Git 验收见下方说明 | 显式初始化、重复初始化和 hooksPath 冲突按约定返回；失败不改配置 |
 | IC-02 | `bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test` | 文档格式、链接、导航和工具自检均有结果；必需检查通过才返回 0 |
 | IC-03 | `bash scripts/engineering.sh quality --mode quick --source index` | 只检查暂存快照的文档/Java 格式；不运行测试，索引和工作区保持不变 |
-| IC-04 | `bash scripts/engineering.sh quality --mode full --source commit --commit <sha>` | 对目标提交执行完整检查；实际推送、多引用失败阻断和远端引用断言见下方临时验收 |
+| IC-04 | `bash scripts/engineering.sh quality --mode quick --source commit --commit <sha>` | 对目标提交执行离线格式检查；实际推送、多引用失败阻断和远端引用断言见下方临时验收 |
 | IC-05 | `bash scripts/engineering.sh java`；Maven 子步骤为 `./mvnw -B -Pci clean verify` | 测试、JaCoCo 最终报告及报告核验通过；满足条件时再独立 Sonar 并等待 Quality Gate |
 | IC-06 | `bash scripts/engineering.sh quality --mode full --source worktree` | 文档、发布契约、消费者、签名和 Java 子检查全部有结果；默认只覆盖 CI 基础检查 |
 | IC-07 | `bash scripts/engineering.sh docs --root <绝对路径> --mode full --self-test` 与人工迁移矩阵核对 | 全库格式、链接和导航通过；人工核对历史语义、README 契约及旧路径去向 |

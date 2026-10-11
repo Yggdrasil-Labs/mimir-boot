@@ -15,7 +15,7 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
  * MyBatis-Plus 加解密相关自动配置。
  *
  * <p>默认提供一个 {@link com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider}。
- * 启用字段加密时必须配置稳定密钥，避免重启后无法解密已持久化数据。 同时暴露若干通用 {@code TypeHandler} 以便按类型自动处理加解密。
+ * 启用字段加密时必须配置稳定密钥，避免重启后无法解密已持久化数据。 提供的 {@code TypeHandler} 仅供字段显式配置，不接管普通 Java 类型。
  *
  * <p>需要显式配置 {@code mimir.boot.mybatis.crypto-enabled=true} 才会启用加密功能。
  */

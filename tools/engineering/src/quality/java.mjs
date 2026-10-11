@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { performance } from 'node:perf_hooks';
@@ -17,6 +17,7 @@ import {
     cleanExpected,
     generateExpected,
     recordArtifacts,
+    validateBuildInputs,
     verifyReports,
 } from './verify-java-reports.mjs';
 
@@ -149,6 +150,7 @@ export async function runCommand({ command, args, cwd, logPath }) {
         try {
             child = spawn(command, args, {
                 cwd,
+                env: { ...process.env, MAVEN_SKIP_RC: '1' },
                 stdio: ['ignore', 'pipe', 'pipe'],
                 detached: process.platform !== 'win32',
             });
@@ -375,17 +377,39 @@ async function runJavaQualityInternal(options) {
     if (cancellationSignal) return finishCancelledJava(report, options, runStarted);
 
     const expectedPath = path.join(options.reportDirectory, 'build-manifest.json');
-    let expectedReady = false;
+    const effectivePomPath = path.join(options.reportDirectory, 'effective-pom.xml');
+    const modelLog = path.join(options.reportDirectory, 'logs', 'java-build-model.log');
+    const modelArgs = ['-B', '-Pci', 'help:effective-pom', `-Doutput=${effectivePomPath}`];
+    let modelResult;
     try {
-        await writeJson(expectedPath, await generateExpected(options.root, runId));
-        await cleanExpected(options.root, expectedPath);
-        expectedReady = true;
-        appendResult(report, { check: stageCheck('java-reports-clean', 'passed'), findings: [] });
+        await validateBuildInputs(options.root);
+        await rm(effectivePomPath, { force: true });
+        await rm(expectedPath, { force: true });
+        modelResult = await runCommand({ command: path.join(options.root, 'mvnw'), args: modelArgs, cwd: options.root, logPath: modelLog });
     } catch (error) {
-        appendResult(report, {
-            check: createCheck({ id: 'java-reports-clean', status: 'error', exitCode: 2, reason: `清理 Java 旧产物失败：${error.message}` }),
-            findings: [{ severity: 'error', rule: 'java-reports-clean', path: null, line: null, message: error.message }],
-        });
+        modelResult = commandResult(2, null, error);
+    }
+    appendResult(report, {
+        check: createCheck({ id: 'java-build-model', command: ['./mvnw', ...modelArgs], logPath: modelLog, status: modelResult.exitCode === 0 ? 'passed' : 'error', exitCode: modelResult.exitCode === 0 ? 0 : 2, reason: modelResult.exitCode === 0 ? null : `无法获取 Java 有效构建模型：${modelResult.error?.message || `退出码 ${modelResult.exitCode}`}`, durationMs: modelResult.durationMs || 0 }),
+        findings: [],
+    });
+    if (cancellationSignal) return finishCancelledJava(report, options, runStarted);
+    let expectedReady = false;
+    if (modelResult.exitCode === 0) {
+        try {
+            await writeJson(expectedPath, await generateExpected(options.root, runId, await readFile(effectivePomPath, 'utf8')));
+            appendResult(report, { check: stageCheck('java-reports-expected', 'passed'), findings: [] });
+            await cleanExpected(options.root, expectedPath);
+            expectedReady = true;
+            appendResult(report, { check: stageCheck('java-reports-clean', 'passed'), findings: [] });
+        } catch (error) {
+            const preparingModel = !report.checks.some((check) => check.id === 'java-reports-expected');
+            const id = preparingModel ? 'java-reports-expected' : 'java-reports-clean';
+            appendResult(report, {
+                check: createCheck({ id, status: 'error', exitCode: 2, reason: `准备 Java 报告矩阵或清理产物失败：${error.message}` }),
+                findings: [{ severity: 'error', rule: id, path: null, line: null, message: error.message }],
+            });
+        }
     }
     if (cancellationSignal) return finishCancelledJava(report, options, runStarted);
 
@@ -405,14 +429,17 @@ async function runJavaQualityInternal(options) {
             }),
             findings: [],
         });
+    } else {
+        appendResult(report, { check: stageCheck('java-build', 'not_run', '有效模型或旧产物清理未通过'), findings: [] });
     }
     if (cancellationSignal) return finishCancelledJava(report, options, runStarted);
 
     let verification = null;
     if (expectedReady) {
         try {
-            await recordArtifacts(options.root, expectedPath);
-            appendResult(report, { check: stageCheck('java-reports-record', 'passed'), findings: [] });
+            await recordArtifacts(options.root, expectedPath, { buildSucceeded: buildResult.exitCode === 0 });
+            appendResult(report, { check: stageCheck('java-reports-record', buildResult.exitCode === 0 ? 'passed' : 'not_run', buildResult.exitCode === 0 ? null : 'Maven 构建失败，未生成成功产物记录'), findings: [] });
+            if (buildResult.exitCode !== 0) appendResult(report, { check: stageCheck('java-reports-diagnostics', 'passed'), findings: [] });
         } catch (error) {
             appendResult(report, {
                 check: createCheck({ id: 'java-reports-record', status: 'error', exitCode: 2, reason: `记录 Java 产物失败：${error.message}` }),

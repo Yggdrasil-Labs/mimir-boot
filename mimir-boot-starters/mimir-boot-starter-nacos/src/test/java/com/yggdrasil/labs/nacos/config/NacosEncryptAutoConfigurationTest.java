@@ -285,6 +285,26 @@ class NacosEncryptAutoConfigurationTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldClearDecryptedOverlayWhenEncryptPrefixRemoved() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(NacosEncryptProperties.PREFIX + ".key", testKey);
+        props.put("app.secret", "ENC(" + ConfigCryptoUtils.encrypt("old-secret", testKey) + ")");
+        environment.getPropertySources().addFirst(new MapPropertySource("nacos", props));
+        configuration.processDecrypt(environment);
+        assertEquals("old-secret", environment.getProperty("app.secret"));
+
+        props.remove(NacosEncryptProperties.PREFIX + ".key");
+        props.put("app.secret", "new-plaintext");
+        configuration.setApplicationContext(applicationContext(environment));
+        configuration.onEnvironmentChange(
+                new EnvironmentChangeEvent(
+                        Set.of(NacosEncryptProperties.PREFIX + ".key", "app.secret")));
+
+        assertEquals("new-plaintext", environment.getProperty("app.secret"));
+        assertNull(environment.getPropertySources().get("decryptedProperties:nacos"));
+    }
+
+    @Test
     void shouldNotDecryptOnEnvironmentChangeWhenNoEncryptPrefixIsBound() {
         String encrypted = "ENC(" + ConfigCryptoUtils.encrypt("refresh-secret", testKey) + ")";
         environment

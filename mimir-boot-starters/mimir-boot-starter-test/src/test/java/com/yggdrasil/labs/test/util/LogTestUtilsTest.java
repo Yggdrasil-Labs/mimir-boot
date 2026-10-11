@@ -262,12 +262,42 @@ class LogTestUtilsTest {
     void testGetLogEvent_IndexOutOfRange() {
         logger.info("Test message");
 
-        assertThrows(
-                AssertionError.class,
-                () -> {
-                    LogTestUtils.getLogEvent(appender, 1);
-                },
-                "索引超出范围应抛出异常");
+        AssertionError error =
+                assertThrows(
+                        AssertionError.class,
+                        () -> {
+                            LogTestUtils.getLogEvent(appender, 1);
+                        },
+                        "索引超出范围应抛出异常");
+
+        assertEquals("日志索引超出范围: 1 >= 1", error.getMessage());
+    }
+
+    @Test
+    void testGetLogEvent_NegativeIndex() {
+        logger.info("Test message");
+        logger.info("Second message");
+        logger.info("Third message");
+
+        AssertionError error =
+                assertThrows(
+                        AssertionError.class,
+                        () -> LogTestUtils.getLogEvent(appender, -1),
+                        "负索引应抛出 AssertionError");
+
+        assertTrue(error.getMessage().contains("-1"), "诊断信息应包含实际索引");
+        assertTrue(error.getMessage().contains("3"), "诊断信息应包含日志数量");
+    }
+
+    @Test
+    void testGetLogEvent_EmptyAppender() {
+        AssertionError error =
+                assertThrows(
+                        AssertionError.class,
+                        () -> LogTestUtils.getLogEvent(appender, 0),
+                        "空日志列表访问应抛出 AssertionError");
+
+        assertEquals("日志索引超出范围: 0 >= 0", error.getMessage());
     }
 
     @Test

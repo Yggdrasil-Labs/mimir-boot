@@ -223,8 +223,12 @@ async function verifyMavenRetryFixture(directory) {
 const file = process.env.MIMIR_CONTRACT_RETRY_FILE;
 const attempt = Number(await readFile(file, 'utf8').catch(() => '0')) + 1;
 await writeFile(file, String(attempt));
-if (attempt === 1) { console.error('Remote host terminated the handshake'); process.exit(1); }
-process.stdout.write('retry recovered\\n');`;
+if (attempt === 1) {
+    await new Promise((resolve) => process.stderr.write('Remote host terminated the handshake\\n', resolve));
+    process.exitCode = 1;
+} else {
+    process.stdout.write('retry recovered\\n');
+}`;
     const result = await runMavenStage('transient-maven-fixture', [process.execPath, '--input-type=module', '--eval', script], {
         logsDirectory,
         env: { MIMIR_CONTRACT_RETRY_FILE: attemptFile },

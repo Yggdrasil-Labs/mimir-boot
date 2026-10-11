@@ -30,13 +30,16 @@ import ch.qos.logback.classic.spi.ThrowableProxy;
 class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
 
     private SensitiveThrowableProxyConverter converter;
+    private LoggerContext context;
 
     @Override
     @BeforeEach
     protected void setUp() {
         super.setUp();
+        context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+        clearConfigurationState();
         converter = new SensitiveThrowableProxyConverter();
-        converter.setContext((LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory());
+        converter.setContext(context);
         converter.start();
         SensitiveDataConverter.publishConfiguration(
                 List.of("password", "token"), List.of(), "****");
@@ -45,8 +48,21 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
     @Override
     @AfterEach
     protected void tearDown() {
-        SensitiveDataConverter.reloadConfig();
+        clearConfigurationState();
         super.tearDown();
+    }
+
+    private void clearConfigurationState() {
+        SensitiveDataConverter.clearCustomPatterns();
+        System.clearProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY);
+        System.clearProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY);
+        System.clearProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY);
+        if (context != null) {
+            context.putProperty(SensitiveDataConverter.MASK_ENABLED_PATTERNS_PROPERTY, null);
+            context.putProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY, null);
+            context.putProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, null);
+        }
+        SensitiveDataConverter.reloadConfig();
     }
 
     @Test
@@ -72,6 +88,22 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
         assertTrue(rendered.contains(IllegalStateException.class.getName()));
         assertTrue(rendered.contains(IllegalArgumentException.class.getName()));
         assertTrue(rendered.contains("Suppressed:"));
+        assertTrue(rendered.contains("SensitiveThrowableProxyConverterTest.java"));
+    }
+
+    @Test
+    void masksFormattedAccountValuesInRenderedThrowableAndPreservesDiagnosticContext() {
+        SensitiveDataConverter.publishConfiguration(List.of("account"), List.of(), "****");
+        IllegalArgumentException failure =
+                new IllegalArgumentException("account=alice, tail=sentinel");
+        ILoggingEvent event = mock(ILoggingEvent.class);
+        when(event.getThrowableProxy()).thenReturn(new ThrowableProxy(failure));
+
+        String rendered = converter.convert(event);
+
+        assertFalse(rendered.contains("alice"));
+        assertTrue(rendered.contains("account=****, tail=sentinel"));
+        assertTrue(rendered.contains(IllegalArgumentException.class.getName()));
         assertTrue(rendered.contains("SensitiveThrowableProxyConverterTest.java"));
     }
 
