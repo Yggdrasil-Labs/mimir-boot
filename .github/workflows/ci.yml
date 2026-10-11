@@ -37,6 +37,8 @@ jobs:
 
       - name: Run shared quality gate
         env:
+          # setup-java 默认向此变量追加 -ntp，Java 门禁要求 Maven 命令参数固定。
+          MAVEN_ARGS: ''
           RUN_SONAR: ${{ github.event_name == 'push' && secrets.SONAR_TOKEN != '' && secrets.SONAR_ORGANIZATION != '' && secrets.SONAR_PROJECT_KEY != '' && 'true' || 'false' }}
           SONAR_TOKEN: ${{ github.event_name == 'push' && secrets.SONAR_TOKEN || '' }}
           SONAR_ORGANIZATION: ${{ github.event_name == 'push' && secrets.SONAR_ORGANIZATION || '' }}
