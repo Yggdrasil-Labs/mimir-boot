@@ -1,5 +1,120 @@
 # Changelog
 
+## [2.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.1...v2.3.0) (2026-10-11)
+
+
+### ✨ Features
+
+* **docs:** 增加文档一致性检查与结果汇总 ([a2a1663](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a2a1663baeb054a368c348e32987e72fc7726b0c))
+* **quality:** 统一质量检查调度与快照验证 ([b2c1040](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b2c1040045c25d3c7a60a8825494d18528f70e4f))
+
+
+### 🐛 Bug Fixes
+
+* **bom:** 对齐 Springdoc 与 Boot 基线并限制自动升级 ([5c013a8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5c013a8aa1bb242c4c7026613c68a2f5b2575b48))
+* **bom:** 补齐 OkHttp JVM 依赖管理 ([f30858b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f30858b66479e22fa675979b36143cff2b997db1))
+* **build:** 修正 Java 质量门禁 ([56a58da](https://github.com/Yggdrasil-Labs/mimir-boot/commit/56a58dafe29d0c4380f97ac53686c89fc12ba5cb))
+* **ci:** 兼容质量门禁的 Maven 参数环境 ([1195356](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1195356d4f31b46dfe827874880666975566d22d))
+* **common:** 统一分页参数校正边界 ([4595527](https://github.com/Yggdrasil-Labs/mimir-boot/commit/45955272b4fa2b1278bab47cc71aee7f5f418f30))
+* **docs:** 排除文档检查测试夹具 ([63f060b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/63f060bdb570ce811886c88796c34c8d659532ec))
+* **log:** 补齐字段型敏感信息脱敏 ([a73c5c1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a73c5c196cae3fc4710efb2f818ca411b725af6b))
+* **mongodb:** 对齐驱动族版本并补齐消费者验收 ([6c4d70a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6c4d70a7a7d79c4baac5044f0e33097f6ee7780c))
+* **mybatis:** 隔离字段加密处理器的自动注册 ([d0f961d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d0f961df337e2e1e08de3b58e7f1f438aea8869e))
+* **nacos:** 修正配置归属测试的类型判断 ([7bfb70a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7bfb70ab74e678eda02ac5c2406c415032e6c2b5))
+* **nacos:** 同步删除配置源与解密变更键 ([065c8a4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/065c8a4124dcbfc504eacb2c609c3ff45f5b66d0))
+* **nacos:** 尊重刷新自动配置排除与类型条件 ([8dec161](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8dec161e443ef5f095536d400c8c08e4f0850489))
+* **nacos:** 清理加密前缀删除后的解密覆盖层 ([472f59f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/472f59f2120ea3c77be5caae22d20b5ece7de4db))
+* **parent:** 修复发布父 POM 属性覆盖 ([baafc35](https://github.com/Yggdrasil-Labs/mimir-boot/commit/baafc35588dc0d5ee9d936506f37d2a75850771d))
+* **quality:** 修复发布验收缓存与重试稳定性 ([16063e9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/16063e9c35f8ab42998f09e88bd08e4879683ddf))
+* **quality:** 修复测试选择器与成员类的报告漏检 ([e332fcf](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e332fcfb3248b5b91888ff60fc695103d81c4746))
+* **quality:** 固定构建范围并禁用 Maven 启动配置注入 ([1b0c4be](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1b0c4be08e88960e1923f9389394c8106593b0a2))
+* **quality:** 将本地门禁切换为离线快速验收 ([be8b429](https://github.com/Yggdrasil-Labs/mimir-boot/commit/be8b4299998f812b0d5926ee5e42b8119f031d0f))
+* **quality:** 按有效构建模型核验源码范围与构建产物 ([41d8b7a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/41d8b7aeffab862e58ba1fbf5dbdeac2575c3f96))
+* **quality:** 按测试类核验报告并完善有效模型边界 ([75f34c2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/75f34c2e06981ba52ffab79001c4b1b8c81899ac))
+* **quality:** 显示文档报告写入失败原因 ([f3c5782](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f3c57822eac01ffc0a4506ec3de50c337faf4758))
+* **quality:** 核验测试报告摘要与 XML 结构 ([d8bede4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d8bede4cd484c0a573ce3a306e8fecf2de95a69c))
+* **quality:** 精简构建门禁并收敛复审边界 ([14ea663](https://github.com/Yggdrasil-Labs/mimir-boot/commit/14ea6637693206345211a3eb3488d92a9a5898a3))
+* **quality:** 阻断嵌套测试过滤并明确参数边界 ([ee61615](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ee61615c625d7e1e97639f805e5be922d9e92e3b))
+* **quality:** 限定 Java 产物清理路径 ([8687742](https://github.com/Yggdrasil-Labs/mimir-boot/commit/86877429566d26a20cd9a2c1c13f33d8caf73015))
+* **release:** 以公开制品校验作为发布收尾门禁 ([f14a1f6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f14a1f676f4f0db32416bf36112aac325cbe610b))
+* **rpc:** 修复旧追踪桥的 MDC 作用域回滚 ([35f8979](https://github.com/Yggdrasil-Labs/mimir-boot/commit/35f8979a83e0bb014aadfc1840d846b74da02a8d))
+* **test:** 保证自定义清理后清空测试环境 ([40e61b8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/40e61b8525ea61a65a09b32f5f35eb9c563246d8))
+* **test:** 统一日志断言索引边界诊断 ([e601ce3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e601ce32a74e181ad18cdda9355a10e476c1e08e))
+
+
+### 📝 Documentation
+
+* **debt:** 拆分 Nacos 框架修复与消费者迁移 ([679a55c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/679a55cd9f6e9fa6ceaf06b7ce8da5d38c9013e4))
+* **debt:** 统一技术债台账与完成记录归属 ([bdcac51](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bdcac51a5bccee269228bf9f2f1a03580b255f86))
+* **debt:** 补齐 TD-039 真实 Nacos 验收证据 ([a8389b0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a8389b09ed59722981ecedf47f739f4b263b76d3))
+* **debt:** 记录 TD-039 复审修复与验收边界 ([486d803](https://github.com/Yggdrasil-Labs/mimir-boot/commit/486d803de464026dfad3f6383887dbdca4dce8e8))
+* **debt:** 记录事件链验收与配置删除剩余边界 ([7ed569d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7ed569ddee8d0edb2ec4ad1012c52e7f5745c491))
+* **debt:** 记录整体复查修复与本地验收 ([96c75b6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/96c75b617eba83a5b644e9f5512df029e29a20d3))
+* **debt:** 记录运行时修复与本地验收边界 ([d45f847](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d45f84749f14e553cb28ad3b5d4fe855648e2d56))
+* **debt:** 记录配置源同步与剩余验收边界 ([e71fb72](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e71fb72dd1f0a360c8860bf1f2f27e52b17bc0e7))
+* **debt:** 记录配置重建接入与剩余迁移边界 ([e994d42](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e994d423256420526b249b513ccd65e07bfce779))
+* **governance:** 建立文档治理实施方案 ([f5e3871](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f5e387106f260b6f122ff5d74fa3803897bf1d4c))
+* **governance:** 归档 v2.2.1 文档 ([c11b51e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c11b51eee70397748e448cba8ee20f883b6d9a02))
+* **governance:** 重整项目文档治理体系 ([4941d41](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4941d41bf87bb7d1b74ced5f501223b70336ccdb))
+* **quality:** 同步推送契约与专项复核证据 ([cf467b8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cf467b860f2723d784db1b80ed5b693953398b1c))
+* **quality:** 记录最终验收并关闭覆盖率与格式门禁债务 ([dbb6a23](https://github.com/Yggdrasil-Labs/mimir-boot/commit/dbb6a23622a7e3bc13d1ec37a522a5081e55f41e))
+* **readme:** 优化根 README GitHub 展示 ([769be76](https://github.com/Yggdrasil-Labs/mimir-boot/commit/769be76a6b1111e54aa32f85c159b45fb4401303))
+* **readme:** 精简根 README 冗余内容 ([91fed88](https://github.com/Yggdrasil-Labs/mimir-boot/commit/91fed883ac7983f52a6523d0c9f8aa5c7e590efa))
+* **tech-debt:** 系统化技术债务追踪 ([bb7b25e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bb7b25e0798ac61a02b7134cbb4b4a5d3d0fb4b8))
+* **test:** 同步清理钩子顺序说明 ([99524a2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/99524a2696492340c8ece631005f755fa52551d8))
+* **v2.3.0:** 新增日志脱敏与 MongoDB 方案 ([08ebe7e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/08ebe7e392197f79824411b72d065cbead51e3e4))
+* 修复文档复核问题 ([6275137](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6275137bd17b3c5543ed852ee3abec4bb9af16fb))
+* 修正文档漂移并统一维护约定 ([6cd3013](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6cd30130cee2d3fd9e2faa5bff3048ffcaf4942f))
+* 校准文档与实现边界 ([ba28c47](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ba28c47e22dccfb5379d6c6bbf9f942fdb5ba5ca))
+* 校准模块文档与实际实现 ([316393e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/316393ec70b5298dee4fd608cd54f0604dbdcd05))
+
+
+### ♻️ Code Refactoring
+
+* **quality:** 分层整理检查工具并精简文档策略 ([6ae7790](https://github.com/Yggdrasil-Labs/mimir-boot/commit/6ae779007b02884f9345182f115e1d1a3facebec))
+* **quality:** 统一工程质量门禁与发布验收工具 ([ed8cdde](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ed8cdde5e613c6b211977d4d281a8c687cbd4c49))
+* **tools:** 清理专项验收逻辑并强化工具准入约束 ([377818c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/377818c55e64d52b57930b536b068072d3166e7b))
+
+
+### ✅ Tests
+
+* **common:** 补齐分页校正的独立回归覆盖 ([2e833cd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2e833cd14ba851e3dc0c50771efa374fe5be0929))
+* **nacos:** 明确整源消失的刷新契约边界 ([2e63052](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2e630527ae5f180cc3b43f71e1c17029f937c348))
+* **nacos:** 校验真实刷新失败的解密原因 ([fa50d70](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fa50d7079f668d68606e255d28ad2662ae5ea92d))
+* **nacos:** 等待真实配置发布与删除可见性 ([a768cc6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a768cc6113c33d60363240c16960e01229210db1))
+* **nacos:** 精简重复回归并收敛验收摘要 ([89dc73e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/89dc73ee80164f9d17f02487777be3280e66efeb))
+* **nacos:** 补齐事件桥接与消费方生命周期回归 ([f5966d1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f5966d187b4b4d33e2cc916303dd9dede36dd79f))
+* **nacos:** 验证显式刷新作用域的配置删除语义 ([2f7be65](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2f7be65824b10ae2e0f681e0b14ae68fa5279503))
+
+
+### 🔨 Build System
+
+* **docs:** 建立 Maven 托管文档检查入口 ([33192a3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/33192a3bbce0f7f223cffc090a360dee7e6424c0))
+
+
+### 👷 Continuous Integration
+
+* **quality:** 复用本地质量检查与结果报告 ([f411638](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f411638a4e55d0e3f0e4b8ce76c65b6829a763ef))
+* **quality:** 收敛本地与持续集成质量门禁 ([4579ce1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4579ce1f3a5527fee5474c9a86abe68e2f8efda2))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.2.2-SNAPSHOT for next development cycle ([1f5a4db](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1f5a4dbefc85d197b8b39be6d89519a77f2769db))
+* **ci:** 升级 CI 与 Maven 构建工具版本 ([a2cf5b9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a2cf5b92d36ee1023bca0af570db168c99ce1f3e))
+* **deps:** 升级 fastjson2 与 SLF4J 版本 ([0c144bc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0c144bc0c1be8ae305ea8a9aff9fd43a5a4e27da))
+* **plan:** 初始化文档治理实施台账 ([5cb9d0e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5cb9d0e7d8cbd4f959daea8c392ebf51032f4408))
+* **plan:** 启动 Java 质量门禁任务 ([fa27d2e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fa27d2ee8d80f6e06927b1e63f823bf10977c0d8))
+* **plan:** 启动共享质量调度任务 ([2484aec](https://github.com/Yggdrasil-Labs/mimir-boot/commit/2484aec88b18549b908f1adac88d4cd02225f5b9))
+* **plan:** 启动文档规则检查任务 ([db2366c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/db2366c6b8f77ac9fd58f9e2c91aa76d386da5ca))
+* **plan:** 并行启动本地门禁与 CI 收敛 ([905772c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/905772c76a9267ba1ef635e857ed1932e6a9330c))
+* **plan:** 记录 CI 质量入口实施结果 ([cff406d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cff406d54b9a544ff1d407c0d2bd6f32b0c8a2e0))
+* **plan:** 记录 Java 质量门禁实施结果 ([68f3771](https://github.com/Yggdrasil-Labs/mimir-boot/commit/68f3771222619a7d99b7f3dde0c10603f819fa9a))
+* **plan:** 记录共享质量调度实施结果 ([61867cf](https://github.com/Yggdrasil-Labs/mimir-boot/commit/61867cf9e0b4e8d8862beec876946b3ae3e067c0))
+* **plan:** 记录文档工具链实施结果 ([158da24](https://github.com/Yggdrasil-Labs/mimir-boot/commit/158da2490c07c158184564a159aabb3ae9c0a269))
+* **plan:** 记录文档规则检查结果 ([b17a78a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b17a78acf798e047369e3a3fd04213624c8ef5cf))
+* **tools:** 移除独立测试脚本并固化工具保留范围 ([f9530fc](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f9530fc661f1af35b22a12c0e0731fc610766cf1))
+
 ## [2.2.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.0...v2.2.1) (2026-09-12)
 
 
