@@ -1,7 +1,7 @@
 ---
 version: v2.3.0
 status: planned
-updated: 2026-10-10
+updated: 2026-10-12
 ---
 
 # Release — v2.3.0
@@ -9,6 +9,12 @@ updated: 2026-10-10
 本目录记录[治理方案及实施](./index.md#文档治理工作入口)，文档迁移与 T8 的约定本地验收已完成，尚无本版本的发布验证记录。根 POM 仍为 `2.2.2-SNAPSHOT`；本目录编号仅用于组织计划。历史日期节保留当时的债务状态。
 
 TD-039 当前已按约定默认框架范围关闭，消费者迁移转入 TD-047，见[拆分与关闭记录](#td-039-框架修复关闭2026-10-09未发布)。详细历史验收统一保留在[运行时技术债后续计划](./runtime-debt-followup/plan.md)，其中各阶段的结论表示当时状态。
+
+## Redisson 适配器对齐（2026-10-12，未发布）
+
+Redisson 核心与 Starter 保持 3.52.0；BOM 排除 Starter 默认引入的 `redisson-spring-data-35`，新增同版本 `redisson-spring-data-33` 的管理，以匹配 Boot 3.3.13 / Spring Data Redis 3.3.13。纯 BOM 不会自动增加依赖，原来只声明 Starter 的消费者必须补上 `-33`；继承 Parent 与独立导入 BOM 的完整声明见 [BOM 接入说明](../../../mimir-boot-bom/README.md#redisson-与-boot-兼容边界)。显式固定其他版本或适配器的消费者须重新核验实际依赖树。
+
+本条记录依赖与迁移契约，不代表远程 CI、正式发布或实际业务应用已验收；根 POM 仍为 `2.2.2-SNAPSHOT`。
 
 ## 运行时技术债后续修复（截至 2026-10-09，未发布）
 

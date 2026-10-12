@@ -64,9 +64,6 @@
         <!-- 分布式缓存 -->
         <jetcache.version>2.7.9</jetcache.version>
 
-        <!-- 搜索引擎和NoSQL -->
-        <elasticsearch.version>9.5.5</elasticsearch.version>
-
         <!-- 其他工具 -->
         <commons.lang3.version>3.21.0</commons.lang3.version>
         <commons.collections4.version>4.6.0</commons.collections4.version>
@@ -245,6 +242,17 @@
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-boot-starter</artifactId>
                 <version>${redisson.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.redisson</groupId>
+                        <artifactId>redisson-spring-data-35</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-data-33</artifactId>
+                <version>${redisson.version}</version>
             </dependency>
 
             <!-- 消息队列 -->
@@ -267,18 +275,7 @@
                 <artifactId>jetcache-starter-redis</artifactId>
                 <version>${jetcache.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.alicp.jetcache</groupId>
-                <artifactId>jetcache-starter-caffeine</artifactId>
-                <version>${jetcache.version}</version>
-            </dependency>
 
-            <!-- 搜索引擎和NoSQL -->
-            <dependency>
-                <groupId>co.elastic.clients</groupId>
-                <artifactId>elasticsearch-java</artifactId>
-                <version>${elasticsearch.version}</version>
-            </dependency>
             <!-- 其他工具 -->
             <dependency>
                 <groupId>org.apache.commons</groupId>

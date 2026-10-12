@@ -101,7 +101,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-rpc-core` | `mimir-boot-starter-dubbo`、`mimir-boot-starter-feign` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-test` | 所有具测试的 Starter |
 
-### 仅管理（40 项）
+### 仅管理（39 项）
 
 | 类别 | 坐标 |
 |------|------|
@@ -118,11 +118,10 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | 文档 | `org.springdoc:springdoc-openapi-starter-webmvc-ui` |
 | 文档 | `com.github.xiaoymin:knife4j-openapi3-jakarta-spring-boot-starter` |
 | 缓存与消息 | `org.redisson:redisson-spring-boot-starter` |
+| 缓存与消息 | `org.redisson:redisson-spring-data-33` |
 | 缓存与消息 | `org.apache.rocketmq:rocketmq-spring-boot-starter` |
 | 缓存与消息 | `com.alicp.jetcache:jetcache-starter-redis` |
-| 缓存与消息 | `com.alicp.jetcache:jetcache-starter-caffeine` |
 | 任务与搜索 | `com.xuxueli:xxl-job-core` |
-| 任务与搜索 | `co.elastic.clients:elasticsearch-java` |
 | 工具 | `org.apache.commons:commons-lang3` |
 | 工具 | `org.apache.commons:commons-collections4` |
 | 工具 | `com.google.guava:guava` |
@@ -158,6 +157,27 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 
 接入方使用这些坐标前，应先完成独立的消费者编译或运行验证。
 
+### Redisson 与 Boot 兼容边界
+
+Redisson Starter 3.52.0 默认引入面向 Spring Data Redis 3.5 的 `redisson-spring-data-35`，与当前 Boot 3.3.13 管理的 Spring Data Redis 3.3.13 不匹配。本 BOM 在 Starter 的托管条目中排除 `-35`，并管理同版本的 `redisson-spring-data-33`；Redisson 核心版本仍为 3.52.0。
+
+`dependencyManagement` 只能管理版本和排除规则，不能自动添加依赖。继承 Parent 或导入 BOM 的应用必须同时声明以下两项；原来只声明 Starter 的应用升级时须补上 `-33`，否则会缺少 Spring Data 适配器。
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.redisson</groupId>
+        <artifactId>redisson-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.redisson</groupId>
+        <artifactId>redisson-spring-data-33</artifactId>
+    </dependency>
+</dependencies>
+```
+
+这遵循 [Redisson 官方适配器替换方式](https://redisson.pro/docs/integration-with-spring/#spring-boot-starter)。显式覆盖版本或引入其他 Spring Data 适配器的消费者须自行校验，避免多个适配器同时进入类路径；后续升级 Boot 或 Redisson 基线时须重新核对上游默认适配器与实际依赖树。
+
 ### Springdoc 与 Boot 兼容边界
 
 本 BOM 将 `springdoc-openapi-starter-webmvc-ui` 默认版本从 2.9.1 调整为 2.6.0，以匹配 Spring Boot 3.3.13 / Spring Framework 6.1.21。[官方兼容矩阵](https://springdoc.org/v2/faq.html#what-is-the-compatibility-matrix-of-springdoc-openapi-with-spring-boot) 将 Boot 3.3.x 对应到 Springdoc 2.6.x；2.9.1 的 Swagger 资源解析器依赖当前基线不存在的 `LiteWebJarsResourceResolver`。
@@ -165,6 +185,12 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 依赖声明未指定版本的消费者将使用 2.6.0；使用 2.9.1 特有 API 或行为的应用需重新编译并验证迁移。显式固定 2.9.1 的消费者需自行调整依赖声明，BOM 不会替换显式版本；不要单独覆盖 Spring MVC 到 6.2 规避缺类。
 
 本地隔离消费者通过生成的发布 BOM，覆盖直接引入 Spring Boot Web 和与 Mimir Web Starter 联用两种方式，验证真实服务器启动、业务接口、`/v3/api-docs`、Swagger UI 配置及页面、JS/CSS 资源。该结果不覆盖目标应用自定义安全配置、代理、分组文档或其他接入方式，也不代表 CI、版本发布或发布后的消费者验证。验收证据见[实施计划](../docs/active/v2.3.0/springdoc-boot-alignment/plan.md)。
+
+### Elasticsearch 与 Boot 兼容边界
+
+`elasticsearch-java` 不再由本 BOM 单独覆盖版本，而是由导入的 Spring Boot 3.3.13 BOM 管理为 8.13.4，与 Spring Data Elasticsearch 5.3.13 保持兼容。此前覆盖的 9.5.5 会使 Spring Data 范围查询转换抛出 `NoSuchMethodError`，因此移除该覆盖及 `elasticsearch.version` 属性。
+
+消费者无需在依赖声明中填写版本；已显式固定 9.x 的应用仍需自行调整并验证。移除覆盖不修改 Elasticsearch 服务端版本，也不代表真实服务端或全部查询场景已验收。
 
 ### MongoDB 驱动兼容边界
 
