@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { listFiles, runtime, fail } from './runtime.mjs';
 
@@ -51,10 +52,17 @@ export async function findPublishedPom(repositoryDir, revision, artifact) {
     return poms[0];
 }
 
-export async function assertFixtureMimirRepositoryMarkers(cacheDir, artifacts) {
+export async function assertFixtureMimirRepositoryMarkers(cacheDir, artifacts, repositoryDir) {
     if (!Array.isArray(artifacts) || artifacts.length === 0) {
         fail('Maven cache marker 检查必须至少指定一个预期的 Mimir 制品。', 2);
     }
+    if (typeof repositoryDir !== 'string' || !path.isAbsolute(repositoryDir)) {
+        fail('Maven cache marker 检查必须指定本轮 fixture 仓库的绝对路径。', 2);
+    }
+    // Maven 3.10 的 Resolver 2 默认在仓库 ID 后追加仓库 URL 的 SHA-1。
+    // URL 必须与 consumer POM 中的本轮私有 file 仓库一致，不能接受任意 fixture 前缀。
+    const repositoryHash = createHash('sha1').update(`file://${repositoryDir}`, 'utf8').digest('hex');
+    const repositoryKey = `fixture-${repositoryHash}`;
     const namespaceDir = path.join(cacheDir, namespace);
     try {
         if (!(await runtime.stat(namespaceDir)).isDirectory()) {
@@ -67,9 +75,16 @@ export async function assertFixtureMimirRepositoryMarkers(cacheDir, artifacts) {
     const markerFiles = (await listFiles(namespaceDir)).filter((file) => path.basename(file) === '_remote.repositories');
     if (markerFiles.length === 0) fail(`Maven cache 未生成任何 Mimir 制品的 _remote.repositories：${namespaceDir}`);
     for (const marker of markerFiles) {
-        const lines = (await runtime.readFile(marker, 'utf8')).split(/\r?\n/u);
-        const invalid = lines.some((line) => line !== '' && !line.startsWith('#') && !line.endsWith('>fixture='));
-        if (invalid) fail(`Maven cache 的 Mimir 制品只能标记为 fixture，发现异常 marker：${marker}`);
+        const entries = (await runtime.readFile(marker, 'utf8')).split(/\r?\n/u)
+            .filter((line) => line !== '' && !line.startsWith('#'));
+        if (entries.length === 0) fail(`Maven cache 的 Mimir 制品缺少 fixture 来源条目：${marker}`);
+        for (const entry of entries) {
+            const match = entry.match(/^([^>]+)>([^=]+)=$/u);
+            if (!match || match[2] !== repositoryKey || path.basename(match[1]) !== match[1]
+                || !(await nonEmptyFile(path.join(path.dirname(marker), match[1])))) {
+                fail(`Maven cache 的 Mimir 制品只能标记为 fixture，发现异常 marker：${marker}`);
+            }
+        }
     }
     for (const artifact of artifacts) {
         const artifactDir = path.join(namespaceDir, artifact);

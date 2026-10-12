@@ -245,7 +245,7 @@ async function main() {
         await runConsumerMaven('consumer-online-tree', [...onlineConsumerMaven, 'dependency:tree', `-DoutputFile=${path.join(consumerDirectory, 'target/online-dependency-tree.txt')}`], logsDirectory);
         await runConsumerMaven('consumer-online-clean-verify', [...onlineConsumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 缺少 ParentLifecycleIT Failsafe 报告');
-        await assertFixtureMimirRepositoryMarkers(consumerCacheDirectory, ['mimir-boot', 'mimir-boot-parent', 'mimir-boot-common', ...starterArtifacts]);
+        await assertFixtureMimirRepositoryMarkers(consumerCacheDirectory, ['mimir-boot', 'mimir-boot-parent', 'mimir-boot-common', ...starterArtifacts], repositoryDirectory);
         await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [consumerCacheDirectory], announce: false });
 
         const consumerMaven = [mvnw, '-B', '-o', '-s', blockedSettingsFile, '-f', path.join(consumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${consumerCacheDirectory}`];
@@ -264,7 +264,7 @@ async function main() {
         await runConsumerMaven('bom-online-resolve', [...bomOnlineMaven, 'dependency:resolve', `-DoutputFile=${path.join(bomConsumerDirectory, 'target/online-dependency-resolve.txt')}`], logsDirectory);
         await runConsumerMaven('bom-online-tree', [...bomOnlineMaven, 'dependency:tree', `-DoutputFile=${path.join(bomConsumerDirectory, 'target/online-dependency-tree.txt')}`], logsDirectory);
         await runConsumerMaven('bom-online-verify', [...bomOnlineMaven, 'clean', 'verify'], logsDirectory);
-        await assertFixtureMimirRepositoryMarkers(bomConsumerCacheDirectory, ['mimir-boot-bom', 'mimir-boot-parent', 'mimir-boot', 'mimir-boot-common', 'mimir-boot-starter-log']);
+        await assertFixtureMimirRepositoryMarkers(bomConsumerCacheDirectory, ['mimir-boot-bom', 'mimir-boot-parent', 'mimir-boot', 'mimir-boot-common', 'mimir-boot-starter-log'], repositoryDirectory);
         const bomConsumerMaven = [mvnw, '-B', '-o', '-s', blockedSettingsFile, '-f', path.join(bomConsumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${bomConsumerCacheDirectory}`];
         await runConsumerMaven('bom-isolated-tree', [...bomConsumerMaven, 'dependency:tree', `-DoutputFile=${path.join(bomConsumerDirectory, 'target/dependency-tree.txt')}`], logsDirectory);
         const bomTree = await runtime.readFile(path.join(bomConsumerDirectory, 'target/dependency-tree.txt'), 'utf8');
@@ -281,7 +281,7 @@ async function main() {
         if (await fileExists(path.join(failureConsumerCacheDirectory, 'io/github/yggdrasil-labs'))) fail('failure consumer cache 在首次解析前不应已有 Mimir 制品');
         const failureMaven = [mvnw, '-B', '-s', settingsFile, '-f', path.join(failureConsumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${failureConsumerCacheDirectory}`];
         await runConsumerMaven('failure-online-resolve', [...failureMaven, 'dependency:resolve', `-DoutputFile=${path.join(failureConsumerDirectory, 'target/online-dependency-resolve.txt')}`], logsDirectory);
-        await assertFixtureMimirRepositoryMarkers(failureConsumerCacheDirectory, ['mimir-boot-parent', 'mimir-boot']);
+        await assertFixtureMimirRepositoryMarkers(failureConsumerCacheDirectory, ['mimir-boot-parent', 'mimir-boot'], repositoryDirectory);
         const failureResult = await runCommand(failureMaven[0], [...failureMaven.slice(1), 'clean', 'verify'], { cwd: projectRoot, logPath: path.join(logsDirectory, 'failure-consumer-clean-verify.log'), label: 'failure-consumer-clean-verify' });
         if (failureResult.exitCode === 0) fail('故意失败的 AlwaysFailIT 未使 failure consumer 的 verify 失败');
         const failureReport = path.join(failureConsumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.AlwaysFailIT.xml');
