@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.3.0...v2.3.1) (2026-10-14)
+
+
+### 🐛 Bug Fixes
+
+* **release:** 修复 Central 发布兼容性与公开制品验证 ([fc27369](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fc27369cb695a3de4009193332728819c217d518))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.3.1-SNAPSHOT for next development cycle ([f34fcf3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f34fcf33e26f6ae15ccbe695987c2be17d103b96))
+
 ## [2.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.1...v2.3.0) (2026-10-12)
 
 
