@@ -40,7 +40,7 @@ async function verifyWorkflow(directory) {
     const shared = 'run: bash scripts/engineering.sh quality --mode full --source worktree --report "${RUNNER_TEMP}/mimir-quality/quality-report.json"';
     assert.ok(block(ci, '  build:').includes(shared), 'CI 必须执行共享完整门禁');
     assert.ok(block(workflow, '  release-consumer-verify:').includes(shared), '发布前必须执行同一完整门禁');
-    assert.match(await readFile(path.join(root, 'pom.xml'), 'utf8'), /<waitUntil>uploaded<\/waitUntil>/u);
+    assert.match(await readFile(path.join(root, 'pom.xml'), 'utf8'), /<waitUntil>published<\/waitUntil>/u);
     const conditions = {
         'verify-maven-central-public': `\${{ always()
           && needs.release-verify.result == 'success'

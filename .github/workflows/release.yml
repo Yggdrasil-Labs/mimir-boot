@@ -254,6 +254,14 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
+      # Publisher 0.11.0 未清理 Maven 3.10 生成的 local metadata/tracking 文件，导致 bundle 校验失败。
+      # 仅此发布任务切换 Wrapper；普通构建与消费者门禁继续使用仓库默认 Maven。
+      - name: Select Maven compatible with Central Publisher
+        run: |
+          set -euo pipefail
+          sed -i 's|^distributionUrl=.*|distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip|' .mvn/wrapper/maven-wrapper.properties
+          ./mvnw --version
+
       - name: Publish to Maven Central
         id: publish
         env:
@@ -273,13 +281,13 @@ jobs:
             -Dmaven.deploy.skip=false \
             -Dgpg.skip=false \
             -Dgpg.passphrase="${GPG_PASSPHRASE}" \
-            deploy 2>&1 | tee "$log_file"
+            clean deploy 2>&1 | tee "$log_file"
           publish_status=${PIPESTATUS[0]}
           set -e
 
           deployment_id=$(sed -n 's/.*deploymentId: \([0-9a-fA-F-]\{36\}\).*/\1/p' "$log_file" | tail -n 1)
           if [[ -z "$deployment_id" ]]; then
-            echo "Warning: Maven Central 发布已完成，但日志中未提取到 deployment ID。" >&2
+            echo "Warning: 未提取到 deployment ID，请结合 Maven 退出码及 Portal 状态核对发布结果。" >&2
           else
             echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
           fi
@@ -344,9 +352,9 @@ jobs:
 
   verify-maven-central-public:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     needs: [ release-verify, release-consumer-verify, publish-maven-central ]
-    # 自动发布在 Central 上传后验证；手动补偿即使跳过上传，也必须在收尾前重新确认公开制品可用。
+    # 自动发布在 Central 发布完成后验证；手动补偿即使跳过上传，也必须在收尾前重新确认公开制品可用。
     if: >-
       ${{ always()
           && needs.release-verify.result == 'success'
@@ -375,6 +383,8 @@ jobs:
         id: verify
         env:
           VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+          MIMIR_PUBLIC_VERIFY_TIMEOUT_SECONDS: '1200'
+          MIMIR_PUBLIC_VERIFY_INTERVAL_SECONDS: '30'
         run: |
           set -euo pipefail
           bash scripts/engineering.sh public "${VERSION#v}"

@@ -41,6 +41,12 @@ flowchart LR
 
 版本输入使用 `MAJOR.MINOR.PATCH`，Tag 使用 `vX.Y.Z`。Tag、远程制品、GitHub Release 和下一开发版本提交是独立事实，必须分别核对。
 
+新 Tag 的 Maven Central 上传步骤等待 Portal 发布完成，最长 30 分钟；这不代表公开仓库已经可下载。后续公开制品验证最多等待 20 分钟，每 30 秒重试暂时不可用的 404、408、429、临时网络错误和 5xx 响应。POM 解析或坐标校验失败、JAR 目录不可读均立即失败，不等待重试。JAR 检查只验证归档目录可读，不校验全部条目内容或签名。
+
+Central Publisher 0.11.0 与 Maven 3.10 的 staging 元数据布局不兼容，会把 `maven-metadata-local.xml` 和 `_remote.repositories` 混入 bundle。因此只有 Central 发布任务临时切换 Wrapper 到 Maven 3.9.16，并执行 `clean deploy`；普通构建和消费者门禁保持仓库默认 Maven。手动补偿从 `main` 启动工作流，再检出原 Tag 的源码，可以修复发布环境而不移动 Tag。
+
+旧 Tag 补偿保留该 Tag 的 POM 等待配置；若仍为 `waitUntil=uploaded`，上传成功后即可返回，不代表 Portal 发布完成。补偿必须继续通过 `main` 提供的公开制品验证，才能创建 GitHub Release 和回写开发版本。
+
 ## 失败处理
 
 先查看失败 job、Tag 指向的 SHA、质量报告、deployment ID 和公开制品状态，再决定动作：
@@ -50,6 +56,7 @@ flowchart LR
 | 网络抖动、制品传播延迟、凭据或 runner 瞬态故障，代码未变 | 重跑同一 Tag 的失败 workflow/job；它仍使用同一 Tag 的同一份代码 |
 | 源码、POM、配置或测试错误 | 在 `main` 提交修复，等待新的 Release Please PR、版本和 Tag；不要给旧 Tag 换提交 |
 | 某个远程副作用已成功，后续步骤失败 | 先保留成功证据，只补偿缺失动作；不要重复上传已有版本或重复创建已存在的 Release |
+| Central bundle 校验失败且该版本尚未发布 | 上传成功不代表发布成功；核对 Portal 错误和公开制品后，修复打包环境，再手动选择 `publish_maven_central` 补偿该 Tag。已成功的 GitHub Packages 不重复上传 |
 | `create-tag.yml` 尚未创建 Tag | 修复权限/配置后重跑；手动恢复时必须同时填写版本和目标合并 SHA，并通过 manifest 校验 |
 | `update-dev-version` 单独失败 | 已发布版本不需要重发；确认 GitHub Release 和公开制品已存在后，在 `release.yml` 手动输入同版本，仅选择 `update_dev_version` |
 

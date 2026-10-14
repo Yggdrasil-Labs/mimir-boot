@@ -77,6 +77,8 @@ Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar
 | `public <x.y.z>` | 验证 Maven Central 公开 POM 坐标和 JAR |
 | `portal-state <JSON 文件>` | 解析 Portal 观察响应 |
 
+`public` 默认总时限为 1200 秒、重试间隔为 30 秒，分别通过 `MIMIR_PUBLIC_VERIFY_TIMEOUT_SECONDS` 和 `MIMIR_PUBLIC_VERIFY_INTERVAL_SECONDS` 调整。总时限包括下载、制品校验与重试等待；显式设置 `MIMIR_PUBLIC_VERIFY_ATTEMPTS` 时额外限制尝试次数。404、408、429、5xx 和临时网络故障可重试，其他 HTTP 错误、POM 解析或坐标校验失败、JAR 目录不可读均立即失败。JAR 检查使用 `jar tf`，只验证归档目录可读，不校验全部条目内容或签名。日志包含制品 URL、HTTP 状态和累计耗时。
+
 ## 实现与产物
 
 - `src/docs/`：文档规则；`config/policy.json` 是 quick/full 共用的文档策略。

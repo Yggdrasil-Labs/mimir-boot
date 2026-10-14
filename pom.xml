@@ -264,7 +264,10 @@
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <autoPublish>true</autoPublish>
-                            <waitUntil>uploaded</waitUntil>
+                            <!-- 等待 Portal 发布完成；公开仓库仍由独立验证阶段确认可下载。 -->
+                            <waitUntil>published</waitUntil>
+                            <waitMaxTime>1800</waitMaxTime>
+                            <waitPollingInterval>15</waitPollingInterval>
                         </configuration>
                     </plugin>
                 </plugins>
