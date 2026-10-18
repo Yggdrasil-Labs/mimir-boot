@@ -53,7 +53,7 @@
         <knife4j.version>4.5.0</knife4j.version>
 
         <!-- 缓存相关 -->
-        <redisson.version>3.52.0</redisson.version>
+        <redisson.version>4.8.0</redisson.version>
 
         <!-- 消息队列 -->
         <rocketmq.version>2.3.6</rocketmq.version>
