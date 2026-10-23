@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-20
+updated: 2026-10-23
 ---
 
 # 版本归档索引
@@ -13,6 +13,7 @@ updated: 2026-09-20
 
 | 版本 | 归档日期 | 保留至 | 前序版本 | 包含需求 (slug) | 路径 |
 |------|----------|--------|----------|----------------|------|
+| v2.3.0 | 2026-10-23 | 2027-10-23 | v2.2.1 | docs-quality-governance, log-json-masking, mongodb-driver-alignment, springdoc-boot-alignment, runtime-debt-followup | [`v2.3.0/`](./v2.3.0/index.md) |
 | v2.2.1 | 2026-09-20 | 2027-09-20 | v2.2.0 | technical-debt-remediation, foundation-quality-hardening | [`v2.2.1/`](./v2.2.1/) |
 | v2.2.0 | 2026-08-16 | 2027-08-16 | v2.1.1 | project-governance | [`v2.2.0/`](./v2.2.0/) |
 | v2.1.1 | 2026-07-26 | 2027-07-26 | v2.1.0 | capability-review-2026-07, quality-refinement | [`v2.1.1/`](./v2.1.1/release.md) |

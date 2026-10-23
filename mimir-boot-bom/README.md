@@ -184,7 +184,7 @@ Redisson Starter 3.52.0 默认引入面向 Spring Data Redis 3.5 的 `redisson-s
 
 依赖声明未指定版本的消费者将使用 2.6.0；使用 2.9.1 特有 API 或行为的应用需重新编译并验证迁移。显式固定 2.9.1 的消费者需自行调整依赖声明，BOM 不会替换显式版本；不要单独覆盖 Spring MVC 到 6.2 规避缺类。
 
-本地隔离消费者通过生成的发布 BOM，覆盖直接引入 Spring Boot Web 和与 Mimir Web Starter 联用两种方式，验证真实服务器启动、业务接口、`/v3/api-docs`、Swagger UI 配置及页面、JS/CSS 资源。该结果不覆盖目标应用自定义安全配置、代理、分组文档或其他接入方式，也不代表 CI、版本发布或发布后的消费者验证。验收证据见[实施计划](../docs/active/v2.3.0/springdoc-boot-alignment/plan.md)。
+本地隔离消费者通过生成的发布 BOM，覆盖直接引入 Spring Boot Web 和与 Mimir Web Starter 联用两种方式，验证真实服务器启动、业务接口、`/v3/api-docs`、Swagger UI 配置及页面、JS/CSS 资源。该结果不覆盖目标应用自定义安全配置、代理、分组文档或其他接入方式，也不代表 CI、版本发布或发布后的消费者验证。验收证据见[实施计划](../docs/archive/v2.3.0/springdoc-boot-alignment/plan.md)。
 
 ### Elasticsearch 与 Boot 兼容边界
 

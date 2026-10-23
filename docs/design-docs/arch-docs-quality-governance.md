@@ -11,14 +11,14 @@ updated: 2026-10-03
 
 ## 状态与范围
 
-本文档记录已获用户同意方向并完成本地落地验证的治理方案，状态为 `verified`；验收范围与证据见 [T8 收尾记录](../active/v2.3.0/docs-quality-governance/verification.md#2026-10-03-t8-收尾验收)。远程 CI、Sonar Quality Gate、正式发布及发布后消费者未核实。它只约束仓库内文档的职责、迁移边界和质量检查方式，不修改 Java 代码、公开 API、依赖方向、发布结构或外部技能目录。
+本文档记录已获用户同意方向并完成本地落地验证的治理方案，状态为 `verified`；验收范围与证据见 [T8 收尾记录](../archive/v2.3.0/docs-quality-governance/verification.md#2026-10-03-t8-收尾验收)。远程 CI、Sonar Quality Gate、正式发布及发布后消费者未核实。它只约束仓库内文档的职责、迁移边界和质量检查方式，不修改 Java 代码、公开 API、依赖方向、发布结构或外部技能目录。
 
 本 RFC 的需求、设计和执行记录分别见：
 
-- [需求规格](../active/v2.3.0/docs-quality-governance/spec.md)
-- [设计说明](../active/v2.3.0/docs-quality-governance/design.md)
-- [实施计划](../active/v2.3.0/docs-quality-governance/plan.md)
-- [文档迁移计划](../active/v2.3.0/docs-quality-governance/migration.md)
+- [需求规格](../archive/v2.3.0/docs-quality-governance/spec.md)
+- [设计说明](../archive/v2.3.0/docs-quality-governance/design.md)
+- [实施计划](../archive/v2.3.0/docs-quality-governance/plan.md)
+- [文档迁移计划](../archive/v2.3.0/docs-quality-governance/migration.md)
 
 ## 背景与动机
 
@@ -66,7 +66,7 @@ docs/
 
 `design-docs/` 按架构主题持续积累设计，架构概览由根 `ARCHITECTURE.md` 承接，模块划分与依赖设计保留在本目录。主题文档维护当前架构，架构 RFC 记录跨版本设计的背景、备选方案与取舍；仅服务单次需求的同步授权和验收记录归入需求目录，保留原批准与验证结论。安全性、可靠性与文档治理的规则正文迁入 `standards/`；文档体系的分层设计及其取舍仍由本 RFC 记录，两者职责不同。
 
-需求级的规格、设计、任务和验收记录放入 `active/`，完成后随版本归档。事实修订直接更新相关页面；实质性架构约束变更先通过 RFC 评审。验收通常记在计划中，复杂任务才单列 `verification.md`；本治理需求沿用原计划的独立验收报告要求。具体映射以[迁移计划](../active/v2.3.0/docs-quality-governance/migration.md)为准。
+需求级的规格、设计、任务和验收记录放入 `active/`，完成后随版本归档。事实修订直接更新相关页面；实质性架构约束变更先通过 RFC 评审。验收通常记在计划中，复杂任务才单列 `verification.md`；本治理需求沿用原计划的独立验收报告要求。具体映射以[迁移计划](../archive/v2.3.0/docs-quality-governance/migration.md)为准。
 
 ## 质量检查模型
 
@@ -125,7 +125,7 @@ docs/
 
 - [文档治理](../standards/documentation-governance.md)
 - [模块边界](./arch-module-dependencies.md)
-- [迁移计划](../active/v2.3.0/docs-quality-governance/migration.md)
-- [需求规格](../active/v2.3.0/docs-quality-governance/spec.md)
-- [设计说明](../active/v2.3.0/docs-quality-governance/design.md)
-- [实施计划](../active/v2.3.0/docs-quality-governance/plan.md)
+- [迁移计划](../archive/v2.3.0/docs-quality-governance/migration.md)
+- [需求规格](../archive/v2.3.0/docs-quality-governance/spec.md)
+- [设计说明](../archive/v2.3.0/docs-quality-governance/design.md)
+- [实施计划](../archive/v2.3.0/docs-quality-governance/plan.md)

@@ -1,12 +1,82 @@
 ---
 version: v2.3.0
-status: planned
-updated: 2026-10-12
+status: released
+branch: main
+created: 2026-09-14
+released: 2026-10-14
+archived: 2026-10-23
+retain_until: 2027-10-23
+updated: 2026-10-23
 ---
 
 # Release — v2.3.0
 
-本目录记录[治理方案及实施](./index.md#文档治理工作入口)，文档迁移与 T8 的约定本地验收已完成，尚无本版本的发布验证记录。根 POM 仍为 `2.2.2-SNAPSHOT`；本目录编号仅用于组织计划。历史日期节保留当时的债务状态。
+本目录的五项需求于 2026-10-23 归档，包含[治理方案及实施](./index.md#文档治理工作入口)、日志脱敏、MongoDB/Springdoc 兼容及运行时修复。v2.3.0 已于 2026-10-14 创建 GitHub Release，下列发布复核与需求历史验收分别记录。历史正文中的“未发布”、`2.2.2-SNAPSHOT`、旧命令和执行路径均指当时状态，不代表归档时的当前状态。
+
+## 发布与归档复核（2026-10-23）
+
+- 本地 `v2.3.0` tag 指向发布提交 `d311685dfb54f436f4c58c67ad8236e3aa1b935f`（PR #321）；[GitHub Release](https://github.com/Yggdrasil-Labs/mimir-boot/releases/tag/v2.3.0) 的 `publishedAt` 为 `2026-10-14T06:13:49Z`，非草稿、非预发布。
+- [首次发布运行](https://github.com/Yggdrasil-Labs/mimir-boot/actions/runs/38326710849) 失败；[2026-10-14 补偿发布运行](https://github.com/Yggdrasil-Labs/mimir-boot/actions/runs/38519561590) 成功。后者的共享完整质量门禁、Maven Central 上传、公开制品验证及 GitHub Release 创建步骤均为 success；该次 GitHub Packages 任务为 skipped，不据此声称补偿运行重新上传了 Packages。
+- 补偿工作流由 `fc27369cb695a3de4009193332728819c217d518` 启动，源码检查与发布按输入检出原 tag；工作流提交与发布源码提交分别记录。开发版本随后由 `f34fcf3` 推进到 `2.3.1-SNAPSHOT`，与归档时根 POM 一致。
+- 本次只读查询使用 `gh release view v2.3.0`、`gh run list --workflow release.yml`、`gh run view 38519561590`，均指定 `Yggdrasil-Labs/mimir-boot`。以上核实的是远端记录；本次未重新下载制品或运行 Java、真实 Nacos、实际业务消费者测试，也未核实 Sonar Quality Gate。
+- 按项目约定保留 `v2.3.0` 目录名、历史计划和验收原文；治理计划中的旧 Plan Verdict/Execution 模板已有历史说明，不回填为本次执行证据。当前仓库没有 `docs/generated/`，无需刷新生成文档。
+
+## 版本摘要
+
+本版本完成文档职责迁移与统一质量门禁，补齐日志标量字段脱敏、MongoDB/Springdoc/Redisson 依赖兼容及 Parent/OkHttp 消费契约，修复分页、测试清理、RPC MDC、字段加密注册和默认 Nacos 刷新路径。需求完成范围以以下验收记录为准；配置消费者迁移、旧 RPC 接口和字段级 AAD 继续独立跟踪。
+
+## 需求交付
+
+| 需求 | 路径 | 状态 | 简述 |
+|---|---|---|---|
+| docs-quality-governance | docs/archive/v2.3.0/docs-quality-governance/ | completed | 文档迁移与 T8 约定本地验收完成，TD-043/TD-044 关闭 |
+| log-json-masking | docs/archive/v2.3.0/log-json-masking/ | completed | 标量文本脱敏补全，保留复合值不保证完整脱敏的边界 |
+| mongodb-driver-alignment | docs/archive/v2.3.0/mongodb-driver-alignment/ | completed_with_concerns | 驱动族对齐及一次性隔离消费者验收完成，保留已接受的快照豁免 |
+| springdoc-boot-alignment | docs/archive/v2.3.0/springdoc-boot-alignment/ | completed | Springdoc 2.6.0 与 Boot 3.3 基线对齐，两种消费者验收完成 |
+| runtime-debt-followup | docs/archive/v2.3.0/runtime-debt-followup/ | completed | 按已确认范围完成框架修复，消费者迁移等剩余工作留在活跃台账 |
+
+## 独立交付
+
+| 日期 | 类型 | 描述 | Commit | 状态 |
+|---|---|---|---|---|
+| 2026-09-30 | fix | 发布 Parent 属性覆盖 | baafc35588dc0d5ee9d936506f37d2a75850771d | completed |
+| 2026-09-30 | fix | OkHttp JVM 制品坐标 | f30858b66479e22fa675979b36143cff2b997db1 | completed |
+| 2026-10-02 | fix | 日志断言索引边界 | e601ce32a74e181ad18cdda9355a10e476c1e08e | completed |
+| 2026-10-02 | fix | 测试清理顺序 | 40e61b8525ea61a65a09b32f5f35eb9c563246d8 | completed |
+| 2026-10-02 | fix | 分页参数校正边界 | 45955272b4fa2b1278bab47cc71aee7f5f418f30 | completed |
+| 2026-10-13 | fix | Redisson 适配器对齐 | 9de2cc054b7c355ca13643b4375d3db370d98b5f | completed |
+
+## 风险接受
+
+以下仅汇总 MongoDB 计划已有的 R-PLAN-SNAPSHOT-WAIVER 与 R-T2-SNAPSHOT-001，不新增风险接受；原接受人、时间和原文见[计划](./mongodb-driver-alignment/plan.md)。
+
+| 交付项 | 状态 | Accepted By | Accepted At | 遗留风险 |
+|---|---|---|---|---|
+| mongodb-driver-alignment | accepted | 用户（原记录 User / YoungerYang-Y） | 2026-09-24 | 已豁免逐任务及最终快照比较，759 个忽略构建产物变化缺少完整基线副本；可见 Git 差异已核对 |
+
+## 最终验证摘要
+
+下表汇总已有交付证据；“无”仅指该交付约定范围内没有待接受的遗留风险，不表示取消兼容限制或清空独立技术债。MongoDB 不覆盖真实服务端/CRUD，日志不保证复合值完整脱敏，Springdoc 不覆盖业务自定义安全与代理，Nacos 不替代实际消费者迁移验收。临时报告路径保留为历史索引，本次没有重新读取或重跑其原始报告。
+
+| 交付项 | 状态 | 验证命令及结果 | 遗留风险 | 风险接受 |
+|---|---|---|---|---|
+| docs-quality-governance | completed | 2026-10-03 `quality --mode full --source commit --commit 41d8b7aeffab862e58ba1fbf5dbdeac2575c3f96` 两次 exit 0，1072 单测/43 IT 零失败；[T8 与 27 场景](./docs-quality-governance/verification.md#2026-10-03-t8-收尾验收) | 无 | 无 |
+| log-json-masking | completed | 2026-09-23 模块 `clean verify` 与 `quality --mode full --source worktree` exit 0，1062 单测/40 IT 零失败；[T4 证据](./log-json-masking/plan.md#t4-全局验收与技术债状态) | 无 | 无 |
+| mongodb-driver-alignment | completed_with_concerns | 2026-09-24 `quality --mode full --source worktree` passed，三个隔离消费者模式、六份各 3 项测试的报告通过；[TD-040 证据](./mongodb-driver-alignment/plan.md#td-040-处置记录)；专项 fixture 后按要求删除 | 已豁免逐任务及最终快照比较，759 个忽略构建产物变化缺少完整基线副本；可见 Git 差异已核对 | 已接受：用户（原记录 User / YoungerYang-Y）；2026-09-24 |
+| springdoc-boot-alignment | completed | 2026-09-30 两种消费者 HTTP 验收与 `quality --mode full --source worktree` exit 0、0 findings；后续 Dependabot 补丁单独核验 YAML/文档/diff；[验收记录](./springdoc-boot-alignment/plan.md#本地验收记录2026-09-30) | 无 | 无 |
+| runtime-debt-followup | completed | 2026-10-09 `-Pci,nacos-live clean verify` 的 333 单测/17 IT 通过；常规 `quality --mode full --source worktree` exit 0，1126 单测/55 IT 通过；[真实服务与常规验收](./runtime-debt-followup/plan.md#第八阶段本地验收2026-10-09真实服务通过未发布)；后续门禁修订由上述发布运行的 full 覆盖 | 无 | 无 |
+| 独立：发布 Parent 属性覆盖 | completed | 本地隔离消费者有效 POM、编译及 JaCoCo 正负例通过；[历史验收](#发布-parent-属性覆盖td-036已修复未发布) | 无 | 无 |
+| 独立：OkHttp JVM 制品坐标 | completed | 本地隔离消费者编译及回环 HTTP 请求通过；[历史验收](#okhttp-jvm-制品坐标td-037已修复未发布) | 无 | 无 |
+| 独立：日志断言索引边界 | completed | 2026-10-02 测试 Starter `clean verify` exit 0，LogTestUtilsTest 23 项通过；[历史验收](#日志断言索引边界td-045已修复未发布) | 无 | 无 |
+| 独立：测试清理顺序 | completed | 2026-10-02 同轮 `clean verify` exit 0，BaseUnitTestTest 6 项通过；[历史验收](#测试清理顺序td-046已修复未发布) | 无 | 无 |
+| 独立：分页参数校正边界 | completed | 2026-10-02 PageRequestTest/PageQueryTest 11 项通过，随后完整 `quality --mode full --source worktree` exit 0；[历史验收](#分页参数校正边界td-042已修复未发布) | 无 | 无 |
+| 独立：Redisson 适配器对齐 | completed | 2026-10-14 发布运行的 `bash scripts/engineering.sh quality --mode full --source worktree` 成功；[适配与消费者迁移契约](#redisson-适配器对齐2026-10-12未发布)保留，未据通用门禁推定实际 Redisson 应用验收通过 | 无 | 无 |
+
+## 遗留债务
+
+[活跃技术债台账](../../active/tech-debt-tracker.md)继续保留 TD-013（RPC MDC 旧入口）、TD-016（字段/记录级 AAD）、TD-023（RPC Hook 旧 API）、TD-047（Nacos 消费者迁移）。本次只更新证据链接，不关闭这些条目、不新增风险接受，也不承诺后续版本。
+
+## 归档前记录
 
 TD-039 当前已按约定默认框架范围关闭，消费者迁移转入 TD-047，见[拆分与关闭记录](#td-039-框架修复关闭2026-10-09未发布)。详细历史验收统一保留在[运行时技术债后续计划](./runtime-debt-followup/plan.md)，其中各阶段的结论表示当时状态。
 
@@ -118,6 +188,6 @@ TD-046 按上述约定范围关闭，记录迁入本页并移除台账旧锚点�
 
 ## TD-039 框架修复关闭（2026-10-09，未发布）
 
-经用户确认，TD-039 的默认 ConfigData Nacos 框架修复按已验证范围关闭；详细实现与验收见[第九阶段](./runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)。关闭范围受标准枚举 Nacos 源、成功加载资源归属及既定失败恢复契约约束；升级框架基线时须重新核验。真实服务验收仅覆盖指定本地 Nacos 场景，普通 Bean、缓存裸目标/字段快照及实际消费者迁移独立登记为 [TD-047](../tech-debt-tracker.md#td-047-nacos-消费者迁移)，仍需按实际应用验收。
+经用户确认，TD-039 的默认 ConfigData Nacos 框架修复按已验证范围关闭；详细实现与验收见[第九阶段](./runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)。关闭范围受标准枚举 Nacos 源、成功加载资源归属及既定失败恢复契约约束；升级框架基线时须重新核验。真实服务验收仅覆盖指定本地 Nacos 场景，普通 Bean、缓存裸目标/字段快照及实际消费者迁移独立登记为 [TD-047](../../active/tech-debt-tracker.md#td-047-nacos-消费者迁移)，仍需按实际应用验收。
 
 历史逐阶段实现与验收、包括真实 Nacos 与常规回归的不同执行范围，以及服务端时间戳导致的失败，均保留在[运行时技术债后续计划](./runtime-debt-followup/plan.md#第六阶段td-039-运行时同步与真实-nacos-验收)至[第九阶段](./runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)。TD-039 关闭不表示所有属性源删除、任意并发读写事务隔离、CI、Sonar、生产网络、正式发布或发布后消费者已验证；根 POM 仍为 `2.2.2-SNAPSHOT`，v2.3.0 尚未发布。
