@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # 技术债务追踪
@@ -38,6 +38,7 @@ updated: 2026-10-23
 - **现状与风险**：直接调用 `extract()` 的非 scope 入口仍不管理 MDC 生命周期；默认兼容 scope 只能恢复 MDC，不能管理自定义 Span 或其他 ThreadLocal。
 - **已缓解范围**：框架内部调用已迁移到调用级 scope（证据：`bf493b6`、`2dd1b83`、`4e428e6`）。2026-10-03 补齐旧 extract-only Bridge 默认 scope 对提取期间净修改 MDC 键的回滚，包含提取异常、嵌套及真实 Dubbo 异步完成路径；[本轮计划与验收](../archive/v2.3.0/runtime-debt-followup/plan.md)记录本地证据。无关 MDC 变更保留，scope 必须在创建线程按 LIFO 关闭。
 - **处置与验收**：完成旧入口迁移或废弃，并验证自定义 Bridge 异常、嵌套调用和异步调用后 MDC 均被恢复。
+- **规划进展（2026-10-25）**：v2.4.0 规划讨论中静态检查三个内部业务项目源码，仅 valhalla-project 经 Dubbo Starter 间接使用 RPC Core，未自定义 `RpcTracerBridge`，未调用旧 `extract()` 入口。用户确认在 v2.4.0 将该旧入口改标为 `@Deprecated(forRemoval = true)`，在 README 与升级说明中写明迁移方式，并计划在下一个主版本删除（D-75）；尚未实施，删除前仍需按上述验收条件验证。
 - **目标版本**：待排期。
 - **复查条件**：RPC Trace API 迁移、废弃或相关生命周期调整时，核对公开旧入口和自定义 Bridge 的剩余风险。
 
@@ -59,6 +60,7 @@ updated: 2026-10-23
 - **现状与风险**：`RpcHookChain` 废弃的 `before`、`after`、`onError`、`cleanup` 直调 API 仍可使用，绕开调用级 invocation 的生命周期约束。
 - **已缓解范围**：框架内部已改用调用级 invocation，旧直调入口仅为兼容保留（证据：`bf493b6`、`2dd1b83`、`4e428e6`）。
 - **处置与验收**：提供迁移路径和废弃周期；删除或隔离旧入口后，验证正常、异常和清理回调顺序。
+- **规划进展（2026-10-25）**：v2.4.0 规划讨论中静态检查三个内部业务项目源码，未发现自定义 `RpcHook` 或对 `RpcHookChain` 旧 `before`、`after`、`onError`、`cleanup` 的直接调用。用户确认在 v2.4.0 将这些旧入口改标为 `@Deprecated(forRemoval = true)`，在 README 与升级说明中写明迁移到 `open`/`openAsync` 调用级 invocation 的方式，并计划在下一个主版本删除（D-75）；尚未实施，删除前仍需按上述验收条件验证。
 - **目标版本**：待排期。
 - **复查条件**：RPC Hook API 迁移、废弃或回调生命周期调整时，核对旧直调入口的迁移进度。
 
@@ -70,6 +72,7 @@ updated: 2026-10-23
 - **现状与风险**：业务属性完全删除且没有下层值时，Spring Cloud 对已存在的普通 `@ConfigurationProperties` Bean 重新绑定后仍可能保留原字段值；本地负向测试已复现。缓存裸目标、字段快照或未正确更新的配置缓存也可能继续使用历史明文。该风险不再由解密覆盖层造成，实际业务应用的接入方式与迁移状态尚未核实。
 - **已具备的接入契约**：`@Bean @RefreshScope @ConfigurationProperties` 的可重建 JavaBean 在完整刷新成功后，经注入代理访问新目标，恢复初始化值或下层值；单独环境事件不重建目标。可运行示例、生命周期和失败边界见[Nacos README](../../mimir-boot-starters/mimir-boot-starter-nacos/README.md#显式重建配置-bean)，本地契约与指定真实服务回归见[第二阶段](../archive/v2.3.0/runtime-debt-followup/plan.md#第二阶段本地验收2026-10-03未发布)和[第八阶段验收](../archive/v2.3.0/runtime-debt-followup/plan.md#第八阶段本地验收2026-10-09真实服务通过未发布)；框架测试不能替代实际应用迁移验收。
 - **处置**：Owner 先核实需要配置删除语义的应用、配置 Bean 和实际读取/缓存路径，形成可复查清单；逐项选择可重建作用域或业务重置策略。使用刷新作用域时持续读取注入代理，处置裸目标、历史字段快照和按键更新缓存，并确认初始化、销毁、绑定与校验符合业务要求。Cloud Context 4.1.6 的事件键只反映可枚举属性原始值差异，按键缓存不能仅依赖派生属性的事件通知；完整刷新时应整体失效并重读配置，或经 RefreshScope 代理读取。
+- **消费者核对（2026-10-25）**：v2.4.0 规划讨论中静态检查三个内部业务项目源码（未运行，未读取 Nacos 服务端配置内容）。仅 valhalla-project 的 valhalla-auth 接入 Nacos Starter，在 dev、test、prod 配置中导入 `optional:nacos:valhalla-auth.yaml?refreshEnabled=true`；配置 Bean 为普通 `@ConfigurationProperties` 的 `JwtProperties`（`auth.jwt`）与 `TokenProperties`（`auth.token`），均未使用 `@RefreshScope`；`LoginExecutor` 以 `@Value` 读取 `auth.password.lock-threshold`、`lock-duration`，单例下不会随推送刷新；本地配置未见加密值，JWT secret 来自环境变量 `AUTH_JWT_SECRET`。未发现依赖配置删除语义的业务路径。template-project 与 mealmate-project 未接入 Nacos。该结果作为消费者清单起点，不改变本项状态，也不替代 Owner 的实际核实与验收。
 - **验收条件**：清单内实际业务消费路径经真实 Nacos 完整刷新后，验证无下层值时恢复 null/初始化值、有下层值时正确回退，前缀删除、DataId 删除、恢复及重复推送均不使用旧明文；传播到默认刷新器的解密失败保留原目标，修正后恢复消费。对按键更新缓存验证完整刷新时整体失效并重读配置，或使用 RefreshScope 代理读取，不将派生属性键必然进入事件作为前提；对选用业务重置策略的应用验证等价删除语义及自身失败策略。逐项保留应用版本、接入方式和运行证据；未核实项不得按框架回归通过关闭。
 - **边界**：不自动清空任意普通 Bean，不保证擦除其他对象持有的全部历史明文。非枚举 parser、移除 import/资源身份变化、自定义刷新器、legacy bootstrap 与本地文件源消失仍按[Nacos 接入契约](../../mimir-boot-starters/mimir-boot-starter-nacos/README.md#2-配置动态刷新支持)处理；相关应用需自行满足对应契约，不能据默认框架验收推定删除保证。
 - **目标版本**：待排期。
