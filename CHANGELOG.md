@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.3.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.3.0...v2.3.1) (2026-10-26)
+
+
+### 🐛 Bug Fixes
+
+* **release:** 修复 Central 发布兼容性与公开制品验证 ([fc27369](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fc27369cb695a3de4009193332728819c217d518))
+
+
+### 📝 Documentation
+
+* **archive:** 归档 v2.3.0 需求与交付记录 ([8d33639](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8d336399a61e66a51d08c836376049ef83062030))
+* **planning:** 整理 v2.4.0 版本级头脑风暴与规划记录 ([369d7c1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/369d7c1f7435ba387df1509a5d89ab1d3471a282))
+
+
+### 👷 Continuous Integration
+
+* **deps:** 升级 setup-java 至 6.1.0 ([#332](https://github.com/Yggdrasil-Labs/mimir-boot/issues/332)) ([02345a2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/02345a2f1a897a59d86f0886112055fc00e6ad45))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.3.1-SNAPSHOT for next development cycle ([f34fcf3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f34fcf33e26f6ae15ccbe695987c2be17d103b96))
+* **deps-dev:** 升级 compile-testing 至 0.24.0 ([#328](https://github.com/Yggdrasil-Labs/mimir-boot/issues/328)) ([29708ce](https://github.com/Yggdrasil-Labs/mimir-boot/commit/29708ce1c53964610d6f037a30b34a35316d08df))
+* **deps:** 升级 Hutool 至 5.8.48 ([#325](https://github.com/Yggdrasil-Labs/mimir-boot/issues/325)) ([e38ca80](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e38ca80f590190f0a5882cce2dd448d057b5086a))
+* **deps:** 升级 Spotless 与 Versions Maven 插件 ([#327](https://github.com/Yggdrasil-Labs/mimir-boot/issues/327)) ([eca9ef6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/eca9ef6034f087a8cd4f1f30ff235892d8eabd35))
+
 ## [2.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.1...v2.3.0) (2026-10-12)
 
 
