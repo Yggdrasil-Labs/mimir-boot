@@ -2,17 +2,20 @@
 version: v2.4.0
 status: exploring
 created: 2026-10-23
-updated: 2026-10-26
+updated: 2026-10-31
 ---
 
 # v2.4.0 版本级 Brainstorm
 
-本文件是 v2.4.0 的版本级头脑风暴，记录跨模块的候选方向、逐模块讨论结论、依据要点与决策日志；后续需求从此收敛拆分。全部 13 个现有模块已按顺序讨论完毕；方向纳入不代表详细设计获批或实现完成，版本最终交付范围待整体收敛后定稿，再按需求拆分规格、设计与实施计划。2026-10-25 对本文件做了梳理精简：只保留结论、关键约束、依据要点与决策编号，逐轮选项比较不再展开。
+本文件是 v2.4.0 的版本级头脑风暴，记录跨模块的候选方向、逐模块讨论结论、依据要点与决策日志。全部 13 个现有模块已按顺序讨论完毕，其中有变更的 9 个模块已拆分为需求目录；方向纳入不代表详细设计获批或实现完成。2026-10-25 对本文件做了梳理精简：只保留结论、关键约束、依据要点与决策编号，逐轮选项比较不再展开。
+
+2026-10-29 先按模块建立 9 个仅含 `brainstorm.md` 的需求大纲，随后用户明确要求停止逐项提问并补齐每项 SDD，因此各目录续写 `spec.md`、`design.md`、`plan.md` 推荐稿。版本级文件继续维护范围和已确认决策；具体推荐与全部产物入口见[版本记录](./release.md)，不将本轮推荐写成用户历史确认。
 
 ## 目标与约束
 
 - 按 v2.4.0 能力迭代规划，允许新功能或较大的协议演进（D-01）；不新增模块，在现有模块职责内丰富能力（D-02）。
 - 产品定位是其他项目的基座，优先跨项目复用、接入体验、稳定性与兼容性（D-03）；公共配置、接口、依赖与发布行为遵循[兼容性与接入体验原则](../../../docs/standards/core-beliefs.md)，未明确调整的行为保持兼容。
+- 核心目标是提供能力，让下游自由组合（D-86，2026-10-29 用户明确）：以可独立启用、关闭、覆盖和组合为设计依据，默认配置与 profile 提供便捷预设；避免为便利而添加跨能力隐式联动或强制流程。真实依赖与不兼容组合需要明确说明，这一原则不自动改变已确认默认值或扩大本轮范围。
 - 逐模块讨论，允许模块保持现状（D-04）。
 - 依据来源：本地提交 `8d33639` 的源码、POM 与模块文档的静态阅读，以及 template-project、valhalla-project、mealmate-project 三个内部业务项目的源码核对。未运行 Java 构建、测试或消费者验证；三个内部项目不代表全部接入方。
 
@@ -20,19 +23,29 @@ updated: 2026-10-26
 
 | 模块 | 本轮方向 | 暂缓、撤销或未采纳 |
 |---|---|---|
-| Parent | P-01 编译目标约束；P-02 保留 classpath 处理器发现；P-04 测试与质量检查开关统一；P-03、P-05 只做使用说明与验证 | 插件问题 PC-01 至 PC-03 待评估；跨 Maven 版本可复现构建未纳入 |
-| BOM | 管理 `lombok-mapstruct-binding`、`poi-ooxml`、`cola-component-dto`；验证聚焦本轮变更；保持框架基线 | B-04 安全补丁版本覆盖未采纳 |
-| Common | C-01 错误码定义接口；C-02 分页逐条转换及 COLA 分页响应支持；C-04 批量操作结果；C-07 R 的 JSON 只保留 success | C-05、C-08 暂缓；C-03、C-06、C-09 未纳入 |
-| Log | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播 | L-03 访问日志采样、完整 JSON 日志未纳入 |
-| Exception | E-01 标准 HTTP 异常语义补齐；E-02 统一校验错误明细 | E-03 安全、异步超时与客户端断开语义未采纳 |
-| Web | W-01 日期格式统一接入；W-02 大整数 JSON 输出 | W-03 回传 requestId 保留候选 |
-| MyBatis | M-04 慢 SQL 记录；`IPage` 转 COLA `PageResponse`；`searchCount=false` 使用说明 | M-01 撤销；M-02、以 `PageResult` 输出的 M-03 暂缓；防全表更新与删除、单页上限、审计人类型可配置未纳入 |
-| MyBatis Processor | 支持的源版本跟随编译器；纠正 README 生成冲突说明 | 生成控制能力未纳入 |
+| [Parent](./parent-build/brainstorm.md) | P-01 编译目标约束；P-02 保留 classpath 处理器发现；P-04 测试与质量检查开关统一；PC-01 保证 GPG 签名可选；PC-02 合并重复格式检查；PC-03 接通插件版本属性；P-03、P-05 只做使用说明与验证 | 跨 Maven 版本可复现构建未纳入 |
+| [BOM](./bom-dependencies/brainstorm.md) | 管理 `lombok-mapstruct-binding`、`poi-ooxml`、`cola-component-dto`；验证聚焦本轮变更；保持框架基线 | B-04 安全补丁版本覆盖未采纳 |
+| [Common](./common-contracts/brainstorm.md) | C-01 错误码定义接口；C-02 分页逐条转换及 COLA 分页响应支持；C-04 批量操作结果；C-07 R 的 JSON 只保留 success | C-05、C-08 暂缓；C-03、C-06、C-09 未纳入 |
+| [Log](./log-runtime/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播 | L-03 访问日志采样、完整 JSON 日志未纳入 |
+| [Exception](./exception-contracts/brainstorm.md) | E-01 标准 HTTP 异常语义补齐；E-02 统一校验错误明细 | E-03 安全、异步超时与客户端断开语义未采纳 |
+| [Web](./web-binding/brainstorm.md) | W-01 日期格式统一接入；W-02 大整数 JSON 输出 | W-03 回传 requestId 保留候选 |
+| [MyBatis](./mybatis-capabilities/brainstorm.md) | M-04 慢 SQL 记录；`IPage` 转 COLA `PageResponse`；`searchCount=false` 使用说明 | M-01 撤销；M-02、以 `PageResult` 输出的 M-03 暂缓；防全表更新与删除、单页上限、审计人类型可配置未纳入 |
+| [MyBatis Processor](./mybatis-processor/brainstorm.md) | 支持的源版本跟随编译器；纠正 README 生成冲突说明 | 生成控制能力未纳入 |
 | Nacos | 保持现状；核对结果写入 TD-047 | — |
-| RPC Core | 保持现状；旧入口改标 `forRemoval = true` 并明确废弃周期 | — |
+| [RPC Core](./rpc-deprecation/brainstorm.md) | 保持现状；旧入口改标 `forRemoval = true` 并明确废弃周期 | — |
 | Feign | 保持现状 | 对接 Spring HTTP Service Client 未采纳 |
 | Dubbo | 保持现状 | Consumer 端到端验证未纳入 |
 | Test | 保持现状 | Testcontainers 共享容器配置未纳入 |
+
+### 模块间的讨论边界
+
+- C-02 的分页转换契约归 Common，MyBatis 负责 `IPage` 适配，BOM 负责 COLA 版本管理；不拆成相互独立的协议。
+- C-07 的响应协议与迁移安排归 Common，Web 负责 Jackson 接入；同一需求只在 Common 计数。
+- M-04 的计时与 SQL 脱敏归 MyBatis，Log 预设衔接 `SQL.SLOW` 输出路由；不新增 Starter 横向依赖。
+- Parent 与 Processor 共同核对注解处理发现和高版本构建 JDK，但编译策略、处理器自身声明仍各归其模块。
+- Nacos、Feign、Dubbo、Test 本轮无新增交付，不创建空需求目录；既有结论和未采纳项仍在本文件保留。
+
+建议先讨论 Parent/BOM 的构建与依赖基础，再讨论 Common 及其 Web、MyBatis 适配；Log 与 Exception 可分别展开，Processor 与 RPC Core 按小范围维护事项收口。该顺序用于方案讨论，不代表实施计划或授权。
 
 ## 各模块已确认方向
 
@@ -43,10 +56,10 @@ updated: 2026-10-26
 - **P-01 编译目标约束（D-07）**：保留 `java.version`（默认 17）入口，改用 `release` 约束语言、字节码与标准 API；构建 JDK 由接入方选择。依据为 [Maven Compiler 说明](https://maven.apache.org/plugins/maven-compiler-plugin/examples/set-compiler-release.html)。待设计：发布 POM 的属性继承、旧 `source`/`target` 配置迁移、不兼容 API 的负向验证；清理同时存在的 `parameters=true` 与 `-parameters`，以及未被插件引用的 `maven.compiler.source`/`target` 属性。
 - **P-02 注解处理器（D-41，替代 D-08）**：不默认配置 `annotationProcessorPaths`，保留 classpath 处理器发现；构建 JDK 为 21 及以上时显式开启 `proc=full`，可用 `maven.compiler.proc` 覆盖；17 至 20 不传该参数（17u 自 17.0.11 才支持）。依据：显式处理器路径会关闭 classpath 发现（[Maven Compiler compile 说明](https://maven.apache.org/plugins/maven-compiler-plugin/compile-mojo.html)），Mimir 自身 8 个 Starter 与三个内部项目均依赖 classpath 上的处理器；JDK 23 起未显式配置时不执行注解处理（[JDK 23 发布说明](https://www.oracle.com/java/technologies/javase/23-relnote-issues.html)）。待设计：按 JDK 启用的方式与 Flatten 发布后的保留，以及在 JDK 17、21、25 下对 Lombok、配置元数据、MapStruct、Processor 生成结果的验证。
 - **P-03 构建产物（D-09、D-42）**：默认继续生成源码包与 Javadoc；关闭使用原生 `maven.source.skip`、`maven.javadoc.skip`，不新增 Mimir 属性。交付为 [Parent README](../../../mimir-boot-parent/README.md) 使用说明，以及在发布 Parent 的独立消费者中验证开关与各 Profile 组合；不计为新增能力。
-- **P-04 测试与质量检查开关统一（D-11、D-13）**：保留 `dev`、`precheck`、`ci`、`prod` 的名称、职责与默认行为，统一可覆盖开关、优先级与使用说明，优先使用插件原生属性。须处理的现状：`dev` 默认激活且跳过 JaCoCo 与 Spotless；`dev`、`prod` 对 JaCoCo 写死 `skip=true`；`precheck` 实际也执行 Spotless；Surefire 固定 `skipTests=false`；Failsafe 3.6.0 跳过集成测试应使用 `skipITs`（[Failsafe 说明](https://maven.apache.org/surefire/maven-failsafe-plugin/examples/skipping-tests.html)）。建议同时处理 PC-01、PC-02，是否修复仍按 D-10 由用户决定。
+- **P-04 测试与质量检查开关统一（D-11、D-13）**：保留 `dev`、`precheck`、`ci`、`prod` 的名称、职责与默认行为，统一可覆盖开关、优先级与使用说明，优先使用插件原生属性。须处理的现状：`dev` 默认激活且跳过 JaCoCo 与 Spotless；`dev`、`prod` 对 JaCoCo 写死 `skip=true`；`precheck` 实际也执行 Spotless；Surefire 固定 `skipTests=false`；Failsafe 3.6.0 跳过集成测试应使用 `skipITs`（[Failsafe 说明](https://maven.apache.org/surefire/maven-failsafe-plugin/examples/skipping-tests.html)）。PC-01 按 D-87 纳入可选签名设计；PC-02 按 D-88 纳入重复格式检查合并，保留独立开关及下游覆盖能力。
 - **P-05 私有仓库发布（D-12、D-14、D-43）**：保留 Central 默认地址与默认跳过部署，不新增属性入口；接入方使用自身 `distributionManagement` 覆盖，或原生 `altReleaseDeploymentRepository`、`altSnapshotDeploymentRepository`（[Deploy 插件说明](https://maven.apache.org/plugins/maven-deploy-plugin/deploy-mojo.html)），凭据仍由 settings 或 CI 提供。交付为 README 说明与示例，需提示默认正式版地址是 Central Portal 发布接口、标准 `deploy` 预计不能直接使用（推断，待验证），并在消费者中验证正式版与快照发布；不计为新增能力。
 
-插件问题（D-10，待评估，尚未决定修复）：
+插件问题（D-10；PC-01 至 PC-03 已按 D-87 至 D-89 纳入设计，尚未实施）：
 
 | 编号 | 问题 | 依据 |
 |---|---|---|
@@ -64,14 +77,14 @@ updated: 2026-10-26
 
 三个内部项目均未引用 Mimir Common 的任何类型，接口层使用 COLA 的 `Response`、`PageResponse`、`MultiResponse`；以下方向在该事实下经用户复核后保留（D-62 至 D-64）。Common 继续不引入 Spring 运行时依赖，`R<T>`、`PageResult<T>` 的 `Serializable` 上界保持不变。
 
-- **C-01 错误码定义接口（D-20、D-21）**：新增独立接口直接提供字符串 code 与默认 message，由内置 `ErrorCode` 与业务枚举实现，并为业务异常与失败响应提供接入入口；`IException` 仍表示异常实例契约。待设计：命名与签名；新增 `R.fail(错误码接口)` 会使 `R.fail(null)` 与 `R.fail(String)` 产生歧义；消息参数化（如“用户 {} 不存在”）纳入或明确排除。
+- **C-01 错误码定义接口（D-20、D-21、D-90 至 D-96）**：新增独立接口直接提供字符串 code 与默认 message，由内置 `ErrorCode` 与业务枚举实现；`IException` 仍表示异常实例契约。R 采用异名工厂入口，保留现有 `fail(...)`，避免 `R.fail(null)` 的重载歧义（D-90）；消息由默认值或业务完整文本提供，本轮不新增模板替换和国际化处理（D-91）；BizException 采用新增命名工厂，保留现有构造方法（D-92）；新增工厂拒绝 null 错误定义对象并抛出 `IllegalArgumentException`（D-93）；覆盖消息为 null 时使用默认消息，非 null 文本包括空字符串和纯空白均原样保留（D-94）；SystemException 同步提供命名工厂，复用上述规则，保留既有构造方法及异常处理语义（D-95）；这些新增工厂拒绝 null、空白及成功码 `00000`，抛出 `IllegalArgumentException`，其他 code 原样保留（D-96）。待设计：接口及工厂的最终命名与签名、默认 message 的空值边界。
 - **C-02 分页逐条转换（D-22、D-55、D-62、D-66 至 D-69）**：
   - 为 `PageResult` 提供逐条转换入口，返回新分页结果并保留分页信息；不提供整页列表转换。
   - 转换契约：null 元素不交给转换函数、结果中保留 null，记录数与分页信息不变；转换异常原样抛出。
   - COLA 支持：Common 以 optional 方式依赖 `cola-component-dto`，转换放在独立工具类，`PageResult` 自身不出现 COLA 类型（避免 Jackson 扫描 getter 时在未引入 COLA 的项目中触发 `NoClassDefFoundError`）；提供 `PageResult` 转 COLA `PageResponse`，MyBatis Starter 另提供 `IPage` 加转换函数转 `PageResponse`；totalCount、pageIndex、pageSize 超出 int 范围时抛参数异常；不提供 `MultiResponse` 转换（COLA 已有 `MultiResponse.of`）。
   - 待设计：工具类命名与包位置、MyBatis Starter 的可选依赖与类缺失行为、`PageResponse` 的 success 设置、返回集合是否可变，以及有无 COLA 两种消费者的编译与运行验证。
 - **C-04 批量操作结果（D-23、D-24、D-63）**：汇总总数、成功数、失败数，保留全部逐项结果，每项关联输入标识或序号，可携带成功数据或错误码与消息；执行、事务与重试策略由业务决定。三个内部项目暂无批量场景，作为结果协议预留。待设计：输入关联形式、总体状态、空批次、计数一致性与外层响应约定。
-- **C-07 R 的 JSON 只保留 success（D-39、D-64）**：JSON 不再输出 `fail`，Java 保留 `isSuccess()`/`isFail()`，成功仍由 code 派生。三个内部项目不读取 `fail`；对外部使用 `R` 的接入方仍属 JSON 协议变更，迁移安排单独制定。待设计：生效范围按 mapper 来源核对——若在 Web 的 `Jackson2ObjectMapperBuilderCustomizer` 中注册 MixIn，会作用于 Boot 自动配置的共享 `ObjectMapper`（Spring MVC 之外，复用它的消息、缓存、HTTP 客户端等序列化也可能受影响）以及通过 Boot 的 `Jackson2ObjectMapperBuilder` 创建的 mapper；业务自行 `new` 的 ObjectMapper 与 fastjson2 等非 Jackson 路径不受影响。另需确定过渡方式、升级说明，并同步调整 `RTest` 中对 `fail` 的断言。
+- **C-07 R 的 JSON 只保留 success（D-39、D-64）**：JSON 不再输出 `fail`，Java 保留 `isSuccess()`/`isFail()`，成功仍由 code 派生。三个内部项目不读取 `fail`；对外部使用 `R` 的接入方仍属 JSON 协议变更，迁移安排单独制定。待设计：生效范围按 mapper 来源核对——若在 Web 的 `Jackson2ObjectMapperBuilderCustomizer` 中注册 MixIn，会作用于 Boot 自动配置的共享 `ObjectMapper`（Spring MVC 之外，复用它的消息、缓存、HTTP 客户端等序列化也可能受影响）以及通过 Boot 的 `Jackson2ObjectMapperBuilder` 创建的 mapper；业务自行 `new` 的 ObjectMapper 与 fastjson2 等非 Jackson 路径不受影响。另需确定过渡方式、升级说明，并同步调整 `RTest` 中对 `fail` 的断言（SDD 推荐：Common 独立使用时普通 Jackson 仍输出 `fail`，`RTest` 断言保持不变，MixIn 行为由 Web 测试覆盖，见 [Common 设计](./common-contracts/design.md)）。
 
 ### Log
 
@@ -158,7 +171,7 @@ updated: 2026-10-26
 | RV-08 | L-02 | `TaskDecorator` 的 `getIfUnique()` 风险 | 并入 L-02 硬约束 |
 | RV-09 | L-01 | 默认脱敏的性能影响 | 并入 L-01 待设计 |
 | RV-10 | C-07 | Common 无 Jackson 依赖，MixIn 的影响范围取决于 ObjectMapper 来源（2026-10-26 校准：不限于 Spring MVC） | 并入 C-07 待设计 |
-| RV-11 | C-01 | 消息参数化 | 并入 C-01 待设计 |
+| RV-11 | C-01 | 消息参数化 | 并入 C-01 讨论，后按 D-91 明确本轮不新增模板替换 |
 | RV-12 | W-02 | 时间戳与分页数量为 Long | 并入 W-02 策略 |
 
 ## 业务项目核对摘要
@@ -192,7 +205,7 @@ updated: 2026-10-26
 | D-07 | P-01 只约束编译目标，构建 JDK 由接入方选择 | 有效 |
 | D-08 | P-02 默认配置 Lombok 处理器，其余按需启用 | 已替代（D-41） |
 | D-09 | P-03 默认生成源码包与 Javadoc，允许分别关闭 | 有效，交付定位见 D-42 |
-| D-10 | Parent 插件问题先记录，是否修复后续决定 | 有效 |
+| D-10 | Parent 插件问题先记录，是否修复后续决定 | 已完成范围讨论；PC-01 至 PC-03 按 D-87 至 D-89 纳入设计 |
 | D-11 | Parent 增加测试与质量检查开关统一 | 有效 |
 | D-12 | Parent 增加私有仓库发布接入 | 有效，交付定位见 D-43 |
 | D-13 | P-04 保留现有 Profile 职责与默认行为，统一开关、优先级与说明 | 有效 |
@@ -252,8 +265,29 @@ updated: 2026-10-26
 | D-77 | Feign 保持现状，HTTP Service Client 对接记为未采纳候选 | 有效 |
 | D-79 | Dubbo 保持现状 | 有效 |
 | D-81 | Test 保持现状 | 有效 |
+| D-82 | Parent 开发默认值放到公共属性层；保留四个构建 profile 并显式覆盖；JDK profile 只负责注解处理，保持原有构建行为 | 有效，方案细化见 [Parent 大纲](./parent-build/brainstorm.md#已确认默认行为与-jdk-适配分离d-82)；发布继承与组合行为待验证 |
+| D-83 | Parent 编译目标只承诺 `java.version` 入口，默认 17，编译插件 `release` 直接引用；不建立与 `maven.compiler.release` 的双入口覆盖契约 | 有效，消费者仍可自行配置插件；迁移及发布继承行为待验证，见 [Parent 大纲](./parent-build/brainstorm.md#已确认编译目标只承诺-javaversion-入口d-83) |
+| D-84 | Parent 保持原生测试开关独立：`skipTests` 控制单测，`skipITs` 控制集成测试，两类执行均跳过时同时设置；保留 `maven.test.skip` 跳过测试编译与执行 | 有效，不建立两类测试开关联动；质量检查关系见 D-85，方案见 [Parent 大纲](./parent-build/brainstorm.md#已确认原生测试开关独立控制d-84) |
+| D-85 | Parent 测试与覆盖率保持独立控制，测试开关不改变 `jacoco.skip`；格式检查继续由 `spotless.check.skip` 独立控制 | 有效，沿用各 profile 默认值并支持下游组合，见 [Parent 大纲](./parent-build/brainstorm.md#已确认测试与质量检查独立控制d-85) |
+| D-86 | Mimir Boot 的核心目标是提供能力，让下游自由组合；能力独立可控，默认配置与 profile 提供便捷预设 | 有效，作为后续模块方案的共同判断依据；保留已确认默认值、兼容要求及范围边界 |
+| D-87 | GPG 签名是可选能力，下游项目可以完全不启用；Parent 默认跳过，使用方按需显式开启，发布 Parent 保留覆盖入口 | 有效，PC-01 据此纳入本轮设计；不代表所有发布必须签名，也不代表已修改或验证 POM，见 [Parent 大纲](./parent-build/brainstorm.md) |
+| D-88 | PC-02 纳入本轮：合并 Parent 重复声明的 Spotless 格式检查，保留独立开关、既有 profile 默认行为及下游扩展能力 | 有效；execution ID 的迁移兼容与实际检查次数待验证，见 [Parent 大纲](./parent-build/brainstorm.md) |
+| D-89 | PC-03 纳入本轮：在 `pluginManagement` 中引用 Clean、Resources、Install 的现有版本属性，提供可覆盖默认版本，不额外添加执行步骤 | 有效；消费者默认版本变化及发布后的覆盖能力待验证，见 [Parent 大纲](./parent-build/brainstorm.md) |
+| D-90 | Common C-01 的错误定义通过异名工厂接入 R，保留原有 `fail(...)` 调用，避免新增同名重载导致 `R.fail(null)` 歧义 | 有效；`failCode` 为名称示意，业务异常接入见 D-92，最终命名待收敛，见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-91 | Common C-01 使用错误定义默认消息或业务生成的完整消息，格式化与国际化由业务选择，本轮不新增消息模板替换能力 | 有效；null 与非 null 消息覆盖规则见 D-94，详见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-92 | Common C-01 的业务异常采用新增命名工厂接入错误定义，保留 BizException 现有构造方法 | 有效；`fromError` 为名称示意，null 错误定义见 D-93；SystemException 按 D-95 纳入，最终签名待收敛，见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-93 | Common C-01 新增的 R 与 BizException 工厂拒绝 null 错误定义对象，抛出 `IllegalArgumentException`，由下游显式选择通用错误兜底 | 有效；按 D-95 扩展到 SystemException；仅约束新增入口，旧 API 行为保留；code 校验见 D-96，消息覆盖见 D-94，详见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-94 | Common C-01 新增工厂的覆盖消息为 null 时使用错误定义默认消息，非 null 文本包括空字符串与纯空白均原样保留 | 有效；不修剪、不做模板替换，旧 API 行为保留，见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-95 | Common C-01 同步为 SystemException 提供错误定义命名工厂，复用 D-91、D-93、D-94 的消息及 null 规则，保留现有构造方法与异常处理语义 | 有效；异常类型由下游选择，不按错误码自动切换；最终名称及签名待收敛，见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-96 | Common C-01 新增的 R 失败工厂、BizException 与 SystemException 错误定义工厂拒绝 null、空白及成功码 `00000`，抛出 `IllegalArgumentException`；其他 code 原样保留，编码格式由下游决定 | 有效；仅约束新增入口，旧 API 行为保留；默认 message 的空值边界待收敛，见 [Common 大纲](./common-contracts/brainstorm.md) |
+| D-97 | Parent 公共 `gpg.skip=true` 使 `-Pmaven-central` 不再单独开启签名；同步调整既有构建模型检查 `verify-build-model.mjs` 的断言（连同 `tools/engineering/README.md` 用途说明、根 POM 注释，并在发布规程补充显式签名参数），使其校验默认不签名与本仓库实际发布命令（`-Pmaven-central -Dgpg.skip=false`）的签名模型，而不是保持原断言或在 Parent 内增加同 ID 发布 profile | 有效（2026-10-31 用户选择方案 b）；纳入 Parent T1 文件范围，不新增脚本，见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布) |
+| D-98 | Exception E-02 中空集合或纯 Bean 属性路径的 `ConstraintViolationException` 无法证明属于 HTTP 输入，由原 400 改为 500/`10000`/data=null，不提供恢复 400 的开关 | 有效（2026-10-31 用户接受推荐）；须在升级说明中列为状态变化，业务可在自身边界或更高优先级 Advice 中按输入处理，见 [Exception 设计](./exception-contracts/design.md) |
+| D-99 | Common C-02 与 MyBatis 的 COLA 分页转换类短名不得重复：Common 保留 `com.yggdrasil.labs.common.page.ColaPageConverters`，MyBatis 新增类改名为 `com.yggdrasil.labs.mybatis.page.IPageColaConverters` | 有效（2026-10-31 用户选择方案 1）；MyBatis Starter 依赖 Common，两类必然同在消费者类路径，见 [Common 设计](./common-contracts/design.md) 与 [MyBatis 设计](./mybatis-capabilities/design.md) |
+| D-100 | Log 预设的早期入口识别 Spring Cloud legacy bootstrap 应用，bootstrap 应用不取得所有权令牌、不发布或清理规则，由主应用按自身环境完成预设与 mask 规则发布 | 有效（2026-10-31 用户选择方案 1）；避免 bootstrap 抢占令牌导致新预设缺省规则及旧 `application.yml` mask 配置失效，见 [Log 设计](./log-runtime/design.md) |
 | D-15、D-19、D-26、D-35、D-40、D-50、D-70、D-72、D-74、D-76、D-78、D-80 | 各模块依次收口并进入下一模块；不代表详细设计定稿或授权实施 | 过程记录 |
 
 ## 当前产物状态
 
-本文件为未定稿 brainstorm，尚未形成需求规格、设计、实施计划或验收标准；版本阶段见[版本记录](./release.md)。当前仅记录讨论，不代表功能已实现、测试通过或已发布。
+2026-10-29 用户要求停止逐项提问、先提供推荐方案并补齐每项需求的 SDD。9 个模块需求目录现均提供 `spec.md`、`design.md`、`plan.md` 推荐稿，入口见[版本记录](./release.md)。本文件继续保留已确认决策与讨论来源；本轮补充的推荐选择标在对应 SDD 中，不追记为用户逐项确认，也不覆盖被明确否定的范围。
+
+推荐稿采用明确的默认方案与验收条件，不把技术验证交回给用户逐项选择。状态仍为 draft，尚未实施；文档齐备与检查通过不代表功能测试、发布后消费者或生产验收通过。

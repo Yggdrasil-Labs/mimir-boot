@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-25
+updated: 2026-10-31
 ---
 
 # 技术债务追踪
@@ -28,6 +28,7 @@ updated: 2026-10-25
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-047](#td-047-nacos-消费者迁移) | Nacos 配置删除后的消费者迁移 | starter-nacos / 业务配置消费 | 高 | 待规划 | YoungerYang-Y | 2026-10-09 | [拆分与框架关闭记录](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；实际应用迁移范围待核实 |
+| [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](./v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
 
 ## 债务明细
 
@@ -77,6 +78,16 @@ updated: 2026-10-25
 - **边界**：不自动清空任意普通 Bean，不保证擦除其他对象持有的全部历史明文。非枚举 parser、移除 import/资源身份变化、自定义刷新器、legacy bootstrap 与本地文件源消失仍按[Nacos 接入契约](../../mimir-boot-starters/mimir-boot-starter-nacos/README.md#2-配置动态刷新支持)处理；相关应用需自行满足对应契约，不能据默认框架验收推定删除保证。
 - **目标版本**：待排期。
 - **复查条件**：配置消费方接入或升级、刷新/绑定策略、缓存读取路径或 Spring Cloud 基线变化时，Owner 复核迁移清单和无下层值时的旧明文残留；每月架构回顾确认范围与排期。
+
+<a id="td-048-jdk-高版本构建回归"></a>
+
+### TD-048：JDK 21 及以上构建路径缺少持续回归
+
+- **来源与范围**：2026-10-31 v2.4.0 设计审查发现，经用户确认登记。Parent 规划按构建 JDK 激活 `proc=full` 等 JDK profile 行为，下游及本仓库 reactor 均可能在 JDK 21/25 构建。
+- **现状与风险**：CI 固定 `JAVA_VERSION: '17'`（`.github/workflows/ci.yml`），构建模型检查也要求 Java 17；JDK≥21 的注解处理器发现、profile 激活与质量默认值只由 Parent 计划 T3 的一次性矩阵覆盖，后续版本可能静默退化。
+- **处置与验收**：评估在 CI 增加 JDK 21/25 的编译与测试矩阵或等价的定期任务；验证类版本、处理器生成结果、四模式默认值在各 JDK 下与 JDK 17 一致。
+- **目标版本**：待排期。
+- **复查条件**：Parent JDK profile、编译器或处理器配置调整，或 CI JDK 基线变化时。
 
 ## 历史说明
 

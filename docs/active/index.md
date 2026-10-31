@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # 活跃版本索引
@@ -11,6 +11,6 @@ updated: 2026-10-26
 
 | 版本 | 阶段 | 入口 |
 |---|---|---|
-| v2.4.0 | 头脑风暴：全部模块已讨论，版本范围待收敛定稿 | [版本记录](./v2.4.0/release.md)、[版本级 Brainstorm](./v2.4.0/brainstorm.md) |
+| v2.4.0 | SDD 推荐稿：9 项规格、设计与计划，尚未实施 | [版本记录](./v2.4.0/release.md)、[版本级 Brainstorm](./v2.4.0/brainstorm.md) |
 
 v2.3.0 的五项需求及版本记录已于 2026-10-23 移入[归档目录](../archive/v2.3.0/index.md)，发布复核见[版本记录](../archive/v2.3.0/release.md)。v2.4.0 是本轮规划目标，当前开发版本仍以[根 POM](../../pom.xml) 的 `revision` 为准；未解决事项继续由[技术债台账](./tech-debt-tracker.md)跟踪。
