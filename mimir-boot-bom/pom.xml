@@ -74,7 +74,7 @@
         <protobuf.version>4.36.2</protobuf.version>
 
         <!-- 网络相关 -->
-        <okhttp.version>5.5.0</okhttp.version>
+        <okhttp.version>5.5.1</okhttp.version>
         <retrofit.version>3.0.0</retrofit.version>
 
         <!-- 文件处理 -->
