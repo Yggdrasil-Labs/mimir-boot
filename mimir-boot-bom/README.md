@@ -81,7 +81,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
   覆盖了该消费模块。
 - **仅管理**：该坐标仍由 BOM 声明，但当前 Reactor 没有对该坐标的直接消费，或没有对应运行验证。
 
-### 已验证（15 项）
+### 已验证（16 项）
 
 | 类别 | 坐标 | Reactor 直接消费者 |
 |------|------|-------------------|
@@ -91,6 +91,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | 工具与持久化 | `com.squareup:javapoet` | `mimir-boot-starter-mybatis-processor` |
 | 测试 | `com.google.testing.compile:compile-testing` | `mimir-boot-starter-mybatis-processor` |
 | 测试 | `com.google.truth:truth` | `mimir-boot-starter-mybatis-processor` |
+| 工具与持久化 | `com.alibaba.cola:cola-component-dto` | `mimir-boot-common`（optional） |
 | RPC | `org.apache.dubbo:dubbo-spring-boot-starter` | `mimir-boot-starter-dubbo` |
 | 编译 | `org.projectlombok:lombok` | `mimir-boot-common`、多个 Starter |
 | 日志 | `org.slf4j:jcl-over-slf4j` | `mimir-boot-starter-log` |
@@ -101,7 +102,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-rpc-core` | `mimir-boot-starter-dubbo`、`mimir-boot-starter-feign` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-test` | 所有具测试的 Starter |
 
-### 仅管理（39 项）
+### 仅管理（41 项）
 
 | 类别 | 坐标 |
 |------|------|
@@ -112,6 +113,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | RPC | `org.apache.dubbo:dubbo` |
 | 工具与持久化 | `org.mapstruct:mapstruct` |
 | 工具与持久化 | `org.mapstruct:mapstruct-processor` |
+| 编译 | `org.projectlombok:lombok-mapstruct-binding` |
 | 安全 | `io.jsonwebtoken:jjwt-api` |
 | 安全 | `io.jsonwebtoken:jjwt-impl` |
 | 安全 | `io.jsonwebtoken:jjwt-jackson` |
@@ -131,6 +133,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | 序列化与网络 | `com.squareup.okhttp3:okhttp-jvm` |
 | 序列化与网络 | `com.squareup.retrofit2:retrofit` |
 | 文件与协调 | `org.apache.poi:poi` |
+| 文件与协调 | `org.apache.poi:poi-ooxml` |
 | 文件与协调 | `com.itextpdf:itext-core` |
 | 文件与协调 | `org.apache.curator:curator-framework` |
 | Mimir 模块 | `io.github.yggdrasil-labs:mimir-boot-starter-log` |
@@ -197,6 +200,96 @@ Redisson Starter 3.52.0 默认引入面向 Spring Data Redis 3.5 的 `redisson-s
 本 BOM 不再提供 `mongodb.version` 属性或 `mongodb-driver-sync` 的单项固定版本；MongoDB 驱动族由 Spring Boot 3.3.13 BOM 管理为 5.0.1。此前的 4.11.5→5.0.1 升级可能涉及旧 API 或 ABI 不兼容，消费者应重新编译，并检查上游破坏性变更后再升级。
 
 本次迁移以一次性本地消费者验收覆盖 BOM、Parent 和 Spring Data 三种接入方式的依赖解析、同步客户端初始化，以及 Spring Data 对 `_id`/`name` 的离线映射。验收不连接真实 MongoDB 服务端，不覆盖 CRUD，也不代表线上发布或发布后消费者已验证。若消费者显式覆盖版本，应让整个 MongoDB 驱动族使用一致版本，并由消费者自行验证；不要只覆盖 `mongodb-driver-sync`。
+
+### 配套组件按需接入
+
+BOM 只管理以下三个配套坐标的版本，不会把它们加入任何消费者的依赖；未声明时依赖树中不会出现。
+
+| 坐标 | 用途 | 版本来源 | 许可证 |
+|------|------|----------|--------|
+| `org.projectlombok:lombok-mapstruct-binding` | 让 Lombok 生成的访问器先于 MapStruct 映射实现生成 | `lombok-mapstruct-binding.version` | MIT |
+| `org.apache.poi:poi-ooxml` | 读写 `.xlsx` 等 OOXML 文档 | 与基础 `poi` 共用 `poi.version` | Apache-2.0 |
+| `com.alibaba.cola:cola-component-dto` | COLA DTO（如 `PageResponse`），只托管 DTO 坐标，不导入 COLA 全量 BOM | `cola-component-dto.version` | LGPL-2.1 |
+
+`poi-ooxml` 的传递依赖（`log4j-api`、`commons-io`、`commons-compress`、`xmlbeans`）中，已被导入的 Spring Boot BOM 管理的坐标会采用 Boot 基线版本，本 BOM 不额外覆盖；接入方应以自身 `mvn dependency:tree` 的有效版本为准。新增版本管理也可能改变原先经传递依赖获得同坐标的有效版本，升级后请核对依赖树。
+
+两种接入方式的组件声明相同，差异如下：
+
+| 方面 | 继承 `mimir-boot-parent` | 只 `import` `mimir-boot-bom` |
+|------|--------------------------|------------------------------|
+| 受管版本 | 生效 | 生效 |
+| 编译器 release、注解处理配置 | 由 Parent 提供 | 不继承，需自行配置 `maven-compiler-plugin` |
+| JDK 23 及以上的注解处理 | Parent 已显式开启 | 需自行开启（见下文） |
+| 覆盖受管版本 | 在自身 `dependencyManagement` 显式声明同坐标 | 同左；BOM 内同名属性不保证能被 import 方覆盖 |
+
+覆盖版本时请在自身 `dependencyManagement` 声明同一坐标及版本，或在 `dependencies` 中直接写版本（遵循 Maven 原生优先级）；覆盖后的兼容性由覆盖方负责。
+
+#### `.xlsx` 读写
+
+```xml
+<dependency>
+    <groupId>org.apache.poi</groupId>
+    <artifactId>poi-ooxml</artifactId>
+</dependency>
+```
+
+#### Lombok + MapStruct 处理器配套
+
+处理器以 `provided` 范围进入 classpath，由编译器自动发现；无需配置 `annotationProcessorPaths`。
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct-processor</artifactId>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok-mapstruct-binding</artifactId>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+```
+
+只 `import` BOM、不继承 Parent 的项目：JDK 23 起 javac 在未显式指定 `-proc` 时默认不再执行 classpath 上发现的注解处理器，Lombok 与 MapStruct 会静默不生成代码，直到引用生成内容时才以编译错误暴露。BOM 只管理版本，不会替你开启处理。推荐按构建 JDK 激活 profile，而不是无条件设置（JDK 17 的 javac 不识别 `-proc:full`）：
+
+```xml
+<profiles>
+    <profile>
+        <id>annotation-processing-full</id>
+        <activation>
+            <jdk>[23,)</jdk>
+        </activation>
+        <properties>
+            <maven.compiler.proc>full</maven.compiler.proc>
+        </properties>
+    </profile>
+</profiles>
+```
+
+- `maven.compiler.proc=full` 需要 `maven-compiler-plugin` 的 `proc` 参数接受 `full`；已核对 3.13.0～3.16.0 支持，更早版本未核实，旧插件可改为在 `compilerArgs` 中传 `-proc:full`。
+- `<jdk>` 激活依据是运行 Maven 的 JVM。通过 Toolchains 或 `fork`/`executable` 使用其他 javac 时，请按实际 javac 版本直接配置 `compilerArgs` 或 `maven.compiler.proc`，不要依赖该 profile。
+
+#### COLA DTO
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cola</groupId>
+    <artifactId>cola-component-dto</artifactId>
+</dependency>
+```
+
+`mimir-boot-common` 以 optional 方式依赖该坐标，只声明 Common 不会传递获得 COLA；使用 Common 的 COLA 转换工具时需自行声明上述依赖。
 
 ## 🔧 配置说明
 
