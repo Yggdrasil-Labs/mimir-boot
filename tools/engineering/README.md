@@ -70,7 +70,7 @@ Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar
 | --- | --- |
 | `docs --root <绝对仓库路径> --mode full --self-test` | 文档检查与工具自检 |
 | `java` | Maven 构建及测试、覆盖率报告核验 |
-| `build-model` | 所有 Reactor 模块 default/maven-central 签名开关 |
+| `build-model` | 所有 Reactor 模块默认场景与 `-Pmaven-central -Dgpg.skip=false` 发布场景的签名开关 |
 | `contracts` | 发布工作流、制品布局和本地 HTTP 故障场景 |
 | `consumer` | 隔离发布及下游 Parent/BOM 消费者验收 |
 | `signing --preheat` | 隔离缓存、一次性 GPG 密钥的签名验收 |

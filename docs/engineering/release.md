@@ -43,7 +43,7 @@ flowchart LR
 
 新 Tag 的 Maven Central 上传步骤等待 Portal 发布完成，最长 30 分钟；这不代表公开仓库已经可下载。后续公开制品验证最多等待 20 分钟，每 30 秒重试暂时不可用的 404、408、429、临时网络错误和 5xx 响应。POM 解析或坐标校验失败、JAR 目录不可读均立即失败，不等待重试。JAR 检查只验证归档目录可读，不校验全部条目内容或签名。
 
-Central Publisher 0.11.0 与 Maven 3.10 的 staging 元数据布局不兼容，会把 `maven-metadata-local.xml` 和 `_remote.repositories` 混入 bundle。因此只有 Central 发布任务临时切换 Wrapper 到 Maven 3.9.16，并执行 `clean deploy`；普通构建和消费者门禁保持仓库默认 Maven。手动补偿从 `main` 启动工作流，再检出原 Tag 的源码，可以修复发布环境而不移动 Tag。
+Central Publisher 0.11.0 与 Maven 3.10 的 staging 元数据布局不兼容，会把 `maven-metadata-local.xml` 和 `_remote.repositories` 混入 bundle。因此只有 Central 发布任务临时切换 Wrapper 到 Maven 3.9.16，并执行 `clean deploy`；普通构建和消费者门禁保持仓库默认 Maven。Central 发布命令必须同时显式传 `-Dgpg.skip=false`：Parent 自身声明 `gpg.skip=true`，仅 `-Pmaven-central` 只对根与 BOM 开启签名，不覆盖 Parent 及其子孙模块。手动补偿从 `main` 启动工作流，再检出原 Tag 的源码，可以修复发布环境而不移动 Tag。
 
 旧 Tag 补偿保留该 Tag 的 POM 等待配置；若仍为 `waitUntil=uploaded`，上传成功后即可返回，不代表 Portal 发布完成。补偿必须继续通过 `main` 提供的公开制品验证，才能创建 GitHub Release 和回写开发版本。
 

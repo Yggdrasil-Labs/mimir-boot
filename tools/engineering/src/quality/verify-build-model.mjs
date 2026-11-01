@@ -39,9 +39,10 @@ export function parsePom(source) {
     return root;
 }
 
-export function requireGpgConfiguration(model, expectedSkip, label) {
+export function requireGpgConfiguration(model, expectedSkip, label, { checkProperty = true } = {}) {
+    // 命令行用户属性不回写有效 POM 的 properties，发布场景只能校验插值后的插件与 execution。
     const values = elements(model, 'properties', 'gpg.skip').map(text);
-    if (values.length !== 1 || values[0] !== expectedSkip) {
+    if (checkProperty && (values.length !== 1 || values[0] !== expectedSkip)) {
         throw new Error(`${label}: gpg.skip 必须唯一且为 ${expectedSkip}，实际为 ${JSON.stringify(values)}`);
     }
     // 包括 profile 内的 build/plugins，与原检查范围保持一致；不以 pluginManagement 代替实际插件。
@@ -55,6 +56,9 @@ export function requireGpgConfiguration(model, expectedSkip, label) {
         if (skip !== expectedSkip) throw new Error(`${label}: GPG plugin 顶层 skip=${skip}，期望 ${expectedSkip}`);
         const executions = elements(plugin, 'executions', 'execution');
         if (!executions.length) throw new Error(`${label}: GPG plugin 缺少 execution`);
+        if (!checkProperty && !executions.some((execution) => text(elements(execution, 'id')[0]) === 'sign-artifacts')) {
+            throw new Error(`${label}: GPG plugin 缺少 sign-artifacts execution`);
+        }
         for (const execution of executions) {
             const executionSkip = text(elements(execution, 'configuration', 'skip')[0]);
             if (executionSkip !== expectedSkip) {
@@ -108,20 +112,23 @@ export async function verifyBuildModel() {
                 'install', '-Dgpg.skip=true', ...cacheArgs], `无法安装 ${relative} 元数据`);
         }
         for (const [index, pom] of poms.entries()) {
-            for (const [profile, expected] of [[null, 'true'], ['maven-central', 'false']]) {
-                const label = `${path.relative(ROOT, pom)} [${profile || 'default'}]`;
-                const output = path.join(temporary, `${index}-${profile || 'default'}.xml`);
+            // 发布场景与 release workflow 一致：Parent 自身 gpg.skip 优先于祖先 profile，须显式传用户属性。
+            for (const [scenario, args, expected] of [['default', [], 'true'],
+                ['maven-central', ['-Pmaven-central', '-Dgpg.skip=false'], 'false']]) {
+                const label = `${path.relative(ROOT, pom)} [${scenario}]`;
+                const output = path.join(temporary, `${index}-${scenario}.xml`);
                 command(path.join(ROOT, 'mvnw'), ['-B', '-N', '-f', pom, ...cacheArgs,
-                    ...(profile ? [`-P${profile}`] : []), 'help:effective-pom', `-Doutput=${output}`],
+                    ...args, 'help:effective-pom', `-Doutput=${output}`],
                 `无法生成 ${label} 的 effective POM`);
-                requireGpgConfiguration(parsePom(await readFile(output, 'utf8')), expected, label);
+                requireGpgConfiguration(parsePom(await readFile(output, 'utf8')), expected, label,
+                    { checkProperty: scenario === 'default' });
                 process.stdout.write(`已验证 ${label}\n`);
             }
         }
     } finally {
         await rm(temporary, { recursive: true, force: true });
     }
-    process.stdout.write(`已验证 ${poms.length} 个 Reactor POM 的 default/maven-central GPG 模型\n`);
+    process.stdout.write(`已验证 ${poms.length} 个 Reactor POM 的默认与 -Pmaven-central -Dgpg.skip=false 发布 GPG 模型\n`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

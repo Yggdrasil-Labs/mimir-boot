@@ -51,7 +51,7 @@
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <!-- GPG Maven Plugin 版本 -->
         <gpg-maven-plugin.version>3.2.8</gpg-maven-plugin.version>
-        <!-- 普通构建不要求本机私钥；maven-central profile 显式覆盖为 false。 -->
+        <!-- 普通构建不要求本机私钥；发布命令须显式传 -Dgpg.skip=false（maven-central profile 的覆盖只对根与 BOM 生效）。 -->
         <gpg.skip>true</gpg.skip>
         <maven.deploy.plugin.version>3.2.0</maven.deploy.plugin.version>
         <!-- 默认不发布；发布工作流可用 -Dmaven.deploy.skip=false 显式覆盖。 -->
@@ -247,8 +247,9 @@
     </build>
 
     <profiles>
-        <!-- Maven Central 发布：不设 activeByDefault，外部项目继承 parent 时默认不会发 Central，需显式 -P maven-central。
-             本仓库发布命令见 mimir-boot-parent/README.md「发布到 Maven Central」。 -->
+        <!-- Maven Central 发布：不设 activeByDefault，外部项目继承 parent 时默认不会发 Central。
+             仅 -P maven-central 不会为 Parent 及其子模块开启签名，须同时显式传 -Dgpg.skip=false；
+             本仓库发布命令见 docs/engineering/release.md。 -->
         <profile>
             <id>maven-central</id>
             <properties>
