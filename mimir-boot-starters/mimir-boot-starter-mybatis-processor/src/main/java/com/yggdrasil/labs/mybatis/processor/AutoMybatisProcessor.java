@@ -8,7 +8,6 @@ import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -23,7 +22,6 @@ import com.squareup.javapoet.TypeSpec;
 import com.yggdrasil.labs.mybatis.annotation.AutoMybatis;
 
 @SupportedAnnotationTypes("com.yggdrasil.labs.mybatis.annotation.AutoMybatis")
-@SupportedSourceVersion(SourceVersion.RELEASE_17)
 public class AutoMybatisProcessor extends AbstractProcessor {
 
     private Messager messager;
@@ -32,6 +30,12 @@ public class AutoMybatisProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.messager = processingEnv.getMessager();
+    }
+
+    /** 跟随实际运行的 javac，避免较新编译器上出现支持源版本落后的告警。 */
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
     }
 
     @Override

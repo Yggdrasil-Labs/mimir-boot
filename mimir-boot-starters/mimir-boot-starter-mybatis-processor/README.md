@@ -37,6 +37,35 @@
 </dependency>
 ```
 
+### 编译器版本与注解处理开关
+
+处理器声明支持的源版本跟随实际运行的 javac（`SourceVersion.latestSupported()`），较新 JDK 编译时不会再出现“支持的源版本低于当前源版本”的告警。制品自身最低运行要求仍为 Java 17。当前已实测 JDK 17、21；JDK 25 尚未验证，支持版本变宽只是声明，不代表所有新语法均已覆盖。
+
+`latestSupported()` 取决于实际执行编译的 javac：通过 `maven-compiler-plugin` 的 `fork`/`executable` 或 Maven Toolchains 指定其他 JDK 时，以被调用的 javac 为准。
+
+JDK 23 起，javac 在未显式指定 `-proc` 时默认不再执行 classpath 上发现的注解处理器，本处理器会静默不生成代码，直到引用生成类型时才以编译错误暴露：
+
+- **继承 `mimir-boot-parent`**：Parent 已显式开启注解处理，无需额外配置。
+- **只导入 `mimir-boot-bom` 或使用其他 Parent**：需自行开启。推荐放入按 JDK 激活的 profile，不要无条件设置（JDK 17 的 javac 不识别 `-proc:full`）：
+
+```xml
+<profiles>
+    <profile>
+        <id>annotation-processing-full</id>
+        <activation>
+            <!-- 如需同时消除 JDK 21/22 的隐式处理提示，可改为 [21,) -->
+            <jdk>[23,)</jdk>
+        </activation>
+        <properties>
+            <maven.compiler.proc>full</maven.compiler.proc>
+        </properties>
+    </profile>
+</profiles>
+```
+
+- `maven.compiler.proc=full` 需要 `maven-compiler-plugin` 的 `proc` 参数接受 `full`；已核对 3.13.0～3.16.0 支持，更早版本未核实，旧插件可改为在 `compilerArgs` 中传 `-proc:full`。
+- `<jdk>` 激活依据是运行 Maven 的 JVM，而不是 Toolchains 或 `fork` 实际调用的 javac。两者版本不同时，请按实际 javac 版本直接在编译插件中配置 `compilerArgs`（`-proc:full`）或 `maven.compiler.proc`，不要依赖该 profile。
+
 ### 使用示例
 
 #### 1. 标注实体类
@@ -406,6 +435,7 @@ public interface UserMapperCustom {
 1. 依赖未正确配置（缺少 `provided` 作用域）
 2. IDE 未启用注解处理器
 3. Maven 编译插件配置禁用了注解处理
+4. 未继承 Parent、在 JDK 23 及以上编译且未开启注解处理
 
 **解决方案**：
 
@@ -433,6 +463,8 @@ public interface UserMapperCustom {
     </configuration>
 </plugin>
 ```
+
+未继承 Parent 且使用 JDK 23 及以上编译时，还需设置 `<maven.compiler.proc>full</maven.compiler.proc>` 或在 `compilerArgs` 中传 `-proc:full`，推荐写法见[编译器版本与注解处理开关](#编译器版本与注解处理开关)。
 
 1. **IDE 配置（IntelliJ IDEA）**：
    - Settings → Build, Execution, Deployment → Compiler → Annotation Processors
@@ -486,21 +518,25 @@ public class UserServiceExt extends UserServiceImpl {
 
 ### 问题4：多个实体类生成冲突
 
-**症状**：多个实体类使用相同的配置，生成的类名冲突
+**症状**：编译报重复类型或无法创建生成文件的错误。
 
-**解决方案**：
+**原因**：只有“最终生成包 + 去除 `DO` 后缀后的类名 + 配置后缀”完全相同时才冲突。处理器不会覆盖、跳过或自动重命名，重复全限定名直接导致编译失败。
 
-1. 为不同的实体类使用不同的包路径配置
-2. 使用不同的命名后缀
+- 不冲突：同包的 `User`、`Order` 使用同一组包与后缀，生成 `UserMapper`、`OrderMapper` 等六个不同类型。
+- 冲突：同包的 `UserDO` 与 `User` 使用相同生成包和后缀，都会生成 `UserMapper`、`UserService`、`UserServiceImpl`。
+
+**解决方案**：对冲突实体之一，让 Mapper、Service、ServiceImpl 三类产物都不再重名。只调整 Mapper 不能避让 Service 与 ServiceImpl 的冲突。
 
 ```java
-// Entity 1
-@AutoMybatis(mapperPackage = "mapper", servicePackage = "service")
-public class User { }
+// 两者同包，各自三类产物均不重名
+@AutoMybatis(
+        mapperPackage = "legacy.mapper",
+        serviceSuffix = "LegacyService",
+        serviceImplSuffix = "LegacyServiceImpl")
+public class UserDO { }
 
-// Entity 2
-@AutoMybatis(mapperPackage = "dao", servicePackage = "facade")
-public class Order { }
+@AutoMybatis
+public class User { }
 ```
 
 ## 与手动编写代码的对比
@@ -550,7 +586,7 @@ public class User {
 - **MyBatis-Plus** - ORM 框架
 - **Java Annotation Processing** - 编译期代码生成
 - **Maven** - 构建工具
-- **Java**: 17+
+- **Java**: 17+（已实测 JDK 17、21；JDK 25 未验证）
 
 ## 📚 相关文档
 
