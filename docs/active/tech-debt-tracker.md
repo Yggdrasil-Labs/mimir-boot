@@ -86,6 +86,7 @@ updated: 2026-10-31
 - **来源与范围**：2026-10-31 v2.4.0 设计审查发现，经用户确认登记。Parent 规划按构建 JDK 激活 `proc=full` 等 JDK profile 行为，下游及本仓库 reactor 均可能在 JDK 21/25 构建。
 - **现状与风险**：CI 固定 `JAVA_VERSION: '17'`（`.github/workflows/ci.yml`），构建模型检查也要求 Java 17；JDK≥21 的注解处理器发现、profile 激活与质量默认值只由 Parent 计划 T3 的一次性矩阵覆盖，后续版本可能静默退化。
 - **实施发现（2026-11-01）**：Parent 实施的 T3 回归中，本仓库 reactor 在本地 Temurin 21.0.7 下 Log、Exception、MyBatis、Dubbo 四个 Starter 的测试失败：Mockito inline mock maker 报 ByteBuddy 无法自附加当前 VM，另有 Surefire `StackWalkerStrategy` 在 Attach Listener 线程初始化失败。以 `main` 源码在同一 JDK 下对照，失败模块与测试类相同，属于既有问题，与 Parent 改动无关；JDK 17 下全部通过。本机无 JDK 25，未覆盖。
+- **补充（2026-11-01）**：MyBatis Processor 的 `supportedSourceVersionFollowsRunningCompiler` 回归用例只有在 JDK≥21 运行时才能发现支持源版本被重新固定为 RELEASE_17；CI 仅跑 JDK 17 时该用例对此类回退无检出能力。
 - **处置与验收**：评估在 CI 增加 JDK 21/25 的编译与测试矩阵或等价的定期任务；验证类版本、处理器生成结果、四模式默认值在各 JDK 下与 JDK 17 一致。引入矩阵前须先定位并修复上述 JDK 21 测试附加失败（例如显式配置 Mockito agent 或调整测试 JVM 参数），否则高版本矩阵无法通过。
 - **目标版本**：待排期。
 - **复查条件**：Parent JDK profile、编译器或处理器配置调整，或 CI JDK 基线变化时。

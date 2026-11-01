@@ -4,7 +4,7 @@ status: in-progress
 branch: main
 created: 2026-10-23
 released: null
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # v2.4.0 版本记录
@@ -86,3 +86,12 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **发布前隔离消费者**：仓库外临时工作根内，以文件仓库部署的 Flatten Parent 驱动独立消费者（`relativePath` 为空，解析 POM 哈希与发布件一致），在 JDK 17/21 覆盖 PB-01～PB-08 正常、组合与负向场景；生产者签名/不签名、`-Pci`、JDK 21 及 Maven 3.9.16 生成的 Parent 内容一致。测试密钥签名下每构件一个签名。
 - **回归**：JDK 17 下 `quality --mode full --source worktree` 全部通过。
 - **未覆盖**：本机无 JDK 25；JDK 21 下本仓库四个 Starter 测试的既有附加失败已补记 [TD-048](../tech-debt-tracker.md#td-048-jdk-高版本构建回归)；真实私服、Central 通道与公开仓库消费者未验证，未发布。
+
+### BOM、Processor、Common 实施（2026-11-01，分支 `feat/v2.4.0-parent-build`）
+
+- **范围**：按 [BOM 计划](./bom-dependencies/plan.md)、[Processor 计划](./mybatis-processor/plan.md)、[Common 计划](./common-contracts/plan.md) 实施。BOM 新增 `lombok-mapstruct-binding` 0.2.0、`poi-ooxml`（复用 `poi.version`）、`cola-component-dto` 5.0.0 三个受管坐标并补接入说明；处理器改为 `SourceVersion.latestSupported()`，README 修正冲突说明并补 JDK≥23 非 Parent 消费者开启处理的说明；Common 新增 `ErrorDefinition` 与 `R.failCode`/两类 `fromError`、`PageResult.map`、optional COLA 的 `ColaPageConverters`、不可变 `batch` 模型及 v2.3.0 API 兼容测试。未改 Web、Exception、MyBatis，C-07 的 Jackson 接入与 HTTP/联合验收仍归对应需求。
+- **许可证核对**：binding 为 MIT（缓存 POM），`cola-component-dto` 5.0.0 为 LGPL-2.1（缓存 POM），只以 optional 进入 Common，不向下游传递。
+- **模块测试**：JDK 17 下 Common 与处理器模块测试通过；处理器新增用例在 JDK 21 上于旧实现失败（支持源版本告警）、新实现通过。批量模型的 Jackson 不变量用例含前置自检，确认测试 mapper 确实经私有构造创建条目。
+- **发布前隔离消费者**：仓库外工作根内，以生产者独立本地库将整个 reactor 部署到文件仓库，消费者使用独立本地库并经该文件仓库解析（BOM 发布 POM 哈希与文件仓库一致）。JDK 17/21 下：仅导入 BOM 的消费者依赖树不含三坐标、运行期无 COLA；继承 Parent 与仅导入 BOM 两类消费者完成 xlsx 文本/数值读写、Lombok+MapStruct 映射与 COLA 转换运行；消费者 `dependencyManagement` 覆盖 binding 为 0.1.0 生效；缺失版本构建失败并给出缺失坐标。OOXML 传递有效版本：log4j-api 2.23.1（由 Boot 自 2.24.3 管理）、commons-io 2.21.0、commons-compress 1.28.0、xmlbeans 5.3.0。处理器消费者（Parent/仅 BOM）默认生成三类产物；JDK 21 以 release 21 编译无支持版本告警；`proc=none` 时无生成文件，引用生成类型则编译失败。
+- **二进制兼容**：以 Central 上 v2.3.0 Common 正式制品（sha1 校验一致）编译的旧消费者，换用本次 Common 运行，R 两种 fail、success 与两类异常各四种构造输出与基线一致，无链接错误。
+- **未覆盖**：本机无 JDK 25，“仅导入 BOM + JDK 25”未开启处理的负向、按 README profile 开启 `proc=full` 的正向以及 JDK 25 处理器矩阵均未验证；仅导入 BOM 的处理器消费者未测 release 21 目标。C-07 受管 JSON、Exception HTTP 200/500 与 null 消息 JSON 形态待 Web/Exception 联合验收；MyBatis `IPageColaConverters` 待实施。未发布。

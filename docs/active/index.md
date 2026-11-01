@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # 活跃版本索引
@@ -11,6 +11,6 @@ updated: 2026-10-30
 
 | 版本 | 阶段 | 入口 |
 |---|---|---|
-| v2.4.0 | 实施中：Parent 已实施并完成部分本地验证，其余 8 项待实施 | [版本记录](./v2.4.0/release.md)、[版本级 Brainstorm](./v2.4.0/brainstorm.md) |
+| v2.4.0 | 实施中：Parent、BOM、Processor、Common 已实施并完成部分本地验证，其余 5 项待实施 | [版本记录](./v2.4.0/release.md)、[版本级 Brainstorm](./v2.4.0/brainstorm.md) |
 
 v2.3.0 的五项需求及版本记录已于 2026-10-23 移入[归档目录](../archive/v2.3.0/index.md)，发布复核见[版本记录](../archive/v2.3.0/release.md)。v2.4.0 是本轮规划目标，当前开发版本仍以[根 POM](../../pom.xml) 的 `revision` 为准；未解决事项继续由[技术债台账](./tech-debt-tracker.md)跟踪。
