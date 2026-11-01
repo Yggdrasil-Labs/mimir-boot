@@ -21,4 +21,11 @@ class ErrorCodeTest {
         assertNull(ErrorCode.fromCodeOrNull("not-exist"));
         assertNull(ErrorCode.fromCodeOrNull(null));
     }
+
+    @Test
+    void error_code_is_an_error_definition() {
+        ErrorDefinition definition = ErrorCode.PARAM_ERROR;
+        assertEquals("00002", definition.getCode());
+        assertEquals("参数错误", definition.getMessage());
+    }
 }

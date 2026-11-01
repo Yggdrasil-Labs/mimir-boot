@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.ErrorDefinition;
 
 class RTest {
 
@@ -84,5 +85,75 @@ class RTest {
         assertTrue(json.get("success").asBoolean());
         assertFalse(json.get("fail").asBoolean());
         assertEquals(7, json.size());
+    }
+
+    @Test
+    void failCode_uses_definition_code_and_default_or_override_message() {
+        R<Serializable> byDefault = R.failCode(definition("ORDER_NOT_FOUND", "订单不存在"));
+        R<Serializable> overridden =
+                R.failCode(definition("ORDER_NOT_FOUND", "订单不存在"), "订单 123 不存在 {} %s");
+        R<Serializable> nullOverride = R.failCode(definition("ORDER_NOT_FOUND", "订单不存在"), null);
+
+        assertEquals("ORDER_NOT_FOUND", byDefault.getCode());
+        assertEquals("订单不存在", byDefault.getMessage());
+        assertNull(byDefault.getData());
+        assertNotNull(byDefault.getTimestamp());
+        assertFalse(byDefault.isSuccess());
+        assertTrue(byDefault.isFail());
+        assertEquals("订单 123 不存在 {} %s", overridden.getMessage());
+        assertEquals("订单不存在", nullOverride.getMessage());
+    }
+
+    @Test
+    void failCode_allows_null_default_and_keeps_blank_override() {
+        assertNull(R.failCode(definition("E1", null)).getMessage());
+        assertNull(R.failCode(definition("E1", null), null).getMessage());
+        assertEquals("", R.failCode(definition("E1", "d"), "").getMessage());
+        assertEquals("  ", R.failCode(definition("E1", "d"), "  ").getMessage());
+    }
+
+    @Test
+    void failCode_keeps_non_blank_code_untrimmed() {
+        R<Serializable> r = R.failCode(definition(" 00000 ", "m"));
+        assertEquals(" 00000 ", r.getCode());
+        assertFalse(r.isSuccess());
+        assertEquals("20001", R.failCode(ErrorCode.DATA_NOT_FOUND).getCode());
+    }
+
+    @Test
+    void failCode_rejects_invalid_definition() {
+        assertThrows(IllegalArgumentException.class, () -> R.failCode(null));
+        assertThrows(IllegalArgumentException.class, () -> R.failCode(null, "m"));
+        assertThrows(IllegalArgumentException.class, () -> R.failCode(ErrorCode.SUCCESS));
+        for (String code : new String[] {null, "", " \t", "00000"}) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> R.failCode(definition(code, "m"), "x"),
+                    "code=" + code);
+        }
+    }
+
+    @Test
+    void legacy_fail_keeps_lenient_semantics() {
+        R<Serializable> nullMessage = R.fail(null);
+        R<Serializable> successCode = R.fail(ErrorCode.SUCCESS.getCode(), "legacy");
+
+        assertEquals(ErrorCode.FAIL.getCode(), nullMessage.getCode());
+        assertNull(nullMessage.getMessage());
+        assertTrue(successCode.isSuccess());
+    }
+
+    private static ErrorDefinition definition(String code, String message) {
+        return new ErrorDefinition() {
+            @Override
+            public String getCode() {
+                return code;
+            }
+
+            @Override
+            public String getMessage() {
+                return message;
+            }
+        };
     }
 }

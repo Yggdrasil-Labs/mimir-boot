@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 
 import com.yggdrasil.labs.common.exception.ErrorCode;
+import com.yggdrasil.labs.common.exception.ErrorDefinition;
 
 import lombok.Data;
 
@@ -106,6 +107,38 @@ public class R<T extends Serializable> implements Serializable {
      */
     public static <T extends Serializable> R<T> fail(String message) {
         return new R<>(ErrorCode.FAIL.getCode(), message, null);
+    }
+
+    /**
+     * 按错误定义创建失败响应，使用默认消息
+     *
+     * @param error 错误定义，code 不能为空白或成功码
+     * @param <T> 数据类型
+     * @return 失败响应
+     * @since 2.4.0
+     */
+    public static <T extends Serializable> R<T> failCode(ErrorDefinition error) {
+        return failCode(error, null);
+    }
+
+    /**
+     * 按错误定义创建失败响应
+     *
+     * @param error 错误定义，code 不能为空白或成功码
+     * @param message 覆盖消息，为 null 时使用默认消息（默认消息也允许为 null）
+     * @param <T> 数据类型
+     * @return 失败响应
+     * @since 2.4.0
+     */
+    public static <T extends Serializable> R<T> failCode(ErrorDefinition error, String message) {
+        if (error == null) {
+            throw new IllegalArgumentException("error 不能为 null");
+        }
+        String code = error.getCode();
+        if (code == null || code.isBlank() || ErrorCode.SUCCESS.getCode().equals(code)) {
+            throw new IllegalArgumentException("error.code 不能为空白或成功码: " + code);
+        }
+        return new R<>(code, message != null ? message : error.getMessage(), null);
     }
 
     /**

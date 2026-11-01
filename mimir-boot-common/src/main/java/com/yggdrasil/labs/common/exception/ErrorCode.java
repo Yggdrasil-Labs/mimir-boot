@@ -11,7 +11,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum ErrorCode {
+public enum ErrorCode implements ErrorDefinition {
 
     // ==================== 通用错误码 ====================
 

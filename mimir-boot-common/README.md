@@ -62,6 +62,28 @@ throw new SystemException("10000", "系统错误", cause);
 // 参数校验请使用 Spring Validation 并在各自项目中处理
 ```
 
+#### 按错误定义创建（v2.4.0）
+
+业务错误枚举实现 `ErrorDefinition` 后，可通过命名工厂创建失败响应或异常；内置 `ErrorCode` 也已实现该接口。
+
+```java
+public enum OrderError implements ErrorDefinition {
+    ORDER_NOT_FOUND("ORDER_NOT_FOUND", "订单不存在");
+    // 构造方法与 getCode()/getMessage() 省略
+}
+
+R<OrderVO> r = R.failCode(OrderError.ORDER_NOT_FOUND);                 // 默认消息
+R<OrderVO> r2 = R.failCode(OrderError.ORDER_NOT_FOUND, "订单 123 不存在"); // 覆盖消息
+throw BizException.fromError(OrderError.ORDER_NOT_FOUND);
+throw SystemException.fromError(OrderError.ORDER_NOT_FOUND, null, cause); // 默认消息 + cause
+```
+
+- 工厂只创建对象，不自动抛出；`BizException` 与 `SystemException` 按调用方选择创建，不根据 code 自动切换，经异常 Starter 处理时仍分别为 HTTP 200、500。
+- 错误定义为 null，或 code 为 null、空白、精确的 `00000` 时抛 `IllegalArgumentException`；其他 code 原样保留，不 trim（例如 `" 00000 "` 允许且不视为成功）。
+- 覆盖消息非 null 时原样采用（包括 `""`、空白，不做 `{}`/`%s` 格式化）；为 null 或未提供时使用默认消息，默认消息也为 null 时结果 message 为 null。经 Web 默认空值策略（`write-nulls=false`）输出时 JSON 不含 `message` 键，开启 write-nulls 才输出 `"message": null`。
+- 旧入口保持不变：`R.fail(String)`、`R.fail(String, String)` 及两类异常的四个构造仍可用，`R.fail(null)` 仍可编译，新入口的校验不追溯旧入口。
+- `ErrorDefinition` 表示可复用的错误定义，`IException` 表示已发生的异常实例。二者签名相同但不可互换：异常的消息可能已被覆盖，不应反向当作错误定义；错误枚举也不应实现 `IException`。
+
 #### 错误码枚举
 
 - **ErrorCode** - 错误码枚举（通用/系统/业务/权限/网络/第三方服务）
@@ -76,6 +98,8 @@ return R.fail("20001", "用户不存在");
 ```
 
 `R<T>` 和 `PageResult<T>` 的类型参数都必须实现 `Serializable`；下方示例中的 `User` 需满足该类型约束。
+
+**JSON 中的 `fail` 字段**：Common 单独使用或手工创建的 `ObjectMapper` 序列化 `R` 时同时输出 `success` 与 `fail`，Common 不改变这一行为。v2.4.0 规划由 Web Starter 让受管 mapper 默认只输出 `success`（前提为 Servlet 应用且 `mimir.boot.web.enabled=true`，提供 `mimir.boot.web.json.include-legacy-fail=true` 过渡开关，业务自定义 `R` MixIn 优先；非 Servlet 应用或关闭 Web 时共享 mapper 仍输出 `fail`）。该能力尚待 Web Starter 实施，以 [Web Starter README](../mimir-boot-starters/mimir-boot-starter-web/README.md) 的实际说明为准。
 
 ### 3. 分页
 
@@ -133,6 +157,60 @@ PageResult<User> result = PageResult.of(users, totalCount, pageIndex, pageSize);
 - `PageResult.of(data, totalCount, pageIndex, pageSize)` - 创建分页结果
 - `PageResult.empty(pageIndex, pageSize)` - 创建空分页结果
 - `PageResult.empty(PageRequest)` - 从分页请求创建空分页结果
+- `pageResult.map(mapper)` - 逐条映射为新的分页结果（v2.4.0）
+
+**逐条映射（`map`）：**
+
+```java
+PageResult<UserVO> voPage = userPage.map(UserVO::from);
+```
+
+- 返回新的结果对象与新的可变列表，不修改源对象；六个分页元数据按原值复制（包括 null 或不一致的值），不重新计算。
+- 源数据为 null 时结果数据仍为 null；null 元素不交给函数并原位保留，函数返回 null 也原位保留。
+- mapper 为 null 时抛 `IllegalArgumentException`（空页同样如此）；函数抛出的异常原样传播，后续记录不再处理，已产生的副作用不回滚。
+- 输出类型仍须实现 `Serializable`。
+
+**转换为 COLA `PageResponse`（optional）：**
+
+Common 以 optional 方式依赖 `com.alibaba.cola:cola-component-dto`，只声明 Common 不会获得 COLA。使用转换工具时需自行声明（版本由 BOM 管理）：
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cola</groupId>
+    <artifactId>cola-component-dto</artifactId>
+</dependency>
+```
+
+```java
+PageResponse<User> same = ColaPageConverters.toCola(userPage);
+PageResponse<UserVO> mapped = ColaPageConverters.toCola(userPage, UserVO::from); // UserVO 无需 Serializable
+```
+
+- 先校验后映射：source/mapper 为 null，或 `totalCount` 为 null/负数、`pageIndex`/`pageSize` 为 null/小于 1、任一值超过 `Integer.MAX_VALUE` 时抛 `IllegalArgumentException`，映射函数调用 0 次，不返回 COLA 失败响应。
+- 结果 `success=true`，`errCode`/`errMessage` 为 null；总数、页码、页大小按原值保留，页码超过总页数也允许；总页数由 COLA 计算，源对象的派生字段不复制。
+- 映射的 null/顺序/异常语义与 `map` 相同；源数据为 null 时 COLA 读取为空列表。
+- 不使用 `ColaPageConverters` 的代码无需 COLA，`R`、`PageResult`、异常与批量模型都不暴露 COLA 类型。Common 不感知 MyBatis 的 `IPage`；`IPage` 到 COLA 的转换由 MyBatis Starter 负责（v2.4.0 规划，待实施）。
+
+### 3.1 批量结果（v2.4.0）
+
+`com.yggdrasil.labs.common.batch` 提供不可变的完整批量结果，只承载已完成的逐项结果，不执行任务、不决定事务或重试。
+
+```java
+List<BatchItemResult<OrderVO>> items = new ArrayList<>();
+items.add(BatchItemResult.success(0, "order-1", vo));
+items.add(BatchItemResult.failure(1, "order-2", OrderError.ORDER_NOT_FOUND));
+items.add(BatchItemResult.failure(null, "order-3", OrderError.ORDER_NOT_FOUND, "订单 order-3 不存在"));
+
+return R.success(BatchResult.of(items)); // 请求已处理完，逐项状态决定业务结果
+```
+
+- 每项至少提供一种关联：非 null 的 `index` 必须非负；`index` 为 null 时 `inputId` 必须为非空白文本。两者可同时提供，`inputId` 允许重复。
+- 成功项可携带 data（允许 null），code/message 为 null；失败项遵循上文错误定义的 code 与消息规则，data 为 null，只保存文本，不保存异常或堆栈。
+- `BatchResult.of(items)` 按传入顺序保存不可修改快照，拒绝 null 列表或 null 条目；不接收原始输入总数，不校验条目是否完整、序号是否连续或唯一，完整性由业务执行方保证。
+- `totalCount`、`successCount`、`failureCount` 与 `status`（`EMPTY`/`ALL_SUCCESS`/`PARTIAL_SUCCESS`/`ALL_FAILED`）在读取时由条目派生，每次读取为 O(n)；需要频繁读取时请自行缓存返回值。
+- 修改创建时传入的列表不影响结果，`getItems()` 返回的列表拒绝增删改；不深复制成功数据。
+- 支持 Java 序列化往返（前提是数据对象图可序列化）和普通 Jackson 输出，JSON 字段为 `totalCount`、`successCount`、`failureCount`、`status`、`items`，条目字段为 `index`、`inputId`、`success`、`data`、`code`、`message`；空值是否出现由 mapper 的空值策略决定。
+- **不承诺跨服务 JSON 反序列化**：`R<BatchResult<T>>` 只作为服务端输出模型。下游通过 Feign 等 HTTP 客户端读取时，请按上述 JSON 字段自建接收 DTO，不要直接以 `BatchResult` 作为反序列化目标。
 
 ### 4. 枚举
 

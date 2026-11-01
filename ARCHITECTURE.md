@@ -101,7 +101,7 @@ graph TD
 |------|------|------|
 | `mimir-boot-parent` | 统一 Maven 插件版本、构建 profile、质量门禁（Spotless、JaCoCo、Enforcer） | BOM（dependencyManagement） |
 | `mimir-boot-bom` | 统一第三方与本仓库模块版本，对齐 Spring Boot/Cloud 版本矩阵 | 无 |
-| `mimir-boot-common` | 全仓库共享基础约定：annotation、constant、dto、enums、exception、page、response、util | 无 |
+| `mimir-boot-common` | 全仓库共享基础约定：annotation、batch、constant、dto、enums、exception、page、response、util | 无（COLA DTO 为 optional，仅 `ColaPageConverters` 使用，不向下游传递） |
 | `starter-log` | 日志自动配置：Logback 模板、敏感信息脱敏、TraceId/SpanId、访问日志 | common |
 | `starter-exception` | 全局异常处理、统一错误响应格式 | common |
 | `starter-web` | Web 层增强：CORS、Trace 追踪、响应体自动填充 traceId | common, starter-exception |
@@ -119,7 +119,7 @@ graph TD
 
 ## 当前能力边界
 
-- `mimir-boot-common` 新增三个 `fromCodeOrNull` 查询方法，既有 `fromCode` fallback 保持兼容。
+- `mimir-boot-common` 新增三个 `fromCodeOrNull` 查询方法，既有 `fromCode` fallback 保持兼容。v2.4.0 起新增 `ErrorDefinition` 命名工厂、`PageResult.map`、optional COLA 转换与不可变批量结果；COLA 只以 optional 方式进入 Common，依赖方向不变。
 - 日志脱敏以完整配置快照处理接入方显式启用的 10 组字段型规则，支持普通赋值和带引号键名的文本标量；它不解析完整 JSON，对象/数组值不保证完整保护，边界与调用方处置要求见[日志 Starter README](./mimir-boot-starters/mimir-boot-starter-log/README.md#敏感信息脱敏)。
 - MongoDB 驱动族由 Spring Boot BOM 管理为 5.0.1；消费者显式覆盖时应保持驱动族版本一致并自行验证。
 - RPC 适配层使用调用级上下文与异步生命周期；旧 `RpcTracerBridge.extract` 和 Hook 直调入口继续保留兼容。

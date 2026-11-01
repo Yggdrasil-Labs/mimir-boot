@@ -3,6 +3,7 @@ package com.yggdrasil.labs.common.page;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+import java.util.function.Function;
 
 import lombok.Data;
 
@@ -107,5 +108,31 @@ public class PageResult<T extends Serializable> implements Serializable {
      */
     public static <T extends Serializable> PageResult<T> empty(PageRequest pageRequest) {
         return empty(pageRequest.getPageIndex(), pageRequest.getPageSize());
+    }
+
+    /**
+     * 逐条映射数据并返回新的分页结果
+     *
+     * <p>六个分页元数据按原值复制（包括 null 或不一致的值），不重新计算；源数据为 null 时结果数据仍为 null，否则返回新的可变列表。 null
+     * 元素不交给映射函数并原位保留，函数返回的 null 同样保留；函数抛出的异常原样传播，后续记录不再处理。
+     *
+     * @param mapper 映射函数，不能为 null
+     * @param <U> 目标数据类型
+     * @return 新的分页结果
+     * @since 2.4.0
+     */
+    public <U extends Serializable> PageResult<U> map(Function<? super T, ? extends U> mapper) {
+        if (mapper == null) {
+            throw new IllegalArgumentException("mapper 不能为 null");
+        }
+        PageResult<U> result = new PageResult<>();
+        result.data = PageItems.map(data, mapper);
+        result.totalCount = totalCount;
+        result.pageIndex = pageIndex;
+        result.pageSize = pageSize;
+        result.totalPages = totalPages;
+        result.hasNext = hasNext;
+        result.hasPrevious = hasPrevious;
+        return result;
     }
 }

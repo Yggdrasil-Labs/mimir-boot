@@ -49,6 +49,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- COLA DTO：仅 ColaPageConverters 使用，optional 不向下游传递，版本由 BOM 管理 -->
+        <dependency>
+            <groupId>com.alibaba.cola</groupId>
+            <artifactId>cola-component-dto</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -58,6 +65,12 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 模拟 Boot 的参数名模块，验证批量模型经 Jackson 创建器路径时的不变量 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
