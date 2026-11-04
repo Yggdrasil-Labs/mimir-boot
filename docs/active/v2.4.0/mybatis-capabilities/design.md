@@ -126,13 +126,15 @@ public Object plugin(Object target);
 | batch/addBatch与内部/外部flush | 首版不覆盖实际批量执行 | 不监控addBatch，不用仅外部flush代理假称覆盖内部flush |
 | 连接/prepare阶段失败 | 未进入所拦方法，不计时 | 保持异常，但不承诺被本慢日志捕获 |
 
+MyBatis-Plus 3.5.17 的分页 COUNT 按语句 ID 静态缓存 `MappedStatement`，多个工厂使用相同 Mapper ID 时可能沿用先前工厂的配置。框架默认分页插件从当前工厂获取显式 COUNT 语句，并为自动 COUNT 构造使用当前配置的语句，不保留额外工厂缓存；应用自行提供分页插件时需自行处理上游缓存限制。
+
 ### IC-3：SQL.SLOW 内容、值保护与故障隔离（MB-02）
 
 Logger固定 `LoggerFactory.getLogger("SQL.SLOW")`，WARN输出单个JSON对象作为消息，无额外Throwable参数。新增内部不可变payload，不复用SQL.JSON载荷。
 
 | 字段 | 值/含义 |
 |---|---|
-| `statementId` | 已配置MappedStatement ID；长度上限512字符；含控制字符或超限时固定 `<unknown>`，不截断回显 |
+| `statementId` | 已配置MappedStatement ID；长度上限512字符；含控制字符、Unicode行/段分隔符或超限时固定 `<unknown>`，不截断回显 |
 | `operation` | `QUERY`、`UPDATE`、`CURSOR_OPEN` |
 | `elapsedMs` | 非负十进制数，单位ms、最多6位小数；不包含本事件输出耗时 |
 | `thresholdMs` | 生效阈值整数，默认1000 |
@@ -147,24 +149,25 @@ Logger固定 `LoggerFactory.getLogger("SQL.SLOW")`，WARN输出单个JSON对象�
 推荐新增包内 `SlowSqlTextSanitizer`，不改现有SqlLogMaskUtils，不默认输出任何参数、原始标识符或字面量。算法是有界的一次扫描结构模板器，不新增SQL解析库，不承诺模板可重新执行：
 
 - 原输入null/空白→UNAVAILABLE；长度先按String.length检查，>65536直接TOO_LONG并省略，不截断后继续解析。
-- 只支持首关键字为SELECT/INSERT/UPDATE/DELETE的单条常见DML；去除`--`行注释、非嵌套`/*...*/`块注释。可执行注释`/*!`、`/*M!`及未闭合/嵌套注释→整条省略。
-- 单引号字符串接受SQL标准`''`转义，整个替换`?`；含反斜杠、未闭合引号→整条省略。双引号、反引号、方括号、美元引号、JDBC转义块、非ASCII token或存储过程→UNSUPPORTED并省略。不存在“解析失败还保留前半句”的回退。
+- 只接受首关键字为SELECT/INSERT/UPDATE/DELETE的有限单条DML文法，并要求完整消费到输入末尾；表达式/子查询嵌套最多32层，别名必须显式使用AS。未覆盖的合法SQL同样省略，不影响业务执行。去除有明确分隔符的`--`行注释和非嵌套`/*...*/`块注释；有歧义的注释终止符、可执行注释`/*!`、`/*M!`、`/*T!`及未闭合/嵌套注释→整条省略。
+- 单引号字符串接受普通SQL标准`''`转义，整个替换`?`；含反斜杠、未闭合引号、连续三个单引号或与标识符紧邻的引号前缀→整条省略。连续三个单引号与部分方言的三引号字符串有歧义，因此少量标准转义写法也保守省略。双引号、反引号、方括号、美元引号、JDBC转义块、非ASCII token或存储过程→UNSUPPORTED并省略。不存在“解析失败还保留前半句”的回退。
 - 标识符token采用ASCII字母/下划线起始、其后字母数字下划线；只有精确匹配固定关键词白名单才输出大写常量，其他标识符全部替换`?`。白名单固定为 `SELECT INSERT INTO VALUES UPDATE SET DELETE FROM WHERE AND OR NOT IS IN LIKE BETWEEN EXISTS DISTINCT AS JOIN LEFT RIGHT INNER OUTER ON GROUP BY HAVING ORDER ASC DESC LIMIT OFFSET FETCH FIRST NEXT ROWS ONLY UNION ALL CASE WHEN THEN ELSE END`，按ASCII大小写不敏感匹配。`TRUE`、`FALSE`、`NULL` 不属于白名单，和其他非白名单标识符一样，无论出现位置或大小写均整体替换为`?`；因此 `INSERT INTO t(flag) VALUES(TRUE)` 的布尔token被替换，`WHERE x IS NULL` 结构等价于 `WHERE ? IS ?`。数字token整体替换`?`，不把输入切片原样写出。
 - 保留运算/分隔符白名单 `? ( ) , . = < > ! + - * / %`，组合运算符仅`<= >= <> !=`；其余符号拒绝。允许末尾1个分号但不输出，任何其他分号拒绝多语句。注释去除后空白归一化，所有输出片段仅来源于固定白名单和`?`，不携带原始值。
-- 对安全模板做4096字符上限，超限使用长度包含在上限内的固定后缀（一个空格加 `[truncated]`）；截断发生在替换完成后。最终JSON由序列化器转义，禁止物理换行/控制字符进入消息；原输入从未作为异常诊断字段传给logger。
+- 模板输出上限为4096字符，超限使用长度包含在上限内的固定后缀（一个空格加 `[truncated]`）；达到输出上限后仍须扫描和验证完整输入，避免隐藏尾部非法语法。最终JSON由序列化器转义，禁止物理换行/控制字符进入消息；原输入从未作为异常诊断字段传给logger。
 
 该方案有意牺牲表/列名、布尔/null实际值与方言细节，只保留有限结构信息，以开发者语句ID配合结构模板定位；业务动态生成的MappedStatement ID也必须避免放入秘密，框架无法判断一个合法类名样式ID是否由秘密拼成。SQL.JSON原有保护边界不因此增强。
 
 审查补充（推荐，保持上述安全设计不变，仅明确取舍）：D-57只要求输出“脱敏SQL”，并未要求保留可读SQL；本模板是该要求的保守实现，代价是常见语法的可读性或可用性明显下降，README须列出：
 
-- 函数名不在白名单，结构保留但名称丢失，如 `COUNT(*)`→`?(*)`、`NOW()`→`?()`；
+- 非白名单函数名的结构保留但名称丢失，如 `COUNT(*)`→`?(*)`、`NOW()`→`?()`；固定白名单中的 `LEFT` 和 `RIGHT` 用作函数名时仍保留；
 - 以 `WITH` 开头的CTE首关键字不受支持→`UNSUPPORTED`整条省略；
+- `t.*`、省略AS的别名、`CAST`和窗口函数等未覆盖语法，以及超过32层的嵌套→整条省略；
 - PostgreSQL `::` 类型转换、`||` 字符串拼接、JSON运算符（`->`、`->>`、`@>` 等）及其他不在符号白名单内的运算符→整条省略；
 - 双引号/反引号/方括号标识符、美元引号、`/*!` 可执行注释、存储过程/多语句→整条省略。
 
 因此慢事件排障主要依赖 `statementId` 定位到Mapper语句，再结合源码或经授权的其他诊断手段；不得为提高可读性在本需求内放宽白名单或增加原文回退。
 
-失败隔离：提取、模板构建、JSON和常规appender异常不得替换返回值/业务异常，也不通过另一个logger打印原文。存在既有业务异常时，以原异常优先，即便日志路径再失败也重抛原对象；无既有业务异常时吞掉可恢复Exception/LinkageError，VirtualMachineError/ThreadDeath等致命错误继续传播，不承诺JVM失效时可用。不新增递归诊断或参数toString；可能丢失慢事件，不能以“未抛错”宣称已送达。
+失败隔离：提取、模板构建、JSON和常规appender异常不得替换返回值/业务异常，也不通过另一个logger打印原文。日志路径发生可恢复Exception/LinkageError时予以隔离；存在既有业务异常时重抛原对象，否则保留原返回值。VirtualMachineError/ThreadDeath等致命错误始终传播，即使此前已有业务异常也不吞掉，不承诺JVM失效时可用。不新增递归诊断或参数toString；可能丢失慢事件，不能以“未抛错”宣称已送达。
 
 审查补充（推荐）：此处吞掉LinkageError与IC-6禁止捕获LinkageError并不矛盾，二者职责不同。慢日志是业务调用之外的旁路观测，日志后端、JSON序列化或appender插件缺类/版本冲突时，若传播LinkageError会把一次已成功的SQL变成业务失败，违背MB-02“常规日志失败不改变业务结果”；且该错误只影响观测，丢失慢事件即可。COLA适配是消费者显式调用的主路径，返回值本身就是业务结果，缺少DTO属于消费者类路径配置错误，吞掉只能伪造失败/空分页并掩盖问题，因此必须传播。两处均不捕获VirtualMachineError等致命错误。
 

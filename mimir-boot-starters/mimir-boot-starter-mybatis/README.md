@@ -10,6 +10,7 @@
 - ✅ **审计字段自动填充**（createBy、createTime、updateBy、updateTime）
 - ✅ **字段加解密支持**（String、Integer、Long 类型）
 - ✅ **SQL 日志结构化输出**（JSON 格式，支持敏感信息脱敏）
+- ✅ **独立慢 SQL 日志**（阈值可配置，默认不输出 SQL 原值）
 - ✅ **分页工具类**（与通用分页模型无缝转换）
 
 ## 快速开始
@@ -317,6 +318,53 @@ public class UserQuery {
 | `EMAIL` | 邮箱脱敏 | `user@example.com` → `u****@example.com` |
 | `CUSTOM` | 自定义替换字符 | 使用 `@SensitiveField` 的 `replacement` 属性指定 |
 
+#### 慢 SQL 日志
+
+慢 SQL 与上述 `SQL.JSON` 分别配置。默认对受支持的语句调用计时，耗时严格大于 1000 毫秒时向 `SQL.SLOW` 记录一条 WARN，不要求开启 JSON SQL 日志或 Mapper DEBUG 日志：
+
+```yaml
+mimir:
+  boot:
+    mybatis:
+      slow-sql:
+        enabled: true
+        threshold-ms: 1000
+```
+
+`enabled` 默认 `true`；`threshold-ms` 默认 `1000`，合法范围为 1 至 9223372036854 毫秒，关闭记录时也会校验。配置在启动时绑定，不承诺动态刷新。将 `SQL.SLOW` 的 WARN 级别关闭也会跳过计时及模板处理。可以提供自己的 `SlowSqlInterceptor` Bean 替换默认实例；若使用子类，须按 MyBatis 插件约定在子类重新声明 `@Intercepts`，覆盖 query、update 和 queryCursor 三种签名。
+
+日志消息为单行 JSON，含 `statementId`、`operation`、`elapsedMs`、`thresholdMs`、`timingScope`、`outcome`、`errorType`、`sql` 和 `sqlStatus`。`ERROR` 是执行结果字段，日志级别仍为 WARN。失败时只记录异常类名，不记录异常消息、堆栈、参数或原始 SQL；常规日志故障不会改变 SQL 的返回值或异常。不要在动态构造的 `statementId` 中放入秘密。
+
+`sql` 是安全结构模板，并非可执行 SQL：表名、列名、字面量和参数替换为 `?`；函数名通常也被替换，例如 `COUNT(*)`，但固定白名单中的 `LEFT` 和 `RIGHT` 即使作为函数名也会保留。`IS NULL` 的 `NULL` 会被替换。模板器只接受有限的单条 DML 文法，别名须显式使用 `AS`，嵌套深度最多 32 层。不支持的语法或原始 SQL 超过 65536 个字符时，`sql` 为 `<omitted>` 并由 `sqlStatus` 说明原因。省略的情况包括 `WITH` 开头的 CTE、`t.*`、带引号的标识符、`CAST`、窗口函数、PostgreSQL `::`、`||` 和 JSON 运算符、可执行注释及无法明确判断的方言引号或注释。模板生成失败不会回退到原文，也不影响 SQL 本身执行。应根据 `statementId` 定位 Mapper；该保护只适用于 `SQL.SLOW`，不会改变 `SQL.JSON` 的既有脱敏范围。
+
+计时覆盖 `StatementHandler` 的 query、update 和 cursor 创建；query 包含结果映射与嵌套调用，cursor 不包含后续遍历。分页 count 和主查询、`selectKey` 与外层更新分别计时，嵌套耗时可能重叠，不能相加为数据库独占时间。缓存命中未执行语句时不记录；连接获取、prepare、batch 添加和 flush 不在本能力覆盖范围。
+
+框架默认分页插件使用当前工厂配置创建 COUNT 语句，避免 MyBatis-Plus 3.5.17 的静态 COUNT 缓存在多个工厂之间复用配置。应用自行提供 `MybatisPlusInterceptor` 或分页插件时，需自行处理该上游缓存限制；否则相同 Mapper 语句 ID 的 COUNT 可能沿用先前工厂的拦截器或阈值。
+
+框架只为 **MyBatis-Plus 自动创建的 `SqlSessionFactory`** 自动接入一次慢 SQL 拦截器，包括使用路由 DataSource 的单工厂场景。应用声明任何自建 `SqlSessionFactory` 后，MyBatis-Plus 不再创建默认工厂；自建工厂未安装拦截器时不会产生慢 SQL 记录。如果工厂已经注入完整 `Interceptor[]` 并调用 `setPlugins`，慢 SQL 拦截器已包含在内，不应重复添加：
+
+```java
+import javax.sql.DataSource;
+import org.apache.ibatis.plugin.Interceptor;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.springframework.context.annotation.Bean;
+import com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean;
+
+@Bean
+SqlSessionFactory sqlSessionFactory(DataSource dataSource, Interceptor[] interceptors)
+        throws Exception {
+    MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
+    factory.setDataSource(dataSource);
+    // 完整数组同时保留 MybatisPlusInterceptor 等其他插件
+    factory.setPlugins(interceptors);
+    return factory.getObject();
+}
+```
+
+`setPlugins` 会替换原插件数组，不能只传慢 SQL 拦截器而丢掉分页等插件。也可在工厂构建前使用 MyBatis-Plus 3.5.17 的 `MybatisSqlSessionFactoryBean.addPlugins(...)` 追加；或在工厂构建后、任何 SQL 执行之前使用 `Configuration.addInterceptor(...)` 追加。后者不允许与 SQL 运行并发修改插件链。上述方式均需先检查是否已注册，避免重复记录；其他 MyBatis-Plus 版本需自行复核 `addPlugins` 行为。
+
+选择 Mimir Log 容器预设时 `SQL.SLOW` 输出到标准输出，服务器预设输出到 `sql.log`；未使用预设时由应用日志配置决定。同步输出或异步队列满时可能阻塞，配置为非阻塞时可能丢弃；产生日志事件不等于采集或持久化成功。
+
 ### 5. 分页工具类
 
 提供便捷的分页转换工具：
@@ -346,6 +394,43 @@ public class UserController {
     }
 }
 ```
+
+#### 转换为 COLA 分页
+
+COLA DTO 是可选依赖，使用转换工具的项目须显式引入 `com.alibaba.cola:cola-component-dto`（版本可由 Mimir BOM 管理）：
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cola</groupId>
+    <artifactId>cola-component-dto</artifactId>
+</dependency>
+```
+
+未导入 Mimir BOM 的项目需要自行指定兼容版本。
+
+```java
+import com.alibaba.cola.dto.PageResponse;
+import com.yggdrasil.labs.mybatis.page.IPageColaConverters;
+
+PageResponse<User> sameItems = IPageColaConverters.toCola(page);
+PageResponse<UserDto> mapped = IPageColaConverters.toCola(page, UserDto::from);
+```
+
+两个重载复制记录列表并保留分页元数据；映射时 null 元素原位保留，映射异常原样传播。`total` 必须非负，`current` 和 `size` 必须为正，三者均不能超过 `Integer.MAX_VALUE`。转换不查询数据库，也不推断总数。Common 模块的 `ColaPageConverters` 用于 `PageResult`，此处工具用于 `IPage`。
+
+#### 不重复执行 COUNT
+
+如果业务已经单独查到总数，可关闭分页自动 COUNT，并在转换前设置真实总数：
+
+```java
+long total = userMapper.selectCount(null);
+Page<User> page = new Page<>(1, 20, false);
+userMapper.selectPage(page, null);
+page.setTotal(total);
+PageResponse<User> result = IPageColaConverters.toCola(page);
+```
+
+如果只需要前 N 条，可使用 `new Page<>(1, n, false)` 查询并直接返回 `page.getRecords()`。此时没有查询总数，不能将默认的 `total=0` 当作真实总数返回。
 
 ## 配置参数
 
