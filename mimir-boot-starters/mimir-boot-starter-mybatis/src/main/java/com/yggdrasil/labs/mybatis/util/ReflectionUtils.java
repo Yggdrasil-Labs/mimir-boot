@@ -26,8 +26,20 @@ public final class ReflectionUtils {
      * @return 分页拦截器实例，如果无法创建则返回 null
      */
     public static InnerInterceptor createPaginationInnerInterceptor() {
+        return createPaginationInnerInterceptor(MybatisConstants.PAGINATION_INTERCEPTOR_CLASS_NAME);
+    }
+
+    /** 创建框架默认分页拦截器；可选分页依赖缺失时仍保持反射加载边界。 */
+    public static InnerInterceptor createConfigurationScopedPaginationInnerInterceptor() {
+        return createPaginationInnerInterceptor(
+                "com.yggdrasil.labs.mybatis.page.ConfigurationScopedPaginationInnerInterceptor");
+    }
+
+    private static InnerInterceptor createPaginationInnerInterceptor(String className) {
         try {
-            Class<?> clazz = Class.forName(MybatisConstants.PAGINATION_INTERCEPTOR_CLASS_NAME);
+            // 先检查可选的上游父类，防止加载扩展类时因缺少父类产生 NoClassDefFoundError。
+            Class.forName(MybatisConstants.PAGINATION_INTERCEPTOR_CLASS_NAME);
+            Class<?> clazz = Class.forName(className);
             Object instance = clazz.getDeclaredConstructor().newInstance();
             return (InnerInterceptor) instance;
         } catch (ClassNotFoundException e) {

@@ -53,7 +53,8 @@ public class MybatisPlusAutoConfiguration {
         // 分页拦截器（使用反射加载，避免编译时依赖）
         // 使用 @ConditionalOnClass 确保类存在时才创建 Bean
         // 注意：即使有 @ConditionalOnClass，在类加载时仍可能失败，所以使用反射更安全
-        InnerInterceptor pagination = ReflectionUtils.createPaginationInnerInterceptor();
+        InnerInterceptor pagination =
+                ReflectionUtils.createConfigurationScopedPaginationInnerInterceptor();
         if (pagination != null) {
             interceptor.addInnerInterceptor(pagination);
             if (LOGGER.isDebugEnabled()) {
