@@ -1,3 +1,4 @@
 com.yggdrasil.labs.log.config.LogMaskAutoConfiguration
 com.yggdrasil.labs.log.web.AccessLogAutoConfiguration
 
+com.yggdrasil.labs.log.config.MdcTaskExecutionAutoConfiguration

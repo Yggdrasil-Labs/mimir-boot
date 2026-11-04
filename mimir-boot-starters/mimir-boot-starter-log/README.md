@@ -308,7 +308,7 @@ server:
 
 ### 敏感信息脱敏
 
-**说明**：默认不启用任何预置规则；可按需启用预置规则或配置自定义规则
+**说明**：使用 Starter 自带的原日志配置（未选择下文的日志预设）时，默认不启用任何预置规则，可按需启用预置规则或配置自定义规则；选择日志预设时缺省启用 `password`、`token`、`secret`、`api_key` 四组，见[日志预设](#日志预设v240)。
 
 **示例1：使用预置规则**
 
@@ -358,7 +358,7 @@ mimir:
 | `bank_card_number` | 纯银行卡号 | 6222021234567890 |
 | `email_address` | 纯邮箱地址 | <user@example.com> |
 
-启用后，10 组字段型预置规则——`password`、`token`、`secret`、`api_key`、`account`、`id_card`、`phone`、`bank_card`、`email`、`name`——都会扫描普通 `key=value`/`key: value` 日志和带引号键名的文本标量，例如 `{"account":"alice","tail":"sentinel"}` 会变成 `{"account":"****","tail":"sentinel"}`。该功能按日志文本边界工作，不解析或验证完整 JSON；默认仍不启用任何规则。
+启用后，10 组字段型预置规则——`password`、`token`、`secret`、`api_key`、`account`、`id_card`、`phone`、`bank_card`、`email`、`name`——都会扫描普通 `key=value`/`key: value` 日志和带引号键名的文本标量，例如 `{"account":"alice","tail":"sentinel"}` 会变成 `{"account":"****","tail":"sentinel"}`。该功能按日志文本边界工作，不解析或验证完整 JSON；原日志配置下默认仍不启用任何规则。
 
 字段别名沿用不检查左边界的后缀匹配，启用 `account` 时 `not_account=alice` 也会被遮罩，而 `account_extra=alice` 保持不变。空引用值 `account=""` 会变成 `account="****"`；数字、布尔值和 `null` 按文本替换，输出不保证仍是合法 JSON。未闭合的带引号值会一直脱敏到消息末尾。字段扫描后，纯值、自定义和编程式正则仍会处理完整扫描结果，因此可匹配替换文本、普通日志文本以及扫描器未完整保护的复合值残余。
 
@@ -378,6 +378,89 @@ List<String> allPatterns = SensitiveDataConverter.getAllPresetPatternNames();
 // 清空自定义规则
 SensitiveDataConverter.clearCustomPatterns();
 ```
+
+### 日志预设（v2.4.0）
+
+两个可选的 Logback 预设通过 `logging.config` 选择，通常由部署公共模板设置；不设置时仍使用 Starter 自带的原日志配置，原输出与参数不变。
+
+| 预设 | `logging.config` | 输出 |
+|---|---|---|
+| 容器 | `classpath:com/yggdrasil/labs/log/logback/container.xml` | 所有事件只写标准输出，不创建日志目录或文件 |
+| 服务器 | `classpath:com/yggdrasil/labs/log/logback/server.xml` | 只写 `${LOG_PATH}/${spring.application.name}` 下四类文件，不写标准输出 |
+
+**路由**（同一事件在同一出口只出现一次）：
+
+| Logger | 容器 | 服务器 | 默认级别 |
+|---|---|---|---|
+| 普通业务 | 标准输出 | `info.log`；ERROR 另归档到 `error.log` | 继承 root（INFO） |
+| `access.log` | 标准输出 | `access.log` | INFO，不向 root 叠加 |
+| `SQL.JSON` | 标准输出 | `sql.log` | INFO，不向 root 叠加 |
+| `SQL.SLOW` | 标准输出 | `sql.log` | WARN，不向 root 叠加 |
+
+- root 在所有 profile 下默认 INFO；`prod`、`produce`、`production` 下 13 个第三方前缀（`org.springframework`、`org.apache`、`com.alibaba`、`com.baomidou`、`org.mybatis`、`com.zaxxer`、`com.mysql`、`org.postgresql`、`org.hibernate`、`io.netty`、`io.lettuce`、`redis.clients`、`org.reflections`）为 WARN。`logging.level.*` 在 XML 之后生效，可覆盖这些级别，例如 `logging.level.org.springframework=INFO`。
+- `info.log` 不设 INFO 过滤，显式调低 logger 级别后 DEBUG 也会写入；`error.log` 只收 ERROR。
+- 声明 `SQL.*` Logger 不会开启 SQL 日志生产，SQL 日志开关与消息结构由 MyBatis Starter 决定。
+- 运行期配置刷新（如 Spring Cloud 的 `/actuator/refresh`、配置中心推送）不会改变已发布的脱敏规则和预设参数；修改日志预设或 mask 配置需要重启生效。
+- 早期处理器以最低优先级执行，以便读取配置中心等处理器加入的 `logging.config` 与参数；若其他处理器同样以最低优先级加入这些配置，二者先后不作保证，建议由部署模板或 `application.yml` 提供。
+- 识别规则：只接受大小写敏感的 `classpath:` 前缀（其后可带一个 `/`）和首尾空白。复制的 XML、`classpath*:`、`file:`、文件系统路径、无前缀或前缀大小写不同的写法都不会启用预设缺省规则和预设参数；其中以预设文件名结尾的写法会在启动日志输出一条 INFO 提示。
+- 两个预设依赖 Logback。应用改用其他日志后端（或禁用 Boot 日志系统）且未选择预设时，启动不受影响；显式选择预设时启动失败并提示需要 Logback 后端。
+- 配置资源不存在或 XML 错误时由 Boot 报错终止启动，不会静默回退到其他配置。新预设不屏蔽 Logback 状态输出，便于发现文件权限等可检测故障。
+
+**服务器参数**（仅服务器预设绑定与校验；容器预设不读取，挂载的服务器专用值不影响容器启动）：
+
+| 属性 | 默认值 | 范围 / 说明 |
+|---|---|---|
+| `mimir.boot.log.file.max-size` | `100MB` | 四类文件单文件上限，1MB–1GB |
+| `mimir.boot.log.file.max-history` | `30` | info/access/sql 保留天数，1–3650 |
+| `mimir.boot.log.file.total-size-cap` | `10GB` | info/access/sql 各自总量（不是三者合计），不小于 max-size，最大 10TB |
+| `mimir.boot.log.file.error-max-history` | `60` | error 保留天数，1–3650 |
+| `mimir.boot.log.file.error-total-size-cap` | `5GB` | error 总量，不小于 max-size，最大 10TB |
+| `mimir.boot.log.async.queue-size` | `1024` | 四个异步队列各自容量，1–1048576 |
+| `mimir.boot.log.async.never-block` | `false` | 队列满时默认等待；`true` 时不阻塞，**包括 ERROR 在内的事件都可能丢失** |
+| `mimir.boot.log.async.max-flush-time` | `1s` | 每个异步 appender 停止时的排空等待，1ms–60s |
+
+越界或无法绑定时启动失败，诊断只包含属性名与合法范围，不回显配置值。默认策略保留日志、可能阻塞业务线程；队列满且输出端持续阻塞时没有延迟上界。停机等待不保证进程被强杀或介质故障时全部排空。
+
+```yaml
+# 服务器部署模板示例
+logging:
+  config: classpath:com/yggdrasil/labs/log/logback/server.xml
+mimir:
+  boot:
+    log:
+      file:
+        max-size: 50MB
+        max-history: 7
+      async:
+        queue-size: 2048
+```
+
+**预设下的脱敏**：
+
+- 未配置 `mimir.boot.log.mask.enabled-patterns` 时缺省启用 `password`、`token`、`secret`、`api_key` 四组，从日志正式初始化后（早于业务 Bean 创建）即生效，异常消息与原因链同样处理。
+- 显式列表整体替换缺省值（例如只配 `password` 就只遮蔽 password），显式空列表（YAML `[]`、空字符串）关闭预置规则；`custom-patterns` 与预置规则相加。以上对 `SpringApplication.setDefaultProperties` 中的单规则、空列表、索引写法同样适用，更高优先级配置源的显式列表整体覆盖默认属性中的列表。
+- 预设下未知规则名、非法正则，或自定义规则/替换字符含无法解析的 `${...}` 占位符会让启动失败，诊断只包含属性名与序号（替换字符只含属性名）；原日志配置沿用既有处理（忽略未知名、告警并跳过非法正则）。需要匹配字面 `${` 时请写作 `\$\{`。
+- 预设的规则由 XML 在日志初始化时写入 LoggerContext 属性，转换器从中读取。业务 Bean 创建期间调用 `reloadConfig`、`addCustomPattern`、`clearCustomPatterns` 不会丢失四组缺省。
+- 显式空列表或空替换字符与同名 camelCase 系统属性（如 `-Dmimir.boot.log.mask.enabledPatterns=...`）同时存在时，上下文刷新前及之后调用 `reloadConfig` 会回退到该系统属性的规则，刷新发布后为空列表；请避免同时设置。
+- 上下文刷新后直接调用 `publishConfiguration` 发布的规则，若之后运行期新建了含 `%mask` 的 layout，可能被 LoggerContext 中刷新时写入的规则替换；请优先通过 mask 配置调整规则。
+- 在 logback.xml `<property>` 或系统属性中以逗号分隔多条规则时，`()`、`{}`、`[]` 内的逗号（如 `\d{15,18}`）不会被拆分；需要匹配字面逗号的顶层位置请写作 `\,`。
+- 启动失败时 Boot 输出的“Application run failed”堆栈及关闭阶段日志仍按本次规则脱敏；预设配置校验失败时，进程中已生效的规则保持不变。
+- 下一次选择预设的独立启动只使用自身配置；改回原日志配置时，在其上下文刷新前可能沿用上一应用的规则，刷新后为自身规则（与 2.3.0 一致）。
+- 未开启 legacy bootstrap 时，运行期配置刷新（`ConfigDataContextRefresher`）推送非法预设规则会使该次刷新失败，当前规则不变。
+- `ApplicationStartingEvent`、ConfigData 加载期间的日志和标准错误原始输出不在保护范围内。
+
+**同一 JVM 中的多个应用**：
+
+- 父应用管理唯一的日志生命周期。普通子上下文应在 `refresh` 前 `setParent(parent)` 复用父日志，并先关闭子上下文再关闭父应用；子上下文刷新、失败或关闭不改变父应用的级别、输出和脱敏规则。同一类加载器中另行 `SpringApplication.run` 启动的子应用有自己的 Boot 日志生命周期，其启动、失败与重试不受此保护；需要独立日志生命周期时请使用独立进程。
+- 测试框架缓存多个配置不同、均未关闭的应用时，启动不会失败，各应用的配置绑定与校验按自身执行；脱敏规则对整个 JVM 生效，以最后完成上下文刷新的应用为准：
+  - 未引入 Spring Cloud 上下文组件时，后者沿用首个应用已加载的日志输出与文件/队列参数，只有其 `logging.level.*` 会作用于共享的 LoggerContext；其刷新前仍为首个应用的规则。
+  - 引入 `spring-cloud-context`（包括经 Feign Starter 传递引入）时，后者按自身 `logging.config` 与参数重新加载输出；选择预设时重新加载后即为其规则。
+  - 需要不同日志配置或稳定输出断言的测试请使用 `@DirtiesContext` 关闭前序上下文，或放在独立 JVM 中运行。
+- 开启 Spring Cloud legacy bootstrap（`spring.cloud.bootstrap.enabled`、`spring.config.use-legacy-processing` 或 `spring-cloud-starter-bootstrap`）时，规则按主应用最终 Environment（含 `application.yml`）选择并发布，bootstrap 应用不发布；bootstrap 阶段的输出不在承诺的保护范围内。`logging.config` 经系统属性、环境变量等 bootstrap 可见的源指定时，bootstrap 阶段以预设默认文件/队列参数加载，并按四组缺省脱敏。判定依据是名为 `bootstrap` 的属性源，应用自行注册同名属性源会被视为 bootstrap 应用。
+
+**输出故障**：容器预设经 `System.out` 输出，底层写入错误可能被 `PrintStream` 吞掉而没有 Logback 错误状态；服务器预设保留 Logback 实际检测到的文件错误。两者都不会切换到其他输出作为备用。没有错误状态不代表日志已写出或已被采集，采集是否成功需在采集端核对。
+
+**性能**：字段型规则只在 `=`/`:` 分隔符附近检查字段名，开销随分隔符数量与消息长度增长。本地基准（Temurin 17、Ryzen 9 8945HX）中，四组规则的纯转换开销约为：1KiB 消息 0.3–0.6µs、64KiB 约 12µs、8KiB 异常栈文本约 16µs；在同步文件输出的完整链路中，1KiB 消息吞吐约为关闭规则时的 89%–90%（5 轮中位数）。实际开销取决于消息内容与输出链路，高吞吐场景请结合实际部署压测。
 
 ### 日志格式说明
 
@@ -436,6 +519,42 @@ public class UserController {
     }
 }
 ```
+
+**跨线程传播（v2.4.0）**：`MdcUtil` 本身不负责跨线程传递。Boot 自动配置的默认业务执行器（`applicationTaskExecutor`，覆盖 `execute`/`submit` 及使用它的 `@Async` 方法）在显式开启 `mimir.boot.log.mdc.enabled=true` 后会传递提交时的完整 MDC，任务结束后恢复工作线程原上下文（默认关闭）；其他执行器请显式使用统一入口：
+
+```java
+import com.yggdrasil.labs.log.task.MdcTasks;
+
+// 在提交处包装：捕获当前全部 MDC 键，执行后整体恢复
+executor.execute(MdcTasks.wrap(() -> doWork()));
+Future<Result> future = executor.submit(MdcTasks.wrap(() -> compute()));
+
+// 自建 ThreadPoolTaskExecutor：业务装饰器在内层，MDC 在最外层
+@Bean
+ThreadPoolTaskExecutor orderExecutor(ObjectProvider<TaskDecorator> decorators) {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setTaskDecorator(MdcTasks.compose(decorators.getIfUnique()));
+    return executor;
+}
+```
+
+- 默认执行器的自动接入只在以下条件全部满足时生效：未声明任何 `Executor` Bean，未自定义 `ThreadPoolTaskExecutorBuilder`/`TaskExecutorBuilder`，平台线程模式，且显式配置 `mimir.boot.log.mdc.enabled=true`。默认 `false`（不配置时完全沿用 Boot 默认执行器，避免升级后静默改变 `@Async` 任务的 MDC 行为）。
+- 业务装饰器的选择与 Boot 一致：唯一 `TaskDecorator` 或唯一 `@Primary` 会与 MDC 组合执行一次；存在多个且没有唯一候选时，与 Boot 一样不执行任何业务装饰器，只传播 MDC。不会按顺序自动组合全部装饰器。
+- 存在其他执行器定制器（新式 `ThreadPoolTaskExecutorCustomizer` 或旧式 `TaskExecutorCustomizer`，包括只调整线程池参数的）时，自动接入保守退让，不改变业务定制，并在启动日志输出一条 INFO。需要传播时在你的定制器里调用 `MdcTasks.compose(existing)`：
+
+```java
+@Bean
+ThreadPoolTaskExecutorCustomizer mdcAwareCustomizer(ObjectProvider<TaskDecorator> decorators) {
+    return executor -> {
+        executor.setCorePoolSize(16);
+        executor.setTaskDecorator(MdcTasks.compose(decorators.getIfUnique()));
+    };
+}
+```
+
+- 虚拟线程模式（`spring.threads.virtual.enabled=true`）下不自动接入，启动日志输出一条 INFO。原生 `Thread`、调度任务、自定义 `AsyncConfigurer` 或具名 `@Async` 执行器不会自动传播。
+- 自动接入只作用于 `applicationTaskExecutor` 这一个 Bean；注入 Boot 的 Builder 自建线程池（包括显式设置 `taskDecorator`）不受影响，需要传播时请自行 `MdcTasks.compose`。选定一种接入方式后不要再对同一任务重复 `wrap`；同一包装任务重复执行会重用最初捕获的快照。
+- 只传播 MDC，不创建或恢复 tracing Span；MDC 的实际行为取决于所用日志后端的实现。
 
 **扩展方向**：
 

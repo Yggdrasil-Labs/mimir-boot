@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Mimir 日志预设共享片段（由 container.xml / server.xml 引入）
+    - 文本格式、traceId/spanId 与 %mask/%maskThrowable 脱敏转换
+    - 生产环境（prod | produce | production）将 13 个第三方前缀降为 WARN，可被 logging.level.* 覆盖
+    不使用 NopStatusListener 与 scan，保留 Logback 状态错误输出
+-->
+<included>
+    <conversionRule conversionWord="mask"
+                    class="com.yggdrasil.labs.log.converter.SensitiveDataConverter"/>
+    <conversionRule conversionWord="maskThrowable"
+                    class="com.yggdrasil.labs.log.converter.SensitiveThrowableProxyConverter"/>
+
+    <!-- 脱敏规则：EPP 仅在用户已配置时写入内部键，未配置取 defaultValue（启用列表为四组缺省）；转换器从 Context 属性读取 -->
+    <springProperty scope="context" name="mimir.boot.log.mask.enabledPatterns"
+                    source="mimir.boot.log.internal.mask.enabled-patterns"
+                    defaultValue="password,token,secret,api_key"/>
+    <springProperty scope="context" name="mimir.boot.log.mask.customPatterns"
+                    source="mimir.boot.log.internal.mask.custom-patterns" defaultValue=""/>
+    <springProperty scope="context" name="mimir.boot.log.mask.replacement"
+                    source="mimir.boot.log.internal.mask.replacement" defaultValue=""/>
+
+    <property name="LOG_PATH" value="${LOG_PATH:-logs}"/>
+    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="application"/>
+    <property name="LOG_DIR" value="${LOG_PATH}/${APP_NAME}"/>
+    <property name="MIMIR_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }%logger{50} - %mask%n%maskThrowable"/>
+    <property name="MIMIR_ACCESS_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %replace(%X{traceId}){'^(.+)$','[$1] ' }%replace(%X{spanId}){'^(.+)$','[$1] ' }- %mask%n%maskThrowable"/>
+    <property name="MIMIR_SQL_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger - %mask%n%maskThrowable"/>
+
+    <springProfile name="prod | produce | production">
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.apache" level="WARN"/>
+        <logger name="com.alibaba" level="WARN"/>
+        <logger name="com.baomidou" level="WARN"/>
+        <logger name="org.mybatis" level="WARN"/>
+        <logger name="com.zaxxer" level="WARN"/>
+        <logger name="com.mysql" level="WARN"/>
+        <logger name="org.postgresql" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="io.netty" level="WARN"/>
+        <logger name="io.lettuce" level="WARN"/>
+        <logger name="redis.clients" level="WARN"/>
+        <logger name="org.reflections" level="WARN"/>
+    </springProfile>
+</included>

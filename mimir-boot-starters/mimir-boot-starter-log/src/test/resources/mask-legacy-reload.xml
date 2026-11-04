@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 测试资源：模拟接入方旧自定义 XML（使用 %mask、不声明 mask 属性），用于验证重载后保留已发布规则 -->
+<configuration>
+    <conversionRule conversionWord="mask"
+                    class="com.yggdrasil.labs.log.converter.SensitiveDataConverter"/>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%-5level %logger - %mask%n</pattern>
+        </encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

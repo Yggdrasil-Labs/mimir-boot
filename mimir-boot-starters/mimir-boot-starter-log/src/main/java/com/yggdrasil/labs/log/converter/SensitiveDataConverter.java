@@ -1,7 +1,11 @@
 package com.yggdrasil.labs.log.converter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,14 +44,86 @@ public class SensitiveDataConverter extends ClassicConverter {
             new AtomicReference<>();
 
     private record MaskConfigurationSnapshot(
-            List<Pattern> patterns, List<String> keyValueFieldNames, String replacement) {}
+            List<Pattern> patterns, FieldNameIndex keyValueFieldNames, String replacement) {}
+
+    /** 字段名按首字符分组的查找表：候选保持原长度降序；ASCII 字母同时登记大小写，其余字符只登记原字符，与逐个比较首字符的语义一致。 */
+    private static final class FieldNameIndex {
+
+        private final String[][] ascii = new String[128][];
+
+        /** 非 ASCII 首字符按升序排列，配合二分查找，避免查找时装箱 */
+        private final char[] otherInitials;
+
+        private final String[][] otherCandidates;
+        private final int maxLength;
+        private final boolean empty;
+
+        private FieldNameIndex(List<String> orderedNames) {
+            Map<Character, List<String>> grouped = new LinkedHashMap<>();
+            int longest = 0;
+            for (String name : orderedNames) {
+                char first = name.charAt(0);
+                grouped.computeIfAbsent(first, key -> new ArrayList<>()).add(name);
+                if (isAsciiLetter(first)) {
+                    grouped.computeIfAbsent((char) (first ^ 32), key -> new ArrayList<>())
+                            .add(name);
+                }
+                longest = Math.max(longest, name.length());
+            }
+            List<Character> others = new ArrayList<>();
+            for (Map.Entry<Character, List<String>> entry : grouped.entrySet()) {
+                if (entry.getKey() < 128) {
+                    ascii[entry.getKey()] = entry.getValue().toArray(String[]::new);
+                } else {
+                    others.add(entry.getKey());
+                }
+            }
+            Collections.sort(others);
+            this.otherInitials = new char[others.size()];
+            this.otherCandidates = new String[others.size()][];
+            for (int i = 0; i < others.size(); i++) {
+                otherInitials[i] = others.get(i);
+                otherCandidates[i] = grouped.get(others.get(i)).toArray(String[]::new);
+            }
+            this.maxLength = longest;
+            this.empty = orderedNames.isEmpty();
+        }
+
+        private String[] candidates(char initial) {
+            if (initial < 128) {
+                return ascii[initial];
+            }
+            int position = Arrays.binarySearch(otherInitials, initial);
+            return position < 0 ? null : otherCandidates[position];
+        }
+    }
 
     private record SensitiveFieldValue(int valueStart, int valueEnd) {}
 
     @Override
     public void start() {
-        CONFIGURATION_CONTEXT.compareAndSet(null, getContext());
+        // 绑定本次真实 Context：全局引用为空时沿用首次绑定，否则只接受 SLF4J 当前的 LoggerContext，
+        // 避免第三方或临时创建的 LoggerContext 抢占；未设置 Context 的实例不改变引用，也不清空已发布快照
+        Context context = getContext();
+        if (context != null
+                && (CONFIGURATION_CONTEXT.get() == null
+                        || context == LoggerFactory.getILoggerFactory())) {
+            synchronized (CONFIGURATION_LOCK) {
+                CONFIGURATION_CONTEXT.set(context);
+                // 预设 XML 经 springProperty 写入 mask 属性：本次配置携带规则，切换到新规则代次；
+                // 不带这些属性的旧 XML 重新加载保留已发布快照（与 2.3.0 一致）
+                if (hasMaskProperties(context)) {
+                    configuration.set(null);
+                }
+            }
+        }
         super.start();
+    }
+
+    private static boolean hasMaskProperties(Context context) {
+        return context.getProperty(MASK_ENABLED_PATTERNS_PROPERTY) != null
+                || context.getProperty(MASK_CUSTOM_PATTERNS_PROPERTY) != null
+                || context.getProperty(MASK_REPLACEMENT_PROPERTY) != null;
     }
 
     @Override
@@ -98,6 +174,14 @@ public class SensitiveDataConverter extends ClassicConverter {
         return names;
     }
 
+    /** 测试钩子：清除快照并恢复全局 Context 引用；生产代码不调用 */
+    static void resetForTest(Context context) {
+        synchronized (CONFIGURATION_LOCK) {
+            configuration.set(null);
+            CONFIGURATION_CONTEXT.set(context);
+        }
+    }
+
     /** 对敏感信息进行脱敏。 */
     public String maskSensitiveData(String message) {
         return message == null || message.isEmpty()
@@ -137,7 +221,7 @@ public class SensitiveDataConverter extends ClassicConverter {
         String resolvedReplacement =
                 replacement == null || replacement.isEmpty() ? DEFAULT_REPLACEMENT : replacement;
         return new MaskConfigurationSnapshot(
-                List.copyOf(patterns), keyValueFieldNames, resolvedReplacement);
+                List.copyOf(patterns), new FieldNameIndex(keyValueFieldNames), resolvedReplacement);
     }
 
     private static List<String> compilePresetPatterns(List<Pattern> target, List<String> names) {
@@ -182,7 +266,7 @@ public class SensitiveDataConverter extends ClassicConverter {
 
     private static List<String> readConfigurationAsList(String key) {
         String value = readConfiguration(key);
-        return value == null || value.isEmpty() ? List.of() : List.of(value.split(","));
+        return value == null || value.isEmpty() ? List.of() : MaskListCodec.split(value);
     }
 
     private static String readConfiguration(String key) {
@@ -212,20 +296,52 @@ public class SensitiveDataConverter extends ClassicConverter {
     }
 
     private static String maskKeyValueFields(
-            String message, List<String> fieldNames, String replacement) {
-        if (fieldNames.isEmpty()) {
+            String message, FieldNameIndex fieldNames, String replacement) {
+        if (fieldNames.empty) {
             return message;
         }
+        // 字段只能以“字段名 + 可选引号 + 空白 + '=' 或 ':'”的形式出现，因此只需在每个分隔符之前、最长字段名长度的窗口内
+        // 按原逐位置规则判断；窗口外的位置不可能匹配，结果与逐字符扫描一致。
+        int maxNameLength = fieldNames.maxLength;
+        int length = message.length();
+        int nextEquals = message.indexOf('=');
+        int nextColon = message.indexOf(':');
         StringBuilder masked = null;
         int copiedUntil = 0;
         int index = 0;
-        while (index < message.length()) {
-            SensitiveFieldValue fieldValue = findSensitiveFieldValue(message, index, fieldNames);
+        while (index < length) {
+            if (nextEquals >= 0 && nextEquals < index) {
+                nextEquals = message.indexOf('=', index);
+            }
+            if (nextColon >= 0 && nextColon < index) {
+                nextColon = message.indexOf(':', index);
+            }
+            int separator =
+                    nextEquals < 0
+                            ? nextColon
+                            : nextColon < 0 ? nextEquals : Math.min(nextEquals, nextColon);
+            if (separator < 0) {
+                break;
+            }
+            int keyEnd = separator;
+            while (keyEnd > index && Character.isWhitespace(message.charAt(keyEnd - 1))) {
+                keyEnd--;
+            }
+            if (keyEnd > index && isQuote(message.charAt(keyEnd - 1))) {
+                keyEnd--;
+            }
+            SensitiveFieldValue fieldValue = null;
+            for (int start = Math.max(index, keyEnd - maxNameLength); start < keyEnd; start++) {
+                fieldValue = findSensitiveFieldValue(message, start, fieldNames);
+                if (fieldValue != null) {
+                    break;
+                }
+            }
             if (fieldValue == null) {
-                index++;
+                index = separator + 1;
             } else {
                 if (masked == null) {
-                    masked = new StringBuilder(message.length());
+                    masked = new StringBuilder(length);
                 }
                 masked.append(message, copiedUntil, fieldValue.valueStart());
                 appendMaskedFieldValue(masked, message, fieldValue.valueStart(), replacement);
@@ -239,7 +355,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     }
 
     private static SensitiveFieldValue findSensitiveFieldValue(
-            String message, int index, List<String> fieldNames) {
+            String message, int index, FieldNameIndex fieldNames) {
         String fieldName = matchingFieldName(message, index, fieldNames);
         if (fieldName == null) {
             return null;
@@ -275,19 +391,17 @@ public class SensitiveDataConverter extends ClassicConverter {
         }
     }
 
-    private static String matchingFieldName(String message, int index, List<String> fieldNames) {
-        char initial = message.charAt(index);
-        for (String fieldName : fieldNames) {
-            if (sameAsciiCase(initial, fieldName.charAt(0))
-                    && message.regionMatches(true, index, fieldName, 0, fieldName.length())) {
+    private static String matchingFieldName(String message, int index, FieldNameIndex fieldNames) {
+        String[] candidates = fieldNames.candidates(message.charAt(index));
+        if (candidates == null) {
+            return null;
+        }
+        for (String fieldName : candidates) {
+            if (message.regionMatches(true, index, fieldName, 0, fieldName.length())) {
                 return fieldName;
             }
         }
         return null;
-    }
-
-    private static boolean sameAsciiCase(char left, char right) {
-        return left == right || ((left ^ 32) == right && isAsciiLetter(left));
     }
 
     private static boolean isAsciiLetter(char value) {

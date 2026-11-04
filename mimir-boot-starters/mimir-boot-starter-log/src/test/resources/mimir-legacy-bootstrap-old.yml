@@ -1,0 +1,6 @@
+# LogLegacyBootstrapIntegrationTest：旧接入者只在主应用配置启用规则
+mimir:
+  boot:
+    log:
+      mask:
+        enabled-patterns: password,token

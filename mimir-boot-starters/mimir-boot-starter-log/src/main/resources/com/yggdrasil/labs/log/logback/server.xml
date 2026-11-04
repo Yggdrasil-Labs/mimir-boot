@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Mimir 服务器日志预设：只写 info/error/access/sql 四类文件，不向标准输出复制
+    选择方式：logging.config=classpath:com/yggdrasil/labs/log/logback/server.xml
+    参数来自 mimir.boot.log.file.* / mimir.boot.log.async.*，经启动早期规范化为内部键；
+    每个 springProperty 自带默认值，无内部源时也可独立加载
+-->
+<configuration>
+    <include resource="com/yggdrasil/labs/log/logback/common.xml"/>
+
+    <springProperty name="MIMIR_FILE_MAX_SIZE" source="mimir.boot.log.internal.file.max-size-bytes" defaultValue="104857600"/>
+    <springProperty name="MIMIR_FILE_MAX_HISTORY" source="mimir.boot.log.internal.file.max-history" defaultValue="30"/>
+    <springProperty name="MIMIR_FILE_TOTAL_SIZE_CAP" source="mimir.boot.log.internal.file.total-size-cap-bytes" defaultValue="10737418240"/>
+    <springProperty name="MIMIR_FILE_ERROR_MAX_HISTORY" source="mimir.boot.log.internal.file.error-max-history" defaultValue="60"/>
+    <springProperty name="MIMIR_FILE_ERROR_TOTAL_SIZE_CAP" source="mimir.boot.log.internal.file.error-total-size-cap-bytes" defaultValue="5368709120"/>
+    <springProperty name="MIMIR_ASYNC_QUEUE_SIZE" source="mimir.boot.log.internal.async.queue-size" defaultValue="1024"/>
+    <springProperty name="MIMIR_ASYNC_NEVER_BLOCK" source="mimir.boot.log.internal.async.never-block" defaultValue="false"/>
+    <springProperty name="MIMIR_ASYNC_MAX_FLUSH_TIME" source="mimir.boot.log.internal.async.max-flush-time-millis" defaultValue="1000"/>
+
+    <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/info.log</file>
+        <encoder>
+            <pattern>${MIMIR_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/%d{yyyy-MM,aux}/info-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>${MIMIR_FILE_MAX_SIZE}</maxFileSize>
+            <totalSizeCap>${MIMIR_FILE_TOTAL_SIZE_CAP}</totalSizeCap>
+            <maxHistory>${MIMIR_FILE_MAX_HISTORY}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/error.log</file>
+        <encoder>
+            <pattern>${MIMIR_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/%d{yyyy-MM,aux}/error-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>${MIMIR_FILE_MAX_SIZE}</maxFileSize>
+            <totalSizeCap>${MIMIR_FILE_ERROR_TOTAL_SIZE_CAP}</totalSizeCap>
+            <maxHistory>${MIMIR_FILE_ERROR_MAX_HISTORY}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="FILE_ACCESS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/access.log</file>
+        <encoder>
+            <pattern>${MIMIR_ACCESS_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/%d{yyyy-MM,aux}/access-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>${MIMIR_FILE_MAX_SIZE}</maxFileSize>
+            <totalSizeCap>${MIMIR_FILE_TOTAL_SIZE_CAP}</totalSizeCap>
+            <maxHistory>${MIMIR_FILE_MAX_HISTORY}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/sql.log</file>
+        <encoder>
+            <pattern>${MIMIR_SQL_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/%d{yyyy-MM,aux}/sql-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <maxFileSize>${MIMIR_FILE_MAX_SIZE}</maxFileSize>
+            <totalSizeCap>${MIMIR_FILE_TOTAL_SIZE_CAP}</totalSizeCap>
+            <maxHistory>${MIMIR_FILE_MAX_HISTORY}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="ASYNC_FILE_INFO" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>${MIMIR_ASYNC_QUEUE_SIZE}</queueSize>
+        <neverBlock>${MIMIR_ASYNC_NEVER_BLOCK}</neverBlock>
+        <maxFlushTime>${MIMIR_ASYNC_MAX_FLUSH_TIME}</maxFlushTime>
+        <appender-ref ref="FILE_INFO"/>
+    </appender>
+
+    <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- 在入队前过滤，非 ERROR 事件不占用 error 队列 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>${MIMIR_ASYNC_QUEUE_SIZE}</queueSize>
+        <neverBlock>${MIMIR_ASYNC_NEVER_BLOCK}</neverBlock>
+        <maxFlushTime>${MIMIR_ASYNC_MAX_FLUSH_TIME}</maxFlushTime>
+        <appender-ref ref="FILE_ERROR"/>
+    </appender>
+
+    <appender name="ASYNC_FILE_ACCESS" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>${MIMIR_ASYNC_QUEUE_SIZE}</queueSize>
+        <neverBlock>${MIMIR_ASYNC_NEVER_BLOCK}</neverBlock>
+        <maxFlushTime>${MIMIR_ASYNC_MAX_FLUSH_TIME}</maxFlushTime>
+        <appender-ref ref="FILE_ACCESS"/>
+    </appender>
+
+    <appender name="ASYNC_FILE_SQL" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>${MIMIR_ASYNC_QUEUE_SIZE}</queueSize>
+        <neverBlock>${MIMIR_ASYNC_NEVER_BLOCK}</neverBlock>
+        <maxFlushTime>${MIMIR_ASYNC_MAX_FLUSH_TIME}</maxFlushTime>
+        <appender-ref ref="FILE_SQL"/>
+    </appender>
+
+    <logger name="access.log" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_ACCESS"/>
+    </logger>
+    <logger name="SQL.JSON" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_FILE_SQL"/>
+    </logger>
+    <logger name="SQL.SLOW" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_FILE_SQL"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC_FILE_INFO"/>
+        <appender-ref ref="ASYNC_FILE_ERROR"/>
+    </root>
+</configuration>

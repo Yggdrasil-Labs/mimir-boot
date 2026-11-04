@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
 
 /**
  * 访问日志自动配置
@@ -52,8 +53,9 @@ public class AccessLogAutoConfiguration {
         registrationBean.setName("accessLogFilter");
         registrationBean.addUrlPatterns("/*");
         registrationBean.setAsyncSupported(true);
-        // 设置较高优先级，确保在其他 Filter 之前执行
-        registrationBean.setOrder(Integer.MIN_VALUE + 1);
+        // 设置较高优先级，确保在其他业务 Filter 之前执行；须位于 Boot ServerHttpObservationFilter
+        // （HIGHEST_PRECEDENCE + 1）之内，写访问日志时 tracing scope 尚未关闭，traceId/spanId 可用
+        registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
 
         return registrationBean;
     }

@@ -78,6 +78,9 @@ class SensitiveDataConverterTest extends BaseUnitTest {
             context.putProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY, null);
             context.putProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, null);
         }
+        // 用例中启动的转换器会重绑全局 Context，恢复为 SLF4J 当前 LoggerContext 并清除快照与缓存
+        SensitiveDataConverter.resetForTest(
+                (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory());
     }
 
     @Test

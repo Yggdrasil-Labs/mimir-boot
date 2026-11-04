@@ -37,6 +37,71 @@
                     </pomElements>
                 </configuration>
             </plugin>
+
+            <!--
+                spring-cloud-context 与 Log4j2 只供 LogIsolatedJvmIntegrationTest 拉起的子 JVM 使用，不进入测试类路径
+                （避免 IDE 与 Maven 运行结果不一致）；构建时按 BOM 管理的版本复制到 target 下，路径经系统属性传给集成测试
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>isolated-legacy-bootstrap-jars</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/isolated-classpath/legacy-bootstrap</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.springframework.cloud</groupId>
+                                    <artifactId>spring-cloud-context</artifactId>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.springframework.security</groupId>
+                                    <artifactId>spring-security-crypto</artifactId>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>isolated-backend-jars</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/isolated-classpath/backend</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.apache.logging.log4j</groupId>
+                                    <artifactId>log4j-core</artifactId>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.apache.logging.log4j</groupId>
+                                    <artifactId>log4j-slf4j2-impl</artifactId>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.apache.logging.log4j</groupId>
+                                    <artifactId>log4j-jul</artifactId>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <mimir.isolated.legacy-bootstrap>${project.build.directory}/isolated-classpath/legacy-bootstrap</mimir.isolated.legacy-bootstrap>
+                        <mimir.isolated.backend>${project.build.directory}/isolated-classpath/backend</mimir.isolated.backend>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -96,6 +161,12 @@
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 子 JVM 中以 JUnit Platform Launcher 运行隔离场景 -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

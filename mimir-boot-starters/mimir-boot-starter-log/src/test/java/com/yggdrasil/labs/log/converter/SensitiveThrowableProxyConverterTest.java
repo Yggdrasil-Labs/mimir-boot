@@ -62,7 +62,8 @@ class SensitiveThrowableProxyConverterTest extends BaseUnitTest {
             context.putProperty(SensitiveDataConverter.MASK_CUSTOM_PATTERNS_PROPERTY, null);
             context.putProperty(SensitiveDataConverter.MASK_REPLACEMENT_PROPERTY, null);
         }
-        SensitiveDataConverter.reloadConfig();
+        SensitiveDataConverter.resetForTest(
+                (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory());
     }
 
     @Test

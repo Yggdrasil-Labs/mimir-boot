@@ -1,0 +1,3 @@
+# LogLegacyBootstrapIntegrationTest：主应用 application 配置选择新预设（bootstrap 应用不可见）
+logging:
+  config: classpath:com/yggdrasil/labs/log/logback/container.xml

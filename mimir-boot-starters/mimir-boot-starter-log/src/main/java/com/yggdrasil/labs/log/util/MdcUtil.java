@@ -13,7 +13,8 @@ import java.util.Map;
  * <ul>
  *   <li>设置和获取上下文信息
  *   <li>支持批量操作
- *   <li>自动传递到子线程（通过自定义 ThreadPoolExecutor）
+ *   <li>本类不负责跨线程传递；任务传播请使用 {@link com.yggdrasil.labs.log.task.MdcTasks} 或 {@link
+ *       com.yggdrasil.labs.log.task.MdcTaskDecorator}
  * </ul>
  *
  * <p>使用示例：
