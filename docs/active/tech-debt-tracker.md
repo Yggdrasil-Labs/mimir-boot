@@ -29,6 +29,8 @@ updated: 2026-10-31
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-047](#td-047-nacos-消费者迁移) | Nacos 配置删除后的消费者迁移 | starter-nacos / 业务配置消费 | 高 | 待规划 | YoungerYang-Y | 2026-10-09 | [拆分与框架关闭记录](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；实际应用迁移范围待核实 |
 | [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](./v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
+| [TD-049](#td-049-旧日志配置按月滚动) | 旧 logback-spring.xml 归档按月滚动 | starter-log | 中 | 待规划 | YoungerYang-Y | 2026-11-02 | [Log 版本记录](./v2.4.0/release.md) |
+| [TD-050](#td-050-log-模块低优先级清理) | Log 模块低优先级清理（MDC 批量设置语义、内部入口可见性等） | starter-log | 低 | 待规划 | YoungerYang-Y | 2026-11-02 | [Log 版本记录](./v2.4.0/release.md) |
 
 ## 债务明细
 
@@ -40,6 +42,7 @@ updated: 2026-10-31
 - **已缓解范围**：框架内部调用已迁移到调用级 scope（证据：`bf493b6`、`2dd1b83`、`4e428e6`）。2026-10-03 补齐旧 extract-only Bridge 默认 scope 对提取期间净修改 MDC 键的回滚，包含提取异常、嵌套及真实 Dubbo 异步完成路径；[本轮计划与验收](../archive/v2.3.0/runtime-debt-followup/plan.md)记录本地证据。无关 MDC 变更保留，scope 必须在创建线程按 LIFO 关闭。
 - **处置与验收**：完成旧入口迁移或废弃，并验证自定义 Bridge 异常、嵌套调用和异步调用后 MDC 均被恢复。
 - **规划进展（2026-10-25）**：v2.4.0 规划讨论中静态检查三个内部业务项目源码，仅 valhalla-project 经 Dubbo Starter 间接使用 RPC Core，未自定义 `RpcTracerBridge`，未调用旧 `extract()` 入口。用户确认在 v2.4.0 将该旧入口改标为 `@Deprecated(forRemoval = true)`，在 README 与升级说明中写明迁移方式，并计划在下一个主版本删除（D-75）；尚未实施，删除前仍需按上述验收条件验证。
+- **实施进展（2026-11-01）**：v2.4.0 已将上述四个旧入口标为 `@Deprecated(since = "2.2.1", forRemoval = true)`，README 补充同步/异步迁移示例；方法签名与行为不变，本条不关闭，下一个主版本删除仅为计划。
 - **目标版本**：待排期。
 - **复查条件**：RPC Trace API 迁移、废弃或相关生命周期调整时，核对公开旧入口和自定义 Bridge 的剩余风险。
 
@@ -62,6 +65,7 @@ updated: 2026-10-31
 - **已缓解范围**：框架内部已改用调用级 invocation，旧直调入口仅为兼容保留（证据：`bf493b6`、`2dd1b83`、`4e428e6`）。
 - **处置与验收**：提供迁移路径和废弃周期；删除或隔离旧入口后，验证正常、异常和清理回调顺序。
 - **规划进展（2026-10-25）**：v2.4.0 规划讨论中静态检查三个内部业务项目源码，未发现自定义 `RpcHook` 或对 `RpcHookChain` 旧 `before`、`after`、`onError`、`cleanup` 的直接调用。用户确认在 v2.4.0 将这些旧入口改标为 `@Deprecated(forRemoval = true)`，在 README 与升级说明中写明迁移到 `open`/`openAsync` 调用级 invocation 的方式，并计划在下一个主版本删除（D-75）；尚未实施，删除前仍需按上述验收条件验证。
+- **实施进展（2026-11-01）**：v2.4.0 已将上述四个旧入口标为 `@Deprecated(since = "2.2.1", forRemoval = true)`，README 补充同步/异步迁移示例；方法签名与行为不变，本条不关闭，下一个主版本删除仅为计划。
 - **目标版本**：待排期。
 - **复查条件**：RPC Hook API 迁移、废弃或回调生命周期调整时，核对旧直调入口的迁移进度。
 
@@ -90,6 +94,28 @@ updated: 2026-10-31
 - **处置与验收**：评估在 CI 增加 JDK 21/25 的编译与测试矩阵或等价的定期任务；验证类版本、处理器生成结果、四模式默认值在各 JDK 下与 JDK 17 一致。引入矩阵前须先定位并修复上述 JDK 21 测试附加失败（例如显式配置 Mockito agent 或调整测试 JVM 参数），否则高版本矩阵无法通过。
 - **目标版本**：待排期。
 - **复查条件**：Parent JDK profile、编译器或处理器配置调整，或 CI JDK 基线变化时。
+
+<a id="td-049-旧日志配置按月滚动"></a>
+
+### TD-049：旧日志配置归档按月滚动
+
+- **来源与范围**：2026-11-02 v2.4.0 Log 预设整体审查发现。旧 `logback-spring.xml` 四个文件 appender 的 `fileNamePattern` 为 `%d{yyyy-MM}/xxx-%d{yyyy-MM-dd}-%i.log.gz`，第一个 `%d` 未标记 `aux`。
+- **现状与风险**：Logback 以第一个非 aux 的 `%d` 作为滚动周期（已用 logback-core 1.5.18 实测主日期为 `yyyy-MM`），因此旧配置按月滚动、`maxHistory` 30/60 实为月数，与注释“保留天数”不符；仅按大小滚动，`totalSizeCap` 成为实际上限。v2.4.0 新预设已改为 `%d{yyyy-MM,aux}`。
+- **处置与验收**：评估将旧 XML 改为 `%d{yyyy-MM,aux}` 的兼容影响（按天滚动后归档数量与清理节奏变化），在版本说明中提示后修复；验证主日期为按天、保留天数生效。
+- **目标版本**：待排期。
+
+<a id="td-050-log-模块低优先级清理"></a>
+
+### TD-050：Log 模块低优先级清理
+
+- **来源与范围**：2026-11-02 v2.4.0 Log 模块第三轮整体审查，均不影响当前正确性。
+- **现状与风险**：
+  - `MdcUtil.putAll` 注释为“批量设置”，实际经 `MDC.setContextMap` 整体替换，会清除已有 traceId/spanId（既有行为，计划写明本轮不改）。
+  - `SensitiveDataConverterInternals` 在 D-101 后只剩测试钩子 `resetForTest(Context)`，仍为 public，下游可调用以清空全局快照、改写 Context 引用。
+  - `MdcTasks.snapshot()` 在 `MDC.getCopyOfContextMap()` 已返回副本后再复制一次。
+  - `MdcTaskExecutionAutoConfiguration` 的 `@EnableConfigurationProperties(MdcPropagationProperties.class)` 注册的 Bean 无读取方，开关仅由 `@ConditionalOnProperty` 决定。
+- **处置与验收**：`putAll` 改为逐项 put 须在版本说明中提示行为变更；测试钩子迁入测试源集（同包访问或反射）；去掉多余拷贝；删除无用注册或改为实际读取。D-101 已完成启动机制简化，`SensitiveDataConverterInternals` 可整体迁入测试源集。
+- **目标版本**：待排期。
 
 ## 历史说明
 

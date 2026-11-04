@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 
 # Log 日志预设与任务上下文实施计划
@@ -161,6 +161,7 @@ Files：
 
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/README.md` — 两预设、完整属性表、默认旧行为、关闭/覆盖、阻塞/丢失、性能与脱敏边界、自建执行器代码例。
 - Create: `src/test/java/com/yggdrasil/labs/log/config/LogRuntimeApplicationIntegrationTest.java` — setDefaultProperties 与 ConfigData 覆盖的早期日志/Bean/刷新后输出、普通子上下文、顺序独立启动、默认 Async 与 MVC 执行器选择。
+- （实施修订）仓库质量门禁只允许单个 Failsafe execution，下述 legacy-bootstrap / backend-compatibility 两个 execution 改由 `LogIsolatedJvmIntegrationTest` 拉起子 JVM 运行 `LegacyBootstrapScenarios`、`BackendCompatibilityScenarios`，专用依赖不进入测试类路径，由 `maven-dependency-plugin:copy` 构建时复制到 `target/isolated-classpath/` 供子 JVM 使用。
 - Create: `src/test/java/com/yggdrasil/labs/log/config/LogBackendCompatibilityIntegrationTest.java` — 用独立 JVM 的实际依赖集合排除 logback-classic/core，选择可运行的替代 SLF4J/Boot 后端，覆盖启动/刷新/关闭、失败事件与 MDC；也覆盖类在场但 Boot 日志禁用/另选。所需替代后端制品仅作测试依赖，不进入发布制品传递依赖。（审查修订）`*IntegrationTest` 由 Failsafe 执行（Parent POM 的 Surefire 排除该后缀），“独立 JVM”指独立 Failsafe execution：仅包含本类，以 `classpathDependencyExcludes` 去掉 `ch.qos.logback:logback-classic`、`ch.qos.logback:logback-core` 与 spring-cloud-context，保留替代后端。
 - Create: `src/test/java/com/yggdrasil/labs/log/config/LogLegacyBootstrapIntegrationTest.java` —（D-100）真实 SpringApplication 开启 `spring.cloud.bootstrap.enabled=true`，`bootstrap.yml` 不含日志设置，`application.yml` 分别选择新预设（无显式规则）与旧配置（显式启用规则）；断言日志正式初始化后、Bean 创建期、刷新后三阶段输出及刷新后 LoggerContext 属性，令牌属于主应用而非 bootstrap 应用，关闭后所有权槽为空。（审查补充）另覆盖：`logging.config` 经系统属性提供新预设（测试后恢复）与经环境变量提供（以自定义 Environment 中同名 `systemEnvironment` 的 `SystemEnvironmentPropertySource` 注入 `LOGGING_CONFIG` 模拟，避免 execution 级环境变量影响同类其他用例），断言 bootstrap 应用加载 XML 无 Logback 配置错误、启动成功、主应用三阶段四组缺省生效；不开启 bootstrap、仅 classpath 含 spring-cloud-context 时启动两个均不关闭的上下文（第二个选择另一新预设及不同 file/async、mask 配置），断言第二个重新加载自身 XML 且参数为 XML 默认值、脱敏仍为所有者规则、启动不失败。ApplicationContextRunner 不经过 SpringApplication 监听器与 bootstrap 流程，不能代替。spring-cloud-context 的 `LoggingSystemShutdownListener` 无条件注册且对每个 SpringApplication 清理日志系统，并带来额外自动配置，因此该类只在含 spring-cloud-context 的独立 Failsafe execution 中运行，不污染本模块其他测试。
 - Modify: `mimir-boot-starters/mimir-boot-starter-log/pom.xml` — （D-100）增加 scope=test 的 `org.springframework.cloud:spring-cloud-context`，版本由 mimir-boot-bom 导入的 Spring Cloud 2023.0.6 BOM 管理（4.1.6），不进入发布制品传递依赖；仅在现有测试依赖不足时补 scope=test 的替代后端依赖；不升级生产依赖。（审查修订）测试执行按 Parent POM 的插件分工配置，不覆盖父级 includes/excludes 语义：
@@ -206,3 +207,156 @@ Acceptance：
 ### 启动所有权补充验收（T1/T5）
 
 内部 bootstrap 关联 SpringApplication 实例、原子令牌与根 Context；只有无活跃所有者的新启动可重置，非所有者 EPP 退出，失败或关闭仅由匹配所有者释放。该约束仅保护 Mimir 状态，不拦截 Boot 失败清理。T1 负责内部身份规则，T5 验证普通子上下文失败/关闭/重建及父关闭后的下一独立启动，结合实际出口、级别与脱敏输出断言；不把独立子 SpringApplication 的失败重试纳入自动通过承诺，也不能只测试 ContextRefreshedEvent 或 Context 引用身份。
+
+## D-101 修订：预设启动机制简化
+
+（2026-11-02 用户批准推进；2026-11-03 经四轮独立审查后，用户接受剩余风险进入实施：文档可能仍有少量表述不一致，Spring Cloud 相关场景尚未在新机制下实测，均由 T7 验收与 Decision Boundary 兜底）行为以 [spec](./spec.md) 与 [design IC-4](./design.md#ic-4-从日志正式初始化起执行凭据字段脱敏) 为准。本节与前文冲突时以本节为准；被替换的前文条目如下，未列出的任务与契约不变。
+
+| 前文条目 | D-101 处理 |
+|---|---|
+| Key Decisions 3 | 保留规则选择；“缺省不写入 Environment”继续成立：未配置时不写 enabled 内部键，由 XML `defaultValue` 提供四组 |
+| Key Decisions 7 | 删除“保留非所有者退出和身份校验”；父子关系改由刷新守卫处理（见本节 Key Decisions） |
+| Key Decisions 9 | 删除“监听器”“内部桥接类”；隔离约束改为：EPP 不在字段/签名/静态初始化中引用 Logback 或转换器类型 |
+| Key Decisions 10（D-100） | “不取得所有权”改为“bootstrap 应用 EPP 不写内部源、刷新不发布” |
+| Key Decisions 11 | 作废 |
+| Key Decisions 12 | `defaultValue` 要求保留并扩展到 3 个 mask 键；刷新判定顺序改为本节 Key Decisions 的守卫 |
+| Behavior Contract“从日志正式初始化起执行凭据字段脱敏”行 | 以本节 Behavior Contract 为准（删除令牌、所有权表述） |
+| T1 Files：`LogbackMaskBootstrap`、`LogPresetBootstrapListener`、spring.factories 监听器条目 | 由 T6 删除 |
+| T1 Acceptance：涉及启动期缓存、所有权槽、取得令牌、空快照窗口、刷新判定顺序（无/有活跃所有者）、守卫测试中的“不取令牌” | 作废，由 T7 验收替代；其余 T1 验收（识别写法、规则选择、数值边界、顺序启动）保留 |
+| T5 中 `LogLegacyBootstrapIntegrationTest` 的“脱敏仍为所有者规则”、forkCount 说明中的“静态所有权槽”、双缓存上下文“沿用首个所有者快照”、README“主应用取得所有权” | 改按本节 Behavior Contract 与 T8 |
+| “启动所有权补充验收（T1/T5）” | 作废 |
+| T1、T5 验收中“新→旧”顺序启动“无规则残留 / 无上轮快照与 Context 残留 / 下一独立启动取得自身配置”的条款 | 改为：新→新、旧→新无残留；新→旧在旧应用刷新后无残留，刷新前允许沿用上一应用规则（F2） |
+| Goal 中“D-100（…所有权）”、Decision Boundary 中“D-100 规定 legacy bootstrap 应用不取得所有权” | 改为“不写内部源、不发布” |
+| T1 Files：EPP（“经隔离桥接直接发布有效快照”）、`LogMaskAutoConfiguration`（①–④ 所有权判定）、`SensitiveDataConverter`（启动期缓存）、`SensitiveDataConverterInternals`（桥接入口） | 以 T6 Files 为准 |
+| T1 Behavior and constraints 中所有权槽、桥接类、直接发布快照 | 以 design IC-4 与 T6 约束为准；Binder 原样绑定、moveToEnd、单位转换等其余约束保留 |
+| T5 Acceptance“验证监听器在未获令牌时也安全” | 作废（监听器已删除） |
+| T5 README 条目“reload 入口会失去所有者规则”“EPP 至根刷新之间改值再 reloadConfig 不生效” | 作废：reload 直接读 Context 属性，该限制不再存在；README 按 T8 改写 |
+
+### D-101 Goal
+
+删除 JVM 级启动所有权状态，由预设 XML 的 `<springProperty scope="context">` 携带早期规则，EPP 只做校验、选择与写内部键；转换器在 Logback 配置加载时切换规则代次。外部行为除 spec 中标注 D-101 的场景外不变。
+
+### D-101 Context
+
+- 一次性验证已证明：`springProperty` 在日志初始化后、Bean 创建期、刷新后三阶段对无配置、逗号串、空字符串、camelCase 写法有效；索引列表（YAML 列表）按用户键读取失效，因此 EPP 必须绑定后写内部键。
+- 本轮已完成：mask 列表属性的无损编码（`SensitiveDataConverterInternals.joinListProperty` / `SensitiveDataConverter.splitListProperty`），自定义正则经 LoggerContext 往返不再被拆坏；本修订直接复用。
+- 被删除组件当前位于 `src/main/java/com/yggdrasil/labs/log/config/`：`LogPresetOwnership`、`LogPresetBootstrapListener`、`LogbackMaskBootstrap`；转换器内 `startupRules` 及 `resetForBootstrap`、`publishStartup`、`publishAndClearStartupRules`、`releaseStartupRules`、`hasStartupRules`。
+- 下文路径相对 `mimir-boot-starters/mimir-boot-starter-log/`。
+
+### D-101 Key Decisions
+
+- D-101：早期规则通过内部键 `mimir.boot.log.internal.mask.enabled-patterns` / `custom-patterns` / `replacement` → `common.xml` 的 `springProperty` → LoggerContext 属性 → 转换器惰性读取；`defaultValue` 为四组 / 空 / 空。三个键仅在用户对应属性已绑定时写入：已绑定的空列表写空字符串（不得写 null，否则 `springProperty` 取 `defaultValue` 使空列表变回四组）；未绑定不写，由 `defaultValue` 兜底。
+- 刷新守卫：仅处理本上下文刷新；Environment 含 `bootstrap` 源时返回；上下文有父且父 Environment 含 `mimirLogPresetResolved` 时返回（bootstrap 父上下文的内部源已由 EPP 移除）（预设应用的普通子上下文不覆盖父规则）；其余发布。
+- `SensitiveDataConverter.start()` 绑定 SLF4J 当前 LoggerContext（或首次绑定）且该 Context 的三个 mask 属性任一非 null 时置空快照，否则保留（F2，2026-11-03 用户选择）；不新增公共 API。
+- 除上述守卫外刷新统一“最后刷新者发布”，不区分所有者。
+- 旧配置不再提前发布（删除 `publishLegacy` 与 `hasMaskProperties`），早期语义回到 2.3.0；旧 `logback-spring.xml` 不修改。
+- 预设校验失败不改变已生效规则。
+
+### D-101 Behavior Contract
+
+| 触发 | 可观察结果 |
+|---|---|
+| 预设、未配置 mask，三阶段输出四类字段 | 均为 `****` |
+| 预设、YAML 列表 / 索引 / 逗号串 / 空串 / camelCase / setDefaultProperties | 三阶段结果与 Binder 绑定结果一致，空列表关闭 |
+| 预设、`custom-patterns` 含 `\d{15,18}` 与字面逗号，Bean 创建期及刷新后 `addCustomPattern` | 自定义与编程式规则同时生效，四组缺省保留 |
+| 预设规则或服务器参数非法 | 启动失败，诊断含属性名与序号、不含值；此前已生效规则不变 |
+| 顺序启动 旧→新、新→新（含复用 Environment） | 新应用三阶段只使用自身规则，无残留内部源或快照 |
+| 顺序启动 新→旧（含复用 Environment） | 旧应用刷新后只使用自身规则；刷新前允许沿用上一应用规则 |
+| 旧配置自定义 XML 含 `%mask`，刷新后以 `publishConfiguration` 发布与 Context 属性不同的规则，再先 `LoggerContext.reset()` 后重新配置该 XML（模拟 `scan=true` 重扫） | 已发布规则保留，与 2.3.0 一致 |
+| 同 JVM 两个存活应用，无 spring-cloud-context | 后者启动成功、自身绑定与严格校验生效；输出出口与文件/队列参数沿用首个应用；后者刷新前为首个应用规则，刷新后为后者规则 |
+| 同 JVM 两个存活应用，含 spring-cloud-context | 后者按自身预设与参数重新加载输出，重新加载后即为后者规则；之后为最后刷新者 |
+| 预设应用启动期间另一线程持续输出 `password=alpha` | 任何已输出行均不含 `alpha`（Boot 初始化期间拒绝的事件不输出，不要求每条都出现） |
+| 预设应用的普通子上下文刷新、失败或关闭 | 父规则不变 |
+| 预设应用 Bean 创建期抛出含 `password=alpha` 的异常导致启动失败；另一启动成功的预设应用关闭回调输出 `token=beta` | 失败堆栈与关闭日志中均为 `****`（真实 SpringApplication） |
+| 运行期以原 SpringApplication 再次调用 EPP（live 内部源随之替换） | 转换器规则不变 |
+| legacy bootstrap，预设经系统属性/环境变量选择、未配置 mask | bootstrap 阶段加载成功且按四组缺省；主应用三阶段四组缺省 |
+| legacy bootstrap，未选预设，`application.yml` 配置旧 mask 规则 | 主上下文刷新后按该配置脱敏，与升级前一致 |
+| 运行期配置刷新推送非法预设规则（ConfigData 刷新） | 该次刷新失败，诊断含属性名与序号、不含原文；当前规则不变 |
+| 自定义正则或替换串含无法解析的 `${` | 启动失败，诊断不含原文；可解析的占位符按解析后值使用 |
+
+### D-101 Task Dependencies
+
+| Task | Depends on | Ownership |
+|---|---|---|
+| T6：启动机制替换 | 无 | log/config 的 EPP、`LogMaskAutoConfiguration`、`LogPresetSupport`、删除的三个类；新增 `MaskListCodec`；converter 静态状态与 Internals；`common.xml`；spring.factories |
+| T7：测试迁移与补充 | T6 | log 模块 `src/test` 中引用被删组件的测试及新增场景 |
+| T8：文档与记录 | T7 | 模块 README、`docs/active/v2.4.0/release.md`、`docs/active/tech-debt-tracker.md`、`docs/active/v2.4.0/brainstorm.md` 决策表 |
+
+顺序执行；T6 完成后主代码可编译但测试会因引用被删类型而失败，T6 与 T7 在同一提交前完成。
+
+### T6：启动机制替换
+
+Files:
+
+- Modify: `src/main/java/com/yggdrasil/labs/log/config/LogPresetEnvironmentPostProcessor.java` — 按 design IC-4“EPP 顺序”重写：去掉所有权、运行登记与桥接调用；移除已存在的 `mimirLogPresetResolved`；预设分支校验后写入数值与 mask 内部键；删除 `publishLegacy`、`hasMaskProperties`。
+- Modify: `src/main/java/com/yggdrasil/labs/log/config/LogMaskAutoConfiguration.java` — 删除所有者分支，统一写属性并 `publishConfiguration`。
+- Modify: `src/main/java/com/yggdrasil/labs/log/config/LogPresetSupport.java` — 增加三个 mask 内部键常量（沿用 `LogPresetProperties.INTERNAL_PREFIX`）。`LogPresetProperties` 仍只负责 8 个数值键，不改动。
+- Modify: `src/main/java/com/yggdrasil/labs/log/converter/SensitiveDataConverter.java` — 删除启动期缓存及其入口；`start()` 按 design 置空快照。
+- Create: `src/main/java/com/yggdrasil/labs/log/converter/MaskListCodec.java` — 不依赖 Logback 的列表编码/拆分，迁出当前 `joinListProperty` / `splitListProperty`，语义不变（`join` 对 null/空列表返回 null）；EPP 写内部键时自行把 null 转为空字符串；EPP、`LogMaskAutoConfiguration` 与转换器共用，EPP 调用时不触发转换器类初始化。
+- Modify: `src/main/java/com/yggdrasil/labs/log/converter/SensitiveDataConverterInternals.java` — 仅保留测试钩子。
+- Modify: `src/main/resources/com/yggdrasil/labs/log/logback/common.xml` — 在最前声明三条 mask `springProperty`。
+- Modify: `src/main/resources/META-INF/spring.factories` — 删除 `ApplicationListener` 条目。
+- Delete: `src/main/java/com/yggdrasil/labs/log/config/LogPresetOwnership.java`、`LogPresetBootstrapListener.java`、`LogbackMaskBootstrap.java`。
+
+Behavior and constraints:
+
+- EPP 不得在字段、签名、静态初始化中引用 Logback/转换器类型；mask 内部键由 EPP 在后端检查通过后的独立方法生成，容器与服务器共用，编码使用 `MaskListCodec`。
+- 选中任一预设时必定 `addFirst` 内部源（可为空 Map），供刷新守卫识别；内部键写入规则见本节 Key Decisions（已绑定才写、空列表写空字符串）；`replacement` 未绑定时不写，由转换器回退 `****`。
+- 严格校验新增：`custom-patterns` 元素或 `replacement` 含 `${` 时按属性名 + 序号报错。
+- EPP 在 bootstrap Environment 中先移除 `mimirLogPresetResolved` 再返回；刷新守卫第 3 条不以上下文 id 判断。
+- 内部源只由 EPP 生成，`addFirst`，不改写公开属性与用户默认属性 Map。
+- `start()` 置空必须在 `CONFIGURATION_LOCK` 内完成，判定按 design IC-4（Context 带 mask 属性才置空）；非 SLF4J 当前 Context 且全局引用已存在时不改变引用和快照。
+
+Acceptance:
+
+- `grep` 主代码无 `LogPresetOwnership`、`LogbackMaskBootstrap`、`LogPresetBootstrapListener`、`startupRules`、`publishLegacy`、`hasMaskProperties`、`resetForBootstrap`、`publishStartup`、`publishAndClearStartupRules`、`releaseStartupRules`、`hasStartupRules`、`isRunning`、`joinListProperty`、`splitListProperty`。
+- 主代码编译通过，`-Xlint` 无新增告警。
+
+### T7：测试迁移与补充
+
+Files:
+
+- Modify: `src/test/java/com/yggdrasil/labs/log/config/LogPresetEnvironmentPostProcessorTest.java` — 删除所有权/运行登记/启动期缓存断言；改为断言内部源内容（选中预设时源必定存在；已绑定列表编码后写入、显式空列表为空字符串、未配置时不含三个 mask 键）与校验失败不触碰快照。
+- Modify: `src/test/java/com/yggdrasil/labs/log/config/LogMaskRefreshOrderTest.java`、`LogRuntimeApplicationIntegrationTest.java`、`LogPresetOutputIntegrationTest.java`、`LogPresetResourceTest.java`、`LegacyBootstrapScenarios.java`、`BackendCompatibilityScenarios.java` — 替换被删类型的重置钩子为 `SensitiveDataConverterInternals.resetForTest`，按新契约改写所有者相关断言。
+- Modify: `src/test/java/com/yggdrasil/labs/log/converter/SensitiveDataConverterStartupTest.java` — 删除缓存用例，新增 `start()` 用例：Context 带 mask 属性时置空、不带时保留已发布快照、非当前 Context 不影响。
+- 同模块可新增测试 helper 或场景方法。
+
+Acceptance（真实 `SpringApplication`，按 Behavior Contract 逐行覆盖）:
+
+- YAML 列表（ConfigData 文件或 `[0]` 索引参数）三阶段只遮蔽所列规则。
+- 同 JVM 双存活应用：无 spring-cloud-context 与含 spring-cloud-context（经 `LogIsolatedJvmIntegrationTest` 子 JVM）各一例，按 Behavior Contract 分别断言出口与规则。
+- 并发输出（按 spec Given）：先启动并关闭一个启用 password 规则的应用，再起线程循环输出 `password=alpha`，随后启动下一个预设应用；从输出线程启动起捕获，到下一应用刷新完成止，断言捕获内容不含 `alpha`。
+- 预设父应用 + 含 Log 自动配置的普通子上下文：子刷新/失败/关闭后父规则不变；须含“容器预设 + 未配置 mask + 子上下文声明不同 mask”组合。
+- 运行期刷新非法规则：以同一 SpringApplication 对含 unknown-rule 的 Environment 调用 EPP 抛出不含原文的异常，转换器规则不变。
+- `${` 校验：custom-patterns 与 replacement 各一例。
+- bootstrap 残留：Environment 同时含 `bootstrap` 源与 `mimirLogPresetResolved` 时 EPP 移除后者且不生成新源；刷新守卫在父 Environment 不含内部源时让旧配置子上下文照常发布。
+- 运行期 ConfigData 刷新：在含 spring-cloud-context 的隔离 JVM 场景中以真实 `ContextRefresher` 推送非法预设规则，断言刷新失败、其他属性未更新、规则不变。
+- 运行期刷新：以同一 SpringApplication 对含不同 mask 值的 Environment 再次调用 EPP 后，转换器规则不变。
+- 含 `System.setProperty("mimir.boot.log.mask.enabledPatterns", ...)` 的用例在 `finally` 中清理。
+- legacy bootstrap 场景沿用现有子 JVM 用例，断言更新为 design 生命周期表。
+- `LogPresetResourceTest` 核对三条 mask `springProperty` 的 `defaultValue`，与既有 8 个数值键一致性检查并列。
+- `./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 0 失败。
+
+### T8：文档与记录
+
+Files:
+
+- Modify: `mimir-boot-starters/mimir-boot-starter-log/README.md` — 删除所有权、缓存窗口、AOT 所有权残留等说明；改写多应用缓存行为（按有/无 spring-cloud-context 区分）；说明刷新前及 reload 时空列表/空替换串可能回退到同名 camelCase 系统属性；说明预设下自定义正则与替换串不得含 `${`（匹配字面量写作 `\$\{`）。说明顺序启动“新→旧”时旧应用刷新前可能沿用上一应用规则；说明刷新后直接调用 `publishConfiguration` 的规则可能在运行期新建 `%mask` layout 时被 Context 属性覆盖。
+- （D-101 已在文档阶段登记于 `docs/active/v2.4.0/brainstorm.md` 决策表，T8 仅在实施结论变化时更新。）
+- Modify: `docs/active/v2.4.0/release.md` — 记录 D-101 范围、验证与未覆盖项。
+- Modify: `docs/active/tech-debt-tracker.md` — TD-050 中随启动机制简化而消失或变化的项同步。
+
+Acceptance:
+
+- README 与 design IC-4 生命周期表一致；仓库内无指向已删类的文档链接。
+
+### D-101 Integration Acceptance
+
+- 模块 `clean verify` 通过；随后按项目规程执行 `bash scripts/engineering.sh quality --mode full --source worktree`。
+- 性能基准不受影响（转换路径未改），不要求重测；若 T6 改动了转换热路径则重跑 `SensitiveDataConverterBenchmark` 的 1KiB 命中/未命中组。
+
+### D-101 Decision Boundary
+
+- 可自行决定：内部常量位置、EPP 内部方法拆分、测试组织与 helper。
+- 须重新对齐：发现某个 spec 场景在新机制下无法满足（尤其 Spring Cloud bootstrap 或含 spring-cloud-context 的多应用）；需要修改旧 `logback-spring.xml`；需要新增公共 API 或改变 `reloadConfig` / `publishConfiguration` 语义。
+- 不在范围：Git 提交、MDC 与访问日志相关改动、TD-050 其余项。

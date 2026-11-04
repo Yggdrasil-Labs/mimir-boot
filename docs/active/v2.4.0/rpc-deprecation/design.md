@@ -29,7 +29,7 @@ RpcTracerBridge 与 RpcHookChain 已有兼容入口及替代生命周期。本�
 
 审查补充：旧 `onError(context, result)` 没有独立 Throwable 参数，异常只能经 `RpcCallResult.getError()` 取得。迁移后 `primaryError` 就是调用方 catch 到、并用于构造 `RpcCallResult.failure(duration, error)` 的同一业务异常实例，与内置 `RpcExecutionTemplate` 的 `completeFailure(RpcCallResult.failure(duration, throwable), throwable)` 一致。`RpcHookInvocation` 与 `RpcAsyncHookInvocation` 的 `completeFailure` 会把 Hook onError/cleanup 抛出的异常 `addSuppressed` 到该对象，调用方随后重抛它；因此它必须非 null（当前实现在 Hook 抛错时会对 null 调用 addSuppressed），没有业务异常时改用同步 `close()` 或异步 `completeWithoutResult()`。异步场景取完成回调收到的失败 Throwable 或回调注册失败时捕获的异常。
 
-推荐内置 MdcRpcTracerBridge、NoopRpcTracerBridge 的旧 extract 覆盖方法同步标记，使静态类型为实现类时也可见警告。2.x 中 extract 仍为抽象接口，新的实现者仍须保留它；不得声称只实现 extractScope 即可编译，也不得让两方法互相委托形成递归。
+推荐内置 MdcRpcTracerBridge、NoopRpcTracerBridge 的旧 extract 覆盖方法同步标记，使静态类型为实现类时也可见警告。~~2.x 中 extract 仍为抽象接口，新的实现者仍须保留它；不得声称只实现 extractScope 即可编译~~（第三轮审查经用户决定改为空默认方法：只实现 extractScope 的 Bridge 可编译且无 removal 警告；覆盖旧方法的实现不受影响）。不得让两方法互相委托形成递归。
 
 审查补充（推荐，修正原“外部实现不强制改写注解”）：按 JLS §9.6.4.6，覆盖 `@Deprecated(forRemoval = true)` 方法本身就是一次“使用”，除非处于 `@SuppressWarnings("removal")` 作用范围或与声明位于同一最外层类，否则产生 removal 警告；覆盖方法自身标 `@Deprecated` 只豁免普通 deprecation 警告，不豁免 removal。因此所有外部 Bridge 实现者即使已迁移 extractScope，仍会因必须覆盖 extract 得到不可避免的 removal 警告，在 `-Werror` 下构建失败。框架不能消除该警告，只能在 README/升级说明中给出示例：覆盖方法加 `@SuppressWarnings("removal")`（必需），可再加 `@Deprecated(since = "2.2.1", forRemoval = true)` 向自身下游传递预告。内置 MdcRpcTracerBridge、NoopRpcTracerBridge 与接口不在同一最外层类，其覆盖方法同样两者都加，保持与外部示例一致。
 
