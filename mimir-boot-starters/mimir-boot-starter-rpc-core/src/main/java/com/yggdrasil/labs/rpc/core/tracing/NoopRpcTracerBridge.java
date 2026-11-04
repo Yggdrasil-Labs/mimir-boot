@@ -13,7 +13,12 @@ public class NoopRpcTracerBridge implements RpcTracerBridge {
         return Collections.emptyMap();
     }
 
+    /**
+     * @deprecated 请使用 {@link #extractScope(RpcCallContext, Map)}；计划于下一个主版本随接口旧入口一并删除。
+     */
     @Override
+    @SuppressWarnings("removal")
+    @Deprecated(since = "2.2.1", forRemoval = true)
     public void extract(RpcCallContext context, Map<String, String> carrier) {
         // no-op
     }

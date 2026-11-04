@@ -14,10 +14,11 @@ public interface RpcTracerBridge {
      * 从载体提取上下文。
      *
      * @deprecated 请实现 {@link #extractScope(RpcCallContext, Map)} 以获得可关闭的调用级上下文作用域；旧实现仍可加载，
-     *     默认作用域仅恢复提取时修改的 MDC 键，无法恢复未知的自定义上下文。
+     *     默认作用域仅恢复提取时修改的 MDC 键，无法恢复未知的自定义上下文。2.4.0 起提供空默认实现，只实现 {@code extractScope} 的新 Bridge
+     *     无需覆盖本方法，也就不会产生 removal 警告；计划于下一个主版本删除。
      */
-    @Deprecated(since = "2.2.1", forRemoval = false)
-    void extract(RpcCallContext context, Map<String, String> carrier);
+    @Deprecated(since = "2.2.1", forRemoval = true)
+    default void extract(RpcCallContext context, Map<String, String> carrier) {}
 
     /**
      * 从载体提取上下文，并返回当前调用结束时需要关闭的作用域。

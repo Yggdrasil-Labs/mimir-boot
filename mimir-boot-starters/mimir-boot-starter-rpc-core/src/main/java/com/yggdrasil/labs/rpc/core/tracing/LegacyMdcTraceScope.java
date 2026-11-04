@@ -29,6 +29,8 @@ final class LegacyMdcTraceScope implements RpcTraceScope {
         this.changedKeys = keys;
     }
 
+    // 2.x 兼容适配，随旧 extract 入口在下个主版本一并删除
+    @SuppressWarnings("removal")
     static RpcTraceScope extract(
             RpcTracerBridge bridge, RpcCallContext context, Map<String, String> carrier) {
         Map<String, String> previous = snapshot();

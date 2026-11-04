@@ -42,9 +42,10 @@ public class RpcHookChain {
     }
 
     /**
-     * @deprecated 请改用 {@link #open(RpcCallContext)} 获取调用级 Invocation。此兼容入口不提供调用级状态或异常隔离保证。
+     * @deprecated 请改用 {@link #open(RpcCallContext)} 获取调用级
+     *     Invocation。此兼容入口不提供调用级状态或异常隔离保证，计划于下一个主版本删除。
      */
-    @Deprecated(since = "2.2.1", forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = true)
     public void before(RpcCallContext context) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug(
@@ -60,9 +61,9 @@ public class RpcHookChain {
 
     /**
      * @deprecated 请改用 {@link
-     *     RpcHookInvocation#completeSuccess(RpcCallResult)}。此兼容入口不提供调用级状态或异常隔离保证。
+     *     RpcHookInvocation#completeSuccess(RpcCallResult)}。此兼容入口不提供调用级状态或异常隔离保证，计划于下一个主版本删除。
      */
-    @Deprecated(since = "2.2.1", forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = true)
     public void after(RpcCallContext context, RpcCallResult result) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug(
@@ -79,9 +80,9 @@ public class RpcHookChain {
 
     /**
      * @deprecated 请改用 {@link RpcHookInvocation#completeFailure(RpcCallResult,
-     *     Throwable)}。此兼容入口不提供调用级状态或异常隔离保证。
+     *     Throwable)}。此兼容入口不提供调用级状态或异常隔离保证，计划于下一个主版本删除。
      */
-    @Deprecated(since = "2.2.1", forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = true)
     public void onError(RpcCallContext context, RpcCallResult result) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug(
@@ -99,9 +100,9 @@ public class RpcHookChain {
     }
 
     /**
-     * @deprecated 请改用 {@link RpcHookInvocation#close()}。此兼容入口不提供调用级状态或异常隔离保证。
+     * @deprecated 请改用 {@link RpcHookInvocation#close()}。此兼容入口不提供调用级状态或异常隔离保证，计划于下一个主版本删除。
      */
-    @Deprecated(since = "2.2.1", forRemoval = false)
+    @Deprecated(since = "2.2.1", forRemoval = true)
     public void cleanup(RpcCallContext context) {
         if (log.isDebugEnabled() && !hooks.isEmpty()) {
             log.debug(
