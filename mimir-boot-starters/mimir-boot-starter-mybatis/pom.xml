@@ -44,6 +44,11 @@
             <groupId>io.github.yggdrasil-labs</groupId>
             <artifactId>mimir-boot-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.alibaba.cola</groupId>
+            <artifactId>cola-component-dto</artifactId>
+            <optional>true</optional>
+        </dependency>
         
         <!-- MyBatis-Plus Starter for Spring Boot 3.x -->
         <dependency>
@@ -85,6 +90,11 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
