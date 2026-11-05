@@ -111,3 +111,16 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **Log 模块整体审查修复（2026-11-02）**：LoggerContext 中 mask 列表属性改为可无损往返的编码（顶层逗号转义为 `\,`，拆分跳过 `()`/`{}`/`[]` 内及转义逗号），修复刷新后 `reloadConfig`/`addCustomPattern` 把 `\d{15,18}` 等自定义正则拆坏导致规则失效（2.3.0 起既有，预设使该路径常规化）；新预设校验全部先于发布，失败时不再置空全局快照（删除 invalidate 链），同 JVM 其他应用规则不受影响；运行登记按上下文集合维护，同一 SpringApplication 多个存活上下文时关闭其一不再误判后续刷新为新启动；MDC 适配不再直接引用 Boot 3.4 移除的 `TaskExecutorBuilder`/`TaskExecutorCustomizer`（按类名判断）；访问日志 Filter 顺序改为 `HIGHEST_PRECEDENCE + 2`，位于 Boot 观测 Filter 之内以保留 traceId/spanId。低优先级项登记 [TD-050](../tech-debt-tracker.md#td-050-log-模块低优先级清理)。
 - **D-101 预设启动机制简化（2026-11-03）**：按 [Log 计划 D-101 修订](./log-runtime/plan.md#d-101-修订预设启动机制简化)删除 `LogPresetOwnership`、`LogPresetBootstrapListener`、`LogbackMaskBootstrap` 与转换器启动期规则缓存。EPP 只做校验、规则选择并写内部属性源（预设选中时必定存在，mask 键仅在用户已配置时写入），`common.xml` 以三条 `springProperty` 写入 LoggerContext，转换器在 Context 带 mask 属性时于 `start()` 切换规则代次（F2，用户选择），刷新恢复“最后刷新者发布”并以“父 Environment 含内部源”守卫预设应用的子上下文；列表编码迁至不依赖 Logback 的 `MaskListCodec`；预设新增拒绝无法解析的 `${` 占位符。经四轮独立文档审查后用户接受剩余风险实施。
 - **D-101 验证**：`./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 通过（单元 268、集成 22，含子 JVM 中 Spring Cloud 场景 6 个、替代后端场景 5 个）。新增覆盖：索引列表三阶段、预设应用启动期并发输出不含明文、旧 XML reset 后重载保留已发布规则、无/含 spring-cloud-context 的双存活应用、真实 `ConfigDataContextRefresher` 推送非法规则时刷新失败且规则不变、bootstrap 残留内部源移除、`${` 校验。随后 `bash scripts/engineering.sh quality --mode full --source worktree` 通过（docs-full、build-model、release 合约/消费者/签名、Java 质量/测试/覆盖率均 passed，Sonar 未启用）。未覆盖：真实业务消费者应用启动未在本修订后验证；性能基准未重测（转换热路径未改）。
+
+### Web 局部实施（2026-11-05，联合验收待完成）
+
+- **范围**：按 [Web 计划](./web-binding/plan.md) 实施日期绑定、可选安全整数输出、`R.fail` 迁移及异常响应增强候选；业务格式、序列化器和 MixIn 的覆盖边界见 Web README。Exception 统一封装尚未实施，W4/E6 联合验收未完成，不登记为完整交付。
+- **验证**：Web 及依赖模块本地 `verify` 通过；完整 `quality --mode full --source worktree` 在补充既有异常分支测试及最终文档说明前通过，之后新增的 8 个异常分支测试单独通过，含真实 Tomcat 上传超限；补充文档的格式和链接检查另行执行。Java 质量门禁中 JaCoCo 对第三方 JSqlParser 的过大方法插桩失败，但门禁整体通过。
+- **独立消费者**：使用本地打包 JAR 的独立进程验证 Common 单独使用与 Web 受管 Jackson；Servlet 应用以真实 Tomcat 和 HTTP 请求覆盖默认、旧字段兼容、大整数和总开关关闭，非 Servlet 对照保留原 JSON 行为。此验证未重新解析发布后消费者依赖，也不是 CI 或线上验证。
+- **待验收**：Exception T1 至 T3 完成后，以真实统一封装补齐 W4/E6 的异常状态、协议头、工厂回退及追踪组合。未发布。
+
+### Exception 与 Web 联合实施（2026-11-05）
+
+- **范围**：按 [Exception 计划](./exception-contracts/plan.md) 实施 HTTP 状态及协议头、工厂回退和可选结构化校验明细；联合 Web 的异常响应追踪增强。保留旧处理器方法描述符、单参构造和默认 data 格式，返回值及未知来源约束按约定返回 500。无法安全确认声明字段时，结构化 FIELD 路径降为 `$`，详见 Exception 设计和 README。
+- **模块验证**：JDK 17 下 `./mvnw -o -pl mimir-boot-starters/mimir-boot-starter-web -am verify` 通过；Exception 单元 94、集成 50，Web 单元 123、集成 73，失败、错误和跳过均为 0。含真实 MVC 及校验器的输入、返回值、跨参数、混合来源、动态键，Web 联合响应 25 项及既有八个异常分支（含真实 Tomcat 上传超限）。
+- **边界**：以上为本地工作区验证；不代表远端 CI、生产或发布后消费者通过。完整仓库质量门禁以最终执行结果为准，未发布。
