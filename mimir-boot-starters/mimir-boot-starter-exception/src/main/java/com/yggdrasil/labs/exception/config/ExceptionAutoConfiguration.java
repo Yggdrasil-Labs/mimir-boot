@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.exception.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,7 +28,7 @@ import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
  * @since 1.0.0
  */
 @AutoConfiguration
-@ConditionalOnWebApplication
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(
         prefix = "mimir.boot.exception",
         name = "enabled",
@@ -34,6 +36,17 @@ import com.yggdrasil.labs.exception.handler.MimirExceptionHandler;
         matchIfMissing = true)
 @EnableConfigurationProperties(ExceptionProperties.class)
 public class ExceptionAutoConfiguration {
+
+    private ExceptionProperties properties = new ExceptionProperties();
+
+    @Autowired
+    void setExceptionProperties(
+            @Qualifier(
+                            "mimir.boot.exception-com.yggdrasil.labs.exception.config.ExceptionProperties")
+                    ExceptionProperties properties) {
+        // 使用 EnableConfigurationProperties 的绑定 Bean，允许应用另外声明同类型属性。
+        this.properties = properties;
+    }
 
     /**
      * 注册默认异常响应工厂（接入方可自定义覆盖）
@@ -55,6 +68,6 @@ public class ExceptionAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(MimirExceptionHandler.class)
     public MimirExceptionHandler mimirExceptionHandler(ExceptionResponseFactory responseFactory) {
-        return new MimirExceptionHandler(responseFactory);
+        return new MimirExceptionHandler(responseFactory, properties);
     }
 }

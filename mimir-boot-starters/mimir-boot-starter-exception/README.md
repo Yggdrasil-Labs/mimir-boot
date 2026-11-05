@@ -188,6 +188,30 @@ mimir:
       enabled: false  # 禁用全局异常处理
 ```
 
+### 结构化校验明细
+
+`mimir.boot.exception.validation.structured-details-enabled` 默认为 `false`。开启后，已确认的输入校验错误在 `data` 中返回结构化明细：
+
+```yaml
+mimir:
+  boot:
+    exception:
+      validation:
+        structured-details-enabled: true
+```
+
+```json
+{
+  "errors": [{"source": "FIELD", "path": "name", "parameterIndex": null, "constraint": "NotBlank", "message": "不能为空"}],
+  "totalCount": 1,
+  "truncated": false
+}
+```
+
+明细最多返回 100 项，按固定规则排序并保留重复项；映射的动态键使用 `[*]`，不返回拒绝值、约束参数或自定义插值消息。旧模式继续返回原始字符串列表或 `null`，其中自定义校验消息可能包含业务插值，不应视为已经脱敏。客户端开启新模式后需按对象而非字符串列表解析 `data`。
+
+字段路径只使用能由声明类型确认的信息。`BindException` 的 Bean Validation 错误可以使用包装的违例取得声明类型，并按结构化路径节点隐藏 Map 键；只有扁平字段名、无法确认 Map 键边界时，路径在该 Map 的 `[*]` 处截断。手工字段错误或类型转换错误等无法安全确认类型时，`FIELD` 的 path 使用 `$` 表示具体位置不可确认。方法校验中容器整体约束和元素约束无法区分时，保守定位到参数名。这些降级均不影响旧模式。
+
 ## 支持的异常类型
 
 ### 1. 业务异常（BizException）
@@ -395,7 +419,8 @@ spring:
 | --- | --- | --- |
 | `HandlerMethodValidationException`（入参） | 400 | `PARAM_INVALID` |
 | `HandlerMethodValidationException`（返回值） | 500 | `SYSTEM_ERROR` |
-| `ConstraintViolationException` | 400 | `PARAM_INVALID` |
+| `ConstraintViolationException`（确认是输入） | 400 | `PARAM_INVALID` |
+| `ConstraintViolationException`（返回值、混合或无法确认来源） | 500 | `SYSTEM_ERROR` |
 | `MissingRequestHeaderException` | 400 | `PARAM_MISSING` |
 | `MissingPathVariableException` | 500 | `SYSTEM_ERROR` |
 | `HttpMediaTypeNotAcceptableException` | 406 | `OPERATION_NOT_ALLOWED` |
@@ -404,6 +429,30 @@ spring:
 | `NoResourceFoundException` | 404 | `DATA_NOT_FOUND` |
 
 `jakarta.validation-api` 仅用于公开异常处理器签名；Starter 不会因此引入校验实现或改变应用现有的校验策略。
+
+### 升级和兼容性
+
+- `ResponseStatusException`、`ErrorResponseException` 及普通异常根类型的合并 `@ResponseStatus` 会参与状态映射；不会为查询状态遍历 cause。`BizException`、`SystemException` 和其他 `BaseException` 仍优先使用既有固定状态，Common 新异常工厂不改变该规则。
+- 返回值校验、混合来源以及空集合或纯 Bean 路径等无法确认是输入的约束异常返回 500；此变化与结构化开关无关。明确属于业务输入的特殊场景可由应用自己的 Advice 处理。
+- 响应工厂最多调用一次。工厂返回 `ResponseEntity` 时只使用其 body 和合法非冲突头，不能覆盖处理器已解析的状态或异常协议头；工厂失败时以默认 `R` 降级且不返回校验明细。旧处理器方法保留静态 `@ResponseStatus`，使返回普通对象的旧子类继续继承原状态；默认实现的最终状态由 `ResponseEntity` 表达，动态状态不能只靠静态注解判断。
+- 合并结果交由原生 MVC 写出；不可表示的媒体类型、Resource、条件或 Range 请求以及实际写出失败遵循框架行为。工厂显式 Content-Type 同样经过原生协商，写出失败不属于工厂降级。
+- 仅 Servlet MVC 环境自动注册处理器、默认响应工厂和 `ExceptionProperties`。Reactive 应用如需工厂或属性绑定，应自行声明或启用。
+- 子类使用单参构造时沿用旧明细模式；需要结构化配置时使用双参构造。子类以不同方法名重复声明 `ResponseStatusException` 或 `ErrorResponseException` 映射会导致启动二义性，应覆盖对应新方法或移除重复映射；这些异常的业务子类也会进入新分支。
+- 自动配置仍通过原 `mimirExceptionHandler(ExceptionResponseFactory)` Bean 方法创建处理器，继承配置类并覆盖该方法的旧扩展继续生效。默认实现使用 `@EnableConfigurationProperties` 注册的绑定属性 Bean，额外声明的同类型 Bean 不参与默认处理器的属性选择；自定义处理器所需属性由其构造方式决定。显式声明处理器 Bean 时自动配置仍退让。
+- 与 Web Starter 同时使用时，可写的 `R` 异常响应沿用已有 traceId 增强及其开关和用户覆盖规则；`fail` 字段由 Web 的独立配置控制。工厂传入 `null` message 时，JSON 的空值策略可能省略 message 字段。
+- 下游自定义 `ResponseBodyAdvice` 在异常处理分支接收到运行期 `ResponseEntity` 外层的方法参数类型；仅按声明类型或泛型判断 `R` 的增强可能不再执行。可在 `supports` 中接受异常处理器，并在 `beforeBodyWrite` 中按实际 body 类型判断：
+
+```java
+@Override
+public Object beforeBodyWrite(Object body, MethodParameter type, MediaType mediaType,
+        Class<? extends HttpMessageConverter<?>> converter,
+        ServerHttpRequest request, ServerHttpResponse response) {
+    if (body instanceof R<?> result) {
+        // 对实际的统一响应执行业务增强
+    }
+    return body;
+}
+```
 
 ## 异常处理流程
 

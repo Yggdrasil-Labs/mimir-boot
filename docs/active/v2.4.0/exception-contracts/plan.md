@@ -79,6 +79,8 @@ Common只提供现有异常模型就能开始；新增ErrorDefinition工厂不�
 
 行为：按I4/I5，只提取允许的声明元数据。明确禁止读取/序列化FieldError.rejectedValue、ConstraintViolation.invalidValue/leafBean/executableParameters、ParameterValidationResult.argument/container/containerKey以及error.arguments。不得通过toString取得完整违例或路径；Map key一律通配符。四种异常分别取字段/对象/参数信息，禁止把返回值明细塞进同一输入列表。
 
+实施补充：Bind 字段错误逐项使用包装违例的根声明类型（如有）验证路径，无法确认时保留 FIELD 并以 `$` 表示位置未知；自定义 PROPERTY 节点不得冒充声明字段。方法校验中整体容器与元素约束无法区分时退回参数名。上述规则不读取绑定对象或请求值，也不改变旧 data 模式。
+
 验收：
 
 - FIELD/PARAMETER/OBJECT及argN降级、数组/List数值索引、Map通配符、对象`$`可断言。
@@ -115,7 +117,7 @@ Common只提供现有异常模型就能开始；新增ErrorDefinition工厂不�
 迁移内容必须覆盖：
 
 1. 原被通用500吞掉的标准状态/根类型注解开始生效；固定Biz/System不变，cause注解仍不透传。
-2. 工厂ResponseEntity只能提供body/合法头，不能改变处理器状态；异常协议头优先；静态handler的@ResponseStatus反射元信息不再是状态来源。
+2. 工厂ResponseEntity只能提供body/合法头，不能改变处理器状态；异常协议头优先；保留旧handler的@ResponseStatus以兼容返回普通对象的子类，默认实现的最终状态由ResponseEntity表达。
 3. 默认data未切换；开启新模式后使用errors/totalCount/truncated和安全固定消息，不能继续把data当字符串列表。
 4. 约束返回值、混合、空集合或纯Bean未知路径由原400改500，独立于data模式；业务明确输入语境可在自身Advice边界处理。
 5. 旧模式自定义消息可能含业务插值，不宣称本轮全部响应都已脱敏；新模式不返回拒绝值和动态Map key。
@@ -128,7 +130,7 @@ Common只提供现有异常模型就能开始；新增ErrorDefinition工厂不�
 
 E6联合通过条件：由Web真实应用上下文的MockMvc触发Biz200、System500、普通500和工厂抛错回退，以及既有8个ResponseEntity分支，确认可写R均增强、工厂最多一次；null message的输出形态一并记录；（审查补充）下游自定义ResponseBodyAdvice在运行期ResponseEntity外层下的supports结果与所见body一并记录，与Web W4口径一致；已有traceId不覆盖，MDC traceId优先、requestId回退、均无不生成。关闭Web/response/auto-fill或用户supports=false时不由默认路径补填；用户允许时只委托一次。工厂返回可写字符串、其他可写非R对象或null时，不出现ClassCastException或被重新造body；正常R/ResponseEntity<R>保持增强，正常非R不变。核对原MethodParameter及containing class不被改写，不能通过伪造泛型使断言通过。
 
-（审查补充）兼容测试另覆盖：子类以其他方法名映射ResponseStatusException时启动二义映射（断言为已知迁移结果）、同名覆盖可启动；业务ResponseStatusException子类进入新分支；按运行期body类型判断的自定义ResponseBodyAdvice仍生效、仅按声明类型判断者失效的对照示例。
+（审查补充）兼容测试另覆盖：子类以其他方法名映射ResponseStatusException时启动二义映射（断言为已知迁移结果）、同名覆盖可启动；业务ResponseStatusException子类进入新分支；按运行期body类型判断的自定义ResponseBodyAdvice仍生效、仅按声明类型判断者失效的对照示例。自动配置旧工厂方法被子类覆盖时仍调用覆盖方法；旧处理器方法被子类覆盖并返回普通对象时保留原HTTP状态，默认处理器仍正确输出动态状态。
 
 真实MVC验收需覆盖框架resolver/Advice顺序和消息转换器，不能仅mock所有异常再直接调handler。兼容检查核对原方法/构造描述符；可在本模块测试资源放有来源的旧消费者样例，不创建tools专项脚本。
 

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.exception.validation.ValidationErrorData;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 import com.yggdrasil.labs.test.util.AssertUtils;
 
@@ -61,5 +62,12 @@ class DefaultExceptionResponseFactoryTest extends BaseUnitTest {
         R<?> r = (R<?>) result;
         AssertUtils.assertEquals("PARAM_001", r.getCode());
         assertEquals(errors, r.getData());
+    }
+
+    @Test
+    void shouldPreserveStructuredValidationData() {
+        ValidationErrorData data = new ValidationErrorData(java.util.List.of(), 0, false);
+        R<?> response = (R<?>) factory.createResponse("00004", "参数无效", data);
+        assertSame(data, response.getData());
     }
 }

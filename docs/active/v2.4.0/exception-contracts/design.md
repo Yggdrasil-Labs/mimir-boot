@@ -95,10 +95,11 @@ Object ExceptionResponseFactory.createResponse(String code, String message, Obje
 
 两个新方法的 `@ExceptionHandler` 分别声明 ResponseStatusException、ErrorResponseException。（审查更正）Spring 按异常继承深度选择最近的已声明类型，并非只匹配精确类型：业务自定义的 ResponseStatusException / ErrorResponseException 子类，以及没有更具体专用分支的框架子类，都会进入这两个新分支并按其 getStatusCode/getHeaders 处理，需列入迁移说明。HandlerMethodValidationException 专用分支因继承距离更近，始终优先于其父类 ResponseStatusException；既有专用 HTTP 分支继续匹配原类型。未知类型不按 ErrorResponse 接口无限扩展。
 
-当前静态方法级状态注解可在实现中移除并由实际 ResponseEntity 统一表达；既有状态映射不变，后续写出仍遵循原生 MVC 边界。反射读取 handler 上 `@ResponseStatus` 的消费者需改读实际响应。这是元信息实现迁移，需在 README 说明；旧 Java 调用和字节码描述符保留。
+既有方法级 `@ResponseStatus` 保留，兼容覆盖旧方法并返回普通对象的处理器子类；默认实现由实际 ResponseEntity 统一表达最终状态，动态状态不能只靠静态注解判断。既有状态映射不变，后续写出仍遵循原生 MVC 边界；旧 Java 调用和字节码描述符保留。
 
 #### 兼容性：子类化处理器与运行期返回类型（审查补充）
 
+- 自动配置保留原 `@Bean mimirExceptionHandler(ExceptionResponseFactory)` 方法，默认实现明确使用 `@EnableConfigurationProperties` 注册的命名属性 Bean，额外的同类型 Bean 不参与选择；消费者仅覆盖旧方法时仍调用该覆盖方法。直接构造自动配置类时使用默认属性，自定义处理器的构造参数仍由消费者决定。
 - 自动配置以 `@ConditionalOnMissingBean(MimirExceptionHandler.class)` 退让给用户 Bean。若业务子类已用其他方法名声明 `@ExceptionHandler(ResponseStatusException.class)` 或 `ErrorResponseException.class`，新增的同类型父类方法会使同一 Advice 内出现两个映射，Spring 在启动解析时报 Ambiguous `@ExceptionHandler` 映射错误；同名覆盖父类方法则不受影响。迁移说明须给出“改为覆盖新方法或删除重复映射”的处理方式。
 - 子类仍调用原单参构造时使用默认属性，`structured-details-enabled` 固定为 false，配置开启也不生效；需改用双参构造并接收自动配置注入的 `ExceptionProperties`。不为此改变单参构造语义。
 - 下游自定义 `ResponseBodyAdvice` 将在全部分支看到运行期 ResponseEntity 外层（MethodParameter 参数类型为 ResponseEntity、body 为 R 或工厂对象），而非原 Object/R。按 `MethodParameter.getParameterType()` 是否为 R 或按声明泛型判断 `supports` 的签名、加密、包装类 Advice 可能静默不再生效；须改为在 `beforeBodyWrite` 按运行期 body 类型判断。本设计不为此改写 MethodParameter，仅在迁移说明中列出。
@@ -186,7 +187,7 @@ public record ValidationErrorData(
 | 字段 | 规则 |
 |---|---|
 | source | 属性/容器属性为 FIELD，方法形参约束为 PARAMETER，整体 Bean/跨参数约束为 OBJECT |
-| path | FIELD 使用声明属性路径，数组/List 数值位置保留；Map key 或未知容器位置写 `[*]`，不输出 key.toString；参数使用可发现的声明参数名，否则 argN；对象级统一 `$` |
+| path | FIELD 使用可确认的声明属性路径，数组/List 数值位置保留；Map key 或未知容器位置写 `[*]`，不输出 key.toString；字段位置无法由声明确认时用 `$`；参数使用可发现的声明参数名，否则 argN；对象级统一 `$` |
 | parameterIndex | 方法参数已知时为 0 起始索引，其余为 null；跨参数为 null，不暴露方法/类签名 |
 | constraint | FieldError/ObjectError取getCode；一般MessageSourceResolvable从codes末尾取第一个合法标识；ConstraintViolation取约束注解类型simpleName，不读取注解参数。不附对象名；仅接受 `[A-Za-z][A-Za-z0-9_.-]{0,63}`，不满足时用 Validation；未知自定义标识可保留，但其消息走固定兜底 |
 | message | 固定安全消息，不读 rejectedValue/invalidValue、不读 error arguments 或自定义插值后的 defaultMessage；长度 ≤256 字符 |
@@ -195,6 +196,8 @@ public record ValidationErrorData(
 安全消息固定映射：NotNull/NotBlank/NotEmpty → “不能为空”；Min/Max/DecimalMin/DecimalMax/Positive/PositiveOrZero/Negative/NegativeOrZero → “数值不符合约束”；Size/Length → “长度不符合约束”；Email/Pattern → “格式不符合约束”；typeMismatch → “类型不匹配”；其余包括自定义约束 → “参数不符合约束”。不把注解 min/max/regexp 或动态消息参数写入 data。本轮不增加额外消息定制 SPI，消费者需要自定义时可在现有响应工厂处理已安全提取的元数据。
 
 字段路径按声明属性名和数字下标构造，禁止从容器值推导。所有新字符串移除控制字符，并按 Unicode code point 截断；path 上限 256，constraint 上限 64，message 上限 256。排序使用输出规范化后的 `(source枚举顺序FIELD/PARAMETER/OBJECT, parameterIndex空值排末, path, constraint, message)`；字符串按 Java 字典序。重复项保留，完全相同项交换不影响输出；先排序后取前 100，不依赖 HashSet 遍历顺序。
+
+实施补充：`BindException` 中的 Bean Validation 字段错误可从包装的 `ConstraintViolation` 获取根声明类型，并优先按结构化路径节点隐藏动态 Map 键。只有扁平字段名时无法可靠区分 Map 键内容与后续属性，路径在该 Map 的 `[*]` 处截断。手工字段错误和类型转换错误若缺少可确认的声明类型，则保留 FIELD 来源并以 `$` 表示位置未知。自定义校验器生成的属性节点也须按声明类型核验，不能将动态键当作属性名。方法校验的整体容器约束与元素约束若仅凭允许读取的声明元数据无法区分，则保守定位到参数名；这些降级仅适用于新结构化模式。
 
 默认 false 的四类 data 精确保留：
 

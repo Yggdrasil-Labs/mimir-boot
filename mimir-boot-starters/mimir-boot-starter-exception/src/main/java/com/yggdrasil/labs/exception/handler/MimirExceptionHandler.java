@@ -1,17 +1,24 @@
 package com.yggdrasil.labs.exception.handler;
 
 import java.util.ArrayList;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -25,6 +32,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -33,6 +41,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.yggdrasil.labs.common.exception.*;
 import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.common.util.LogSanitizer;
+import com.yggdrasil.labs.exception.config.ExceptionProperties;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,9 +59,18 @@ import lombok.extern.slf4j.Slf4j;
 public class MimirExceptionHandler {
 
     private final ExceptionResponseFactory responseFactory;
+    private final boolean structuredDetailsEnabled;
 
+    @Autowired(required = false)
     public MimirExceptionHandler(ExceptionResponseFactory responseFactory) {
+        this(responseFactory, new ExceptionProperties());
+    }
+
+    @Autowired(required = false)
+    public MimirExceptionHandler(
+            ExceptionResponseFactory responseFactory, ExceptionProperties properties) {
         this.responseFactory = responseFactory;
+        this.structuredDetailsEnabled = properties.getValidation().isStructuredDetailsEnabled();
     }
 
     private String sanitizeForLog(String input) {
@@ -69,12 +87,7 @@ public class MimirExceptionHandler {
                 sanitizeForLog(request.getRequestURI()));
         String code = e.getCode();
         String message = e.getMessage();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.OK, e, code, message, null);
     }
 
     @ExceptionHandler(SystemException.class)
@@ -88,12 +101,7 @@ public class MimirExceptionHandler {
                 e.getClass().getSimpleName());
         String code = e.getCode();
         String message = e.getMessage();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, e, code, message, null);
     }
 
     @ExceptionHandler(BaseException.class)
@@ -107,18 +115,27 @@ public class MimirExceptionHandler {
                 e.getClass().getSimpleName());
         String code = e.getCode();
         String message = e.getMessage();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, e, code, message, null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e, HttpServletRequest request) {
+        if (structuredDetailsEnabled) {
+            Object data =
+                    validationData(
+                            () ->
+                                    ValidationErrorExtractor.extract(
+                                            e.getBindingResult(), e.getParameter()));
+            log.warn("参数校验异常: uri={}", sanitizeForLog(request.getRequestURI()));
+            return createResponse(
+                    HttpStatus.BAD_REQUEST,
+                    e,
+                    ErrorCode.PARAM_INVALID.getCode(),
+                    ErrorCode.PARAM_INVALID.getMessage(),
+                    data);
+        }
         ArrayList<String> responseErrors =
                 e.getBindingResult().getFieldErrors().stream()
                         .map(error -> error.getField() + ": " + error.getDefaultMessage())
@@ -134,17 +151,26 @@ public class MimirExceptionHandler {
         log.warn("参数校验异常: errors={}, uri={}", logErrors, sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
-        try {
-            return responseFactory.createResponse(code, message, responseErrors);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.BAD_REQUEST, e, code, message, responseErrors);
     }
 
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleBindException(BindException e, HttpServletRequest request) {
+        if (structuredDetailsEnabled) {
+            Object data =
+                    validationData(
+                            () ->
+                                    ValidationErrorExtractor.extract(
+                                            e.getBindingResult(), (Integer) null));
+            log.warn("参数绑定异常: uri={}", sanitizeForLog(request.getRequestURI()));
+            return createResponse(
+                    HttpStatus.BAD_REQUEST,
+                    e,
+                    ErrorCode.PARAM_INVALID.getCode(),
+                    ErrorCode.PARAM_INVALID.getMessage(),
+                    data);
+        }
         ArrayList<String> responseErrors =
                 e.getBindingResult().getFieldErrors().stream()
                         .map(error -> error.getDefaultMessage())
@@ -156,12 +182,7 @@ public class MimirExceptionHandler {
         log.warn("参数绑定异常: errors={}, uri={}", logErrors, sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
-        try {
-            return responseFactory.createResponse(code, message, responseErrors);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.BAD_REQUEST, e, code, message, responseErrors);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -175,45 +196,64 @@ public class MimirExceptionHandler {
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_MISSING.getCode();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
     public Object handleHandlerMethodValidationException(
             HandlerMethodValidationException e, HttpServletRequest request) {
-        boolean returnValueValidation = e.isForReturnValue();
-        String code =
-                returnValueValidation
-                        ? ErrorCode.SYSTEM_ERROR.getCode()
-                        : ErrorCode.PARAM_INVALID.getCode();
-        String message =
-                returnValueValidation
-                        ? ErrorCode.SYSTEM_ERROR.getMessage()
-                        : ErrorCode.PARAM_INVALID.getMessage();
-        HttpStatus status =
-                returnValueValidation ? HttpStatus.INTERNAL_SERVER_ERROR : HttpStatus.BAD_REQUEST;
-        log.warn(
-                "方法校验异常: returnValue={}, uri={}",
-                returnValueValidation,
-                sanitizeForLog(request.getRequestURI()));
-        return createResponse(status, code, message);
+        ValidationErrorExtractor.Origin origin =
+                validationOrigin(() -> ValidationErrorExtractor.classify(e));
+        Object data =
+                origin == ValidationErrorExtractor.Origin.INPUT && structuredDetailsEnabled
+                        ? validationData(() -> ValidationErrorExtractor.extract(e))
+                        : null;
+        log.warn("方法校验异常: origin={}, uri={}", origin, sanitizeForLog(request.getRequestURI()));
+        return validationResponse(e, origin, data);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public Object handleConstraintViolationException(
             ConstraintViolationException e, HttpServletRequest request) {
-        String code = ErrorCode.PARAM_INVALID.getCode();
-        String message = ErrorCode.PARAM_INVALID.getMessage();
-        log.warn(
-                "约束校验异常: violations={}, uri={}",
-                e.getConstraintViolations().size(),
-                sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.BAD_REQUEST, code, message);
+        ValidationErrorExtractor.Origin origin =
+                validationOrigin(() -> ValidationErrorExtractor.classify(e));
+        Object data =
+                origin == ValidationErrorExtractor.Origin.INPUT && structuredDetailsEnabled
+                        ? validationData(() -> ValidationErrorExtractor.extract(e))
+                        : null;
+        log.warn("约束校验异常: origin={}, uri={}", origin, sanitizeForLog(request.getRequestURI()));
+        return validationResponse(e, origin, data);
+    }
+
+    private Object validationResponse(
+            Exception e, ValidationErrorExtractor.Origin origin, Object data) {
+        boolean input = origin == ValidationErrorExtractor.Origin.INPUT;
+        ErrorCode error = input ? ErrorCode.PARAM_INVALID : ErrorCode.SYSTEM_ERROR;
+        return createResponse(
+                input ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR,
+                e,
+                error.getCode(),
+                error.getMessage(),
+                input ? data : null);
+    }
+
+    private ValidationErrorExtractor.Origin validationOrigin(
+            Supplier<ValidationErrorExtractor.Origin> classifier) {
+        try {
+            return classifier.get();
+        } catch (RuntimeException ex) {
+            log.warn("无法判断校验异常来源: type={}", ex.getClass().getName());
+            return ValidationErrorExtractor.Origin.UNKNOWN;
+        }
+    }
+
+    private Object validationData(Supplier<Object> extractor) {
+        try {
+            return extractor.get();
+        } catch (RuntimeException ex) {
+            log.warn("无法提取校验明细: type={}", ex.getClass().getName());
+            return null;
+        }
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
@@ -223,7 +263,7 @@ public class MimirExceptionHandler {
         String code = ErrorCode.PARAM_MISSING.getCode();
         String message = String.format("缺少必需请求头: %s", headerName);
         log.warn("缺少请求头异常: header={}, uri={}", headerName, sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.BAD_REQUEST, code, message);
+        return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
     @ExceptionHandler(MissingPathVariableException.class)
@@ -235,7 +275,7 @@ public class MimirExceptionHandler {
                 "缺少路径变量异常: variable={}, uri={}",
                 sanitizeForLog(e.getVariableName()),
                 sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, code, message);
+        return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, e, code, message, null);
     }
 
     @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
@@ -244,7 +284,7 @@ public class MimirExceptionHandler {
         String code = ErrorCode.OPERATION_NOT_ALLOWED.getCode();
         String message = ErrorCode.OPERATION_NOT_ALLOWED.getMessage();
         log.warn("不可接受的响应媒体类型: uri={}", sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.NOT_ACCEPTABLE, code, message);
+        return createResponse(HttpStatus.NOT_ACCEPTABLE, e, code, message, null);
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
@@ -253,7 +293,7 @@ public class MimirExceptionHandler {
         String code = ErrorCode.OPERATION_NOT_ALLOWED.getCode();
         String message = ErrorCode.OPERATION_NOT_ALLOWED.getMessage();
         log.warn("不支持的请求媒体类型: uri={}", sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, code, message);
+        return createResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, e, code, message, null);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -262,7 +302,7 @@ public class MimirExceptionHandler {
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = ErrorCode.PARAM_INVALID.getMessage();
         log.warn("上传大小超限: uri={}", sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.PAYLOAD_TOO_LARGE, code, message);
+        return createResponse(HttpStatus.PAYLOAD_TOO_LARGE, e, code, message, null);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
@@ -274,7 +314,7 @@ public class MimirExceptionHandler {
                 "静态资源未找到: path={}, uri={}",
                 sanitizeForLog(e.getResourcePath()),
                 sanitizeForLog(request.getRequestURI()));
-        return createResponse(HttpStatus.NOT_FOUND, code, message);
+        return createResponse(HttpStatus.NOT_FOUND, e, code, message, null);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -290,12 +330,7 @@ public class MimirExceptionHandler {
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_INVALID.getCode();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -320,12 +355,7 @@ public class MimirExceptionHandler {
         }
         String code = ErrorCode.PARAM_INVALID.getCode();
         String message = "请求体格式错误";
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -342,12 +372,7 @@ public class MimirExceptionHandler {
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.OPERATION_NOT_ALLOWED.getCode();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.METHOD_NOT_ALLOWED, e, code, message, null);
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
@@ -362,17 +387,23 @@ public class MimirExceptionHandler {
                 sanitizeForLog(message),
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.DATA_NOT_FOUND.getCode();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        return createResponse(HttpStatus.NOT_FOUND, e, code, message, null);
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleException(Exception e, HttpServletRequest request) {
+        // 直接调用兜底入口时也不能让框架异常子类的注解覆盖固定状态。
+        HttpStatusCode status = HttpStatus.INTERNAL_SERVER_ERROR;
+        if (e instanceof BizException) {
+            status = HttpStatus.OK;
+        } else if (!(e instanceof BaseException)) {
+            ResponseStatus annotation =
+                    AnnotatedElementUtils.findMergedAnnotation(e.getClass(), ResponseStatus.class);
+            if (annotation != null) {
+                status = annotation.code();
+            }
+        }
         if (e instanceof IException ie) {
             log.error(
                     "框架异常（未捕获）: code={}, message={}, uri={}, type={}",
@@ -382,37 +413,88 @@ public class MimirExceptionHandler {
                     e.getClass().getSimpleName());
             String code = ie.getCode();
             String message = ie.getMessage();
-            try {
-                return responseFactory.createResponse(code, message, null);
-            } catch (Exception ex) {
-                log.error("responseFactory 异常，降级返回 R", ex);
-                return R.fail(code, message);
-            }
+            return createResponse(
+                    new ExceptionHttpMetadata(status, HttpHeaders.EMPTY, code, message), null);
         }
 
         log.error("未捕获的异常: uri={}", sanitizeForLog(request.getRequestURI()), e);
-        String code = ErrorCode.SYSTEM_ERROR.getCode();
-        String message = ErrorCode.SYSTEM_ERROR.getMessage();
-        try {
-            return responseFactory.createResponse(code, message, null);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return R.fail(code, message);
-        }
+        ErrorCode error = errorForStatus(status);
+        return createResponse(
+                new ExceptionHttpMetadata(
+                        status, HttpHeaders.EMPTY, error.getCode(), error.getMessage()),
+                null);
     }
 
-    private ResponseEntity<Object> createResponse(HttpStatus status, String code, String message) {
-        try {
-            Object response = responseFactory.createResponse(code, message, null);
-            if (response instanceof ResponseEntity<?> responseEntity) {
-                return ResponseEntity.status(status)
-                        .headers(responseEntity.getHeaders())
-                        .body(responseEntity.getBody());
-            }
-            return ResponseEntity.status(status).body(response);
-        } catch (Exception ex) {
-            log.error("responseFactory 异常，降级返回 R", ex);
-            return ResponseEntity.status(status).body(R.fail(code, message));
+    @ExceptionHandler(ResponseStatusException.class)
+    public Object handleResponseStatusException(
+            ResponseStatusException e, HttpServletRequest request) {
+        return handleStandardHttpException(e, request);
+    }
+
+    @ExceptionHandler(ErrorResponseException.class)
+    public Object handleErrorResponseException(
+            ErrorResponseException e, HttpServletRequest request) {
+        return handleStandardHttpException(e, request);
+    }
+
+    private Object handleStandardHttpException(
+            ErrorResponseException e, HttpServletRequest request) {
+        HttpStatusCode status = e.getStatusCode();
+        ErrorCode error = errorForStatus(status);
+        String code = e instanceof IException ie ? ie.getCode() : error.getCode();
+        String message = e instanceof IException ie ? ie.getMessage() : error.getMessage();
+        log.warn(
+                "HTTP 状态异常: status={}, type={}, uri={}",
+                status.value(),
+                e.getClass().getSimpleName(),
+                sanitizeForLog(request.getRequestURI()));
+        return createResponse(status, e, code, message, null);
+    }
+
+    private static ErrorCode errorForStatus(HttpStatusCode status) {
+        return switch (status.value()) {
+            case 401 -> ErrorCode.UNAUTHORIZED;
+            case 403 -> ErrorCode.FORBIDDEN;
+            case 404 -> ErrorCode.DATA_NOT_FOUND;
+            case 405, 406, 415 -> ErrorCode.OPERATION_NOT_ALLOWED;
+            case 413 -> ErrorCode.PARAM_INVALID;
+            default ->
+                    status.is4xxClientError()
+                            ? ErrorCode.PARAM_ERROR
+                            : status.is5xxServerError() ? ErrorCode.SYSTEM_ERROR : ErrorCode.FAIL;
+        };
+    }
+
+    private ResponseEntity<Object> createResponse(
+            HttpStatusCode status, Exception exception, String code, String message, Object data) {
+        HttpHeaders headers =
+                exception instanceof ErrorResponse error ? error.getHeaders() : HttpHeaders.EMPTY;
+        return createResponse(new ExceptionHttpMetadata(status, headers, code, message), data);
+    }
+
+    private ResponseEntity<Object> createResponse(ExceptionHttpMetadata metadata, Object data) {
+        // 无实体状态不调用工厂构造响应体；其他响应交给原生 MVC 完成写出。
+        if (metadata.forbidsBody()) {
+            return new ResponseEntity<>(null, metadata.headers(), metadata.status());
         }
+        Object response;
+        try {
+            response = responseFactory.createResponse(metadata.code(), metadata.message(), data);
+        } catch (Exception ex) {
+            // 不重试业务工厂，保留已解析的状态和协议头并直接使用默认响应。
+            log.error("responseFactory 异常，降级返回 R", ex);
+            return new ResponseEntity<>(
+                    R.fail(metadata.code(), metadata.message()),
+                    metadata.headers(),
+                    metadata.status());
+        }
+        if (response instanceof ResponseEntity<?> entity) {
+            // 工厂可以提供响应体和合法响应头，但不能覆盖处理器确定的状态。
+            return new ResponseEntity<>(
+                    entity.getBody(),
+                    metadata.mergeHeaders(entity.getHeaders()),
+                    metadata.status());
+        }
+        return new ResponseEntity<>(response, metadata.headers(), metadata.status());
     }
 }

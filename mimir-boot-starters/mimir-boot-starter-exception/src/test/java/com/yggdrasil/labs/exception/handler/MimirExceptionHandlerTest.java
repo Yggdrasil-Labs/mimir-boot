@@ -83,8 +83,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleBizException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals("20001", r.getCode());
         AssertUtils.assertEquals("用户不存在", r.getMessage());
         assertNull(r.getData());
@@ -96,8 +95,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleBizException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.DATA_NOT_FOUND.getMessage(), r.getMessage());
     }
@@ -108,8 +106,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleSystemException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals("10000", r.getCode());
         AssertUtils.assertEquals("系统错误", r.getMessage());
         assertNull(r.getData());
@@ -152,8 +149,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleSystemException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), r.getMessage());
     }
@@ -164,8 +160,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleBaseException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals("99999", r.getCode());
         AssertUtils.assertEquals("基础异常", r.getMessage());
     }
@@ -203,8 +198,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleMethodArgumentNotValidException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getMessage(), r.getMessage());
         assertNotNull(r.getData());
@@ -218,8 +212,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleBindException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getMessage(), r.getMessage());
         assertNotNull(r.getData());
@@ -242,7 +235,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         try {
             R<?> response =
-                    (R<?>) handler.handleMethodArgumentNotValidException(exception, request);
+                    responseBody(handler.handleMethodArgumentNotValidException(exception, request));
 
             assertEquals(List.of(maliciousField + ": " + maliciousMessage), response.getData());
             assertTrue(
@@ -265,8 +258,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleMissingServletRequestParameterException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_MISSING.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("userId"));
     }
@@ -280,8 +272,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleMethodArgumentTypeMismatchException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("userId"));
         assertTrue(r.getMessage().contains("Integer"));
@@ -295,8 +286,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleHttpMessageNotReadableException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         AssertUtils.assertEquals("请求体格式错误", r.getMessage());
     }
@@ -327,8 +317,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         try {
             Object response = handler.handleHttpMessageNotReadableException(exception, request);
 
-            assertInstanceOf(R.class, response);
-            R<?> result = (R<?>) response;
+            R<?> result = responseBody(response);
             assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
             assertEquals("请求体格式错误", result.getMessage());
             List<ILoggingEvent> events =
@@ -370,8 +359,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         try {
             Object response = handler.handleHttpMessageNotReadableException(exception, request);
 
-            assertInstanceOf(R.class, response);
-            R<?> result = (R<?>) response;
+            R<?> result = responseBody(response);
             assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
             assertEquals("请求体格式错误", result.getMessage());
             List<ILoggingEvent> events =
@@ -402,8 +390,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("DELETE"));
         assertTrue(r.getMessage().contains("GET"));
@@ -417,8 +404,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleNoHandlerFoundException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("GET"));
         assertTrue(r.getMessage().contains("null"));
@@ -430,8 +416,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleException((Exception) exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals("99999", r.getCode());
         AssertUtils.assertEquals("未知异常", r.getMessage());
     }
@@ -471,8 +456,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), r.getMessage());
     }
@@ -483,8 +467,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), r.getCode());
         AssertUtils.assertEquals(ErrorCode.SYSTEM_ERROR.getMessage(), r.getMessage());
     }
@@ -508,8 +491,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleMissingServletRequestParameterException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_MISSING.getCode(), r.getCode());
         assertNotNull(r.getMessage());
     }
@@ -520,8 +502,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleBindException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         AssertUtils.assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         assertNotNull(r.getData());
         assertInstanceOf(ArrayList.class, r.getData());
@@ -541,7 +522,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = customHandler.handleBizException(exception, request);
 
-        assertSame(customResponse, response);
+        assertEquals(HttpStatus.OK, ((ResponseEntity<?>) response).getStatusCode());
+        assertSame(customResponse, ((ResponseEntity<?>) response).getBody());
         verify(mockFactory).createResponse("20001", "测试", null);
     }
 
@@ -568,15 +550,16 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     }
 
     @Test
-    void shouldMapConstraintViolationToBadRequest() throws Exception {
-        assertResponseCode(
+    void shouldMapEmptyConstraintViolationToInternalServerError() throws Exception {
+        assertResponseEntity(
                 handler.handleConstraintViolationException(
                         new ConstraintViolationException(Collections.emptySet()), request),
-                ErrorCode.PARAM_INVALID.getCode());
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ErrorCode.SYSTEM_ERROR.getCode());
         assertResponseStatus(
                 "handleConstraintViolationException",
                 ConstraintViolationException.class,
-                HttpStatus.BAD_REQUEST);
+                HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
@@ -671,7 +654,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         assertResponseEntityBody(
                 customHandler.handleConstraintViolationException(
                         new ConstraintViolationException(Collections.emptySet()), request),
-                HttpStatus.BAD_REQUEST);
+                HttpStatus.INTERNAL_SERVER_ERROR);
         assertResponseEntityBody(
                 customHandler.handleMissingRequestHeaderException(
                         new MissingRequestHeaderException(
@@ -753,8 +736,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleSystemException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals("SYS_001", r.getCode());
         assertEquals("系统错误", r.getMessage());
     }
@@ -766,8 +748,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleBaseException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals("BASE_001", r.getCode());
     }
 
@@ -778,8 +759,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleMethodArgumentNotValidException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
     }
 
@@ -790,8 +770,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleBindException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
     }
 
@@ -804,8 +783,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         Object result =
                 failHandler.handleMissingServletRequestParameterException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.PARAM_MISSING.getCode(), r.getCode());
     }
 
@@ -816,8 +794,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.SYSTEM_ERROR.getCode(), r.getCode());
     }
 
@@ -828,8 +805,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleException((Exception) exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals("IE_001", r.getCode());
     }
 
@@ -844,8 +820,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleHttpRequestMethodNotSupportedException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("DELETE"));
     }
@@ -859,8 +834,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleMethodArgumentTypeMismatchException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("unknown"));
     }
@@ -873,8 +847,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object response = handler.handleNoHandlerFoundException(exception, request);
 
-        assertInstanceOf(R.class, response);
-        R<?> r = (R<?>) response;
+        R<?> r = responseBody(response);
         assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), r.getCode());
         assertTrue(r.getMessage().contains("GET"));
         assertTrue(r.getMessage().contains("http://localhost/api/users"));
@@ -890,8 +863,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleMethodArgumentTypeMismatchException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
     }
 
@@ -904,8 +876,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleHttpMessageNotReadableException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.PARAM_INVALID.getCode(), r.getCode());
     }
 
@@ -920,8 +891,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         Object result =
                 failHandler.handleHttpRequestMethodNotSupportedException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.OPERATION_NOT_ALLOWED.getCode(), r.getCode());
     }
 
@@ -934,8 +904,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
 
         Object result = failHandler.handleNoHandlerFoundException(exception, request);
 
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals(ErrorCode.DATA_NOT_FOUND.getCode(), r.getCode());
     }
 
@@ -966,6 +935,46 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         when(bindingResult.getFieldErrors()).thenReturn(Collections.emptyList());
 
         return new BindException(bindingResult);
+    }
+
+    private R<?> responseBody(Object response) {
+        ResponseEntity<?> entity = assertInstanceOf(ResponseEntity.class, response);
+        return assertInstanceOf(R.class, entity.getBody());
+    }
+
+    @Test
+    void allPublicHandlerDescriptorsAndOriginalConstructorRemainCompatible() throws Exception {
+        reset(request);
+        assertNotNull(MimirExceptionHandler.class.getConstructor(ExceptionResponseFactory.class));
+        List<Method> handlers =
+                java.util.Arrays.stream(MimirExceptionHandler.class.getMethods())
+                        .filter(
+                                method ->
+                                        method.isAnnotationPresent(
+                                                org.springframework.web.bind.annotation
+                                                        .ExceptionHandler.class))
+                        .toList();
+        assertEquals(21, handlers.size());
+        for (Method method : handlers) {
+            assertEquals(Object.class, method.getReturnType(), method.getName());
+            assertEquals(2, method.getParameterCount(), method.getName());
+            assertEquals(HttpServletRequest.class, method.getParameterTypes()[1]);
+        }
+    }
+
+    @Test
+    void doesNotCatchJvmErrorsFromFactory() {
+        AssertionError failure = new AssertionError("factory fatal");
+        MimirExceptionHandler failing =
+                new MimirExceptionHandler(
+                        (code, message, data) -> {
+                            throw failure;
+                        });
+        assertSame(
+                failure,
+                assertThrows(
+                        AssertionError.class,
+                        () -> failing.handleBizException(new BizException("B", "业务"), request)));
     }
 
     private void assertResponseCode(Object response, String code) {
@@ -1021,8 +1030,7 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         Object result = failHandler.handleBizException(bizException, request);
 
         assertNotNull(result);
-        assertInstanceOf(R.class, result);
-        R<?> r = (R<?>) result;
+        R<?> r = responseBody(result);
         assertEquals("BIZ_001", r.getCode());
     }
 }
