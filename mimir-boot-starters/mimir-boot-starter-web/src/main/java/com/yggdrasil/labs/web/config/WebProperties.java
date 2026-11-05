@@ -36,6 +36,12 @@ public class WebProperties {
     /** 序列化配置 */
     private Serialization serialization = new Serialization();
 
+    /** MVC 参数绑定配置 */
+    private Mvc mvc = new Mvc();
+
+    /** JSON 协议兼容配置 */
+    private Json json = new Json();
+
     /** 已弃用的安全配置，仅为保持 2.x Java API 与配置绑定兼容而保留。 */
     @Deprecated(since = "2.1.1", forRemoval = false)
     private Security security = new Security();
@@ -117,6 +123,23 @@ public class WebProperties {
 
         /** 是否忽略未知属性 默认：true */
         private boolean ignoreUnknownProperties = true;
+
+        /** 是否将超出 JavaScript 安全整数范围的业务整数输出为字符串 默认：false */
+        private boolean writeLargeIntegersAsString = false;
+    }
+
+    /** MVC 参数绑定配置 */
+    @Data
+    public static class Mvc {
+        /** 是否为 Java Time 参数补充缺省日期格式 默认：true */
+        private boolean dateFormatEnabled = true;
+    }
+
+    /** JSON 协议兼容配置 */
+    @Data
+    public static class Json {
+        /** 是否保留公共响应中的旧 fail 字段 默认：false */
+        private boolean includeLegacyFail = false;
     }
 
     /**

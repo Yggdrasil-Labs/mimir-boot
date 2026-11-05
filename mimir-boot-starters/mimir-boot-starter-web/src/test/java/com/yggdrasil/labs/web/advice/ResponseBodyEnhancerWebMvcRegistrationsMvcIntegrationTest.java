@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
@@ -47,6 +48,15 @@ class ResponseBodyEnhancerWebMvcRegistrationsMvcIntegrationTest {
                 .andExpect(jsonPath("$.traceId").value(TRACE_ID));
     }
 
+    @Test
+    void enhancesRuntimeResponseEntityWithCustomWebMvcRegistrations() throws Exception {
+        mockMvc.perform(
+                        get("/response-enhancer-registrations/required-header")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({ResponseController.class, CustomWebMvcRegistrationsConfiguration.class})
@@ -58,6 +68,11 @@ class ResponseBodyEnhancerWebMvcRegistrationsMvcIntegrationTest {
         @GetMapping("/response-enhancer-registrations/success")
         R<String> success() {
             return R.success("payload");
+        }
+
+        @GetMapping("/response-enhancer-registrations/required-header")
+        R<String> requiredHeader(@RequestHeader("X-Required-Value") String value) {
+            return R.success(value);
         }
     }
 

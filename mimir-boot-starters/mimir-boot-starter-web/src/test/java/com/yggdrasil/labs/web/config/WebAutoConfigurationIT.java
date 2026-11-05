@@ -308,7 +308,7 @@ class WebAutoConfigurationIT {
             excludeFilters =
                     @ComponentScan.Filter(
                             type = FilterType.REGEX,
-                            pattern = ".*ResponseBodyEnhancer.*Test.*"))
+                            pattern = ".*ResponseBodyEnhancer.*Test.*|.*(?:Test|IT)\\$.*"))
     private static class WideComponentScanConfiguration {}
 
     private static final class ConsumerValueSerializer

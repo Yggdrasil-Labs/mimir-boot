@@ -1,2 +1,3 @@
 com.yggdrasil.labs.web.config.WebAutoConfiguration
+com.yggdrasil.labs.web.config.MimirDateTimeWebMvcAutoConfiguration
 

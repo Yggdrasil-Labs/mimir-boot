@@ -25,6 +25,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.yggdrasil.labs.common.constant.HttpHeaderConstants;
@@ -84,6 +85,32 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
         assertThat(countingResponseBodyEnhancer.invocationCount()).isZero();
     }
 
+    @Test
+    void delegatesRuntimeResponseEntityCandidateExactlyOnce() throws Exception {
+        mockMvc.perform(
+                        get("/response-enhancer-override/required-header")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+
+        assertThat(((CountingResponseBodyEnhancer) responseBodyEnhancer).invocationCount())
+                .isEqualTo(1);
+    }
+
+    @Test
+    void honoursConsumerRejectionForRuntimeResponseEntityCandidate() throws Exception {
+        CountingResponseBodyEnhancer enhancer = (CountingResponseBodyEnhancer) responseBodyEnhancer;
+        enhancer.setSupportsResponse(false);
+
+        mockMvc.perform(
+                        get("/response-enhancer-override/required-header")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.traceId").doesNotExist());
+
+        assertThat(enhancer.invocationCount()).isZero();
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @Import({ResponseController.class, CustomResponseBodyEnhancerConfiguration.class})
@@ -95,6 +122,11 @@ class ResponseBodyEnhancerOverrideMvcIntegrationTest {
         @GetMapping("/response-enhancer-override/success")
         R<String> success() {
             return R.success("payload");
+        }
+
+        @GetMapping("/response-enhancer-override/required-header")
+        R<String> requiredHeader(@RequestHeader("X-Required-Value") String value) {
+            return R.success(value);
         }
     }
 

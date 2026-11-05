@@ -3,18 +3,29 @@ package com.yggdrasil.labs.web.advice;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod;
 
 import com.yggdrasil.labs.common.response.R;
 import com.yggdrasil.labs.test.base.BaseUnitTest;
@@ -85,6 +96,142 @@ class ResponseBodyEnhancerTest extends BaseUnitTest {
 
         assertTrue(supports);
     }
+
+    @Test
+    void supportsObjectAdviceReturningResponseEntityAtRuntime() throws Exception {
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isEnabled()).thenReturn(true);
+        ObjectResponseAdvice advice = new ObjectResponseAdvice();
+        Method method = ObjectResponseAdvice.class.getMethod("response");
+        MethodParameter runtimeReturnType =
+                new ServletInvocableHandlerMethod(advice, method)
+                        .getReturnValueType(advice.response());
+
+        assertEquals(Object.class, runtimeReturnType.getGenericParameterType());
+        assertEquals(ResponseEntity.class, runtimeReturnType.getParameterType());
+        assertEquals(ObjectResponseAdvice.class, runtimeReturnType.getContainingClass());
+        assertTrue(
+                responseBodyEnhancer.supports(runtimeReturnType, StringHttpMessageConverter.class));
+    }
+
+    @RestControllerAdvice
+    static class ObjectResponseAdvice {
+
+        public Object response() {
+            return ResponseEntity.ok(R.success("payload"));
+        }
+
+        public ResponseEntity<R<String>> typedResponse() {
+            return ResponseEntity.ok(R.success("payload"));
+        }
+
+        public ResponseEntity<String> stringResponse() {
+            return ResponseEntity.ok("payload");
+        }
+
+        public ResponseEntity<Object> objectResponse() {
+            return ResponseEntity.ok(R.success("payload"));
+        }
+
+        public ResponseEntity<?> wildcardResponse() {
+            return ResponseEntity.ok(R.success("payload"));
+        }
+
+        @SuppressWarnings("rawtypes")
+        public ResponseEntity rawResponse() {
+            return ResponseEntity.ok(R.success("payload"));
+        }
+
+        public HttpEntity<R<String>> httpEntityResponse() {
+            return new HttpEntity<>(R.success("payload"));
+        }
+
+        public Object objectHttpEntityResponse() {
+            return new HttpEntity<>(R.success("payload"));
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("responseTypeCandidates")
+    void preservesResponseTypeCandidateBoundaries(
+            String scenario, MethodParameter candidate, boolean expected) {
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isEnabled()).thenReturn(true);
+
+        assertEquals(
+                expected,
+                responseBodyEnhancer.supports(candidate, StringHttpMessageConverter.class));
+    }
+
+    static Stream<Arguments> responseTypeCandidates() throws Exception {
+        ObjectResponseAdvice advice = new ObjectResponseAdvice();
+        return Stream.of(
+                Arguments.of("Object Advice 声明", declaredType(advice, "response"), true),
+                Arguments.of("显式 ResponseEntity<R>", declaredType(advice, "typedResponse"), true),
+                Arguments.of("原有 HttpEntity<R>", declaredType(advice, "httpEntityResponse"), true),
+                Arguments.of("显式非 R", runtimeType(advice, "stringResponse"), false),
+                Arguments.of("显式 Object 泛型", runtimeType(advice, "objectResponse"), false),
+                Arguments.of("通配泛型", runtimeType(advice, "wildcardResponse"), false),
+                Arguments.of("原始 ResponseEntity", runtimeType(advice, "rawResponse"), false),
+                Arguments.of(
+                        "Object 实际为 HttpEntity",
+                        runtimeType(advice, "objectHttpEntityResponse"),
+                        false),
+                Arguments.of(
+                        "Controller 未知泛型",
+                        runtimeType(new ObjectResponseController(), "response"),
+                        false),
+                Arguments.of("普通类无注解", runtimeType(new PlainObjectResponse(), "response"), false),
+                Arguments.of(
+                        "非 REST Advice",
+                        runtimeType(new PlainControllerAdvice(), "response"),
+                        false),
+                Arguments.of(
+                        "合并 REST Advice 注解",
+                        runtimeType(new ComposedResponseAdvice(), "response"),
+                        true));
+    }
+
+    @Test
+    void disabledEnhancerRejectsRuntimeObjectAdviceCandidate() throws Exception {
+        when(webProperties.getResponse()).thenReturn(responseConfig);
+        when(responseConfig.isEnabled()).thenReturn(false);
+
+        assertFalse(
+                responseBodyEnhancer.supports(
+                        runtimeType(new ObjectResponseAdvice(), "response"),
+                        StringHttpMessageConverter.class));
+    }
+
+    private static MethodParameter declaredType(Object bean, String name) throws Exception {
+        return new MethodParameter(bean.getClass().getMethod(name), -1);
+    }
+
+    private static MethodParameter runtimeType(Object bean, String name) throws Exception {
+        Method method = bean.getClass().getMethod(name);
+        return new ServletInvocableHandlerMethod(bean, method)
+                .getReturnValueType(method.invoke(bean));
+    }
+
+    static class PlainObjectResponse {
+
+        public Object response() {
+            return ResponseEntity.ok(R.success("payload"));
+        }
+    }
+
+    @RestController
+    static class ObjectResponseController extends PlainObjectResponse {}
+
+    @ControllerAdvice
+    static class PlainControllerAdvice extends PlainObjectResponse {}
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @RestControllerAdvice
+    @interface ComposedAdvice {}
+
+    @ComposedAdvice
+    static class ComposedResponseAdvice extends PlainObjectResponse {}
 
     /** 测试不支持非 R 类型的响应 */
     @Test

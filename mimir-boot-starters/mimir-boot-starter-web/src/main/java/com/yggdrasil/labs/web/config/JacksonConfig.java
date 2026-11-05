@@ -5,7 +5,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
@@ -24,6 +28,9 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
+import com.yggdrasil.labs.common.response.R;
+import com.yggdrasil.labs.web.serialization.MimirSafeIntegerModule;
+import com.yggdrasil.labs.web.serialization.RSuccessMixin;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,6 +53,8 @@ import lombok.RequiredArgsConstructor;
 @ConditionalOnClass(ObjectMapper.class)
 public class JacksonConfig {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JacksonConfig.class);
+
     private final WebProperties webProperties;
     private final ObjectProvider<Module> modules;
 
@@ -59,6 +68,7 @@ public class JacksonConfig {
      */
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jackson2ObjectMapperBuilderCustomizer() {
+        Set<Class<?>> reportedMixins = ConcurrentHashMap.newKeySet();
         return builder -> {
             WebProperties.Serialization serialization = webProperties.getSerialization();
 
@@ -87,8 +97,12 @@ public class JacksonConfig {
             javaTimeModule.addDeserializer(
                     LocalTime.class, new LocalTimeDeserializer(timeFormatter));
 
-            // 配置模块和时区
-            ArrayList<Module> modulesToInstall = new ArrayList<>(modules.orderedStream().toList());
+            // 安全整数模块先安装，后续业务模块可按 Jackson 的模块顺序覆盖它。
+            ArrayList<Module> modulesToInstall = new ArrayList<>();
+            if (serialization.isWriteLargeIntegersAsString()) {
+                modulesToInstall.add(new MimirSafeIntegerModule());
+            }
+            modulesToInstall.addAll(modules.orderedStream().toList());
             modulesToInstall.add(javaTimeModule);
             builder.modulesToInstall(modulesToInstall.toArray(Module[]::new));
             builder.timeZone(java.util.TimeZone.getTimeZone(serialization.getTimeZone()));
@@ -109,6 +123,22 @@ public class JacksonConfig {
 
             // 禁用将日期写为时间戳
             builder.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+            if (!webProperties.getJson().isIncludeLegacyFail()) {
+                builder.postConfigurer(
+                        mapper -> {
+                            // 已有业务 MixIn 时保留业务配置，不用框架 MixIn 替换。
+                            Class<?> existing = mapper.findMixInClassFor(R.class);
+                            if (existing == null) {
+                                mapper.addMixIn(R.class, RSuccessMixin.class);
+                            } else if (reportedMixins.add(existing)) {
+                                LOGGER.info(
+                                        "检测到 R 的业务 MixIn {}，跳过框架 MixIn；如需移除 fail，请在业务 MixIn 中忽略"
+                                                + " isFail",
+                                        existing.getName());
+                            }
+                        });
+            }
         };
     }
 }

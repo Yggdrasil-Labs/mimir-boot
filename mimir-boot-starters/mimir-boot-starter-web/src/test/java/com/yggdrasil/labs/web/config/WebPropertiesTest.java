@@ -6,6 +6,9 @@ import java.util.Arrays;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
 
 import com.yggdrasil.labs.test.base.BaseUnitTest;
 
@@ -43,7 +46,48 @@ class WebPropertiesTest extends BaseUnitTest {
         assertNotNull(webProperties.getCors());
         assertNotNull(webProperties.getSerialization());
         assertNotNull(webProperties.getResponse());
+        assertTrue(webProperties.getMvc().isDateFormatEnabled());
+        assertFalse(webProperties.getSerialization().isWriteLargeIntegersAsString());
+        assertFalse(webProperties.getJson().isIncludeLegacyFail());
     }
+
+    @Test
+    void bindsIndependentDateNumberAndJsonSwitches() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(PropertiesConfiguration.class)
+                .withPropertyValues(
+                        "mimir.boot.web.mvc.date-format-enabled=false",
+                        "mimir.boot.web.serialization.write-large-integers-as-string=true",
+                        "mimir.boot.web.json.include-legacy-fail=true")
+                .run(
+                        context -> {
+                            assertNull(context.getStartupFailure());
+                            WebProperties properties = context.getBean(WebProperties.class);
+                            assertFalse(properties.getMvc().isDateFormatEnabled());
+                            assertTrue(
+                                    properties.getSerialization().isWriteLargeIntegersAsString());
+                            assertTrue(properties.getJson().isIncludeLegacyFail());
+                        });
+    }
+
+    @Test
+    void rejectsInvalidBooleanSwitches() {
+        for (String property :
+                new String[] {
+                    "mimir.boot.web.mvc.date-format-enabled",
+                    "mimir.boot.web.serialization.write-large-integers-as-string",
+                    "mimir.boot.web.json.include-legacy-fail"
+                }) {
+            new ApplicationContextRunner()
+                    .withUserConfiguration(PropertiesConfiguration.class)
+                    .withPropertyValues(property + "=invalid-boolean")
+                    .run(context -> assertNotNull(context.getStartupFailure(), property));
+        }
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(WebProperties.class)
+    static class PropertiesConfiguration {}
 
     /** 测试 CORS 默认配置 */
     @Test

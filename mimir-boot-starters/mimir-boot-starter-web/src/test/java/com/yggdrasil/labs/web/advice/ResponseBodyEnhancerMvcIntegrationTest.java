@@ -27,6 +27,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
@@ -120,6 +121,15 @@ class ResponseBodyEnhancerMvcIntegrationTest {
     }
 
     @Test
+    void fillsTraceIdForExistingResponseEntityExceptionBranch() throws Exception {
+        mockMvc.perform(
+                        get("/response-enhancer/required-header")
+                                .header(HttpHeaderConstants.TRACE_ID_HEADER, TRACE_ID))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+    }
+
+    @Test
     void executesDownstreamExceptionAdviceExactlyOnce() throws Exception {
         mockMvc.perform(
                         get("/response-enhancer/failure")
@@ -150,6 +160,11 @@ class ResponseBodyEnhancerMvcIntegrationTest {
         @GetMapping("/response-enhancer/failure")
         R<String> failure() {
             throw new IllegalStateException("failure");
+        }
+
+        @GetMapping("/response-enhancer/required-header")
+        R<String> requiredHeader(@RequestHeader("X-Required-Value") String value) {
+            return R.success(value);
         }
     }
 

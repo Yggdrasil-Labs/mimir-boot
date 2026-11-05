@@ -143,6 +143,7 @@ mimir:
 - `writeNulls: false` - 不写入 null 值
 - `prettyPrint: false` - 不美化输出
 - `ignoreUnknownProperties: true` - 忽略未知属性
+- `writeLargeIntegersAsString: false` - 默认不改变大整数的 JSON 类型
 
 **示例**：
 
@@ -179,6 +180,40 @@ public class UserVO {
   "workTime": "09:00:00"
 }
 ```
+
+### 日期参数与 JSON 迁移
+
+以下配置仅在 Servlet 应用且 `mimir.boot.web.enabled=true` 时生效：
+
+```yaml
+mimir:
+  boot:
+    web:
+      mvc:
+        date-format-enabled: true
+      serialization:
+        write-large-integers-as-string: false
+      json:
+        include-legacy-fail: false
+```
+
+日期参数默认按上述 `dateFormat`、`timeFormat` 和 `dateTimeFormat` 绑定 `LocalDate`、`LocalTime`、`LocalDateTime`，仍支持 ISO 格式。业务设置对应 `spring.mvc.format.*` 或字段 `@DateTimeFormat` 时优先使用业务格式。需要保留旧的 locale SHORT 输入时，可关闭 `mvc.date-format-enabled` 或显式配置格式。`Date`、`Calendar` 不受新增缺省格式器影响；业务有序 `WebMvcConfigurer` 需要覆盖该缺省时，顺序应大于 -1，或关闭此开关。
+
+开启 `write-large-integers-as-string` 后，超出 JavaScript 安全整数范围 `[-9007199254740991, 9007199254740991]` 的 `Long`、`BigInteger` 和长整型数组元素输出为字符串，安全范围内仍输出数字。`R.timestamp`、`PageResult` 的 `totalCount`、`pageIndex`、`pageSize`、`totalPages` 以及 `PageRequest` 的 `pageIndex`、`pageSize`、`offset` 保持数字，包括对应模型子类继承或覆盖的属性；同名业务字段不享受豁免。属性级格式或序列化器优先；普通业务值的消费者 Module 可覆盖框架兜底。元数据如需其他输出格式，应使用属性级 MixIn 或自定义模型序列化器。
+
+API 文档若描述可能超出安全范围的业务数值，可自行声明联合类型；本模块不会自动修改 OpenAPI 模型或引入 springdoc：
+
+```yaml
+oneOf:
+  - type: integer
+    format: int64
+  - type: string
+    pattern: '^-?[0-9]+$'
+```
+
+默认受管 Jackson 输出 `R.success` 而省略旧的 `fail` 字段；迁移期间可开启 `json.include-legacy-fail` 保留两个字段。该策略影响 Boot 自动配置的共享 `ObjectMapper` 以及从受管 builder 创建的 mapper，包括复用它们的消息、缓存或 HTTP 客户端；业务自行创建的 mapper 和 fastjson2 不受影响。Web 总开关关闭或应用不是 Servlet 时，默认 Jackson 行为保持不变。
+
+业务为 `R` 本身预先注册 MixIn 时，框架保留业务 MixIn，并在首次构建受管 mapper 时记录提示；仅为 `R` 子类注册 MixIn 不会阻止框架安装基础 MixIn。业务在框架后执行的 builder 后处理器或 mapper 构建后为 `R` 添加 MixIn 会覆盖框架 MixIn，框架无法对此记录提示；需要检测提示时可通过 builder `mixIn`、Module 或较早执行的后处理器注册。
 
 ### 请求大小限制迁移
 
@@ -312,6 +347,10 @@ log.info("用户登录：IP={}", org.slf4j.MDC.get("ip"));
 - 自动为实际的 `R` 响应对象填充 traceId；支持直接返回 `R`，以及声明为 `HttpEntity<R>`/`ResponseEntity<R>` 的接口
 - `@RestControllerAdvice` 方法即使声明返回 `Object` 也可处理，但实际响应体必须是 `R`
 - 仅处理 `@RestController` 或 `@RestControllerAdvice` 注解的类
+
+当 Exception 处理器以 `Object` 声明返回 `ResponseEntity` 时，Web 和 Exception 需要配合交付：默认增强器对符合条件的异常响应检查解包后的实际 body，仅对 `R` 委托增强。字符串、其他对象和 null 不会被构造或转换为 `R`；已有 traceId 不覆盖，关闭响应增强或由业务增强器拒绝时不额外补填。
+
+自定义 `ResponseBodyAdvice` 的 `supports` 在这些异常分支看到运行期 `ResponseEntity` 外层类型。仅以声明类型或泛型判断 `R` 的增强可能不再执行；应让 `supports` 接受需要的异常处理器，并在 `beforeBodyWrite` 中使用 `body instanceof R<?>` 判断实际响应体。详细迁移示例见 [Exception Starter](../mimir-boot-starter-exception/README.md#升级和兼容性)。
 
 **使用示例**：
 

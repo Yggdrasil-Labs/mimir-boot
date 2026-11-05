@@ -5,6 +5,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -42,7 +43,8 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
     /**
      * 判断是否支持增强
      *
-     * <p>仅对返回 {@code R} 或 {@code ResponseEntity<R>} 的接口进行增强
+     * <p>支持 {@code R}、{@code ResponseEntity<R>} 及异常 Advice 的 Object 返回候选；实际响应体由内部 MVC Advice 检查是否为
+     * {@code R}。
      *
      * @param returnType 返回类型
      * @param converterType 转换器类型
@@ -82,7 +84,15 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
         }
         Class<?> responseBodyType =
                 ResolvableType.forMethodParameter(returnType).getGeneric(0).resolve();
-        return responseBodyType != null && R.class.isAssignableFrom(responseBodyType);
+        if (responseBodyType != null && R.class.isAssignableFrom(responseBodyType)) {
+            return true;
+        }
+        // 异常处理器声明 Object、实际返回 ResponseEntity 时，Spring 保留 Object 泛型。
+        // 这里只放行候选，内部 MVC Advice 会在调用增强器前确认响应体是 R。
+        return returnType.getGenericParameterType() == Object.class
+                && ResponseEntity.class.isAssignableFrom(returnClass)
+                && AnnotatedElementUtils.hasAnnotation(
+                        returnType.getContainingClass(), RestControllerAdvice.class);
     }
 
     /**
