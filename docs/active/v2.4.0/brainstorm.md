@@ -2,7 +2,7 @@
 version: v2.4.0
 status: exploring
 created: 2026-10-23
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 
 # v2.4.0 版本级 Brainstorm
@@ -13,7 +13,7 @@ updated: 2026-10-31
 
 ## 目标与约束
 
-- 按 v2.4.0 能力迭代规划，允许新功能或较大的协议演进（D-01）；不新增模块，在现有模块职责内丰富能力（D-02）。
+- 按 v2.4.0 能力迭代规划，允许新功能或较大的协议演进（D-01）；不新增模块，在现有模块职责内丰富能力（D-02）。唯一例外是 2026-11-02 纳入的代码质量工具链，可新增规则资源模块 `mimir-boot-code-quality`（D-102）。
 - 产品定位是其他项目的基座，优先跨项目复用、接入体验、稳定性与兼容性（D-03）；公共配置、接口、依赖与发布行为遵循[兼容性与接入体验原则](../../../docs/standards/core-beliefs.md)，未明确调整的行为保持兼容。
 - 核心目标是提供能力，让下游自由组合（D-86，2026-10-29 用户明确）：以可独立启用、关闭、覆盖和组合为设计依据，默认配置与 profile 提供便捷预设；避免为便利而添加跨能力隐式联动或强制流程。真实依赖与不兼容组合需要明确说明，这一原则不自动改变已确认默认值或扩大本轮范围。
 - 逐模块讨论，允许模块保持现状（D-04）。
@@ -35,7 +35,8 @@ updated: 2026-10-31
 | [RPC Core](./rpc-deprecation/brainstorm.md) | 保持现状；旧入口改标 `forRemoval = true` 并明确废弃周期 | — |
 | Feign | 保持现状 | 对接 Spring HTTP Service Client 未采纳 |
 | Dubbo | 保持现状 | Consumer 端到端验证未纳入 |
-| Test | 保持现状 | Testcontainers 共享容器配置未纳入 |
+| Test | 保持现状；按 D-107 承载 ArchUnit 规则库（见代码质量工具链） | Testcontainers 共享容器配置未纳入 |
+| [代码质量工具链](./code-quality-toolchain/brainstorm.md)（跨 Parent、新模块、BOM、Test） | Q-01～Q-06：PMD（含注释与命名）、CPD、ArchUnit；本仓库严格、下游独立开关默认只报告；Spotless/JaCoCo 统一定位、语义不变 | Checkstyle（D-109）、doclint、`dependency:analyze`、Enforcer 模块方向规则未采纳；SpotBugs、Error Prone 暂缓 |
 
 ### 模块间的讨论边界
 
@@ -197,7 +198,7 @@ updated: 2026-10-31
 | 编号 | 决定 | 状态 |
 |---|---|---|
 | D-01 | 按 v2.4.0 能力迭代规划，允许新功能或较大的协议演进 | 有效 |
-| D-02 | 不新增模块，在现有模块内丰富能力 | 有效 |
+| D-02 | 不新增模块，在现有模块内丰富能力 | 有效；D-102 为唯一例外 |
 | D-03 | 优先跨项目复用、接入体验、稳定性与兼容性 | 有效 |
 | D-04 | 逐模块讨论，允许模块保持现状 | 有效 |
 | D-05 | Parent 编译目标、处理器、构建产物三个方向纳入讨论 | 有效 |
@@ -285,6 +286,14 @@ updated: 2026-10-31
 | D-99 | Common C-02 与 MyBatis 的 COLA 分页转换类短名不得重复：Common 保留 `com.yggdrasil.labs.common.page.ColaPageConverters`，MyBatis 新增类改名为 `com.yggdrasil.labs.mybatis.page.IPageColaConverters` | 有效（2026-10-31 用户选择方案 1）；MyBatis Starter 依赖 Common，两类必然同在消费者类路径，见 [Common 设计](./common-contracts/design.md) 与 [MyBatis 设计](./mybatis-capabilities/design.md) |
 | D-100 | Log 预设的早期入口识别 Spring Cloud legacy bootstrap 应用，bootstrap 应用不取得所有权令牌、不发布或清理规则，由主应用按自身环境完成预设与 mask 规则发布 | 有效，部分由 D-101 修订（“不取得所有权令牌”改为“不写内部源、不发布”）（2026-10-31 用户选择方案 1）；避免 bootstrap 抢占令牌导致新预设缺省规则及旧 `application.yml` mask 配置失效，见 [Log 设计](./log-runtime/design.md) |
 | D-101 | Log 预设早期脱敏改由预设 XML 的 `springProperty` 携带：EPP 只校验、选择规则并写内部键，转换器随 Logback 配置加载切换规则（2026-11-03 用户选择 F2：仅当新加载的 Context 带 mask 属性时切换，旧 XML 重新加载保留已发布规则，顺序启动“新→旧”时旧应用刷新前可沿用上一应用规则）；删除启动所有权、启动期规则缓存与生命周期监听器，刷新恢复“最后刷新者发布”（预设应用的普通子上下文除外）。D-100 的“不取得所有权”相应改为“bootstrap 应用不写内部源、不发布” | 有效（2026-11-02 用户批准推进）；依据为三轮审查集中于所有权状态的缺陷及一次性验证，见 [Log 设计 IC-4](./log-runtime/design.md#ic-4-从日志正式初始化起执行凭据字段脱敏) |
+| D-102 | 代码质量工具链并入 v2.4.0 作为第十项需求；作为 D-02 的唯一例外，允许新增规则资源模块 `mimir-boot-code-quality` | 有效（2026-11-02 用户选择并入 v2.4.0），见[代码质量工具链大纲](./code-quality-toolchain/brainstorm.md) |
+| D-103 | 引入 Checkstyle、PMD、CPD、ArchUnit；不引入 `dependency:analyze`，不扩展 Enforcer 模块方向规则，不开启 Javadoc doclint；SpotBugs、Error Prone 暂缓 | 有效（2026-11-02）；Checkstyle 部分被 D-109 撤销 |
+| D-104 | 本仓库严格执行，违规阻断构建；下游每个工具独立开关，默认只报告 | 有效（2026-11-02） |
+| D-105 | Spotless、JaCoCo 纳入统一治理但不合并实现：配置位置、开关与失败语义不变，不进入规则 jar，不新增聚合开关 | 有效（2026-11-02） |
+| D-106 | 每个质量维度只有一个负责工具，按[架构 RFC](../../design-docs/arch-code-quality-toolchain.md#定位矩阵)的定位矩阵配置规则 | 有效（2026-11-02） |
+| D-107 | ArchUnit 规则库放在 starter-test，提供通用分层与 COLA 预设；注释规则只要求公开类型与方法有 Javadoc，不强制 `@author` | 有效（2026-11-02） |
+| D-108 | 代码质量工具链开关保持插件原生属性；已自行配置 PMD 的下游受影响，作为向后兼容的显式例外写入升级说明并给出恢复配置，不改用 Mimir 私有开关 | 有效（2026-11-02 用户确认），见[代码质量规格 CQ-10](./code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级) |
+| D-109 | 不引入 Checkstyle：注释与命名改由 PMD 选定规则负责（`CommentRequired`、`DanglingJavadoc` 与 codestyle 命名规则），修订 D-103；接受不检查 Javadoc 标签与签名一致性等缺口 | 有效（2026-11-02 用户确认），见[代码质量设计](./code-quality-toolchain/design.md#pmd-规则集cq-01cq-02) |
 | D-15、D-19、D-26、D-35、D-40、D-50、D-70、D-72、D-74、D-76、D-78、D-80 | 各模块依次收口并进入下一模块；不代表详细设计定稿或授权实施 | 过程记录 |
 
 ## 当前产物状态

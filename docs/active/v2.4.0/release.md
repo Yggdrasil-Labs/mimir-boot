@@ -11,7 +11,9 @@ updated: 2026-11-02
 
 ## 版本目标与当前阶段
 
-围绕现有模块提供可由下游自由组合的基础能力，不新增模块，优先稳定性与兼容性。规划版本为 v2.4.0，当前开发制品版本仍以[根 POM](../../../pom.xml)的 revision 为准。
+围绕现有模块提供可由下游自由组合的基础能力，不新增模块，优先稳定性与兼容性；唯一例外是代码质量工具链的规则资源模块 `mimir-boot-code-quality`（D-102）。规划版本为 v2.4.0，当前开发制品版本仍以[根 POM](../../../pom.xml)的 revision 为准。
+
+2026-11-02 用户确认把代码质量工具链并入本版本作为第十项需求，决定 D-102～D-109 记在[版本级 brainstorm](./brainstorm.md#决策日志)，架构依据见 [RFC](../../design-docs/arch-code-quality-toolchain.md)。
 
 2026-10-29 用户要求停止逐项提问，先提供推荐方案并补齐每项需求的 SDD。本轮在既有 9 个需求目录补齐规格、设计、静态实施计划。此前逐项确认的 D-01～D-96 以及 2026-10-31 审查后确认的 D-97～D-100 保存在[版本级 brainstorm](./brainstorm.md)；未逐项确认的其余签名细节、默认值和边界由本轮推荐明确，文档标记 draft，不追记为用户已确认决策。原问题“默认消息与覆盖消息均为null”采用允许null的推荐，不视为用户曾回答A。
 
@@ -30,6 +32,7 @@ updated: 2026-11-02
 | [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明 | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
 | [Processor讨论](./mybatis-processor/brainstorm.md) | D-71 | 支持源版本跟随编译器；准确解释生成全限定名冲突 | [规格](./mybatis-processor/spec.md) · [设计](./mybatis-processor/design.md) · [计划](./mybatis-processor/plan.md) |
 | [RPC Core讨论](./rpc-deprecation/brainstorm.md) | D-75 | 仅增强旧入口删除预告，保留原始since、兼容适配与运行行为 | [规格](./rpc-deprecation/spec.md) · [设计](./rpc-deprecation/design.md) · [计划](./rpc-deprecation/plan.md) |
+| [代码质量讨论](./code-quality-toolchain/brainstorm.md) | Q-01～Q-06、D-102～D-109 | 新增规则 jar；Parent 接入 PMD/CPD（PMD 兼管注释与命名），下游独立开关默认只报告，本仓库严格；starter-test 提供 ArchUnit 规则库；Spotless/JaCoCo 语义不变 | [规格](./code-quality-toolchain/spec.md) · [设计](./code-quality-toolchain/design.md) · [计划](./code-quality-toolchain/plan.md) |
 
 ## 组合与实施顺序
 
@@ -49,6 +52,8 @@ flowchart LR
   M --> V
   MP --> V
   I --> V
+  P --> Q[代码质量工具链]
+  Q --> V
 ```
 
 箭头表示集成前置，不要求所有文档或实现串行。建议先落实Parent/BOM并验证发布形态；Common与各Starter可在固定契约后并行；最后集中验证共享ObjectMapper、响应工厂、日志路由及实际消费者。改动同一POM或自动配置类的任务由对应模块单一负责人整合，避免并行覆盖。
@@ -69,7 +74,7 @@ Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容�
 
 ## 范围边界
 
-Nacos、Feign、Dubbo、Test Starter保持现状。无总数分页、多字段排序、拦截器排序、完整JSON日志、W-03请求标识回传等不纳入；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。
+Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序、完整JSON日志、W-03请求标识回传等不纳入；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
 
 TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../tech-debt-tracker.md)。
 
