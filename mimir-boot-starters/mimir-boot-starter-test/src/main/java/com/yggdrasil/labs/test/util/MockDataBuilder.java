@@ -121,8 +121,8 @@ public class MockDataBuilder<T> {
                     if (value != null) {
                         field.set(target, value);
                     }
-                } catch (IllegalAccessException e) {
-                    // 忽略无法访问的字段
+                } catch (IllegalAccessException ignored) {
+                    // 测试数据采用尽力复制；不可访问的字段保持目标值，继续复制其余字段。
                 }
             }
             currentClass = currentClass.getSuperclass();

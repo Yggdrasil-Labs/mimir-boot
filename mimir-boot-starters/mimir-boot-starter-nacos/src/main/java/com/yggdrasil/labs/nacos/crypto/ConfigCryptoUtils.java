@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.nacos.crypto;
 
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -30,7 +31,7 @@ import com.yggdrasil.labs.common.exception.SystemException;
 public class ConfigCryptoUtils {
 
     public static final String DEFAULT_ALGORITHM = "AES/GCM/NoPadding";
-    private static final Logger log = LoggerFactory.getLogger(ConfigCryptoUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigCryptoUtils.class);
     private static final String LEGACY_ALGORITHM = "AES";
     private static final String VERSION = "v1";
     private static final int KEY_SIZE = 256;
@@ -179,7 +180,8 @@ public class ConfigCryptoUtils {
         }
     }
 
-    private static String decryptGcm(String ciphertext, String key) throws Exception {
+    private static String decryptGcm(String ciphertext, String key)
+            throws GeneralSecurityException {
         String[] parts = ciphertext.split(":", -1);
         if (parts.length != 3 || !VERSION.equals(parts[0])) {
             throw new IllegalArgumentException("不支持的密文格式");
@@ -214,7 +216,7 @@ public class ConfigCryptoUtils {
     }
 
     private static String decryptLegacy(String ciphertext, String key, String algorithm)
-            throws Exception {
+            throws GeneralSecurityException {
         Cipher cipher = Cipher.getInstance(algorithm);
         cipher.init(
                 Cipher.DECRYPT_MODE, new SecretKeySpec(Base64.getDecoder().decode(key), algorithm));
@@ -234,7 +236,7 @@ public class ConfigCryptoUtils {
     }
 
     private static void warnLegacyEcbMigration() {
-        log.warn("legacy ECB migration API 已调用；该接口不提供篡改检测，请完成 AES-GCM 密文迁移");
+        LOGGER.warn("legacy ECB migration API 已调用；该接口不提供篡改检测，请完成 AES-GCM 密文迁移");
     }
 
     private static String normalizeKeyAlgorithm(String algorithm) {

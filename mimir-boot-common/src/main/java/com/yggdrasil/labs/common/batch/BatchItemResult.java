@@ -39,13 +39,7 @@ public final class BatchItemResult<T extends Serializable> implements Serializab
 
     // 字段与构造参数一一对应，全部校验在此执行：工厂创建必经校验；若 Jackson 经此构造创建对象同样经过校验（跨服务反序列化不在承诺范围内）
     private BatchItemResult(Integer index, String inputId, T data, String code, String message) {
-        if (index != null) {
-            if (index < 0) {
-                throw new IllegalArgumentException("index 不能为负数: " + index);
-            }
-        } else if (inputId == null || inputId.isBlank()) {
-            throw new IllegalArgumentException("未提供 index 时 inputId 必须为非空白文本");
-        }
+        validateCorrelation(index, inputId);
         if (code == null) {
             if (message != null) {
                 throw new IllegalArgumentException("成功项不能携带 message");
@@ -63,6 +57,16 @@ public final class BatchItemResult<T extends Serializable> implements Serializab
         this.data = data;
         this.code = code;
         this.message = message;
+    }
+
+    private static void validateCorrelation(Integer index, String inputId) {
+        if (index != null) {
+            if (index < 0) {
+                throw new IllegalArgumentException("index 不能为负数: " + index);
+            }
+        } else if (inputId == null || inputId.isBlank()) {
+            throw new IllegalArgumentException("未提供 index 时 inputId 必须为非空白文本");
+        }
     }
 
     /**

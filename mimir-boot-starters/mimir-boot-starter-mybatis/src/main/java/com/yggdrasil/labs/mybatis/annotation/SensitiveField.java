@@ -15,6 +15,7 @@ public @interface SensitiveField {
     /** 自定义脱敏字符（当strategy为CUSTOM时有效） */
     String replacement() default "****";
 
+    /** 支持的字段脱敏策略。 */
     enum MaskStrategy {
         /** 全部脱敏 */
         ALL,

@@ -14,7 +14,7 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 /** 单次 RPC 调用的内部 Hook 生命周期状态机。 */
 final class RpcHookLifecycle {
 
-    private static final Logger log = LoggerFactory.getLogger(RpcHookInvocation.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RpcHookInvocation.class);
 
     private final RpcCallContext context;
     private final List<RpcHook> hooks;
@@ -111,6 +111,8 @@ final class RpcHookLifecycle {
         }
     }
 
+    // 重入判断针对执行 before 的线程实例，不能用可重写的 equals 替代线程归属。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     private void waitForBeforeToFinish() {
         synchronized (lifecycleMonitor) {
             boolean interrupted = false;
@@ -156,10 +158,12 @@ final class RpcHookLifecycle {
         try {
             action.run();
         } catch (Throwable failure) {
-            log.warn("RPC Hook {} phase failed and was ignored", phase, failure);
+            LOGGER.warn("RPC Hook {} phase failed and was ignored", phase, failure);
         }
     }
 
+    // Throwable 禁止将自身加入 suppressed，必须检查对象身份。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     private void runWithSuppressed(Throwable primaryError, ThrowingRunnable action, String phase) {
         try {
             action.run();
@@ -167,7 +171,7 @@ final class RpcHookLifecycle {
             if (failure != primaryError) {
                 primaryError.addSuppressed(failure);
             }
-            log.warn("RPC Hook {} phase failed after business error", phase, failure);
+            LOGGER.warn("RPC Hook {} phase failed after business error", phase, failure);
         }
     }
 

@@ -144,7 +144,8 @@ final class SlowSqlTextSanitizer {
             if (startsTripleQuote(sql, index)) {
                 return -1;
             }
-            char current = sql.charAt(index++);
+            char current = sql.charAt(index);
+            index++;
             if (current == '\\') {
                 return -1;
             }
@@ -165,37 +166,6 @@ final class SlowSqlTextSanitizer {
                 && sql.charAt(index + 2) == '\'';
     }
 
-    private static int skipNumber(String sql, int start) {
-        int index = start;
-        while (index < sql.length() && isDigit(sql.charAt(index))) {
-            index++;
-        }
-        if (index < sql.length() && sql.charAt(index) == '.') {
-            index++;
-            while (index < sql.length() && isDigit(sql.charAt(index))) {
-                index++;
-            }
-        }
-        if (index < sql.length() && (sql.charAt(index) == 'e' || sql.charAt(index) == 'E')) {
-            index++;
-            if (index < sql.length() && (sql.charAt(index) == '+' || sql.charAt(index) == '-')) {
-                index++;
-            }
-            int exponentStart = index;
-            while (index < sql.length() && isDigit(sql.charAt(index))) {
-                index++;
-            }
-            if (index == exponentStart) {
-                return -1;
-            }
-        }
-        if (index < sql.length()
-                && (isIdentifierPart(sql.charAt(index)) || sql.charAt(index) == '.')) {
-            return -1;
-        }
-        return index;
-    }
-
     private static boolean asciiEquals(String sql, int start, int end, String candidate) {
         if (candidate.length() != end - start) {
             return false;
@@ -213,35 +183,17 @@ final class SlowSqlTextSanitizer {
     }
 
     private static String operator(String sql, int start, int end) {
-        if (end - start == 1) {
-            return switch (sql.charAt(start)) {
-                case '=' -> "=";
-                case '<' -> "<";
-                case '>' -> ">";
-                case '!' -> "!";
-                case '+' -> "+";
-                case '-' -> "-";
-                case '*' -> "*";
-                case '/' -> "/";
-                case '%' -> "%";
-                default -> null;
-            };
+        if (end - start == 1 && isOperator(sql.charAt(start))) {
+            return String.valueOf(sql.charAt(start));
         }
         if (end - start == 2) {
-            char first = sql.charAt(start);
-            char second = sql.charAt(start + 1);
-            if (first == '<' && second == '=') {
-                return "<=";
-            }
-            if (first == '>' && second == '=') {
-                return ">=";
-            }
-            if (first == '<' && second == '>') {
-                return "<>";
-            }
-            if (first == '!' && second == '=') {
-                return "!=";
-            }
+            return switch (sql.substring(start, end)) {
+                case "<=" -> "<=";
+                case ">=" -> ">=";
+                case "<>" -> "<>";
+                case "!=" -> "!=";
+                default -> null;
+            };
         }
         return null;
     }
@@ -288,6 +240,47 @@ final class SlowSqlTextSanitizer {
                 || value == '%';
     }
 
+    /** 数值字面量的扫描边界；不接受不完整指数或相邻标识符。 */
+    private static final class Numbers {
+        private Numbers() {}
+
+        static int skipNumber(String sql, int start) {
+            int index = skipDigits(sql, start);
+            if (index < sql.length() && sql.charAt(index) == '.') {
+                index = skipDigits(sql, index + 1);
+            }
+            index = skipExponent(sql, index);
+            if (index < 0) {
+                return -1;
+            }
+            if (index < sql.length()
+                    && (isIdentifierPart(sql.charAt(index)) || sql.charAt(index) == '.')) {
+                return -1;
+            }
+            return index;
+        }
+
+        private static int skipDigits(String sql, int start) {
+            int index = start;
+            while (index < sql.length() && isDigit(sql.charAt(index))) {
+                index++;
+            }
+            return index;
+        }
+
+        private static int skipExponent(String sql, int index) {
+            if (index >= sql.length() || (sql.charAt(index) != 'e' && sql.charAt(index) != 'E')) {
+                return index;
+            }
+            index++;
+            if (index < sql.length() && (sql.charAt(index) == '+' || sql.charAt(index) == '-')) {
+                index++;
+            }
+            int end = skipDigits(sql, index);
+            return end == index ? -1 : end;
+        }
+    }
+
     private enum Type {
         WORD,
         IDENTIFIER,
@@ -317,45 +310,15 @@ final class SlowSqlTextSanitizer {
         }
 
         Token next() {
-            while (index < sql.length()) {
-                char current = sql.charAt(index);
-                if (isWhitespace(current)) {
-                    index++;
-                } else if (startsWith(sql, index, '-', '-')) {
-                    index = skipLineComment(sql, index + 2);
-                } else if (startsWith(sql, index, '/', '*')) {
-                    index = skipBlockComment(sql, index);
-                } else {
-                    break;
-                }
-                if (index < 0) {
-                    return INVALID;
-                }
+            if (!skipTrivia()) {
+                return INVALID;
             }
             if (index == sql.length()) {
                 return END;
             }
             char current = sql.charAt(index);
             if (isIdentifierStart(current)) {
-                int start = index++;
-                while (index < sql.length() && isIdentifierPart(sql.charAt(index))) {
-                    index++;
-                }
-                if (index < sql.length() && sql.charAt(index) == '\'') {
-                    return INVALID;
-                }
-                String word = keyword(sql, start, index);
-                if (word != null) {
-                    return new Token(Type.WORD, word);
-                }
-                if (asciiEquals(sql, start, index, "NULL")) {
-                    return new Token(Type.NULL, "?");
-                }
-                if (asciiEquals(sql, start, index, "TRUE")
-                        || asciiEquals(sql, start, index, "FALSE")) {
-                    return new Token(Type.BOOLEAN, "?");
-                }
-                return new Token(Type.IDENTIFIER, "?");
+                return word();
             }
             if (current == '\'') {
                 index = skipString(sql, index);
@@ -365,31 +328,84 @@ final class SlowSqlTextSanitizer {
                     || (current == '.'
                             && index + 1 < sql.length()
                             && isDigit(sql.charAt(index + 1)))) {
-                int start = index;
-                index = skipNumber(sql, index);
-                if (index < 0) {
-                    return INVALID;
-                }
-                Type type = Type.INTEGER;
-                for (int offset = start; offset < index; offset++) {
-                    if (!isDigit(sql.charAt(offset))) {
-                        type = Type.NUMBER;
-                        break;
-                    }
-                }
-                return new Token(type, "?");
+                return number();
             }
             if (isOperator(current)) {
-                int start = index++;
-                while (index < sql.length()
-                        && isOperator(sql.charAt(index))
-                        && !startsComment(sql, index)) {
-                    index++;
-                }
-                String symbol = operator(sql, start, index);
-                return symbol == null ? INVALID : new Token(Type.SYMBOL, symbol);
+                return symbol();
             }
             index++;
+            return punctuation(current);
+        }
+
+        private boolean skipTrivia() {
+            while (index < sql.length()) {
+                if (isWhitespace(sql.charAt(index))) {
+                    index++;
+                } else if (startsWith(sql, index, '-', '-')) {
+                    index = skipLineComment(sql, index + 2);
+                } else if (startsWith(sql, index, '/', '*')) {
+                    index = skipBlockComment(sql, index);
+                } else {
+                    return true;
+                }
+                if (index < 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private Token word() {
+            int start = index;
+            index++;
+            while (index < sql.length() && isIdentifierPart(sql.charAt(index))) {
+                index++;
+            }
+            if (index < sql.length() && sql.charAt(index) == '\'') {
+                return INVALID;
+            }
+            String word = keyword(sql, start, index);
+            if (word != null) {
+                return new Token(Type.WORD, word);
+            }
+            if (asciiEquals(sql, start, index, "NULL")) {
+                return new Token(Type.NULL, "?");
+            }
+            if (asciiEquals(sql, start, index, "TRUE") || asciiEquals(sql, start, index, "FALSE")) {
+                return new Token(Type.BOOLEAN, "?");
+            }
+            return new Token(Type.IDENTIFIER, "?");
+        }
+
+        private Token number() {
+            int start = index;
+            index = Numbers.skipNumber(sql, index);
+            if (index < 0) {
+                return INVALID;
+            }
+            Type type = Type.INTEGER;
+            for (int offset = start; offset < index; offset++) {
+                if (!isDigit(sql.charAt(offset))) {
+                    type = Type.NUMBER;
+                    break;
+                }
+            }
+            return new Token(type, "?");
+        }
+
+        private Token symbol() {
+            int start = index;
+            index++;
+            while (index < sql.length()
+                    && isOperator(sql.charAt(index))
+                    && !startsComment(sql, index)) {
+                index++;
+            }
+            String symbol = operator(sql, start, index);
+            return symbol == null ? INVALID : new Token(Type.SYMBOL, symbol);
+        }
+
+        private Token punctuation(char current) {
             return switch (current) {
                 case '?' -> new Token(Type.PARAMETER, "?");
                 case '(' -> new Token(Type.SYMBOL, "(");
@@ -407,6 +423,10 @@ final class SlowSqlTextSanitizer {
         private final Lexer lexer;
         private final Shape shape = new Shape();
         private Token current;
+
+        private final QuerySyntax queries = new QuerySyntax();
+        private final ExpressionSyntax expressions = new ExpressionSyntax();
+        private final ValueSyntax values = new ValueSyntax();
 
         Parser(String sql) {
             lexer = new Lexer(sql);
@@ -438,18 +458,8 @@ final class SlowSqlTextSanitizer {
                 return false;
             }
             boolean columns = take("(");
-            if (columns) {
-                if (!identifier()) {
-                    return false;
-                }
-                while (take(",")) {
-                    if (!identifier()) {
-                        return false;
-                    }
-                }
-                if (!take(")")) {
-                    return false;
-                }
+            if (columns && !insertColumns()) {
+                return false;
             }
             if (take("VALUES")) {
                 do {
@@ -463,6 +473,42 @@ final class SlowSqlTextSanitizer {
                 return assignments(0);
             }
             return query(0);
+        }
+
+        private boolean insertColumns() {
+            if (!identifier()) {
+                return false;
+            }
+            while (take(",")) {
+                if (!identifier()) {
+                    return false;
+                }
+            }
+            return take(")");
+        }
+
+        private boolean query(int depth) {
+            return queries.query(depth);
+        }
+
+        private boolean order(int depth) {
+            return queries.order(depth);
+        }
+
+        private boolean expressions(int depth) {
+            return expressions.expressions(depth);
+        }
+
+        private boolean expression(int depth) {
+            return expressions.expression(depth);
+        }
+
+        private boolean sum(int depth) {
+            return values.sum(depth);
+        }
+
+        private boolean limit() {
+            return queries.limit();
         }
 
         private boolean assignments(int depth) {
@@ -479,89 +525,6 @@ final class SlowSqlTextSanitizer {
                 return false;
             }
             return order(0) && (!take("LIMIT") || limit());
-        }
-
-        private boolean query(int depth) {
-            if (!select(depth)) {
-                return false;
-            }
-            while (take("UNION")) {
-                take("ALL");
-                if (!select(depth)) {
-                    return false;
-                }
-            }
-            if (!order(depth)) {
-                return false;
-            }
-            if (take("LIMIT")) {
-                return limit();
-            }
-            if (take("OFFSET")) {
-                if (!count()) {
-                    return false;
-                }
-                take("ROWS");
-            }
-            if (take("FETCH")) {
-                return (take("FIRST") || take("NEXT")) && count() && take("ROWS") && take("ONLY");
-            }
-            return true;
-        }
-
-        private boolean select(int depth) {
-            if (!take("SELECT")) {
-                return false;
-            }
-            if (!take("DISTINCT")) {
-                take("ALL");
-            }
-            do {
-                if (!take("*") && (!expression(depth) || !alias())) {
-                    return false;
-                }
-            } while (take(","));
-            if (take("FROM")) {
-                if (!table(depth)) {
-                    return false;
-                }
-                while (true) {
-                    if (take(",")) {
-                        if (!table(depth)) {
-                            return false;
-                        }
-                    } else if (is("JOIN") || is("LEFT") || is("RIGHT") || is("INNER")) {
-                        if (take("LEFT") || take("RIGHT")) {
-                            take("OUTER");
-                        } else {
-                            take("INNER");
-                        }
-                        if (!take("JOIN") || !table(depth) || !take("ON") || !expression(depth)) {
-                            return false;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            }
-            if (take("WHERE") && !expression(depth)) {
-                return false;
-            }
-            if (take("GROUP") && (!take("BY") || !expressions(depth))) {
-                return false;
-            }
-            return !take("HAVING") || expression(depth);
-        }
-
-        private boolean table(int depth) {
-            if (take("(")) {
-                if (depth >= MAX_DEPTH || !query(depth + 1) || !take(")")) {
-                    return false;
-                }
-            } else if (!name()) {
-                return false;
-            }
-            return alias();
         }
 
         private boolean alias() {
@@ -588,213 +551,12 @@ final class SlowSqlTextSanitizer {
             return true;
         }
 
-        private boolean order(int depth) {
-            if (!take("ORDER")) {
-                return true;
-            }
-            if (!take("BY")) {
-                return false;
-            }
-            do {
-                if (!expression(depth)) {
-                    return false;
-                }
-                if (!take("ASC")) {
-                    take("DESC");
-                }
-            } while (take(","));
-            return true;
-        }
-
-        private boolean limit() {
-            if (!count()) {
-                return false;
-            }
-            return !(take(",") || take("OFFSET")) || count();
-        }
-
         private boolean count() {
             if (current.type() != Type.INTEGER && current.type() != Type.PARAMETER) {
                 return false;
             }
             advance();
             return true;
-        }
-
-        private boolean expressions(int depth) {
-            if (!expression(depth)) {
-                return false;
-            }
-            while (take(",")) {
-                if (!expression(depth)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean expression(int depth) {
-            if (!and(depth)) {
-                return false;
-            }
-            while (take("OR")) {
-                if (!and(depth)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean and(int depth) {
-            if (!not(depth)) {
-                return false;
-            }
-            while (take("AND")) {
-                if (!not(depth)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean not(int depth) {
-            while (is("NOT")) {
-                if (depth++ >= MAX_DEPTH) {
-                    return false;
-                }
-                advance();
-            }
-            return comparison(depth);
-        }
-
-        private boolean comparison(int depth) {
-            if (!sum(depth)) {
-                return false;
-            }
-            if (is("=") || is("<") || is(">") || is("<=") || is(">=") || is("<>") || is("!=")) {
-                advance();
-                return sum(depth);
-            }
-            if (take("IS")) {
-                take("NOT");
-                if (current.type() != Type.NULL && current.type() != Type.BOOLEAN) {
-                    return false;
-                }
-                advance();
-                return true;
-            }
-            boolean negated = take("NOT");
-            if (take("IN")) {
-                if (depth >= MAX_DEPTH || !take("(")) {
-                    return false;
-                }
-                return (is("SELECT") ? query(depth + 1) : expressions(depth + 1)) && take(")");
-            }
-            if (take("BETWEEN")) {
-                return sum(depth) && take("AND") && sum(depth);
-            }
-            if (take("LIKE")) {
-                return sum(depth);
-            }
-            return !negated;
-        }
-
-        private boolean sum(int depth) {
-            if (!product(depth)) {
-                return false;
-            }
-            while (is("+") || is("-")) {
-                advance();
-                if (!product(depth)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean product(int depth) {
-            if (!unary(depth)) {
-                return false;
-            }
-            while (is("*") || is("/") || is("%")) {
-                advance();
-                if (!unary(depth)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean unary(int depth) {
-            while (is("+") || is("-") || is("!")) {
-                if (depth++ >= MAX_DEPTH) {
-                    return false;
-                }
-                advance();
-            }
-            return primary(depth);
-        }
-
-        private boolean primary(int depth) {
-            if (current.type() == Type.INTEGER
-                    || current.type() == Type.NUMBER
-                    || current.type() == Type.STRING
-                    || current.type() == Type.NULL
-                    || current.type() == Type.BOOLEAN
-                    || current.type() == Type.PARAMETER) {
-                advance();
-                return true;
-            }
-            if (take("(")) {
-                return depth < MAX_DEPTH
-                        && (is("SELECT") ? query(depth + 1) : expression(depth + 1))
-                        && take(")");
-            }
-            if (take("EXISTS")) {
-                return depth < MAX_DEPTH && take("(") && query(depth + 1) && take(")");
-            }
-            if (take("CASE")) {
-                return depth < MAX_DEPTH && caseBody(depth + 1);
-            }
-            if (current.type() == Type.IDENTIFIER) {
-                if (!name()) {
-                    return false;
-                }
-                return !take("(") || (depth < MAX_DEPTH && arguments(depth + 1));
-            }
-            if (take("LEFT") || take("RIGHT")) {
-                return depth < MAX_DEPTH && take("(") && arguments(depth + 1);
-            }
-            return false;
-        }
-
-        private boolean arguments(int depth) {
-            if (take(")")) {
-                return true;
-            }
-            boolean modifier = take("DISTINCT") || take("ALL");
-            if (is("*")) {
-                return !modifier && take("*") && take(")");
-            }
-            return expressions(depth) && take(")");
-        }
-
-        private boolean caseBody(int depth) {
-            if (!is("WHEN") && !expression(depth)) {
-                return false;
-            }
-            if (!take("WHEN")) {
-                return false;
-            }
-            do {
-                if (!expression(depth) || !take("THEN") || !expression(depth)) {
-                    return false;
-                }
-            } while (take("WHEN"));
-            if (take("ELSE") && !expression(depth)) {
-                return false;
-            }
-            return take("END");
         }
 
         private boolean is(String token) {
@@ -814,6 +576,331 @@ final class SlowSqlTextSanitizer {
                 shape.append(current.text());
             }
             current = lexer.next();
+        }
+
+        /** SELECT、连接、排序与分页语法。共享外层唯一游标与深度上限。 */
+        private final class QuerySyntax {
+            private boolean query(int depth) {
+                if (!select(depth)) {
+                    return false;
+                }
+                while (take("UNION")) {
+                    take("ALL");
+                    if (!select(depth)) {
+                        return false;
+                    }
+                }
+                if (!order(depth)) {
+                    return false;
+                }
+                if (take("LIMIT")) {
+                    return limit();
+                }
+                if (take("OFFSET")) {
+                    if (!count()) {
+                        return false;
+                    }
+                    take("ROWS");
+                }
+                return !take("FETCH")
+                        || ((take("FIRST") || take("NEXT"))
+                                && count()
+                                && take("ROWS")
+                                && take("ONLY"));
+            }
+
+            private boolean select(int depth) {
+                if (!take("SELECT")) {
+                    return false;
+                }
+                if (!take("DISTINCT")) {
+                    take("ALL");
+                }
+                return selectItems(depth) && from(depth) && predicates(depth);
+            }
+
+            private boolean selectItems(int depth) {
+                do {
+                    if (!take("*") && (!expression(depth) || !alias())) {
+                        return false;
+                    }
+                } while (take(","));
+                return true;
+            }
+
+            private boolean from(int depth) {
+                if (!take("FROM")) {
+                    return true;
+                }
+                if (!table(depth)) {
+                    return false;
+                }
+                while (true) {
+                    if (take(",")) {
+                        if (!table(depth)) {
+                            return false;
+                        }
+                    } else if (isJoin()) {
+                        if (!join(depth)) {
+                            return false;
+                        }
+                    } else {
+                        return true;
+                    }
+                }
+            }
+
+            private boolean isJoin() {
+                return is("JOIN") || is("LEFT") || is("RIGHT") || is("INNER");
+            }
+
+            private boolean join(int depth) {
+                if (take("LEFT") || take("RIGHT")) {
+                    take("OUTER");
+                } else {
+                    take("INNER");
+                }
+                return take("JOIN") && table(depth) && take("ON") && expression(depth);
+            }
+
+            private boolean predicates(int depth) {
+                if (take("WHERE") && !expression(depth)) {
+                    return false;
+                }
+                if (take("GROUP") && (!take("BY") || !expressions(depth))) {
+                    return false;
+                }
+                return !take("HAVING") || expression(depth);
+            }
+
+            private boolean table(int depth) {
+                if (take("(")) {
+                    if (depth >= MAX_DEPTH || !query(depth + 1) || !take(")")) {
+                        return false;
+                    }
+                } else if (!name()) {
+                    return false;
+                }
+                return alias();
+            }
+
+            private boolean order(int depth) {
+                if (!take("ORDER")) {
+                    return true;
+                }
+                if (!take("BY")) {
+                    return false;
+                }
+                do {
+                    if (!expression(depth)) {
+                        return false;
+                    }
+                    if (!take("ASC")) {
+                        take("DESC");
+                    }
+                } while (take(","));
+                return true;
+            }
+
+            private boolean limit() {
+                if (!count()) {
+                    return false;
+                }
+                return !(take(",") || take("OFFSET")) || count();
+            }
+        }
+
+        /** 布尔组合和比较语法。共享外层唯一游标与深度上限。 */
+        private final class ExpressionSyntax {
+            private boolean expressions(int depth) {
+                if (!expression(depth)) {
+                    return false;
+                }
+                while (take(",")) {
+                    if (!expression(depth)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            private boolean expression(int depth) {
+                if (!and(depth)) {
+                    return false;
+                }
+                while (take("OR")) {
+                    if (!and(depth)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            private boolean and(int depth) {
+                if (!not(depth)) {
+                    return false;
+                }
+                while (take("AND")) {
+                    if (!not(depth)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            private boolean not(int depth) {
+                while (is("NOT")) {
+                    if (depth >= MAX_DEPTH) {
+                        return false;
+                    }
+                    depth++;
+                    advance();
+                }
+                return comparison(depth);
+            }
+
+            private boolean comparison(int depth) {
+                if (!sum(depth)) {
+                    return false;
+                }
+                if (isComparisonOperator()) {
+                    advance();
+                    return sum(depth);
+                }
+                if (take("IS")) {
+                    take("NOT");
+                    if (current.type() != Type.NULL && current.type() != Type.BOOLEAN) {
+                        return false;
+                    }
+                    advance();
+                    return true;
+                }
+                boolean negated = take("NOT");
+                if (take("IN")) {
+                    if (depth >= MAX_DEPTH || !take("(")) {
+                        return false;
+                    }
+                    return (is("SELECT") ? query(depth + 1) : expressions(depth + 1)) && take(")");
+                }
+                if (take("BETWEEN")) {
+                    return sum(depth) && take("AND") && sum(depth);
+                }
+                if (take("LIKE")) {
+                    return sum(depth);
+                }
+                return !negated;
+            }
+
+            private boolean isComparisonOperator() {
+                return is("=") || is("<") || is(">") || is("<=") || is(">=") || is("<>")
+                        || is("!=");
+            }
+        }
+
+        /** 算术、函数调用、CASE 与嵌套值语法。共享外层唯一游标与深度上限。 */
+        private final class ValueSyntax {
+            private boolean sum(int depth) {
+                if (!product(depth)) {
+                    return false;
+                }
+                while (is("+") || is("-")) {
+                    advance();
+                    if (!product(depth)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            private boolean product(int depth) {
+                if (!unary(depth)) {
+                    return false;
+                }
+                while (is("*") || is("/") || is("%")) {
+                    advance();
+                    if (!unary(depth)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            private boolean unary(int depth) {
+                while (is("+") || is("-") || is("!")) {
+                    if (depth >= MAX_DEPTH) {
+                        return false;
+                    }
+                    depth++;
+                    advance();
+                }
+                return primary(depth);
+            }
+
+            private boolean primary(int depth) {
+                if (isLiteral()) {
+                    advance();
+                    return true;
+                }
+                if (take("(")) {
+                    return depth < MAX_DEPTH
+                            && (is("SELECT") ? query(depth + 1) : expression(depth + 1))
+                            && take(")");
+                }
+                if (take("EXISTS")) {
+                    return depth < MAX_DEPTH && take("(") && query(depth + 1) && take(")");
+                }
+                if (take("CASE")) {
+                    return depth < MAX_DEPTH && caseBody(depth + 1);
+                }
+                if (current.type() == Type.IDENTIFIER) {
+                    if (!name()) {
+                        return false;
+                    }
+                    return !take("(") || (depth < MAX_DEPTH && arguments(depth + 1));
+                }
+                if (take("LEFT") || take("RIGHT")) {
+                    return depth < MAX_DEPTH && take("(") && arguments(depth + 1);
+                }
+                return false;
+            }
+
+            private boolean isLiteral() {
+                return current.type() == Type.INTEGER
+                        || current.type() == Type.NUMBER
+                        || current.type() == Type.STRING
+                        || current.type() == Type.NULL
+                        || current.type() == Type.BOOLEAN
+                        || current.type() == Type.PARAMETER;
+            }
+
+            private boolean arguments(int depth) {
+                if (take(")")) {
+                    return true;
+                }
+                boolean modifier = take("DISTINCT") || take("ALL");
+                if (is("*")) {
+                    return !modifier && take("*") && take(")");
+                }
+                return expressions(depth) && take(")");
+            }
+
+            private boolean caseBody(int depth) {
+                if (!is("WHEN") && !expression(depth)) {
+                    return false;
+                }
+                if (!take("WHEN")) {
+                    return false;
+                }
+                do {
+                    if (!expression(depth) || !take("THEN") || !expression(depth)) {
+                        return false;
+                    }
+                } while (take("WHEN"));
+                if (take("ELSE") && !expression(depth)) {
+                    return false;
+                }
+                return take("END");
+            }
         }
     }
 

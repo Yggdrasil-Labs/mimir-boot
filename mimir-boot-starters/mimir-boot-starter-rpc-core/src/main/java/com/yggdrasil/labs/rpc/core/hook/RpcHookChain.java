@@ -15,19 +15,19 @@ import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 /** Hook 链调度器，按顺序执行 before/after/onError/cleanup。 */
 public class RpcHookChain {
 
-    private static final Logger log = LoggerFactory.getLogger(RpcHookChain.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RpcHookChain.class);
 
     private final List<RpcHook> hooks;
 
     public RpcHookChain(List<RpcHook> hooks) {
         if (hooks == null || hooks.isEmpty()) {
             this.hooks = Collections.emptyList();
-            log.debug("RpcHookChain initialized with empty hooks");
+            LOGGER.debug("RpcHookChain initialized with empty hooks");
         } else {
             List<RpcHook> sorted = new ArrayList<>(hooks);
             sorted.sort(Comparator.nullsLast(AnnotationAwareOrderComparator.INSTANCE));
             this.hooks = Collections.unmodifiableList(sorted);
-            log.debug("RpcHookChain initialized with {} hooks", hooks.size());
+            LOGGER.debug("RpcHookChain initialized with {} hooks", hooks.size());
         }
     }
 
@@ -47,8 +47,8 @@ public class RpcHookChain {
      */
     @Deprecated(since = "2.2.1", forRemoval = true)
     public void before(RpcCallContext context) {
-        if (log.isDebugEnabled() && !hooks.isEmpty()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled() && !hooks.isEmpty()) {
+            LOGGER.debug(
                     "Executing before hooks for service={}, method={}, hooks={}",
                     context.getMetadata().getService(),
                     context.getMetadata().getMethod(),
@@ -65,8 +65,8 @@ public class RpcHookChain {
      */
     @Deprecated(since = "2.2.1", forRemoval = true)
     public void after(RpcCallContext context, RpcCallResult result) {
-        if (log.isDebugEnabled() && !hooks.isEmpty()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled() && !hooks.isEmpty()) {
+            LOGGER.debug(
                     "Executing after hooks for service={}, method={}, duration={}ms, hooks={}",
                     context.getMetadata().getService(),
                     context.getMetadata().getMethod(),
@@ -84,8 +84,8 @@ public class RpcHookChain {
      */
     @Deprecated(since = "2.2.1", forRemoval = true)
     public void onError(RpcCallContext context, RpcCallResult result) {
-        if (log.isDebugEnabled() && !hooks.isEmpty()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled() && !hooks.isEmpty()) {
+            LOGGER.debug(
                     "Executing onError hooks for service={}, method={}, duration={}ms, error={},"
                             + " hooks={}",
                     context.getMetadata().getService(),
@@ -104,8 +104,8 @@ public class RpcHookChain {
      */
     @Deprecated(since = "2.2.1", forRemoval = true)
     public void cleanup(RpcCallContext context) {
-        if (log.isDebugEnabled() && !hooks.isEmpty()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled() && !hooks.isEmpty()) {
+            LOGGER.debug(
                     "Executing cleanup hooks for service={}, method={}, hooks={}",
                     context.getMetadata().getService(),
                     context.getMetadata().getMethod(),

@@ -34,6 +34,7 @@ public class CryptoUtils {
         throw new IllegalStateException("Utility class");
     }
 
+    /** 生成随机的 Base64 AES 密钥。 */
     public static String generateKey() {
         try {
             KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM);
@@ -45,6 +46,7 @@ public class CryptoUtils {
         }
     }
 
+    /** 按兼容的 v1 格式加密文本，空值原样返回。 */
     public static String encrypt(String plaintext, String key) {
         if (plaintext == null || plaintext.isEmpty()) return plaintext;
         try {
@@ -66,6 +68,7 @@ public class CryptoUtils {
         }
     }
 
+    /** 读取兼容的 v1 密文，空值原样返回。 */
     public static String decrypt(String ciphertext, String key) {
         if (ciphertext == null || ciphertext.isEmpty()) return ciphertext;
         try {

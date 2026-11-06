@@ -29,7 +29,7 @@ class MdcApplicationTaskExecutorPostProcessor implements BeanPostProcessor {
 
     static final String LEGACY_CUSTOMIZER = "org.springframework.boot.task.TaskExecutorCustomizer";
 
-    private static final Logger log =
+    private static final Logger LOGGER =
             LoggerFactory.getLogger(MdcApplicationTaskExecutorPostProcessor.class);
 
     private final ListableBeanFactory beanFactory;
@@ -56,7 +56,7 @@ class MdcApplicationTaskExecutorPostProcessor implements BeanPostProcessor {
                         .map(c -> c.getClass().getName())
                         .toList();
         if (!others.isEmpty()) {
-            log.info(
+            LOGGER.info(
                     "检测到 {} 个其他执行器定制器 {}，默认执行器未自动接入 MDC 传播；如需传播请在定制器中使用 MdcTasks.compose(existing)",
                     others.size(),
                     others);

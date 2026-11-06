@@ -13,6 +13,7 @@ import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 
+/** 为 Dubbo SPI 过滤器发布 Spring 管理的 RPC 依赖快照。 */
 @AutoConfiguration(after = RpcCoreAutoConfiguration.class)
 @EnableConfigurationProperties(DubboProperties.class)
 @ConditionalOnProperty(
@@ -22,8 +23,9 @@ import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
         matchIfMissing = true)
 public class DubboAutoConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(DubboAutoConfiguration.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DubboAutoConfiguration.class);
 
+    /** 在 RPC 核心组件就绪后发布 Dubbo 过滤器使用的依赖。 */
     @Bean
     @ConditionalOnProperty(
             prefix = "mimir.boot.rpc.core",
@@ -33,7 +35,7 @@ public class DubboAutoConfiguration {
     @ConditionalOnBean({RpcHookChain.class, RpcTracerBridge.class})
     public RpcDubboSupportHolder rpcDubboSupportHolder(
             DubboProperties properties, RpcHookChain hookChain, RpcTracerBridge tracerBridge) {
-        log.debug(
+        LOGGER.debug(
                 "Creating RpcDubboSupportHolder with enabled={}, contextPropagationEnabled={}",
                 properties.isEnabled(),
                 properties.isContextPropagationEnabled());

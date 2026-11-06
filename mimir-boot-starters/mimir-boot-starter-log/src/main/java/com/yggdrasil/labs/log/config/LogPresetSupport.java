@@ -109,6 +109,11 @@ final class LogPresetSupport {
         if (replacement != null && replacement.contains("${")) {
             throw new IllegalStateException(REPLACEMENT + " 含无法解析的占位符");
         }
+        validateEnabledPatterns(enabledPatterns);
+        validateCustomPatterns(customPatterns);
+    }
+
+    private static void validateEnabledPatterns(List<String> enabledPatterns) {
         for (int i = 0; i < enabledPatterns.size(); i++) {
             String name = enabledPatterns.get(i);
             if (name != null
@@ -117,6 +122,9 @@ final class LogPresetSupport {
                 throw new IllegalStateException(ENABLED_PATTERNS + "[" + i + "] 不是已知的预置脱敏规则名");
             }
         }
+    }
+
+    private static void validateCustomPatterns(List<String> customPatterns) {
         if (customPatterns == null) {
             return;
         }
@@ -128,11 +136,17 @@ final class LogPresetSupport {
             if (expression.contains("${")) {
                 throw new IllegalStateException(CUSTOM_PATTERNS + "[" + i + "] 含无法解析的占位符");
             }
-            try {
-                Pattern.compile(expression.trim());
-            } catch (PatternSyntaxException ex) {
-                throw new IllegalStateException(CUSTOM_PATTERNS + "[" + i + "] 不是合法的正则表达式");
-            }
+            validateCustomPattern(expression, i);
+        }
+    }
+
+    // PatternSyntaxException 含完整正则，可能暴露敏感配置；此处有意只报告属性与序号。
+    @SuppressWarnings("PMD.PreserveStackTrace")
+    private static void validateCustomPattern(String expression, int index) {
+        try {
+            Pattern.compile(expression.trim());
+        } catch (PatternSyntaxException ex) {
+            throw new IllegalStateException(CUSTOM_PATTERNS + "[" + index + "] 不是合法的正则表达式");
         }
     }
 }

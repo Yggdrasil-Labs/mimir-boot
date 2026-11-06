@@ -93,7 +93,7 @@ class RpcDubboSupportHolderTest {
 
     @Test
     void shouldUseThreadSafeSnapshotStorage() throws NoSuchFieldException {
-        Field snapshotField = RpcDubboSupportHolder.class.getDeclaredField("snapshot");
+        Field snapshotField = RpcDubboSupportHolder.class.getDeclaredField("SNAPSHOT");
 
         assertEquals(AtomicReference.class, snapshotField.getType());
     }

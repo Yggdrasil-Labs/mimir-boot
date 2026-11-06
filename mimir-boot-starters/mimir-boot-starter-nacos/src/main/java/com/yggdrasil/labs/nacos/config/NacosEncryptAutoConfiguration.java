@@ -35,7 +35,8 @@ import com.yggdrasil.labs.nacos.decrypt.ConfigDecryptProcessor;
 @EnableConfigurationProperties(NacosEncryptProperties.class)
 public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
 
-    private static final Logger log = LoggerFactory.getLogger(NacosEncryptAutoConfiguration.class);
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(NacosEncryptAutoConfiguration.class);
 
     private final NacosEncryptProperties properties;
     private ApplicationContext applicationContext;
@@ -60,10 +61,10 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
                         instanceof ConfigurableEnvironment environment) {
             if (!NacosEncryptPropertiesResolver.isAnyPrefixBound(environment)) {
                 ConfigDecryptProcessor.clearDecryptedPropertySources(environment);
-                log.debug("检测到配置变更但未配置 Nacos 加密前缀，已清理解密覆盖层，变更的配置键: {}", event.getKeys());
+                LOGGER.debug("检测到配置变更但未配置 Nacos 加密前缀，已清理解密覆盖层，变更的配置键: {}", event.getKeys());
                 return;
             }
-            log.debug("检测到配置变更，重新处理配置解密，变更的配置键: {}", event.getKeys());
+            LOGGER.debug("检测到配置变更，重新处理配置解密，变更的配置键: {}", event.getKeys());
             processDecrypt(environment);
         }
     }
@@ -86,7 +87,7 @@ public class NacosEncryptAutoConfiguration implements ApplicationContextAware {
     void processDecrypt(ConfigurableEnvironment environment) {
         NacosEncryptProperties activeProperties =
                 NacosEncryptPropertiesResolver.resolve(environment, properties);
-        log.debug("开始处理 Nacos 配置解密");
+        LOGGER.debug("开始处理 Nacos 配置解密");
         ConfigDecryptProcessor processor = new ConfigDecryptProcessor(activeProperties);
         processor.process(environment);
     }

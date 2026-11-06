@@ -13,33 +13,39 @@ import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
  */
 public final class RpcDubboSupportHolder {
 
-    private static final AtomicReference<Snapshot> snapshot =
+    private static final AtomicReference<Snapshot> SNAPSHOT =
             new AtomicReference<>(new Snapshot(null, null, null));
     private static final RpcDubboSupportHolder INSTANCE = new RpcDubboSupportHolder();
 
     private RpcDubboSupportHolder() {}
 
+    /** 返回供 Spring 装配的兼容持有器实例。 */
     public static RpcDubboSupportHolder getInstance() {
         return INSTANCE;
     }
 
+    /** 原子发布同一应用上下文中的完整 RPC 依赖快照。 */
     public static void set(
             RpcHookChain hookChain, RpcTracerBridge tracerBridge, DubboProperties properties) {
-        snapshot.set(new Snapshot(hookChain, tracerBridge, properties));
+        SNAPSHOT.set(new Snapshot(hookChain, tracerBridge, properties));
     }
 
+    /** 返回当前发布的依赖快照。 */
     public static Snapshot current() {
-        return snapshot.get();
+        return SNAPSHOT.get();
     }
 
+    /** 返回当前快照中的 Hook 链。 */
     public RpcHookChain getHookChain() {
         return current().hookChain();
     }
 
+    /** 返回当前快照中的追踪桥。 */
     public RpcTracerBridge getTracerBridge() {
         return current().tracerBridge();
     }
 
+    /** 返回当前快照中的 Dubbo 配置。 */
     public DubboProperties getProperties() {
         return current().properties();
     }

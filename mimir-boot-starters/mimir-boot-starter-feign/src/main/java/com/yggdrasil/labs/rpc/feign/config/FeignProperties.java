@@ -2,6 +2,7 @@ package com.yggdrasil.labs.rpc.feign.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/** 控制 Feign RPC 增强及其上下文传播。 */
 @ConfigurationProperties(prefix = "mimir.boot.feign")
 public class FeignProperties {
 

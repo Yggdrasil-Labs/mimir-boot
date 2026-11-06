@@ -50,10 +50,12 @@ public final class BatchResult<T extends Serializable> implements Serializable {
         return new BatchResult<>(items);
     }
 
+    /** 返回全部条目数量。 */
     public int getTotalCount() {
         return items.size();
     }
 
+    /** 返回成功条目数量。 */
     public int getSuccessCount() {
         int count = 0;
         for (BatchItemResult<T> item : items) {
@@ -64,10 +66,12 @@ public final class BatchResult<T extends Serializable> implements Serializable {
         return count;
     }
 
+    /** 返回失败条目数量。 */
     public int getFailureCount() {
         return getTotalCount() - getSuccessCount();
     }
 
+    /** 根据条目数量与成功数量派生批量状态。 */
     public BatchStatus getStatus() {
         if (items.isEmpty()) {
             return BatchStatus.EMPTY;

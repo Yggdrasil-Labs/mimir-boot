@@ -71,6 +71,7 @@ public class MdcRpcTracerBridge implements RpcTracerBridge {
         return carrier == null ? null : carrier.get(key);
     }
 
+    /** 检查追踪标识是否符合允许的字符集与长度。 */
     public static boolean isValidIdentifier(String value) {
         return StringUtils.hasText(value) && IDENTIFIER_PATTERN.matcher(value).matches();
     }

@@ -154,6 +154,8 @@ public class LogPresetEnvironmentPostProcessor implements EnvironmentPostProcess
         return encoded == null ? "" : encoded;
     }
 
+    // BindException 的原因链可能含配置原文；启动诊断只暴露属性名，不能保留该原因链。
+    @SuppressWarnings("PMD.PreserveStackTrace")
     private static <T> T bindStrict(java.util.function.Supplier<T> binding, String property) {
         try {
             return binding.get();

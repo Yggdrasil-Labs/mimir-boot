@@ -21,7 +21,7 @@ import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
  */
 public class RpcExecutionTemplate {
 
-    private static final Logger log = LoggerFactory.getLogger(RpcExecutionTemplate.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RpcExecutionTemplate.class);
 
     private final RpcHookChain hookChain;
     private final RpcTracerBridge tracerBridge;
@@ -34,7 +34,7 @@ public class RpcExecutionTemplate {
         this.hookChain = hookChain;
         this.tracerBridge = tracerBridge;
         this.contextPropagationEnabled = contextPropagationEnabled;
-        log.debug(
+        LOGGER.debug(
                 "RpcExecutionTemplate initialized, contextPropagationEnabled={}",
                 contextPropagationEnabled);
     }
@@ -51,8 +51,8 @@ public class RpcExecutionTemplate {
 
     /** 执行调用（有返回值）。 */
     public <T> T execute(RpcCallContext context, Callable<T> callable) {
-        if (log.isDebugEnabled()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
                     "Executing RPC call: service={}, method={}, contextPropagationEnabled={}",
                     context.getMetadata().getService(),
                     context.getMetadata().getMethod(),
@@ -65,8 +65,8 @@ public class RpcExecutionTemplate {
             injectContext(context);
             T result = callable.call();
             Duration duration = Duration.between(start, Instant.now());
-            if (log.isDebugEnabled()) {
-                log.debug(
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
                         "RPC call succeeded: service={}, method={}, duration={}ms",
                         context.getMetadata().getService(),
                         context.getMetadata().getMethod(),
@@ -76,8 +76,8 @@ public class RpcExecutionTemplate {
             return result;
         } catch (Throwable throwable) {
             Duration duration = Duration.between(start, Instant.now());
-            if (log.isDebugEnabled()) {
-                log.debug(
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
                         "RPC call failed: service={}, method={}, duration={}ms, error={}",
                         context.getMetadata().getService(),
                         context.getMetadata().getMethod(),
@@ -97,8 +97,8 @@ public class RpcExecutionTemplate {
             return;
         }
         Map<String, String> injected = tracerBridge.inject(context);
-        if (log.isDebugEnabled() && injected != null && !injected.isEmpty()) {
-            log.debug("Injected context propagation headers: {}", injected.keySet());
+        if (LOGGER.isDebugEnabled() && injected != null && !injected.isEmpty()) {
+            LOGGER.debug("Injected context propagation headers: {}", injected.keySet());
         }
         if (injected != null && !injected.isEmpty()) {
             injected.forEach(context::putAttachment);

@@ -42,6 +42,7 @@ public class MybatisPlusAutoConfiguration {
     private static final Logger LOGGER =
             LoggerFactory.getLogger(MybatisPlusAutoConfiguration.class);
 
+    /** 组合分页、乐观锁和容器中显式声明的内部拦截器。 */
     @Bean
     @ConditionalOnMissingBean(MybatisPlusInterceptor.class)
     @ConditionalOnClass(
@@ -102,6 +103,7 @@ public class MybatisPlusAutoConfiguration {
         return interceptor;
     }
 
+    /** 将配置的包模式转换为 Mapper 扫描器可用的基础包。 */
     @Bean
     @ConditionalOnMissingBean(MapperScannerConfigurer.class)
     public MapperScannerConfigurer mapperScannerConfigurer(MybatisProperties properties) {

@@ -2,6 +2,7 @@ package com.yggdrasil.labs.rpc.dubbo.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/** 控制 Dubbo RPC 过滤器及其上下文传播。 */
 @ConfigurationProperties(prefix = "mimir.boot.dubbo")
 public class DubboProperties {
 

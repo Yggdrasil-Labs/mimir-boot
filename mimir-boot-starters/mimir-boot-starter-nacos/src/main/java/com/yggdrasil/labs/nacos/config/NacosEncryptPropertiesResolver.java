@@ -14,7 +14,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
  */
 final class NacosEncryptPropertiesResolver {
 
-    private static final Logger log = LoggerFactory.getLogger(NacosEncryptPropertiesResolver.class);
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(NacosEncryptPropertiesResolver.class);
 
     private NacosEncryptPropertiesResolver() {}
 
@@ -35,7 +36,7 @@ final class NacosEncryptPropertiesResolver {
 
         if (current.isBound()) {
             if (legacy.isBound()) {
-                log.warn(
+                LOGGER.warn(
                         "检测到已弃用的配置前缀 {}，已忽略并使用 {}",
                         NacosEncryptProperties.LEGACY_PREFIX,
                         NacosEncryptProperties.PREFIX);
@@ -43,7 +44,7 @@ final class NacosEncryptPropertiesResolver {
             return current.get();
         }
         if (legacy.isBound()) {
-            log.warn(
+            LOGGER.warn(
                     "配置前缀 {} 已弃用，请迁移到 {}",
                     NacosEncryptProperties.LEGACY_PREFIX,
                     NacosEncryptProperties.PREFIX);

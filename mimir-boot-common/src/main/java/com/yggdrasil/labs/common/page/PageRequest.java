@@ -42,6 +42,8 @@ public class PageRequest implements Serializable {
      * @param pageIndex 页码（从1开始）
      * @param pageSize 页大小
      */
+    // 保留既有构造期间调用可覆盖校验方法的扩展行为。
+    @SuppressWarnings("PMD.ConstructorCallsOverridableMethod")
     public PageRequest(Long pageIndex, Long pageSize) {
         this.pageIndex = pageIndex;
         this.pageSize = pageSize;
@@ -56,6 +58,8 @@ public class PageRequest implements Serializable {
      * @param orderBy 排序字段
      * @param orderDirection 排序方向
      */
+    // 保留既有构造期间调用可覆盖校验方法的扩展行为。
+    @SuppressWarnings("PMD.ConstructorCallsOverridableMethod")
     public PageRequest(Long pageIndex, Long pageSize, String orderBy, String orderDirection) {
         this.pageIndex = pageIndex;
         this.pageSize = pageSize;

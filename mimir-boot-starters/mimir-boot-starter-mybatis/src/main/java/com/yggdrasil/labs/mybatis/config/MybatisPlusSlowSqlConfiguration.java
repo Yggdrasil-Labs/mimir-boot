@@ -17,6 +17,7 @@ import com.yggdrasil.labs.mybatis.log.SlowSqlInterceptor;
 @ConditionalOnClass(StatementHandler.class)
 @EnableConfigurationProperties(SlowSqlProperties.class)
 public class MybatisPlusSlowSqlConfiguration {
+    /** 创建使用安全 SQL 模板和配置阈值的慢查询拦截器。 */
     @Bean
     @ConditionalOnMissingBean(SlowSqlInterceptor.class)
     @ConditionalOnProperty(

@@ -61,6 +61,8 @@ public class LogMaskAutoConfiguration implements ApplicationContextAware {
      * <p>注意：Logback 初始化在 Spring 之前，所以需要延迟传递配置 使用 @EventListener(ContextRefreshedEvent.class) 确保在
      * Spring 完全初始化后再传递配置
      */
+    // 事件必须属于同一个上下文实例，内容相等的其他上下文不能覆盖本实例配置。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     @EventListener(ContextRefreshedEvent.class)
     public void transferConfig(ContextRefreshedEvent event) {
         ApplicationContext refreshed = event.getApplicationContext();

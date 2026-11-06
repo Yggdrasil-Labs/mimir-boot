@@ -77,6 +77,13 @@ public class MimirExceptionHandler {
         return LogSanitizer.sanitize(input);
     }
 
+    /**
+     * 处理业务异常，沿用 HTTP 200 与异常声明的业务码、消息。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(BizException.class)
     @ResponseStatus(HttpStatus.OK)
     public Object handleBizException(BizException e, HttpServletRequest request) {
@@ -90,6 +97,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.OK, e, code, message, null);
     }
 
+    /**
+     * 处理系统异常，返回 HTTP 500 与异常声明的错误信息。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleSystemException(SystemException e, HttpServletRequest request) {
@@ -104,6 +118,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, e, code, message, null);
     }
 
+    /**
+     * 处理其他框架异常，返回 HTTP 500 与异常声明的错误信息。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(BaseException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleBaseException(BaseException e, HttpServletRequest request) {
@@ -118,6 +139,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, e, code, message, null);
     }
 
+    /**
+     * 处理请求体校验错误，按配置返回旧格式或安全的结构化明细。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleMethodArgumentNotValidException(
@@ -154,6 +182,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, responseErrors);
     }
 
+    /**
+     * 处理参数绑定错误，保留旧格式响应与结构化明细开关的语义。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleBindException(BindException e, HttpServletRequest request) {
@@ -185,6 +220,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, responseErrors);
     }
 
+    /**
+     * 处理必需请求参数缺失，返回 HTTP 400 与缺失参数提示。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleMissingServletRequestParameterException(
@@ -199,6 +241,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
+    /**
+     * 处理方法校验错误，按输入、输出来源确定状态与明细可见性。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public Object handleHandlerMethodValidationException(
             HandlerMethodValidationException e, HttpServletRequest request) {
@@ -212,6 +261,13 @@ public class MimirExceptionHandler {
         return validationResponse(e, origin, data);
     }
 
+    /**
+     * 处理约束校验错误，仅对可确认的输入错误返回参数错误响应。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public Object handleConstraintViolationException(
             ConstraintViolationException e, HttpServletRequest request) {
@@ -256,6 +312,13 @@ public class MimirExceptionHandler {
         }
     }
 
+    /**
+     * 处理必需请求头缺失，返回 HTTP 400 与脱敏后的头名称。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(MissingRequestHeaderException.class)
     public Object handleMissingRequestHeaderException(
             MissingRequestHeaderException e, HttpServletRequest request) {
@@ -266,6 +329,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
+    /**
+     * 处理服务端声明的路径变量缺失，返回通用系统错误响应。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(MissingPathVariableException.class)
     public Object handleMissingPathVariableException(
             MissingPathVariableException e, HttpServletRequest request) {
@@ -278,6 +348,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, e, code, message, null);
     }
 
+    /**
+     * 处理客户端不接受响应媒体类型的情况，返回 HTTP 406。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
     public Object handleHttpMediaTypeNotAcceptableException(
             HttpMediaTypeNotAcceptableException e, HttpServletRequest request) {
@@ -287,6 +364,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.NOT_ACCEPTABLE, e, code, message, null);
     }
 
+    /**
+     * 处理请求媒体类型不受支持的情况，返回 HTTP 415。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public Object handleHttpMediaTypeNotSupportedException(
             HttpMediaTypeNotSupportedException e, HttpServletRequest request) {
@@ -296,6 +380,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, e, code, message, null);
     }
 
+    /**
+     * 处理上传大小超限，返回 HTTP 413 与通用参数错误信息。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public Object handleMaxUploadSizeExceededException(
             MaxUploadSizeExceededException e, HttpServletRequest request) {
@@ -305,6 +396,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.PAYLOAD_TOO_LARGE, e, code, message, null);
     }
 
+    /**
+     * 处理静态资源缺失，返回 HTTP 404 与通用资源未找到信息。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(NoResourceFoundException.class)
     public Object handleNoResourceFoundException(
             NoResourceFoundException e, HttpServletRequest request) {
@@ -317,6 +415,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.NOT_FOUND, e, code, message, null);
     }
 
+    /**
+     * 处理参数类型转换失败，返回 HTTP 400 与参数声明类型提示。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleMethodArgumentTypeMismatchException(
@@ -333,6 +438,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
+    /**
+     * 处理请求体读取失败，仅记录异常类型与可用的 JSON 行列位置。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Object handleHttpMessageNotReadableException(
@@ -358,6 +470,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
     }
 
+    /**
+     * 处理请求方法不受支持的情况，返回 HTTP 405 与支持方法信息。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public Object handleHttpRequestMethodNotSupportedException(
@@ -375,6 +494,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.METHOD_NOT_ALLOWED, e, code, message, null);
     }
 
+    /**
+     * 处理未匹配到请求处理器的情况，返回 HTTP 404 与脱敏后的请求位置。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(NoHandlerFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Object handleNoHandlerFoundException(
@@ -390,6 +516,13 @@ public class MimirExceptionHandler {
         return createResponse(HttpStatus.NOT_FOUND, e, code, message, null);
     }
 
+    /**
+     * 兜底处理异常，保留框架业务语义与标准响应状态注解的解析规则。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Object handleException(Exception e, HttpServletRequest request) {
@@ -425,12 +558,26 @@ public class MimirExceptionHandler {
                 null);
     }
 
+    /**
+     * 处理标准响应状态异常，保留 HTTP 状态与协议响应头。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(ResponseStatusException.class)
     public Object handleResponseStatusException(
             ResponseStatusException e, HttpServletRequest request) {
         return handleStandardHttpException(e, request);
     }
 
+    /**
+     * 处理标准错误响应异常，保留 HTTP 状态与协议响应头。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
     @ExceptionHandler(ErrorResponseException.class)
     public Object handleErrorResponseException(
             ErrorResponseException e, HttpServletRequest request) {

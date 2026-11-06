@@ -40,6 +40,44 @@ import com.yggdrasil.labs.exception.validation.ValidationErrorSource;
 class ValidationErrorExtractorTest {
 
     @Test
+    void shouldRetainFlatPathFallbacksForMalformedListPositionsAndSeparators() throws Exception {
+        var parameter = new MethodParameter(Inputs.class.getDeclaredMethod("body", Input.class), 0);
+        Map<String, String> paths =
+                Map.of(
+                        "items[3[4]].name", "items[*].name",
+                        "items[3", "items[*]",
+                        "items[+3].name", "items[*].name",
+                        "..name..", "name",
+                        "", "$");
+        for (var entry : paths.entrySet()) {
+            var result = bindingResult();
+            result.addError(safeFieldError(entry.getKey(), "NotNull"));
+            assertEquals(
+                    entry.getValue(),
+                    ValidationErrorExtractor.extract(result, parameter).errors().get(0).path(),
+                    entry.getKey());
+        }
+    }
+
+    @Test
+    void shouldRetainExecutableFallbackAndNegativeParameterFailure() {
+        var missing =
+                declaredViolation(
+                        ConstructorInput.class,
+                        executableNode("ConstructorInput", List.of(String.class), true),
+                        node(ElementKind.PARAMETER, "untrustedName", 0));
+        assertEquals(
+                "arg0",
+                ValidationErrorExtractor.extract(violations(missing)).errors().get(0).path());
+        var negative = violation(node(ElementKind.PARAMETER, "input", -1));
+        IllegalArgumentException failure =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> ValidationErrorExtractor.extract(violations(negative)));
+        assertEquals("输入参数序号不能为负数", failure.getMessage());
+    }
+
+    @Test
     void shouldRetainRealBeanValidationBindingPathsFromWrappedDeclarationMetadata() {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             var input = new ValidatedInput();

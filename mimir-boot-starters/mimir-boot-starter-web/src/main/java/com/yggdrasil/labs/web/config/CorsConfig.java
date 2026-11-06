@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.web.config;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -58,7 +59,10 @@ public class CorsConfig {
         if (corsConfig.getAllowedMethods() != null && !corsConfig.getAllowedMethods().isEmpty()) {
             corsConfig
                     .getAllowedMethods()
-                    .forEach(method -> configuration.addAllowedMethod(method.toUpperCase()));
+                    .forEach(
+                            method ->
+                                    configuration.addAllowedMethod(
+                                            method.toUpperCase(Locale.getDefault())));
         }
 
         // 设置允许的请求头

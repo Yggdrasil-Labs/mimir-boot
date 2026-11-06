@@ -16,10 +16,12 @@ public final class RpcCallResult {
         this.error = error;
     }
 
+    /** 创建记录耗时的成功结果。 */
     public static RpcCallResult success(Duration duration) {
         return new RpcCallResult(true, duration, null);
     }
 
+    /** 创建同时保留耗时和原始异常的失败结果。 */
     public static RpcCallResult failure(Duration duration, Throwable error) {
         return new RpcCallResult(false, duration, error);
     }

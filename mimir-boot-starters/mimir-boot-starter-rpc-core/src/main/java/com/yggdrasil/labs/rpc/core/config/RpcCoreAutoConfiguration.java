@@ -16,6 +16,7 @@ import com.yggdrasil.labs.rpc.core.support.RpcExecutionTemplate;
 import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 
+/** 装配 RPC Hook 链、默认追踪桥与调用执行模板。 */
 @AutoConfiguration
 @EnableConfigurationProperties(RpcCoreProperties.class)
 @ConditionalOnProperty(
@@ -25,27 +26,30 @@ import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
         matchIfMissing = true)
 public class RpcCoreAutoConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(RpcCoreAutoConfiguration.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RpcCoreAutoConfiguration.class);
 
+    /** 使用容器中的 Hook 创建统一执行链。 */
     @Bean
     @ConditionalOnMissingBean
     public RpcHookChain rpcHookChain(List<RpcHook> hooks) {
-        log.debug("Creating RpcHookChain with {} hooks", hooks != null ? hooks.size() : 0);
+        LOGGER.debug("Creating RpcHookChain with {} hooks", hooks != null ? hooks.size() : 0);
         return new RpcHookChain(hooks);
     }
 
+    /** 在没有自定义追踪桥时提供 MDC 实现。 */
     @Bean
     @ConditionalOnMissingBean(RpcTracerBridge.class)
     public RpcTracerBridge rpcTracerBridge() {
-        log.debug("Creating MdcRpcTracerBridge as default RpcTracerBridge");
+        LOGGER.debug("Creating MdcRpcTracerBridge as default RpcTracerBridge");
         return new MdcRpcTracerBridge();
     }
 
+    /** 将 Hook、追踪桥和传播开关绑定到调用模板。 */
     @Bean
     @ConditionalOnMissingBean
     public RpcExecutionTemplate rpcExecutionTemplate(
             RpcHookChain hookChain, RpcTracerBridge tracerBridge, RpcCoreProperties properties) {
-        log.debug(
+        LOGGER.debug(
                 "Creating RpcExecutionTemplate with contextPropagationEnabled={}",
                 properties.isContextPropagationEnabled());
         return new RpcExecutionTemplate(

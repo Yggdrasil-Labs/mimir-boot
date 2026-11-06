@@ -14,6 +14,7 @@ import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.feign.client.RpcFeignCapability;
 
+/** 将统一 RPC Hook 与上下文传播接入 Feign 客户端。 */
 @AutoConfiguration(value = "mimirFeignAutoConfiguration", after = RpcCoreAutoConfiguration.class)
 @EnableConfigurationProperties(FeignProperties.class)
 @ConditionalOnProperty(
@@ -22,8 +23,9 @@ import com.yggdrasil.labs.rpc.feign.client.RpcFeignCapability;
         havingValue = "true",
         matchIfMissing = true)
 public class FeignAutoConfiguration {
-    private static final Logger log = LoggerFactory.getLogger(FeignAutoConfiguration.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FeignAutoConfiguration.class);
 
+    /** 在 RPC 核心组件就绪后提供 Feign 客户端增强能力。 */
     @Bean
     @ConditionalOnProperty(
             prefix = "mimir.boot.rpc.core",
@@ -34,7 +36,7 @@ public class FeignAutoConfiguration {
     @ConditionalOnMissingBean(RpcFeignCapability.class)
     public RpcFeignCapability rpcFeignCapability(
             RpcHookChain hookChain, RpcTracerBridge tracerBridge, FeignProperties properties) {
-        log.debug(
+        LOGGER.debug(
                 "Creating RpcFeignCapability with enabled={}, contextPropagationEnabled={}",
                 properties.isEnabled(),
                 properties.isContextPropagationEnabled());

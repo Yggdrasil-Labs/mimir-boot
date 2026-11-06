@@ -21,6 +21,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeSpec;
 import com.yggdrasil.labs.mybatis.annotation.AutoMybatis;
 
+/** 根据实体上的 AutoMybatis 配置生成 Mapper、Service 和 ServiceImpl。 */
 @SupportedAnnotationTypes("com.yggdrasil.labs.mybatis.annotation.AutoMybatis")
 public class AutoMybatisProcessor extends AbstractProcessor {
 

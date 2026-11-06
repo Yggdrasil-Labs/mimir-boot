@@ -1,11 +1,7 @@
 package com.yggdrasil.labs.log.converter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,66 +36,14 @@ public class SensitiveDataConverter extends ClassicConverter {
     private static final Object CONFIGURATION_LOCK = new Object();
     private static final List<String> PROGRAMMATIC_PATTERNS = new ArrayList<>();
     private static final AtomicReference<Context> CONFIGURATION_CONTEXT = new AtomicReference<>();
-    private static final AtomicReference<MaskConfigurationSnapshot> configuration =
+    private static final AtomicReference<MaskConfigurationSnapshot> CONFIGURATION =
             new AtomicReference<>();
 
     private record MaskConfigurationSnapshot(
-            List<Pattern> patterns, FieldNameIndex keyValueFieldNames, String replacement) {}
+            List<Pattern> patterns, KeyValueMasker keyValueFieldNames, String replacement) {}
 
-    /** 字段名按首字符分组的查找表：候选保持原长度降序；ASCII 字母同时登记大小写，其余字符只登记原字符，与逐个比较首字符的语义一致。 */
-    private static final class FieldNameIndex {
-
-        private final String[][] ascii = new String[128][];
-
-        /** 非 ASCII 首字符按升序排列，配合二分查找，避免查找时装箱 */
-        private final char[] otherInitials;
-
-        private final String[][] otherCandidates;
-        private final int maxLength;
-        private final boolean empty;
-
-        private FieldNameIndex(List<String> orderedNames) {
-            Map<Character, List<String>> grouped = new LinkedHashMap<>();
-            int longest = 0;
-            for (String name : orderedNames) {
-                char first = name.charAt(0);
-                grouped.computeIfAbsent(first, key -> new ArrayList<>()).add(name);
-                if (isAsciiLetter(first)) {
-                    grouped.computeIfAbsent((char) (first ^ 32), key -> new ArrayList<>())
-                            .add(name);
-                }
-                longest = Math.max(longest, name.length());
-            }
-            List<Character> others = new ArrayList<>();
-            for (Map.Entry<Character, List<String>> entry : grouped.entrySet()) {
-                if (entry.getKey() < 128) {
-                    ascii[entry.getKey()] = entry.getValue().toArray(String[]::new);
-                } else {
-                    others.add(entry.getKey());
-                }
-            }
-            Collections.sort(others);
-            this.otherInitials = new char[others.size()];
-            this.otherCandidates = new String[others.size()][];
-            for (int i = 0; i < others.size(); i++) {
-                otherInitials[i] = others.get(i);
-                otherCandidates[i] = grouped.get(others.get(i)).toArray(String[]::new);
-            }
-            this.maxLength = longest;
-            this.empty = orderedNames.isEmpty();
-        }
-
-        private String[] candidates(char initial) {
-            if (initial < 128) {
-                return ascii[initial];
-            }
-            int position = Arrays.binarySearch(otherInitials, initial);
-            return position < 0 ? null : otherCandidates[position];
-        }
-    }
-
-    private record SensitiveFieldValue(int valueStart, int valueEnd) {}
-
+    // 只有当前 Logback Context 实例可以接管全局快照，不能按内容相等判断归属。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     @Override
     public void start() {
         // 绑定本次真实 Context：全局引用为空时沿用首次绑定，否则只接受 SLF4J 当前的 LoggerContext，
@@ -113,7 +57,7 @@ public class SensitiveDataConverter extends ClassicConverter {
                 // 预设 XML 经 springProperty 写入 mask 属性：本次配置携带规则，切换到新规则代次；
                 // 不带这些属性的旧 XML 重新加载保留已发布快照（与 2.3.0 一致）
                 if (hasMaskProperties(context)) {
-                    configuration.set(null);
+                    CONFIGURATION.set(null);
                 }
             }
         }
@@ -140,7 +84,7 @@ public class SensitiveDataConverter extends ClassicConverter {
             List<String> customPatternExpressions,
             String replacement) {
         synchronized (CONFIGURATION_LOCK) {
-            configuration.set(
+            CONFIGURATION.set(
                     buildConfiguration(enabledPatternNames, customPatternExpressions, replacement));
         }
     }
@@ -148,10 +92,11 @@ public class SensitiveDataConverter extends ClassicConverter {
     /** 重新从 Logback 或系统属性加载配置，保留既有动态刷新入口。 */
     public static void reloadConfig() {
         synchronized (CONFIGURATION_LOCK) {
-            configuration.set(null);
+            CONFIGURATION.set(null);
         }
     }
 
+    /** 登记程序化正则，并使后续转换重新构建规则快照。 */
     public static void addCustomPattern(String pattern) {
         synchronized (CONFIGURATION_LOCK) {
             PROGRAMMATIC_PATTERNS.add(pattern);
@@ -159,6 +104,7 @@ public class SensitiveDataConverter extends ClassicConverter {
         reloadConfig();
     }
 
+    /** 清空程序化正则，并使后续转换重新构建规则快照。 */
     public static void clearCustomPatterns() {
         synchronized (CONFIGURATION_LOCK) {
             PROGRAMMATIC_PATTERNS.clear();
@@ -166,6 +112,7 @@ public class SensitiveDataConverter extends ClassicConverter {
         reloadConfig();
     }
 
+    /** 返回全部内置脱敏规则名称。 */
     public static List<String> getAllPresetPatternNames() {
         List<String> names = new ArrayList<>();
         for (SensitiveDataPattern pattern : SensitiveDataPattern.values()) {
@@ -177,7 +124,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     /** 测试钩子：清除快照并恢复全局 Context 引用；生产代码不调用 */
     static void resetForTest(Context context) {
         synchronized (CONFIGURATION_LOCK) {
-            configuration.set(null);
+            CONFIGURATION.set(null);
             CONFIGURATION_CONTEXT.set(context);
         }
     }
@@ -190,19 +137,19 @@ public class SensitiveDataConverter extends ClassicConverter {
     }
 
     private static MaskConfigurationSnapshot currentConfiguration() {
-        MaskConfigurationSnapshot current = configuration.get();
+        MaskConfigurationSnapshot current = CONFIGURATION.get();
         if (current != null) {
             return current;
         }
         synchronized (CONFIGURATION_LOCK) {
-            current = configuration.get();
+            current = CONFIGURATION.get();
             if (current == null) {
                 current =
                         buildConfiguration(
                                 readConfigurationAsList(MASK_ENABLED_PATTERNS_PROPERTY),
                                 readConfigurationAsList(MASK_CUSTOM_PATTERNS_PROPERTY),
                                 readConfiguration(MASK_REPLACEMENT_PROPERTY));
-                configuration.set(current);
+                CONFIGURATION.set(current);
             }
             return current;
         }
@@ -221,7 +168,7 @@ public class SensitiveDataConverter extends ClassicConverter {
         String resolvedReplacement =
                 replacement == null || replacement.isEmpty() ? DEFAULT_REPLACEMENT : replacement;
         return new MaskConfigurationSnapshot(
-                List.copyOf(patterns), new FieldNameIndex(keyValueFieldNames), resolvedReplacement);
+                List.copyOf(patterns), new KeyValueMasker(keyValueFieldNames), resolvedReplacement);
     }
 
     private static List<String> compilePresetPatterns(List<Pattern> target, List<String> names) {
@@ -276,8 +223,7 @@ public class SensitiveDataConverter extends ClassicConverter {
     }
 
     private static String maskSensitiveData(String message, MaskConfigurationSnapshot snapshot) {
-        String result =
-                maskKeyValueFields(message, snapshot.keyValueFieldNames(), snapshot.replacement());
+        String result = snapshot.keyValueFieldNames().mask(message, snapshot.replacement());
         for (Pattern pattern : snapshot.patterns()) {
             Matcher matcher = pattern.matcher(result);
             if (!matcher.find()) {
@@ -293,154 +239,6 @@ public class SensitiveDataConverter extends ClassicConverter {
             result = masked.append(result, lastMatchEnd, result.length()).toString();
         }
         return result;
-    }
-
-    private static String maskKeyValueFields(
-            String message, FieldNameIndex fieldNames, String replacement) {
-        if (fieldNames.empty) {
-            return message;
-        }
-        // 字段只能以“字段名 + 可选引号 + 空白 + '=' 或 ':'”的形式出现，因此只需在每个分隔符之前、最长字段名长度的窗口内
-        // 按原逐位置规则判断；窗口外的位置不可能匹配，结果与逐字符扫描一致。
-        int maxNameLength = fieldNames.maxLength;
-        int length = message.length();
-        int nextEquals = message.indexOf('=');
-        int nextColon = message.indexOf(':');
-        StringBuilder masked = null;
-        int copiedUntil = 0;
-        int index = 0;
-        while (index < length) {
-            if (nextEquals >= 0 && nextEquals < index) {
-                nextEquals = message.indexOf('=', index);
-            }
-            if (nextColon >= 0 && nextColon < index) {
-                nextColon = message.indexOf(':', index);
-            }
-            int separator =
-                    nextEquals < 0
-                            ? nextColon
-                            : nextColon < 0 ? nextEquals : Math.min(nextEquals, nextColon);
-            if (separator < 0) {
-                break;
-            }
-            int keyEnd = separator;
-            while (keyEnd > index && Character.isWhitespace(message.charAt(keyEnd - 1))) {
-                keyEnd--;
-            }
-            if (keyEnd > index && isQuote(message.charAt(keyEnd - 1))) {
-                keyEnd--;
-            }
-            SensitiveFieldValue fieldValue = null;
-            for (int start = Math.max(index, keyEnd - maxNameLength); start < keyEnd; start++) {
-                fieldValue = findSensitiveFieldValue(message, start, fieldNames);
-                if (fieldValue != null) {
-                    break;
-                }
-            }
-            if (fieldValue == null) {
-                index = separator + 1;
-            } else {
-                if (masked == null) {
-                    masked = new StringBuilder(length);
-                }
-                masked.append(message, copiedUntil, fieldValue.valueStart());
-                appendMaskedFieldValue(masked, message, fieldValue.valueStart(), replacement);
-                copiedUntil = fieldValue.valueEnd();
-                index = fieldValue.valueEnd();
-            }
-        }
-        return masked == null
-                ? message
-                : masked.append(message, copiedUntil, message.length()).toString();
-    }
-
-    private static SensitiveFieldValue findSensitiveFieldValue(
-            String message, int index, FieldNameIndex fieldNames) {
-        String fieldName = matchingFieldName(message, index, fieldNames);
-        if (fieldName == null) {
-            return null;
-        }
-        int cursor = index + fieldName.length();
-        if (cursor < message.length() && isQuote(message.charAt(cursor))) {
-            cursor++;
-        }
-        while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
-            cursor++;
-        }
-        if (cursor >= message.length()
-                || (message.charAt(cursor) != '=' && message.charAt(cursor) != ':')) {
-            return null;
-        }
-        cursor++;
-        while (cursor < message.length() && Character.isWhitespace(message.charAt(cursor))) {
-            cursor++;
-        }
-        int valueStart = cursor;
-        int valueEnd = valueEnd(message, valueStart);
-        return valueEnd == valueStart ? null : new SensitiveFieldValue(valueStart, valueEnd);
-    }
-
-    private static void appendMaskedFieldValue(
-            StringBuilder masked, String message, int valueStart, String replacement) {
-        if (isQuote(message.charAt(valueStart))) {
-            masked.append(message.charAt(valueStart))
-                    .append(replacement)
-                    .append(message.charAt(valueStart));
-        } else {
-            masked.append(replacement);
-        }
-    }
-
-    private static String matchingFieldName(String message, int index, FieldNameIndex fieldNames) {
-        String[] candidates = fieldNames.candidates(message.charAt(index));
-        if (candidates == null) {
-            return null;
-        }
-        for (String fieldName : candidates) {
-            if (message.regionMatches(true, index, fieldName, 0, fieldName.length())) {
-                return fieldName;
-            }
-        }
-        return null;
-    }
-
-    private static boolean isAsciiLetter(char value) {
-        return value >= 'A' && value <= 'Z' || value >= 'a' && value <= 'z';
-    }
-
-    private static int valueEnd(String message, int valueStart) {
-        if (valueStart >= message.length()) {
-            return valueStart;
-        }
-        char firstCharacter = message.charAt(valueStart);
-        if (isQuote(firstCharacter)) {
-            int slashCount = 0;
-            for (int cursor = valueStart + 1; cursor < message.length(); cursor++) {
-                char current = message.charAt(cursor);
-                if (current == '\\') {
-                    slashCount++;
-                } else {
-                    if (current == firstCharacter && slashCount % 2 == 0) {
-                        return cursor + 1;
-                    }
-                    slashCount = 0;
-                }
-            }
-            return message.length();
-        }
-        int cursor = valueStart;
-        while (cursor < message.length()
-                && message.charAt(cursor) != ','
-                && message.charAt(cursor) != '}'
-                && message.charAt(cursor) != ']'
-                && !Character.isWhitespace(message.charAt(cursor))) {
-            cursor++;
-        }
-        return cursor;
-    }
-
-    private static boolean isQuote(char value) {
-        return value == '\"' || value == '\'';
     }
 
     private static String maskValue(Matcher matcher, String replacement) {

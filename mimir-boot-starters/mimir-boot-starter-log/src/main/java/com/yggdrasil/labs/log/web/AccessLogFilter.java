@@ -360,6 +360,8 @@ public class AccessLogFilter implements Filter {
             return new LifecycleState(Phase.NEW, 0, List.of());
         }
 
+        // Servlet 异步周期按 AsyncContext 实例去重，不合并内容相等的独立周期。
+        @SuppressWarnings("PMD.CompareObjectsWithEquals")
         private boolean contains(AsyncContext candidate) {
             return claimedContexts.stream().anyMatch(existing -> existing == candidate);
         }

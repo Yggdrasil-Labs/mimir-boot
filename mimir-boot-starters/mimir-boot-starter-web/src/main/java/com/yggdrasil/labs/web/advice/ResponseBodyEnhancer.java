@@ -84,15 +84,13 @@ public class ResponseBodyEnhancer implements ResponseBodyAdvice<R<?>> {
         }
         Class<?> responseBodyType =
                 ResolvableType.forMethodParameter(returnType).getGeneric(0).resolve();
-        if (responseBodyType != null && R.class.isAssignableFrom(responseBodyType)) {
-            return true;
-        }
         // 异常处理器声明 Object、实际返回 ResponseEntity 时，Spring 保留 Object 泛型。
         // 这里只放行候选，内部 MVC Advice 会在调用增强器前确认响应体是 R。
-        return returnType.getGenericParameterType() == Object.class
-                && ResponseEntity.class.isAssignableFrom(returnClass)
-                && AnnotatedElementUtils.hasAnnotation(
-                        returnType.getContainingClass(), RestControllerAdvice.class);
+        return (responseBodyType != null && R.class.isAssignableFrom(responseBodyType))
+                || (returnType.getGenericParameterType() == Object.class
+                        && ResponseEntity.class.isAssignableFrom(returnClass)
+                        && AnnotatedElementUtils.hasAnnotation(
+                                returnType.getContainingClass(), RestControllerAdvice.class));
     }
 
     /**

@@ -29,7 +29,7 @@ import feign.Response;
 /** 包装 Feign Client，统一 Hook 与上下文传播。 */
 public class RpcFeignClient implements Client {
 
-    private static final Logger log = LoggerFactory.getLogger(RpcFeignClient.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RpcFeignClient.class);
 
     /** 仅允许进入 Hook 元数据的请求头，避免任意扩展凭据头经 Hook 或日志泄露。 */
     private static final Set<String> SAFE_ATTACHMENT_HEADERS =
@@ -65,7 +65,7 @@ public class RpcFeignClient implements Client {
         this.hookChain = hookChain;
         this.tracerBridge = tracerBridge;
         this.properties = properties;
-        log.debug(
+        LOGGER.debug(
                 "RpcFeignClient initialized with enabled={}, contextPropagationEnabled={}",
                 properties.isEnabled(),
                 properties.isContextPropagationEnabled());
@@ -75,8 +75,8 @@ public class RpcFeignClient implements Client {
     public Response execute(Request request, Request.Options options) throws IOException {
         SanitizedUrl sanitizedUrl = sanitizeUrl(request.url());
         if (!properties.isEnabled()) {
-            if (log.isDebugEnabled()) {
-                log.debug(
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
                         "RpcFeignClient: Filter disabled, bypassing for url={}",
                         sanitizedUrl.debugUrl());
             }
@@ -93,8 +93,8 @@ public class RpcFeignClient implements Client {
                         .build();
         RpcCallContext context = RpcCallContext.create(metadata);
 
-        if (log.isDebugEnabled()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
                     "RpcFeignClient: Processing HTTP call - service={}, method={}, protocol={},"
                             + " target={}, url={}",
                     metadata.getService(),
@@ -112,8 +112,8 @@ public class RpcFeignClient implements Client {
             Request wrapped = injectContext(request, context);
             Response response = delegate.execute(wrapped, options);
             Duration duration = Duration.between(start, Instant.now());
-            if (log.isDebugEnabled()) {
-                log.debug(
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
                         "RpcFeignClient: HTTP call succeeded - service={}, method={}, url={},"
                                 + " status={}, duration={}ms",
                         metadata.getService(),
@@ -126,8 +126,8 @@ public class RpcFeignClient implements Client {
             return response;
         } catch (Throwable throwable) {
             Duration duration = Duration.between(start, Instant.now());
-            if (log.isDebugEnabled()) {
-                log.debug(
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
                         "RpcFeignClient: HTTP call failed - service={}, method={}, url={},"
                                 + " duration={}ms, error={}",
                         metadata.getService(),
@@ -154,8 +154,8 @@ public class RpcFeignClient implements Client {
         if (request.url() == null) {
             return request;
         }
-        if (log.isDebugEnabled()) {
-            log.debug(
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
                     "RpcFeignClient: Injecting context propagation headers: {}", injected.keySet());
         }
         Map<String, Collection<String>> newHeaders = new HashMap<>(request.headers());
@@ -184,7 +184,7 @@ public class RpcFeignClient implements Client {
 
     private Map<String, String> toStringMap(Map<String, Collection<String>> headers) {
         if (headers == null) {
-            return null;
+            return Map.of();
         }
         Map<String, String> map = new LinkedHashMap<>();
         headers.forEach(

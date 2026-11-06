@@ -24,6 +24,7 @@ import com.yggdrasil.labs.mybatis.crypto.CryptoKeyProvider;
 @ConditionalOnProperty(prefix = "mimir.boot.mybatis", name = "crypto-enabled", havingValue = "true")
 public class MybatisPlusCryptoConfiguration {
 
+    /** 校验稳定密钥配置，并提供默认的密钥来源。 */
     @Bean
     @ConditionalOnMissingBean(CryptoKeyProvider.class)
     public CryptoKeyProvider defaultCryptoKeyProvider(MybatisProperties properties) {
@@ -37,6 +38,8 @@ public class MybatisPlusCryptoConfiguration {
         return () -> configured;
     }
 
+    // Base64 解码异常可能带入密钥片段；只向启动日志暴露固定的配置错误说明。
+    @SuppressWarnings("PMD.PreserveStackTrace")
     private static void validateCryptoKey(String key) {
         try {
             int keyLength = Base64.getDecoder().decode(key).length;
@@ -49,21 +52,25 @@ public class MybatisPlusCryptoConfiguration {
         }
     }
 
+    /** 创建兼容 v1 密文格式的字符串处理器。 */
     public com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler stringCryptoTypeHandler(
             CryptoKeyProvider keyProvider) {
         return new com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler(keyProvider);
     }
 
+    /** 创建兼容 v1 密文格式的长整数处理器。 */
     public com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler longCryptoTypeHandler(
             CryptoKeyProvider keyProvider) {
         return new com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler(keyProvider);
     }
 
+    /** 创建兼容 v1 密文格式的整数处理器。 */
     public com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler integerCryptoTypeHandler(
             CryptoKeyProvider keyProvider) {
         return new com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler(keyProvider);
     }
 
+    /** 按应用上下文和写入版本配置创建字符串字段处理器。 */
     @Bean("stringCryptoTypeHandler")
     public com.yggdrasil.labs.mybatis.typehandler.StringCryptoTypeHandler
             configuredStringCryptoTypeHandler(
@@ -72,6 +79,7 @@ public class MybatisPlusCryptoConfiguration {
                 keyProvider, properties.getCryptoContext(), properties.isCryptoV2WriteEnabled());
     }
 
+    /** 按应用上下文和写入版本配置创建长整数字段处理器。 */
     @Bean("longCryptoTypeHandler")
     public com.yggdrasil.labs.mybatis.typehandler.LongCryptoTypeHandler
             configuredLongCryptoTypeHandler(
@@ -80,6 +88,7 @@ public class MybatisPlusCryptoConfiguration {
                 keyProvider, properties.getCryptoContext(), properties.isCryptoV2WriteEnabled());
     }
 
+    /** 按应用上下文和写入版本配置创建整数字段处理器。 */
     @Bean("integerCryptoTypeHandler")
     public com.yggdrasil.labs.mybatis.typehandler.IntegerCryptoTypeHandler
             configuredIntegerCryptoTypeHandler(

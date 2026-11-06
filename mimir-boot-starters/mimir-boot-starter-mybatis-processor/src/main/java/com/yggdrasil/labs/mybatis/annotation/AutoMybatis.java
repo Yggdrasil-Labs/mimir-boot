@@ -12,15 +12,21 @@ import java.lang.annotation.Target;
 @Retention(SOURCE)
 @Documented
 public @interface AutoMybatis {
+    /** 生成 Mapper 所在包名。 */
     String mapperPackage() default "mapper";
 
+    /** 生成 Service 所在包名。 */
     String servicePackage() default "service";
 
+    /** 生成 ServiceImpl 所在包名。 */
     String serviceImplPackage() default "service.impl";
 
+    /** 生成 Mapper 的类型名后缀。 */
     String mapperSuffix() default "Mapper";
 
+    /** 生成 Service 的类型名后缀。 */
     String serviceSuffix() default "Service";
 
+    /** 生成 ServiceImpl 的类型名后缀。 */
     String serviceImplSuffix() default "ServiceImpl";
 }

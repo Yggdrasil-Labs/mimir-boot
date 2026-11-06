@@ -30,7 +30,8 @@ final class LegacyMdcTraceScope implements RpcTraceScope {
     }
 
     // 2.x 兼容适配，随旧 extract 入口在下个主版本一并删除
-    @SuppressWarnings("removal")
+    // 回滚异常只有在不是原异常本身时才能加入 suppressed。
+    @SuppressWarnings({"removal", "PMD.CompareObjectsWithEquals"})
     static RpcTraceScope extract(
             RpcTracerBridge bridge, RpcCallContext context, Map<String, String> carrier) {
         Map<String, String> previous = snapshot();
@@ -49,6 +50,8 @@ final class LegacyMdcTraceScope implements RpcTraceScope {
         return new LegacyMdcTraceScope(previous);
     }
 
+    // MDC 作用域仅能由创建它的线程实例恢复，不能按 equals 判断所有权。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     @Override
     public void close() {
         if (Thread.currentThread() != owner) {

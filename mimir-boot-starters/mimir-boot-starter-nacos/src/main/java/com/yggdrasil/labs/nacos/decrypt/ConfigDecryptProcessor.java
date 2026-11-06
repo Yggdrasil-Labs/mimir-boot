@@ -30,7 +30,7 @@ import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
  */
 public class ConfigDecryptProcessor {
 
-    private static final Logger log = LoggerFactory.getLogger(ConfigDecryptProcessor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigDecryptProcessor.class);
     private static final String DECRYPTED_PROPERTIES_PREFIX = "decryptedProperties:";
 
     private final NacosEncryptProperties properties;
@@ -59,7 +59,7 @@ public class ConfigDecryptProcessor {
     public void process(ConfigurableEnvironment environment) {
         if (!Boolean.TRUE.equals(properties.getEnabled())) {
             clearDecryptedPropertySources(environment);
-            log.debug("Nacos 配置加密脱敏功能已禁用");
+            LOGGER.debug("Nacos 配置加密脱敏功能已禁用");
             return;
         }
 
@@ -106,7 +106,7 @@ public class ConfigDecryptProcessor {
 
         replaceDecryptedPropertySources(environment, decryptedPropertySources);
         if (decryptedCount > 0) {
-            log.info("成功解密 {} 个配置项", decryptedCount);
+            LOGGER.info("成功解密 {} 个配置项", decryptedCount);
         }
     }
 
@@ -177,7 +177,7 @@ public class ConfigDecryptProcessor {
                 if (!encryptedValue.equals(decryptedValue)) {
                     // 只有解密成功时才添加到集合中
                     decryptedProperties.put(propertyName, decryptedValue);
-                    log.debug("配置项解密成功: {}", propertyName);
+                    LOGGER.debug("配置项解密成功: {}", propertyName);
                 }
             }
         }
@@ -216,7 +216,7 @@ public class ConfigDecryptProcessor {
             matcher.appendTail(decryptedValue);
             return decryptedValue.toString();
         } catch (Exception e) {
-            log.error("解密 Nacos 配置项失败: {}", propertyName);
+            LOGGER.error("解密 Nacos 配置项失败: {}", propertyName);
             throw new IllegalStateException("无法解密 Nacos 配置项: " + propertyName, e);
         }
     }

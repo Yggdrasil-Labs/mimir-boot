@@ -68,6 +68,8 @@ public class NacosConfigDataContextRefresher extends ConfigDataContextRefresher 
         }
     }
 
+    // 同名属性源只有实例被重新加载替换才算本轮结果，不能按内容相等识别。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     static void reconcileNacosSources(
             ConfigurableEnvironment environment,
             ConfigurableEnvironment reloaded,

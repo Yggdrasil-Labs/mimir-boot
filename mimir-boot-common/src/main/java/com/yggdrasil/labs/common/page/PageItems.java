@@ -10,6 +10,8 @@ final class PageItems {
     private PageItems() {}
 
     /** 源为 null 时返回 null，否则返回新的可变列表；null 元素不交给函数并原位保留，函数返回 null 同样保留，函数异常原样传播 */
+    // 保留分页映射对 null 与空集合的既有区分，不能为静态规则改变公开结果语义。
+    @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
     static <S, R> List<R> map(List<S> data, Function<? super S, ? extends R> mapper) {
         if (data == null) {
             return null;
