@@ -7,7 +7,7 @@ updated: 2026-11-02
 
 # 代码质量工具链方案大纲
 
-> 推荐方案，未实施。D-102～D-109 为 2026-11-02 用户在会话中确认的决定；其余版本号、阈值与插件参数是本轮推荐，须在实施中核实。
+> D-102～D-109 为 2026-11-02 用户确认的决定；2026-11-06 以 D-110 确认独立插件入口并开始实施。方案选择不表示已验收，交付以实际证据为准。
 
 产物导航：[行为规格](./spec.md) · [详细设计](./design.md) · [静态实施计划](./plan.md) · [版本入口](../brainstorm.md) · [架构 RFC](../../../design-docs/arch-code-quality-toolchain.md)
 
@@ -38,6 +38,8 @@ updated: 2026-11-02
 | D-109 | 不引入 Checkstyle：注释与命名改由 PMD 选定规则负责（`CommentRequired`、`DanglingJavadoc` 与 codestyle 命名规则），修订 D-103；接受不检查 Javadoc 标签与签名一致性等缺口（2026-11-02 用户确认） |
 
 ## 本轮推荐（非用户逐项确认）
+
+接入形态按 D-110 更新为[独立插件入口](./design.md#分叉配置问题与接入方案)，规则制品来源与官方实现版本须配对，Mimir 输出使用 `target/mimir-quality/`。
 
 - PMD/CPD 使用 `maven-pmd-plugin` 3.28.0 自带的 PMD 7.17.0，不单独覆盖；`CommentRequired` 用 `violationSuppressXPath` 排除构造器与非公开可见性，以满足 D-107；本仓库让 PMD 处理错误也阻断构建。
 - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test，不引入 `archunit-junit5`。

@@ -4,7 +4,7 @@ status: in-progress
 branch: main
 created: 2026-10-23
 released: null
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # v2.4.0 版本记录
@@ -32,7 +32,7 @@ updated: 2026-11-02
 | [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明 | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
 | [Processor讨论](./mybatis-processor/brainstorm.md) | D-71 | 支持源版本跟随编译器；准确解释生成全限定名冲突 | [规格](./mybatis-processor/spec.md) · [设计](./mybatis-processor/design.md) · [计划](./mybatis-processor/plan.md) |
 | [RPC Core讨论](./rpc-deprecation/brainstorm.md) | D-75 | 仅增强旧入口删除预告，保留原始since、兼容适配与运行行为 | [规格](./rpc-deprecation/spec.md) · [设计](./rpc-deprecation/design.md) · [计划](./rpc-deprecation/plan.md) |
-| [代码质量讨论](./code-quality-toolchain/brainstorm.md) | Q-01～Q-06、D-102～D-109 | 新增规则 jar；Parent 接入 PMD/CPD（PMD 兼管注释与命名），下游独立开关默认只报告，本仓库严格；starter-test 提供 ArchUnit 规则库；Spotless/JaCoCo 语义不变 | [规格](./code-quality-toolchain/spec.md) · [设计](./code-quality-toolchain/design.md) · [计划](./code-quality-toolchain/plan.md) |
+| [代码质量讨论](./code-quality-toolchain/brainstorm.md) | Q-01～Q-06、D-102～D-110 | 规则 jar 提供独立插件入口；Parent 接入 PMD/CPD，下游各工具独立开关默认只报告，本仓库严格；starter-test 提供 ArchUnit 规则库；Spotless/JaCoCo 语义不变 | [规格](./code-quality-toolchain/spec.md) · [设计](./code-quality-toolchain/design.md) · [计划](./code-quality-toolchain/plan.md) |
 
 ## 组合与实施顺序
 
@@ -129,3 +129,37 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **范围**：按 [Exception 计划](./exception-contracts/plan.md) 实施 HTTP 状态及协议头、工厂回退和可选结构化校验明细；联合 Web 的异常响应追踪增强。保留旧处理器方法描述符、单参构造和默认 data 格式，返回值及未知来源约束按约定返回 500。无法安全确认声明字段时，结构化 FIELD 路径降为 `$`，详见 Exception 设计和 README。
 - **模块验证**：JDK 17 下 `./mvnw -o -pl mimir-boot-starters/mimir-boot-starter-web -am verify` 通过；Exception 单元 94、集成 50，Web 单元 123、集成 73，失败、错误和跳过均为 0。含真实 MVC 及校验器的输入、返回值、跨参数、混合来源、动态键，Web 联合响应 25 项及既有八个异常分支（含真实 Tomcat 上传超限）。
 - **边界**：以上为本地工作区验证；不代表远端 CI、生产或发布后消费者通过。完整仓库质量门禁以最终执行结果为准，未发布。
+
+### 代码质量工具链实施（2026-11-06）
+
+- **范围**：按 D-110 落实独立插件坐标与 `target/mimir-quality/` 输出，规则 jar 不含 Java 类且无普通依赖；Parent 复用配对的官方 PMD 实现。完成 41 条 PMD 规则、CPD 严格模式、可选 ArchUnit 规则库、11 个模块的依赖方向测试，以及构建模型、报告完整性和发布消费者契约。源码治理保持公开 API，复杂扫描和路径解析仅拆分为私有或包内协作者，未放宽规则阈值。
+- **存量治理**：实施前只报告快照共有 176 条 PMD 违规、CPD 0 条。模块分布见下表；最终 11 个 Java 模块 PMD/CPD 均为零违规、零处理错误。
+- **完整门禁**：Temurin 17.0.19、Maven 3.10.0 下，`bash scripts/engineering.sh quality --mode full --source worktree` 通过：文档、16 个 Reactor POM 的默认/发布签名模型、发布工具契约、隔离消费者、52 个制品及附件的临时签名、Java 测试/覆盖率/PMD/CPD 均通过。最终统计为 **1,504 单元测试、191 集成测试**，失败/错误/跳过均为 0，含 11 个模块架构测试。Sonar 为 `not_applicable`。全量门禁后的交付记录仅作文字更新并单独运行文档 full。
+- **专项验证**：公开方法缺 Javadoc 的 Common/Log 反例各被严格 PMD 阻断并定位文件行号；Log 新增 Web 反向依赖被架构测试拒绝。临时消费者验证只报告、PMD/CPD 分别阻断与跳过、直接调用 `check@pmd` / `cpd-check@cpd`、规则替换、双插件报告及性能记录隔离、关闭 Mimir 后恢复下游严格检查。普通 starter-test 消费者无 ArchUnit 传递依赖；多模块 COLA 在 `test` / `verify` 下定位同一违规。SQL 扫描/脱敏重构的 12,052 次固定种子差分比较一致。
+- **默认构建**：Common 与 Log 的七模块依赖链在临时副本中默认 `clean install` 通过（588 单元、22 集成），无 PMD/CPD 报告及违规行；最终全仓严格路径由上述 full 覆盖。
+- **插件仓库与仅 BOM 补验**：无镜像、fresh 消费者缓存、只开放临时文件仓库的条件下，仅 `repositories` 的 Parent 消费者失败并指出规则插件坐标；仅增加 `pluginRepositories` 后同命令通过。仅导 BOM 的消费者按规则模块 README 声明官方插件与带版本规则依赖，默认严格模式准确阻断一条 `CommentRequired`；仅删除规则依赖版本后，即使制品已缓存，仍在模型阶段报版本缺失。
+- **性能**：最终 Java 基础构建 156.25 秒，对比本机实施前 137.57 秒单轮基线，约增加 13.6%，低于计划 20% 边界；这是本地构建耗时对照，不是运行时性能或 CI 耗时承诺。
+- **兼容例外**：为保留既有公开构造器与返回类型，Exception、Web、Nacos、Dubbo、Feign 的架构测试仅忽略 9 个明确类型对，见 [TD-051](../tech-debt-tracker.md#td-051-既有公开类型包循环)。身份比较、敏感异常信息及既有 null 语义采用有说明的成员级精准抑制，其余规则照常执行。
+- **已有诊断与边界**：构建仍出现第三方 JSqlParser 大方法的 JaCoCo 插桩诊断，与实施前基线一致，测试和本仓库覆盖率核验均通过；未修改 JaCoCo 配置。真实 Nacos 服务测试仍按原 POM 排除。以上是本地与临时文件仓库验收，未验证远端 CI、生产或正式发布后的消费者，未发布。
+
+| 模块 | 实施前 PMD | 实施后 PMD/CPD |
+|---|---:|---|
+| Common | 8 | 0 / 0 |
+| Dubbo | 17 | 0 / 0 |
+| Exception | 32 | 0 / 0 |
+| Feign | 6 | 0 / 0 |
+| Log | 16 | 0 / 0 |
+| MyBatis | 51 | 0 / 0 |
+| MyBatis Processor | 7 | 0 / 0 |
+| Nacos | 7 | 0 / 0 |
+| RPC Core | 28 | 0 / 0 |
+| Test | 1 | 0 / 0 |
+| Web | 3 | 0 / 0 |
+
+存量规则分布：`CommentRequired` 89、`CyclomaticComplexity` 21、`FieldNamingConventions` 16、`CognitiveComplexity` 11、`CompareObjectsWithEquals` 9、`AssignmentInOperand` 9、`NPathComplexity` 5、`PreserveStackTrace` 3；`ReturnEmptyCollectionRatherThanNull`、`ConstructorCallsOverridableMethod`、`CloseResource`、`SimplifyBooleanReturns`、`SignatureDeclareThrowsException` 各 2；`AvoidBranchingStatementAsLastInLoop`、`EmptyCatchBlock`、`UseLocaleWithCaseConversions` 各 1。
+
+#### 质量工具升级注意
+
+继承新版 Parent 的构建执行到 `verify` 时，即使跳过质量分析，也需要解析同版本 `mimir-boot-code-quality`；内网镜像需同步规则制品、官方 PMD 插件及其传递依赖，或配置同源 `pluginRepositories`。仅有普通 `repositories` 不足以解析插件制品。
+
+Mimir 使用独立插件坐标和报告目录，下游原插件的规则不合并；原生 `pmd.*` / `cpd.*` 开关仍被两套插件共同读取。已有官方检查需要恢复原行为时，设置相应 `*.skip=false`、`*.failOnViolation=true`，并按需关闭独立插件的 `pmd` / `cpd` execution，完整配置见 [Parent 升级说明](../../../mimir-boot-parent/README.md#pmdcpd-检查与升级)。手动单独运行必须选择 `check@pmd` / `cpd-check@cpd`；规则制品版本只支持同上游来源版本的覆盖，跨来源升级须配对升级 Parent 与规则制品。

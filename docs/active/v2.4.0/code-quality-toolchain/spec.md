@@ -2,12 +2,12 @@
 version: v2.4.0
 status: draft
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # 代码质量工具链规格
 
-> 推荐方案，未实施。D-102～D-109 来自[方案大纲](./brainstorm.md)；本规格描述实施后的目标，不声明当前构建已满足。
+> 已确认的实施目标；D-110 确认独立插件入口和隔离报告目录。本规格不声明当前构建已满足，交付以实际验收为准。
 
 导航：[版本入口](../brainstorm.md) · [方案大纲](./brainstorm.md) · [设计](./design.md) · [实施计划](./plan.md)
 
@@ -19,14 +19,14 @@ updated: 2026-11-02
 
 ## 行为 CQ-01：注释与命名检查
 
-注释与命名由 PMD 规则集中选定的 documentation、codestyle 规则负责（D-109），违规与坏味道一起出现在 `target/pmd.xml`。
+注释与命名由 PMD 规则集中选定的 documentation、codestyle 规则负责（D-109），违规与坏味道一起出现在 `target/mimir-quality/pmd.xml`。
 
 ### 场景：公开方法缺少 Javadoc
 
 Given 下游 `src/main/java` 中一个 public 类的 public 方法 `findById` 没有 Javadoc，且未设置任何新属性
 When 执行 `./mvnw -Pprecheck verify`
 Then 构建成功
-And 控制台输出一条指向该文件与行号的 `CommentRequired` 违规，`target/pmd.xml` 中包含同一违规。
+And 控制台输出一条指向该文件与行号的 `CommentRequired` 违规，`target/mimir-quality/pmd.xml` 中包含同一违规。
 
 ### 场景：中文 Javadoc 与豁免范围
 
@@ -59,7 +59,7 @@ And 启用 Spotless 检查时由 Spotless 报告格式问题。
 
 Given 下游 main 源码中有 `catch (IOException e) {}`，未设置新属性
 When 执行 `./mvnw -Pprecheck verify`
-Then 构建成功，控制台与 `target/pmd.xml` 均包含 `EmptyCatchBlock` 违规。
+Then 构建成功，控制台与 `target/mimir-quality/pmd.xml` 均包含 `EmptyCatchBlock` 违规。
 
 ### 场景：不报告未选用的规则
 
@@ -79,7 +79,7 @@ Then 两处均不产生违规。
 
 Given 两个 main 源文件含有长度不少于 100 个 token 的相同代码片段，未设置新属性
 When 执行 `./mvnw -Pprecheck verify`
-Then 构建成功，`target/cpd.xml` 记录这一处重复及两个文件位置。
+Then 构建成功，`target/mimir-quality/cpd.xml` 记录这一处重复及两个文件位置。
 
 ### 场景：低于阈值
 
@@ -260,9 +260,21 @@ Then 构建失败并提示缺少版本（插件依赖不受 BOM 的 `dependencyM
 
 ### 场景：替换规则
 
-Given 下游在自身 POM 中为 `maven-pmd-plugin` 的 `pmd-check` execution 配置 `rulesets` 为 `config/pmd.xml`
+Given 下游在自身 POM 中为 `mimir-boot-code-quality` 的 `pmd` execution 配置 `rulesets` 为 `config/pmd.xml`
 When 以 `precheck` 执行 PMD 检查
 Then 使用下游规则，Mimir 规则不生效。
+
+### 场景：单独运行检查
+
+Given 下游开启对应工具，且默认 `target/pmd.xml` / `target/cpd.xml` 留有自身官方插件报告
+When 用独立插件的完整坐标调用 `check@pmd` 或 `cpd-check@cpd`
+Then 只判定本次生成的 `target/mimir-quality/` 下对应报告；不把默认目录报告当作 Mimir 检查结果。
+
+### 场景：覆盖规则制品版本
+
+Given 下游需要覆盖 `mimir-boot-code-quality.version`
+When 选择同一官方插件来源版本生成的规则制品
+Then 可以使用其规则；跨来源版本的制品不属于独立覆盖的支持范围，须同时升级 Parent 与规则制品。
 
 ### 场景：规则 jar 缺失
 
@@ -278,7 +290,7 @@ Then 构建失败并指出规则 jar 坐标；补充同源的 `<pluginRepositori
 
 ## 行为 CQ-10：已自行配置同名插件的下游升级
 
-本行为是用户确认的向后兼容显式例外（D-108），需要在升级说明中列出，不能静默生效。Mimir 的检查参数只写在自己的 execution 内，下游已有 execution 的规则、范围与参数不受影响；受影响的只有原生开关属性与插件依赖。
+本行为是用户确认的向后兼容显式例外（D-108），需要在升级说明中列出，不能静默生效。Mimir 通过独立插件坐标运行，下游官方插件的规则、范围与参数不合并；两套插件共享原生开关属性，且构建新增解析独立规则制品的要求。
 
 ### 场景：依赖插件原生默认值的既有 PMD/CPD 检查
 
@@ -289,7 +301,7 @@ And 其规则集、`minimumTokens` 等其余有效配置与升级前相同。
 
 ### 场景：恢复升级前行为
 
-Given 同上下游，在 POM 中设置 `pmd.skip=false`、`cpd.skip=false`、`pmd.failOnViolation=true`、`cpd.failOnViolation=true`，并把 Mimir 的 `pmd-check`、`cpd-check` execution 的 `phase` 设为 `none`
+Given 同上下游，在 POM 中设置 `pmd.skip=false`、`cpd.skip=false`、`pmd.failOnViolation=true`、`cpd.failOnViolation=true`，并把独立 `mimir-boot-code-quality` 插件的 `pmd`、`cpd` execution 的 `phase` 设为 `none`
 When 以默认模式执行 `verify`，源码含一处违反下游自身规则的问题
 Then 只有下游 execution 运行，并且构建失败，与升级前一致
 And 若只设置属性、不关闭 Mimir execution，Mimir execution 也会执行，并按严格模式报告 Mimir 规则的违规。Parent README 与版本升级说明须给出完整配置。
@@ -305,5 +317,5 @@ Then 其开关、引擎版本与执行结果与升级前相同（Parent 不声�
 - 运行时基线：全部检查在 JDK 17 上可运行；本规格不要求更高构建 JDK。
 - 下游默认模式不执行两类新检查；但 PMD 插件在 `build/plugins` 中声明并绑定 `verify`，执行到该阶段的任何构建（含 `install`、`deploy`）都需要能从插件仓库（镜像或 `<pluginRepositories>`）解析 PMD 插件与规则 jar。内网镜像未同步时，日常 `install` 也会失败。
 - 本仓库 `./mvnw -Pci clean verify` 的耗时增幅目标 ≤ 20%（推荐值，以实施前后同机测量为准）。
-- 报告路径固定为模块 `target/pmd.xml`、`target/cpd.xml`。
+- 报告路径固定为模块 `target/mimir-quality/pmd.xml`、`target/mimir-quality/cpd.xml`。
 - 新规则 jar 不含 Java 类，不向下游运行时传递任何依赖。

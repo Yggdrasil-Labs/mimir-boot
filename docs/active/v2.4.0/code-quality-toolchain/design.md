@@ -1,13 +1,13 @@
 ---
 version: v2.4.0
-status: draft
+status: verified
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # 代码质量工具链设计
 
-> 推荐方案，未实施。D-102～D-109 为已确认约束；插件版本、参数名、规则清单与阈值是本轮推荐，须按计划 T1/T2 的核实步骤确认。
+> 2026-11-06 用户确认按独立插件入口方案实施（D-110）。实现与本地完整门禁已验证，交付结果和外部未覆盖范围见[版本记录](../release.md#代码质量工具链实施2026-11-06)。原生开关、工具定位与规则范围继续遵守 D-102～D-109。
 
 导航：[版本入口](../brainstorm.md) · [方案大纲](./brainstorm.md) · [规格](./spec.md) · [实施计划](./plan.md) · [架构 RFC](../../../design-docs/arch-code-quality-toolchain.md)
 
@@ -46,7 +46,7 @@ T2 仍须复核插件描述符，确认本设计用到的其余参数（如 `exc
 - 满足规格 CQ-01～CQ-10。
 - 新增 1 个模块、0 个 Java 运行时依赖；下游默认模式下执行 0 项新检查。
 - 本仓库 11 个 Java 模块全部在 `ci` 下严格执行 PMD、CPD，并各有 1 个依赖方向测试。
-- Mimir 的检查配置不改变下游已有 execution 的规则、范围与参数；剩余影响只有原生开关属性与插件依赖合并（CQ-10）。
+- Mimir 的检查配置不改变下游官方插件已有 execution 的规则、范围与参数；共享原生开关属性并新增独立插件解析要求（CQ-10）。
 
 非目标：不改 Spotless、JaCoCo、Enforcer、Sonar 的配置与语义；不改 Git hook 与 CI workflow；不引入 Checkstyle（D-109）、SpotBugs、Error Prone、doclint、`dependency:analyze`；不检查 Javadoc 标签与签名的一致性；不为下游提供 ArchUnit 的自动执行；不升级 Java、Boot、Maven 基线。
 
@@ -65,8 +65,8 @@ flowchart TB
     T --> REPO
     REPO -->|repositories + pluginRepositories| C1[继承 Parent 的下游<br/>precheck/ci 执行，只报告]
     REPO --> C2[仅导入 BOM 的下游<br/>自行声明插件与规则 jar]
-    C1 --> OUT[控制台 + target/*.xml 报告]
-    C2 --> OUT
+    C1 --> OUT[控制台 + target/mimir-quality/*.xml]
+    C2 --> OUT2[按消费者配置输出报告]
 ```
 
 一次检查的数据流：
@@ -78,6 +78,131 @@ flowchart TB
 5. 本仓库完整验收时，再核对有效配置与构建输入，并登记报告。
 
 ## 接口契约
+
+### 分叉配置问题与接入方案
+
+`maven-pmd-plugin` 3.28.0 的 `check` 与 `cpd-check` 分别分叉 `pmd` 与 `cpd`。Maven 为分叉目标按目标名重新合并配置，不传递外层 `pmd-check` / `cpd-check` 的报告配置。以 `pmd` / `cpd` 为 execution ID 可以传递配置，但下游已有的同名插件检查也会读取这些配置。先直接生成独立报告、再调用 `check` 仍会额外触发下游的分叉报告：本地反例中，被下游设为 `phase=none` 的规则被意外执行，另一个反例中下游已有报告被覆盖。上述方式不能满足现有 CQ-10。
+
+采用独立插件入口：规则 jar 保留现有坐标、`jar` 打包和无 Java 类，在构建时从固定版本的官方插件生成带唯一坐标和前缀的插件描述符；Parent 使用规则 jar 的插件坐标，并在该插件下声明同版本的官方 `maven-pmd-plugin` 作为实现依赖。两个插件处于独立 realm，继续使用官方 Mojo 和原生开关。规则 jar 自身 POM 不声明依赖，仅导入 BOM 的消费者仍可把它作为官方插件的规则依赖。
+
+按 D-110 调整消费者契约：Mimir 报告位于 `target/mimir-quality/pmd.xml` 与 `target/mimir-quality/cpd.xml`；规则替换和关闭 Mimir execution 的配置在规则 jar 的插件坐标下进行。下游自有官方插件继续写入其配置的报告位置；若下游也指定相同的 Mimir 目录，仍需自行错开。同一组原生属性仍按 D-108 同时作用于两套插件，不能视为完全独立的开关。
+
+最小原型在 JDK 17、Maven 3.8.1 与 3.10.0 上执行双插件 `verify`：各自读取不同规则并写入独立报告；Maven 3.10.0 下还验证了只报告、分别严格失败和独立跳过，以及两套插件的性能记录分离、Mimir 缓存重复构建。独立 reactor 中 `-pl consumer -am` 会先构建规则 jar，再构建 Parent 和消费者。独立文件仓库样例验证了 Flatten Parent 的插件版本绑定、消费者以空 `relativePath` 解析，以及关闭 Mimir 后下游原规则仍严格失败。这些结果不是正式发布链或全仓验收。正式方案仍须验证真实发布 Parent 与消费者、Maven 插件仓库解析、缓存与其余输出目录、规则覆盖、整仓性能及质量门禁。
+
+正式生成须保持上游描述符与实现版本一致，校验描述符来源和根节点坐标，保留上游许可证与 NOTICE，并标注描述符的修改；不得依赖手工修改制品。完整质量门禁还须核查插件暴露的非 `pmd.*` / `cpd.*` 用户属性；已复现 `MAVEN_OPTS=-DminimumPriority=1` 可过滤部分规则，必须拒绝该注入并验证其他相关入口。
+
+#### 制品与依赖
+
+仍只新增一个 `mimir-boot-code-quality` 模块，坐标为 `io.github.yggdrasil-labs:mimir-boot-code-quality:${revision}`，打包类型仍为 `jar`。这个 jar 同时包含规则资源和 Maven 插件描述符，不包含官方插件的 Java 类或第三方 jar；其发布 POM 不声明依赖，因此作为普通依赖时不会传递 PMD。
+
+构建该模块时，从固定版本 `org.apache.maven.plugins:maven-pmd-plugin:3.28.0` 提取官方 `META-INF/maven/plugin.xml`、许可证和 NOTICE。校验来源描述符后，在**构建输出目录**生成改写坐标和唯一前缀的描述符，标明来源与修改内容；保留 `pmd`、`check`、`cpd`、`cpd-check` 所需的官方实现类名、参数与分叉关系。Parent 在使用该 jar 作为插件时显式声明同版本官方插件依赖，由 Maven 在独立插件类加载器中加载其实现。
+
+来源版本、描述符与 Parent 声明的官方实现版本必须一起升级。本仓库构建和发布检查要核对三者一致，描述符根节点坐标必须与制品坐标一致；发布后的 Parent 固定实现版本，不能把单独覆盖官方插件版本当作受支持的升级方式。`mimir-boot-code-quality.version` 只支持覆盖到同上游来源版本的制品，跨来源升级须同时升级 Parent 与规则制品。资源 jar 的源码包、说明用 Javadoc 包、签名与发布仍按 T1 要求验证。
+
+这个制品仅使用带来源说明的派生描述符，官方实现仍通过官方坐标解析。Maven 原生插件通常采用 `maven-plugin` 打包；这里使用 `jar` 加描述符的方式已在前述版本实测，正式交付仍须覆盖项目声明的 Maven 范围。确定入口是 Parent 生命周期绑定，或完整坐标加 execution 选择器：`io.github.yggdrasil-labs:mimir-boot-code-quality:<版本>:check@pmd` / `:cpd-check@cpd`，配合 `-Pprecheck` 或相应的 `*.skip=false`。不承诺短前缀解析，也不支持省略 `@pmd` / `@cpd` 的裸 goal：后者使用 `default-cli`，会读取默认报告目录而不是 Mimir 目录。
+
+#### Parent 接入配置
+
+以下是需要实现和验证的配置形态，省略与问题无关的既有 POM 内容；正式 POM 的版本值和各模式属性仍由项目统一管理：
+
+```xml
+<plugin>
+    <groupId>io.github.yggdrasil-labs</groupId>
+    <artifactId>mimir-boot-code-quality</artifactId>
+    <version>${mimir-boot-code-quality.version}</version>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-pmd-plugin</artifactId>
+            <version>3.28.0</version>
+        </dependency>
+    </dependencies>
+    <executions>
+        <execution>
+            <id>pmd</id>
+            <phase>verify</phase>
+            <goals><goal>check</goal></goals>
+            <configuration>
+                <rulesets><ruleset>mimir-boot/pmd/ruleset.xml</ruleset></rulesets>
+                <targetJdk>${java.version}</targetJdk>
+                <targetDirectory>${project.build.directory}/mimir-quality</targetDirectory>
+                <outputDirectory>${project.build.directory}/mimir-quality/site</outputDirectory>
+                <analysisCacheLocation>${project.build.directory}/mimir-quality/pmd.cache</analysisCacheLocation>
+                <benchmarkOutputFilename>${project.build.directory}/mimir-quality/pmd-benchmark.txt</benchmarkOutputFilename>
+                <rulesetsTargetDirectory>${project.build.directory}/mimir-quality/rulesets</rulesetsTargetDirectory>
+                <includeTests>false</includeTests>
+                <excludeRoots><excludeRoot>${project.build.directory}/generated-sources</excludeRoot></excludeRoots>
+                <linkXRef>false</linkXRef>
+                <analysisCache>true</analysisCache>
+                <printFailingErrors>true</printFailingErrors>
+                <failurePriority>5</failurePriority>
+            </configuration>
+        </execution>
+        <execution>
+            <id>cpd</id>
+            <phase>verify</phase>
+            <goals><goal>cpd-check</goal></goals>
+            <configuration>
+                <minimumTokens>100</minimumTokens>
+                <targetDirectory>${project.build.directory}/mimir-quality</targetDirectory>
+                <outputDirectory>${project.build.directory}/mimir-quality/site</outputDirectory>
+                <includeTests>false</includeTests>
+                <excludeRoots><excludeRoot>${project.build.directory}/generated-sources</excludeRoot></excludeRoots>
+                <linkXRef>false</linkXRef>
+                <printFailingErrors>true</printFailingErrors>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+
+该声明放在 Parent 的 `pluginManagement`，并在 `build/plugins` 中声明同一插件以执行。ID `pmd` 和 `cpd` 与分叉目标名一致，因此别名插件的分叉目标取得各自配置；下游官方插件虽然也可能使用相同 ID，但因插件坐标不同，不与此配置合并。
+
+公共默认仍为 `pmd.skip=true`、`cpd.skip=true`、两个 `*.failOnViolation=false`；`dev` 和 `prod` 跳过，`precheck` 和 `ci` 执行。本仓库各 Java 模块仍设两个 `*.failOnViolation=true` 与 `pmd.skipPmdError=false`。这四个原生属性的含义不变：例如下游设置 `-Dpmd.skip=true` 时，Mimir 和下游自己配置的官方 PMD 检查都会跳过。
+
+#### 消费者怎么配置
+
+继承 Parent 时，Mimir 的两个 XML 报告位于 `target/mimir-quality/`；下游官方插件仍使用自己的 `target/pmd.xml`、`target/cpd.xml` 或其自行指定的位置。只有报告目录不同才能同时保留两套结果；下游若自行指定与 Mimir 相同的目录，须自行调整。
+
+下游需要替换 Mimir 的 PMD 规则时，覆盖**独立插件坐标**下的 `pmd` execution：
+
+```xml
+<plugin>
+    <groupId>io.github.yggdrasil-labs</groupId>
+    <artifactId>mimir-boot-code-quality</artifactId>
+    <executions>
+        <execution>
+            <id>pmd</id>
+            <configuration>
+                <rulesets combine.self="override"><ruleset>config/pmd.xml</ruleset></rulesets>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+
+下游只保留自己的官方检查时，在该独立插件的 `pmd`、`cpd` execution 分别设置 `<phase>none</phase>`，再按需设置 `pmd.skip=false`、`cpd.skip=false` 和对应的 `*.failOnViolation=true`。这不会关闭或改写下游原有 `maven-pmd-plugin` execution。仅导入 BOM 的项目仍自行声明官方插件及规则 jar 依赖，不需要使用独立插件入口；其报告路径由该项目配置决定。
+
+#### 方案取舍
+
+| 方案 | 实际结果 | 结论 |
+|---|---|---|
+| 原方案：检查参数写在 `pmd-check` / `cpd-check` | 分叉的报告目标读不到规则与阈值，构建可能成功但检查了错误规则 | 不采用 |
+| 官方插件直接报告到独立目录，再调用 `check` | 可以检查独立报告，但 `check` 仍分叉下游原插件，能触发原本禁用的规则并覆盖其报告 | 不采用 |
+| 规则 jar 作为独立插件入口，复用官方实现 | 临时双插件和文件仓库样例通过；原生属性共用，Mimir 报告路径和覆盖入口变化 | 采用（D-110） |
+| 自写检查器或调用命令行 | 需要自行处理违规输出、失败语义或进程退出，增加与官方插件的行为差异 | 暂不采用 |
+
+#### 实施与验收顺序
+
+按已同步的规格与静态实施计划，分阶段实施：
+
+1. **规则制品**：建立 T1 资源模块和描述符自动生成；验证两次连续构建、描述符及官方实现的版本一致性、LICENSE/NOTICE、主 jar 与附件、`-Drevision` 发布制品。按已修正的 XPath 运行 CQ-01 样例，确认没有 PMD 处理错误。
+2. **Parent 接入**：按本方案配置插件与四模式；验证 `-pl ... -am` 构建顺序、默认跳过、分别只报告和分别严格失败、命令行覆盖，以及仅导入 BOM 的接入。以真实 Flatten Parent 和隔离文件仓库消费者复核版本绑定与插件仓库要求。
+3. **兼容与治理**：在继承发布 Parent 的消费者中验证原有官方 PMD/CPD execution 的规则、范围与报告不受污染；覆盖替换 Mimir 规则、关闭 Mimir 后恢复下游严格检查，以及同时开启 `pmd.benchmark` 时两套性能记录互不覆盖。再进入本仓库严格模式和存量违规治理。
+4. **ArchUnit、门禁和文档**：接续原计划的 T4/T5；全局质量门禁检查新插件配置、隔离报告及构建输入，包括 `minimumPriority` 等可绕过规则的非前缀属性；更新发布消费者契约、升级说明与工程文档。`tools/` 仅承载长期跨版本的构建模型、报告和发布契约检查，复用现有 `quality --mode full`、CI 与发布入口，不增加专项脚本。
+5. **整体验收**：执行 JDK 17 下完整 `quality --mode full --source worktree`、发布前隔离消费者和计划中的负向检查；与实施前 137.57 秒的同机 `-Pci clean verify` 基线比较。超过计划的 20% 增幅时，按原决策边界重新对齐。
+
+最小原型结果仅证明方案可行；实际项目的 Flatten、发布前隔离消费者、质量门禁、规则与构建性能已按上述路径完成本地验收，证据摘要见[版本记录](../release.md#代码质量工具链实施2026-11-06)。未将本地结果视为 CI、正式发布或生产验证。
 
 ### 规则 jar 模块（CQ-01、CQ-02、CQ-03、CQ-09）
 
@@ -110,12 +235,12 @@ flowchart TB
 |---|---|---|
 | `classCommentRequirement`、`enumCommentRequirement` | `Required` | 类、接口、枚举需要 Javadoc |
 | `publicMethodCommentRequirement` | `Required` | public 方法需要 Javadoc |
-| `protectedMethodCommentRequirement`、`packageMethodCommentRequirement` | `Ignored` | 与原 `scope=public` 一致 |
+| `protectedMethodCommentRequirement` | `Ignored` | 不要求 protected 方法；此版本没有 `packageMethodCommentRequirement` 属性，规则本身不检查 package-private 方法 |
 | `methodWithOverrideCommentRequirement`、`accessorCommentRequirement` | `Ignored` | `@Override` 方法与 getter/setter 不要求 |
 | `fieldCommentRequirement`、`serialVersionUIDCommentRequired`、`serialPersistentFieldsCommentRequired` | `Ignored` | 字段不要求 |
 | `violationSuppressXPath` | 构造器，或有效可见性不是 public 的节点 | 弥补规则按声明可见性判断、构造器与方法共用开关的差异 |
 
-`violationSuppressXPath` 的推荐写法是 `self::ConstructorDeclaration or @EffectiveVisibility != 'public'`。这样 package-private 类、非公开外部类中的 public 成员与构造器都不报告。T1 须用规格 CQ-01 的示例验证 XPath 属性名与取值；无法表达时暂停对齐，不得改为放宽 D-107 或要求更多 Javadoc。
+`violationSuppressXPath` 使用 `.[self::ConstructorDeclaration or @EffectiveVisibility != 'public']`，返回需要抑制的节点。PMD 7.17.0 的本地样例验证覆盖了公开与非公开嵌套类型、构造器及访问器，未出现处理错误；该验证不替代 T1 的 Maven 集成验收。原先的 `self::ConstructorDeclaration or @EffectiveVisibility != 'public'` 返回布尔值，规则加载虽可成功，分析时会产生处理错误，不可使用。T1 仍须用规格 CQ-01 的示例验证实际插件配置，不得改为放宽 D-107 或要求更多 Javadoc。
 
 已知缺口（D-109 接受）：
 
@@ -132,8 +257,8 @@ flowchart TB
 
 | 属性 | 公共默认 | 说明 |
 |---|---|---|
-| `maven.pmd.plugin.version` | `3.28.0` | 插件版本，使用内置 PMD |
-| `mimir-boot-code-quality.version` | `${project.version}`，发布后为字面版本 | 规则 jar 版本，下游可覆盖 |
+| `maven.pmd.plugin.version` | `3.28.0` | 记录官方实现的配对版本；不作为消费者单独升级入口 |
+| `mimir-boot-code-quality.version` | `${project.version}`，发布后为字面版本 | 只支持覆盖同上游来源版本的规则制品；跨来源须升级 Parent 与规则制品 |
 | `pmd.skip` / `cpd.skip` | `true` | 原生跳过开关（D-108） |
 | `pmd.failOnViolation` / `cpd.failOnViolation` | `false` | 原生失败开关（D-108） |
 
@@ -149,19 +274,9 @@ flowchart TB
   - Spotless、JaCoCo、Enforcer、Sonar 的属性、插件配置与 execution 一律不改；
   - “同一问题只有一个工具报告”由规则表中的“明确不启用”清单保证。
 
-### Parent 插件配置（CQ-01～CQ-04、CQ-10）
+### Parent 插件绑定
 
-插件级（`pluginManagement` 的 `<plugin>` 层）只放版本与插件依赖（规则 jar）。
-
-所有检查参数写在 Mimir 自己的 execution 的 `<configuration>` 内。这样不会合并进下游已有的 execution，下游原有的规则、范围和参数不变：
-
-- `maven-pmd-plugin`，execution `pmd-check`（goal `check`）与 `cpd-check`（goal `cpd-check`），均绑定 `verify`：
-  - `rulesets=mimir-boot/pmd/ruleset.xml`、`targetJdk=${java.version}`；
-  - `includeTests=false`、`excludeRoots=${project.build.directory}/generated-sources`；
-  - `printFailingErrors=true`、`failurePriority=5`、`minimumTokens=100`；
-  - `linkXRef=false`、`analysisCache=true`。
-
-  `check`、`cpd-check` 会在同一 execution 内分叉执行报告目标，T2 须确认 execution 级配置会传给分叉出的报告目标。不能传递时暂停对齐。
+使用[接入配置](#parent-接入配置)中的独立 `mimir-boot-code-quality` 插件；`pmd` / `cpd` execution 分别绑定 `check` / `cpd-check`，报告及其他输出位于 Mimir 专属目录。
 
 插件在 `build/plugins` 中公开声明，与 JaCoCo 相同，由 skip 控制是否执行。mojo 加载时就要构建插件类加载器，跳过检查时也一样，所以执行到 `verify` 的任何构建都要能从插件仓库解析规则 jar；`test` 等更早的阶段不会解析它。解析失败时构建失败，符合 CQ-09“不静默跳过”。
 
@@ -172,8 +287,8 @@ flowchart TB
 | 影响 | 原因 | 下游恢复方式 |
 |---|---|---|
 | 下游自己的 PMD/CPD execution 在默认模式与 dev 下被跳过，在 precheck/ci 下不再失败 | 插件参数默认读取 `${pmd.skip}`、`${cpd.skip}` 与对应的 `failOnViolation` 用户属性，而 Parent 定义了这些属性 | 在 POM 中设置对应的 `*.skip=false`、`*.failOnViolation=true` |
-| 上一项恢复后，Mimir 的 `pmd-check`、`cpd-check` 也会执行并按严格模式失败 | 两类 execution 读取同一组原生属性 | 在下游 POM 中把这两个 execution 的 `phase` 设为 `none`，或修复 Mimir 规则报告的问题 |
-| 构建需要从插件仓库解析规则 jar | 插件依赖合并 | 配置能访问 Mimir 制品的 `pluginRepositories` 或镜像 |
+| 上一项恢复后，Mimir 的 `pmd`、`cpd` 也会执行并按严格模式失败 | 两类插件读取同一组原生属性 | 在独立 `mimir-boot-code-quality` 插件中把这两个 execution 的 `phase` 设为 `none`，或修复 Mimir 规则报告的问题 |
+| 构建需要从插件仓库解析规则 jar | 规则 jar 是独立 Maven 插件入口 | 配置能访问 Mimir 制品的 `pluginRepositories` 或镜像 |
 
 不改用 Mimir 私有开关的原因：用户已确认采用插件原生属性（D-108，与 Parent 需求 D-84/D-85 的原生开关原则一致）。私有开关会让 `-Dpmd.skip` 这类通用命令对 Mimir execution 失效。下游自行配置的 Checkstyle 不受本需求影响（D-109）。
 
@@ -295,6 +410,7 @@ COLA 访问约束：
 | starter-feign | `rpc.feign` | `common`、`rpc.core` | — | T5 |
 
 - 每个模块同时检查 `noCycles(自身包)`。
+- 为保持既有公开接口，五个模块保留九个精确类型对例外，范围及复查条件见 [TD-051](../../tech-debt-tracker.md#td-051-既有公开类型包循环)；不忽略整个包或模块。
 - Common 不能依赖 starter-test，否则会形成 reactor 循环，所以直接以 test 范围使用 ArchUnit。
 - ArchUnit 在 starter-test 中是 optional，不会传递给依赖 starter-test 的模块，因此除 starter-test 外的 10 个模块都要在自身 POM 中以 test 范围声明 `archunit`。
 - 允许关系来自 [ARCHITECTURE.md](../../../../ARCHITECTURE.md)；新增允许关系须先修改架构文档。
@@ -307,15 +423,15 @@ COLA 访问约束：
 
 **verify-build-model.mjs**：在隔离缓存中先以 `install` 安装 `mimir-boot-code-quality`，再安装 Parent。否则 Parent 自身执行到 `verify` 时解析 PMD 插件依赖会失败。
 
-**java-build-model.mjs**：在既有的 coverage、format 两类插件之外，登记 `pmd`（`maven-pmd-plugin`）。对每个必须产出报告的模块，按白名单核对 `-Pci` 有效模型：
+**java-build-model.mjs**：在既有的 coverage、format 两类插件之外，登记独立的 `mimir-boot-code-quality` 插件。对每个必须产出报告的模块，按白名单核对 `-Pci` 有效模型：
 
-- `pmd-check`、`cpd-check` 两个 execution 存在，且绑定设计规定的阶段；
+- `pmd`、`cpd` 两个 execution 存在，分别执行 `check`、`cpd-check` 且绑定 `verify`；
 - 每个 execution 的有效配置参数集合与取值，必须与 Parent 声明的完全相等，包括 `skip=false`、`failOnViolation=true`、`skipPmdError=false`。出现额外参数（如 `includes`、`excludes`、`excludeFromFailureFile`、`compileSourceRoots`、`minimumPriority`、`typeResolution`、`ignoreLiterals`、`ignoreIdentifiers`、`ignoreAnnotations`、`skipExec`）或取值不同（如 `maxAllowedViolations`、`failurePriority`、`minimumTokens`、`rulesets`），都报出模块与参数；
-- 插件依赖中的规则 jar 版本等于当前 `revision`。
+- 独立插件版本等于当前 `revision`；其官方实现依赖版本与规则制品描述符来源一致。
 
 白名单的值从 Parent 的有效模型读取，不在工具里固定版本号或阈值。
 
-**verify-java-reports.mjs 的 `validateBuildInputs`**：被拒绝的覆盖参数扩展到 `pmd.*`、`cpd.*`、`minimumTokens`。这些参数通过 `-D` 注入时不会出现在有效 POM 里，只靠模型核对拦不住。
+**verify-java-reports.mjs 的 `validateBuildInputs`**：被拒绝的覆盖参数扩展到 `pmd.*`、`cpd.*`、`minimumTokens`、`minimumPriority`，并核查插件的其他非前缀用户属性。这些参数通过 `-D` 注入时不会出现在有效 POM 里，只靠模型核对拦不住。
 
 **java.mjs 与 verify-java-reports.mjs 的报告处理**：
 
@@ -335,7 +451,7 @@ COLA 访问约束：
 - 两个继承 Parent 的夹具 POM（`consumerPom`、`failureConsumerPom`）在 `<repositories>` 之外增加同源的 `<pluginRepositories>`。这是适配新插件依赖的必要改动：原有阶段的命令不变，预期结果仍是成功或按原样失败；
 - 新增独立阶段 `consumer-quality-precheck`，与 `consumer-isolated-clean-verify` 一样离线运行，使用阻断设置与消费者缓存：
   - 夹具增加一个能编译、含一处已知违规（公开方法缺 Javadoc，即 `CommentRequired`）的 main 源文件；
-  - 以 `-Pprecheck -Djacoco.skip=true -Dspotless.check.skip=true verify` 运行，只隔离出两类新检查；
+  - 先在线运行一次 `-Pprecheck clean verify` 预热报告渲染所需构件，再用阻断外网的设置离线运行同一命令；同时保持 Spotless、JaCoCo 和测试检查；
   - 断言构建成功、两类报告存在、PMD 报告含该违规。
 - 默认模式下两类检查与 Spotless 都跳过，所以新增的 main 源文件不改变原有阶段的结果。
 
@@ -349,7 +465,7 @@ COLA 访问约束：
 |---|---|---|
 | 制品仓库 | 规则 jar 或插件无法解析 | 构建失败并给出坐标；README 与升级说明列出内网镜像需同步的坐标 |
 | 插件仓库配置 | 下游只用 `<repositories>` 接私有仓库，没有镜像或 `<pluginRepositories>` | 插件依赖解析失败，构建失败；README 与升级说明要求配置 `pluginRepositories` 或镜像 |
-| 规则文件 | 含未知 PMD 规则名或无效的 `violationSuppressXPath` | 插件加载规则集时报错并失败；T1 用内置 PMD 加载一次规则集验证 |
+| 规则文件 | 含未知 PMD 规则名或无效的 `violationSuppressXPath` | 未知规则名在加载时报告；XPath 的返回类型等问题可能到分析时才产生处理错误。本仓库通过 `pmd.skipPmdError=false` 阻断处理错误；T1 须实际分析样例并核对处理错误，而不只验证规则加载。 |
 | PMD 处理 | 单个文件解析或处理错误 | 本仓库设 `pmd.skipPmdError=false`，阻断构建；下游保持默认 `true`，只记录日志，不打断只报告模式 |
 | 本地多模块构建 | 不带 `-am` 构建单个模块，本地仓库没有规则 jar 的 SNAPSHOT | 构建失败并给出坐标；开发规程说明先执行一次 `install`，或带 `-am` |
 | 下游已有同名插件配置 | 见 CQ-10 | 升级说明给出恢复配置 |
@@ -369,7 +485,7 @@ COLA 访问约束：
 | 兼容 | JDK 17 可运行；Maven 下限不高于 Parent Enforcer 的 3.8.0（插件要求 3.6.3）；Spotless、JaCoCo 等既有属性与模式语义不变；已自行配置 PMD 的下游受 CQ-10 影响，须在升级说明中列出；执行到 `verify` 的任何构建都要能从插件仓库解析规则 jar |
 | 安全 | 规则 jar 不含可执行代码；检查过程不访问网络；不向运行时类路径引入依赖 |
 | 可用性 | 规则 jar 无法解析时构建失败并给出坐标；内网镜像需同步 PMD 插件及其传递依赖与规则 jar |
-| 可观测性 | 控制台违规含文件与行号；生成 `target/pmd.xml`、`target/cpd.xml`；完整验收报告登记 `java-pmd`、`java-cpd` 两项状态 |
+| 可观测性 | 控制台违规含文件与行号；生成 `target/mimir-quality/pmd.xml`、`target/mimir-quality/cpd.xml`；完整验收报告登记 `java-pmd`、`java-cpd` 两项状态 |
 
 ## 方案比较
 

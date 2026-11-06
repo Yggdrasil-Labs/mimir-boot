@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内部业务团队提供统一依赖版本、公共组件和自定义 Starter。核心技术栈：Java 17 + Spring Boot 3.3.13 + Maven 多模块（parent / bom / common / starters）。这是基础设施产品仓库，不是单体业务系统。
+Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内部业务团队提供统一依赖版本、公共组件和自定义 Starter。核心技术栈：Java 17 + Spring Boot 3.3.13 + Maven 多模块（parent / bom / code-quality / common / starters）。这是基础设施产品仓库，不是单体业务系统。
 
 ## 全局规范
 
@@ -46,6 +46,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 |--------|--------|
 | 新增/升级第三方依赖版本 | `mimir-boot-bom/pom.xml` + [`工程规程`](./docs/engineering/development.md) |
 | 修改构建插件、质量门禁 | `mimir-boot-parent/pom.xml` + [`测试规程`](./docs/engineering/testing.md) |
+| 修改 Java 质量规则或派生插件描述符 | `mimir-boot-code-quality/` + [质量工具定位](./docs/design-docs/arch-code-quality-toolchain.md#定位矩阵) |
 | 新增或修改 `tools/` 内任何内容 | 先核对[工具准入约束](./tools/engineering/README.md#保留范围)，包括既有脚本内部新增逻辑 |
 | 修改公共模型（异常/响应/分页/枚举） | `mimir-boot-common` |
 | 新增 Starter | [`新增 Starter 规程`](./docs/engineering/new-starter.md) |
@@ -68,6 +69,9 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，面向内�
 
 # Java 子检查入口（完整验收会调用；默认 RUN_SONAR=false）
 bash scripts/engineering.sh java
+
+# 本地质量预检（本仓库 PMD/CPD 为严格模式）
+./mvnw -Pprecheck verify
 
 # Java 子检查中的 Maven 基础构建步骤
 ./mvnw -Pci clean verify

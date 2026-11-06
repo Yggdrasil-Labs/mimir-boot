@@ -2,12 +2,12 @@
 version: v2.4.0
 status: draft
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 
 # 代码质量工具链实施计划
 
-> 推荐方案，未实施。本计划是静态实施输入；任务列表不表示已执行或已通过验收。
+> 2026-11-06 用户确认按独立插件入口实施（D-110）。本计划是静态实施输入，任务列表不表示已完成验收；接入形态见[设计](./design.md#分叉配置问题与接入方案)。
 
 导航：[版本入口](../brainstorm.md) · [方案大纲](./brainstorm.md) · [规格](./spec.md) · [设计](./design.md) · [架构 RFC](../../../design-docs/arch-code-quality-toolchain.md)
 
@@ -23,7 +23,7 @@ updated: 2026-11-02
 
 ## 必要上下文
 
-- 基线分支 `feat/v2.4.0-parent-build`（`7cd4684`），在 worktree 分支 `feat/v2.4.0-quality-tooling` 实施。Parent 需求对 Parent POM 的改动是本计划的前提；两边都改 `mimir-boot-parent/pom.xml`，合并时由本需求负责整合。
+- 方案已从 `quality-tooling` worktree 迁入当前主工作区，方案提交为 `f93cb7c`；在当前 `feat/v2.4.0-parent-build` 工作区接续实施，保留后续已有模块改动。Parent 需求的构建与发布契约是前提。
 - 当前开发版本以根 POM `revision` 为准（`2.3.1-SNAPSHOT`）；本计划不修改 `revision`。
 - 验证使用 JDK 17；本机无 JDK 25。
 - `tools/` 改动须遵守[工具准入约束](../../../../tools/engineering/README.md#保留范围)：只扩展既有全局门禁与发布契约，不新增脚本。临时消费者、违规样例放在仓库外临时目录，不提交。
@@ -42,6 +42,7 @@ updated: 2026-11-02
 - D-107：规则库在 starter-test，提供通用与 COLA 预设；Javadoc 只要求公开类型与方法，不要求 `@author`。
 - D-108：开关保持插件原生属性；CQ-10 的兼容影响写入升级说明，不改用 Mimir 私有开关。
 - D-109：不引入 Checkstyle，注释与命名由 PMD 选定规则负责；接受不检查 Javadoc 标签与签名一致性。
+- D-110：规则 jar 同时提供独立插件入口，复用固定版本官方实现，Mimir 报告放入 `target/mimir-quality/`；直接调用必须选择 `check@pmd` / `cpd-check@cpd`，规则制品只支持同上游来源版本覆盖。
 - 推荐方案：
   - PMD 插件 3.28.0，使用内置 PMD 7.17.0；`CommentRequired` 以 `violationSuppressXPath` 排除构造器与非公开可见性；本仓库设 `pmd.skipPmdError=false`；
   - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test；
@@ -94,6 +95,8 @@ Files：
   - 父为根 `mimir-boot`，`packaging=jar`，不声明依赖；
   - 显式设置 `maven.deploy.skip=false`，与 Common 一致；
   - 绑定 source 附件和 `javadoc` 分类器的说明 jar。
+  - 在构建生命周期中从固定上游插件生成描述符，精确校验来源与根节点坐标，保留许可证、NOTICE 和修改声明；重跑构建不得重复修改已生成文件。
+- Create：模块内生成描述符所需的构建支持文件（如 XSLT）；不写入 `tools/`。
 - Create：`mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/ruleset.xml`：按设计的 PMD 规则表，含 `CommentRequired` 参数与 `violationSuppressXPath`。
 - Create：`mimir-boot-code-quality/src/main/javadoc/README.md`（或同等说明文件）：`javadoc` 分类器 jar 的内容。
 - Create：`mimir-boot-code-quality/README.md`，说明以下内容：
@@ -115,6 +118,7 @@ Acceptance：
 
 - `./mvnw -pl mimir-boot-code-quality clean install` 产出主 jar、`-sources.jar`、`-javadoc.jar`，主 jar 内资源路径正确。
 - 用插件内置的 PMD 加载规则集，在一个临时样例上运行，没有配置错误（未知规则名会直接报错）。
+- 主 jar 无 Java 类，发布 POM 无依赖；描述符仅公开支持的四个目标，来源版本与 Parent 官方实现依赖配对；连续两次构建均通过。
 - 用规格 CQ-01 的各场景样例验证 `CommentRequired` 与 `violationSuppressXPath`：public 类的 public 方法缺 Javadoc 报告；构造器、`@Override`、getter/setter、protected 方法、字段、package-private 类及其中的 public 方法均不报告。XPath 属性无法表达这一范围时**暂停对齐**。
 - 确认 `ClassNamingConventions` 的 `utilityClassPattern` 默认值；若要求工具类后缀，按设计改为与 `classPattern` 相同。
 
@@ -126,7 +130,7 @@ Files：
 
 - Modify：`mimir-boot-parent/pom.xml`
   - 新增设计中的属性；
-  - PMD 插件的 `pluginManagement` 配置：插件级只放版本与插件依赖，全部检查参数写在 `pmd-check`、`cpd-check` 两个 execution 内；
+  - 独立 `mimir-boot-code-quality` 插件的 `pluginManagement` 配置：插件级放版本与固定官方实现依赖，检查参数写在 `pmd`、`cpd` 两个 execution 内，输出目录按设计隔离；
   - 插件在 `build/plugins` 中公开声明；
   - 四种模式补充两个 skip；
   - Flatten 的 `properties` 由 `keep` 改为 `extended_interpolate`，并加注释说明：以后新增的引用型属性可能在生产者侧被固定；
@@ -159,6 +163,8 @@ Acceptance：
   任一项不成立时暂停，并回到设计中的备选方案对齐。
 - 临时消费者已有自己的 PMD execution 时，升级前后这些 execution 的有效配置除开关属性外完全相同。
 - Parent 需求已有的四模式验证与发布 Parent 验证，在本改动后复跑仍然成立。
+- 以完整坐标 `:check@pmd`、`:cpd-check@cpd` 单独运行；在默认目录已有另一套报告时仍只判定 Mimir 报告。省略 execution 选择器不属于支持入口，README 不提供此类命令。
+- 规则制品版本覆盖只允许相同上游来源版本；跨来源升级须配对升级 Parent 和规则制品，并列入升级说明。
 
 ### T3：本仓库严格模式与存量治理
 
@@ -256,7 +262,7 @@ Files：
 - Modify：`tools/engineering/src/quality/java.mjs`、`verify-java-reports.mjs`：
   - 两类报告纳入构建前清理、同次构建产物登记与报告核验，必须产出报告的模块按设计确定；
   - Java 子报告新增 `java-pmd`、`java-cpd` 检查项与对应规则 id；
-  - `validateBuildInputs` 拒绝 `pmd.*`、`cpd.*`、`minimumTokens` 的环境注入。
+  - `validateBuildInputs` 拒绝 `pmd.*`、`cpd.*`、`minimumTokens`、`minimumPriority` 的环境注入，并核查插件暴露的其他非前缀属性。
 - Modify：`tools/engineering/src/quality/runner.mjs`：Java 子报告的必需项与复制列表加入两项新检查。
 - Modify：`tools/engineering/src/quality/results.mjs`：仅在需要时修改。不升级任何 `schemaVersion`；若实现必须改变已有字段语义，按设计的 schemaVersion 约定同步全部读取方。
 - Modify：`tools/engineering/src/release/consumer.mjs`、`tools/engineering/src/release/fixture-consumer.mjs`：
@@ -285,7 +291,8 @@ Acceptance：
   - CPD `ignoreLiterals=true`
   - 删除某个 Starter 的严格属性
   - 在 `MAVEN_OPTS` 中注入 `-Dpmd.skip=true`
-- 临时删除某模块的 `target/pmd.xml` 后核验报告，结果失败并给出 `quality-report-missing`。
+  - 在 `MAVEN_OPTS` 中注入 `-DminimumPriority=1`
+- 临时删除某模块的 `target/mimir-quality/pmd.xml` 后核验报告，结果失败并给出 `quality-report-missing`。
 - 发布消费者契约通过：新阶段成功并生成两类报告，原有阶段的命令与预期结果不变。
 - 临时去掉夹具 POM 的 `<pluginRepositories>`（不提交）时，消费者在 `verify` 阶段失败并给出规则 jar 坐标，证明新增配置是必要的。
 

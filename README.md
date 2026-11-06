@@ -27,13 +27,14 @@
 - 🪵 **智能日志**: 自动脱敏、Trace追踪、访问日志
 - 🔐 **配置安全**: Nacos 配置加密脱敏，支持 ENC() 格式
 - 🔧 **开箱即用**: 多个 Starter 模块，快速接入
-- 📋 **质量工具**: Spotless 代码格式化、单元测试、JaCoCo 覆盖率、SonarCloud 分析
+- 📋 **质量工具**: Spotless 格式、PMD/CPD 检查、可选 ArchUnit 架构规则、单元测试、JaCoCo 覆盖率与 SonarCloud 分析
 
 ## 📦 模块说明
 
 | 模块 | 描述 |
 |---|---|
 | [`mimir-boot-parent`](mimir-boot-parent/README.md) | 父 POM，提供插件版本和构建配置 |
+| [`mimir-boot-code-quality`](mimir-boot-code-quality/README.md) | Java 质量规则及独立 Maven 插件入口 |
 | [`mimir-boot-bom`](mimir-boot-bom/README.md) | 依赖版本统一管理（BOM） |
 | [`mimir-boot-common`](mimir-boot-common/README.md) | 公共模型与工具类 |
 | [`mimir-boot-starter-log`](mimir-boot-starters/mimir-boot-starter-log/README.md) | 日志启动器（Logback + 脱敏 + 访问日志） |
@@ -208,6 +209,7 @@ bash scripts/engineering.sh quality --mode full --source worktree
 ```
 mimir-boot/
 ├── mimir-boot-parent/                    # 父 POM，插件和构建配置
+├── mimir-boot-code-quality/              # 质量规则与独立插件入口
 ├── mimir-boot-bom/                        # 依赖版本管理（BOM）
 ├── mimir-boot-common/                     # 公共组件
 ├── mimir-boot-starters/                   # Starter 集合
@@ -233,10 +235,12 @@ mimir-boot/
 graph TD
     Root[mimir-boot<br/>根模块] --> Parent[mimir-boot-parent<br/>父 POM]
     Root --> BOM[mimir-boot-bom<br/>依赖版本管理]
+    Root --> Quality[mimir-boot-code-quality<br/>质量规则与插件入口]
     Root --> Common[mimir-boot-common<br/>公共组件]
     Root --> Starters[mimir-boot-starters<br/>Starter 聚合模块]
     
     Parent -.依赖管理.-> BOM
+    Parent -.构建插件.-> Quality
     
     Starters --> Log[mimir-boot-starter-log<br/>日志启动器]
     Starters --> Exception[mimir-boot-starter-exception<br/>异常处理启动器]
@@ -274,6 +278,7 @@ graph TD
     style Root fill:#e1f5ff
     style Parent fill:#fff4e1
     style BOM fill:#fff4e1
+    style Quality fill:#fff4e1
     style Common fill:#e8f5e9
     style Starters fill:#f3e5f5
     style Test fill:#fce4ec
@@ -283,7 +288,7 @@ graph TD
 
 - **根模块和 Starter 聚合模块发出的实线箭头**：模块聚合关系
 - **其余实线箭头**：编译依赖关系
-- **虚线箭头**：按标签区分依赖管理（Parent → BOM）和仅测试使用的依赖（`test`）
+- **虚线箭头**：按标签区分依赖管理、构建插件和仅测试使用的依赖（`test`）
 - **颜色说明**：
   - 🔵 蓝色：根模块
   - 🟡 黄色：基础设施模块（Parent、BOM）

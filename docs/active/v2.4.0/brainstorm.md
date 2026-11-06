@@ -294,6 +294,7 @@ updated: 2026-11-02
 | D-107 | ArchUnit 规则库放在 starter-test，提供通用分层与 COLA 预设；注释规则只要求公开类型与方法有 Javadoc，不强制 `@author` | 有效（2026-11-02） |
 | D-108 | 代码质量工具链开关保持插件原生属性；已自行配置 PMD 的下游受影响，作为向后兼容的显式例外写入升级说明并给出恢复配置，不改用 Mimir 私有开关 | 有效（2026-11-02 用户确认），见[代码质量规格 CQ-10](./code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级) |
 | D-109 | 不引入 Checkstyle：注释与命名改由 PMD 选定规则负责（`CommentRequired`、`DanglingJavadoc` 与 codestyle 命名规则），修订 D-103；接受不检查 Javadoc 标签与签名一致性等缺口 | 有效（2026-11-02 用户确认），见[代码质量设计](./code-quality-toolchain/design.md#pmd-规则集cq-01cq-02) |
+| D-110 | 规则 jar 同时提供独立 Maven 插件入口，复用官方实现并隔离报告至 `target/mimir-quality/`；保留原生属性。直接调用选择 `check@pmd` / `cpd-check@cpd`；规则制品版本覆盖只支持同上游来源版本 | 有效（2026-11-06 用户在方案审查后要求开始实施）；见[接入设计](./code-quality-toolchain/design.md#分叉配置问题与接入方案) |
 | D-15、D-19、D-26、D-35、D-40、D-50、D-70、D-72、D-74、D-76、D-78、D-80 | 各模块依次收口并进入下一模块；不代表详细设计定稿或授权实施 | 过程记录 |
 
 ## 当前产物状态

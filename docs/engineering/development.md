@@ -35,6 +35,7 @@ git config --get core.hooksPath
 |---|---|---|
 | 依赖版本 | `mimir-boot-bom/pom.xml` | 使用该依赖的模块与版本兼容性 |
 | 构建插件、profile、覆盖率规则 | `mimir-boot-parent/pom.xml` | 下游继承行为、CI 与发布影响 |
+| PMD 规则或隔离插件描述符 | `mimir-boot-code-quality/` | 上游描述符/实现版本配对、规则定位、消费者兼容 |
 | Reactor 模块集合 | 根或 Starter 聚合 POM | BOM 注册、制品与文档导航 |
 | 公共异常、响应、分页或枚举 | `mimir-boot-common` | 公开接口、序列化形状、既有调用方 |
 | 运行时 Starter 能力 | 对应模块的源码、资源与测试 | 自动配置条件、属性绑定、默认行为 |
@@ -60,6 +61,8 @@ flowchart TD
 修复缺陷时先建立能复现问题的测试；新增行为覆盖正常路径、关键边界及适用的兼容场景。纯文字修改使用文档检查即可，无需为文字建立代码测试。
 
 ### 修改已有 Starter
+
+本地质量预检使用 `./mvnw -Pprecheck verify`。本仓库 PMD/CPD 违规阻断，下游继承 Parent 默认只报告；规则与独立运行命令见[规则模块](../../mimir-boot-code-quality/README.md)。不带 `-am` 单独构建模块前先运行 `./mvnw -pl mimir-boot-code-quality install`，确保本地有同版本的插件制品；继承 Parent 的下游需要可解析该制品的插件仓库或镜像。
 
 - 配置变化：同步属性类、绑定与校验、条件装配、默认值测试及 README 示例。说明旧配置是否仍可用。
 - 自动配置变化：核对配置类与注册资源；验证启用条件、禁用条件、依赖缺失和用户自定义 Bean 的适用行为。

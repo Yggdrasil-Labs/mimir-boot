@@ -15,6 +15,7 @@
 | Java 构建、测试、覆盖率及报告 | `bash scripts/engineering.sh java` | CI Maven 构建并核验报告 | 完整发布契约或远端 CI 通过 |
 | 仓库完整验收 | `bash scripts/engineering.sh quality --mode full --source worktree` | 文档、构建模型、发布契约、消费者、签名及 Java 检查 | 不同提交的 CI、未启用的 Sonar 或真实发布成功 |
 | 排查 Maven 本身 | `./mvnw -Pci clean verify` | Java 子检查的基础构建步骤 | 上层报告核验和仓库完整验收通过 |
+| 本地质量预检 | `./mvnw -Pprecheck verify` | PMD/CPD 及该模式启用的其他检查；本仓库违规阻断 | 发布或远端 CI 通过 |
 
 本仓库的 `test` 不执行 Failsafe 的 `*IT` / `*IntegrationTest`；需要这些用例时运行到 `verify`。测试选择规则以 [Parent POM](../../mimir-boot-parent/pom.xml) 为准，不能仅凭测试类名称或命令退出码推断覆盖范围。
 
@@ -36,6 +37,10 @@ flowchart TD
 纯文档改动通常使用文档 full 和 `git diff --check`。修改工程工具、hook、工作流或构建配置属于行为变更，不能按纯文档处理。
 
 ## 自动检查发生在哪里
+
+PMD 负责注释、命名和精选坏味道，CPD 负责重复代码，ArchUnit 以模块测试约束依赖方向；格式、覆盖率与环境约束仍由原工具负责，详见[定位矩阵](../design-docs/arch-code-quality-toolchain.md#定位矩阵)。Mimir 的报告位于各 Java 模块 `target/mimir-quality/pmd.xml` 与 `cpd.xml`，完整门禁检查配置未被放宽、报告属于同一次构建且无违规/处理错误。
+
+只运行一个工具时，使用[规则模块 README](../../mimir-boot-code-quality/README.md)的完整坐标并带 `check@pmd` 或 `cpd-check@cpd`；不能省略 execution 选择器，否则裸 goal 使用 `default-cli`，可能读取另一目录的报告。
 
 下表描述当前仓库配置；本地 hook 须先安装，远端工作流须满足触发条件。
 
@@ -85,6 +90,7 @@ Sonar 的变量为 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY`；
 | Failsafe XML | 本次实际执行的集成测试类及结果；旧文件或缺少目标用例不能证明本次覆盖 |
 | Java 构建清单 | 本轮 `-Pci` effective POM 的 reactor、有效源码/选择器、报告路径、覆盖率排除与阈值；纯 POM/无源码模块有显式豁免理由 |
 | JaCoCo XML | 清单登记路径的根级计数与阈值一致，XML/exec 摘要属于本轮成功构建；默认路径为 `target/site/jacoco/jacoco.xml`，阈值以有效 POM 和 Parent 基线为准 |
+| PMD/CPD XML | `target/mimir-quality/` 下的报告无违规与处理错误，摘要与本次成功构建一致；独立检查项为 `java-pmd` 和 `java-cpd` |
 | CI 结果 | 对应 PR/提交的 workflow run 和 artifacts；本地报告不能代替 |
 | Sonar 结果 | 未启用时明确 `not_applicable`，不描述为远程通过 |
 
@@ -128,6 +134,7 @@ CI 的 `quality-report` artifact 保存聚合报告，`surefire-reports` 和 `ja
 | Markdown/Java 格式失败 | 文件与行号 | 显式修改或运行 `./mvnw spotless:apply`，检查 diff 后复验 |
 | 文档链接或导航失败 | docs 报告的目标路径与锚点 | 修复引用或补所属索引，重跑文档 full |
 | 编译、测试或覆盖率失败 | 对应阶段日志及 XML 报告 | 修复实现或补有效测试；开发中定向反馈，验收时重跑所需范围 |
+| PMD/CPD 违规或处理错误 | 模块 `target/mimir-quality/` 下的 XML 及文件行号 | 修复源码；仅对有兼容性或语义依据的具体元素精确抑制并解释，不放宽全局规则；重跑相应模块和完整门禁 |
 | 消费者、签名或构建模型失败 | 聚合报告的阶段日志 | 按[独立诊断入口](../../tools/engineering/README.md#独立诊断命令)定位；修复后重跑 full |
 | 工具错误、进程中断或报告缺失 | 退出码、bootstrap 与阶段日志 | 修复执行条件；本次标为未通过，不复用旧结果 |
 | Sonar 或公开制品失败 | 远端分析或[发布工作流](./release.md)证据 | 按对应远端条件处理，保留未完成状态 |

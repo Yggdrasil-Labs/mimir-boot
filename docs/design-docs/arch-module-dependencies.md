@@ -19,6 +19,12 @@
 - 负责稳定、可共享、规范性的基础抽象
 - 不应演化为无边界工具包
 
+### `mimir-boot-code-quality`
+
+- 以根 POM 为父，提供 PMD 规则及带独立坐标的 Maven 插件描述符，不包含 Java 类或项目依赖
+- Parent 通过构建插件引用它，并为其提供配对的官方插件实现依赖；不进入 BOM 或业务运行时类路径
+- 输出位于 `target/mimir-quality/`，规则、执行与版本配对见[质量工具链设计](./arch-code-quality-toolchain.md)
+
 ### `mimir-boot-starters/*`
 
 - 每个 starter 承担一个清晰能力域

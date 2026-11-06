@@ -28,6 +28,8 @@ flowchart TD
 5. 编写模块 README，包含依赖坐标、启用方式、配置、示例、限制与兼容性；在现有能力导航补必要链接。
 6. 按“验证与完成条件”验收，并在计划中说明影响与结果。
 
+新 Java Starter 须在自己的 POM 设置 `pmd.failOnViolation=true`、`cpd.failOnViolation=true`、`pmd.skipPmdError=false`，不能只放在聚合 POM。以 test 范围声明 BOM 托管的 `archunit`，并添加依赖方向与包循环测试：使用 `MimirArchClasses.importDirectory(Path.of("target/classes"))` 只导入本模块生产类，允许关系以[模块边界](../design-docs/arch-module-dependencies.md)为准。starter-test 的 ArchUnit 为 optional，不会自动传递给新模块。
+
 `<name>` 是创建模块时替换的名称占位符，不是可直接执行的命令。
 
 | 能力类型 | 注册点 | 验证重点 |

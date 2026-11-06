@@ -20,6 +20,7 @@ Mimir Boot 是 Yggdrasil-Labs 的 Java 企业级基础框架仓库，核心定�
 mimir-boot/
 ├── mimir-boot-parent/                         # 父 POM：插件版本、构建 profile、质量门禁
 ├── mimir-boot-bom/                            # BOM：第三方与本仓库模块版本统一管理
+├── mimir-boot-code-quality/                   # PMD 规则及独立 Maven 插件入口，无 Java 类
 ├── mimir-boot-common/                         # 公共组件：基础模型、异常、响应、分页、工具类
 └── mimir-boot-starters/                       # Starter 聚合模块
     ├── mimir-boot-starter-log/                #   日志（Logback + 脱敏 + 访问日志）
@@ -67,6 +68,7 @@ graph TD
     Feign --> RPCCore
 
     Parent -.管理版本.-> BOM
+    Parent -.构建插件.-> Quality[mimir-boot-code-quality<br/>规则与插件描述符]
 ```
 
 **依赖规则：**
@@ -91,7 +93,7 @@ graph TD
 | 日志 | Logback / SLF4J API | 日志实现与门面 |
 | 测试 | JUnit / Mockito / Testcontainers | 由接入方按需引入容器模块 |
 | CI/CD | GitHub Actions | release-please + GPG 签名 |
-| 代码质量 | Spotless / JaCoCo / SonarCloud | — |
+| 代码质量 | Spotless / PMD / CPD / ArchUnit / JaCoCo / SonarCloud | 职责与边界见[质量工具链设计](./docs/design-docs/arch-code-quality-toolchain.md#定位矩阵) |
 
 本表保留核心技术基线；普通依赖与插件的具体版本以[根 POM](./pom.xml)、[BOM](./mimir-boot-bom/pom.xml)和 [Parent POM](./mimir-boot-parent/pom.xml)为准。
 
@@ -99,7 +101,8 @@ graph TD
 
 | 模块 | 职责 | 依赖 |
 |------|------|------|
-| `mimir-boot-parent` | 统一 Maven 插件版本、构建 profile、质量门禁（Spotless、JaCoCo、Enforcer） | BOM（dependencyManagement） |
+| `mimir-boot-parent` | 统一 Maven 插件版本、构建 profile、质量门禁 | BOM（dependencyManagement）、code-quality（构建插件） |
+| `mimir-boot-code-quality` | PMD 规则资源、派生插件描述符及来源元信息；无 Java 类 | 以根 POM 为父，不声明项目依赖；官方插件实现由 Parent 的插件依赖提供 |
 | `mimir-boot-bom` | 统一第三方与本仓库模块版本，对齐 Spring Boot/Cloud 版本矩阵 | 无 |
 | `mimir-boot-common` | 全仓库共享基础约定：annotation、batch、constant、dto、enums、exception、page、response、util | 无（COLA DTO 为 optional，仅 `ColaPageConverters` 使用，不向下游传递） |
 | `starter-log` | 日志自动配置：Logback 模板、敏感信息脱敏、TraceId/SpanId、访问日志 | common |
@@ -108,7 +111,7 @@ graph TD
 | `starter-mybatis` | 持久层增强：分页拦截器、乐观锁、审计字段自动填充、字段加解密 | common |
 | `starter-mybatis-processor` | 编译期注解处理器：按 `@AutoMybatis` 生成 Mapper、Service 和 ServiceImpl | 无运行时依赖 |
 | `starter-nacos` | Nacos 配置加密：ENC() 格式自动解密、动态刷新支持 | common |
-| `starter-test` | 测试基类与工具集 | common |
+| `starter-test` | 测试基类、工具集与可选 ArchUnit 规则库 | common；ArchUnit 为 optional |
 | `starter-rpc-core` | RPC 通用治理核心：Dubbo/Feign 共享的治理抽象 | common |
 | `starter-dubbo` | Dubbo 专用治理与增强 | starter-rpc-core |
 | `starter-feign` | Feign 专用治理与增强 | starter-rpc-core |

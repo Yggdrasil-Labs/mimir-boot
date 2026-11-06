@@ -1,6 +1,6 @@
 ---
 id: code-quality-toolchain
-status: draft
+status: verified
 owner: YoungerYang-Y
 created: 2026-11-02
 ---
@@ -23,7 +23,7 @@ created: 2026-11-02
 
 ```mermaid
 flowchart LR
-    CQ[mimir-boot-code-quality<br/>规则资源 jar] -->|插件依赖| P[mimir-boot-parent<br/>插件、开关、模式]
+    CQ[mimir-boot-code-quality<br/>规则及独立插件入口] -->|插件坐标| P[mimir-boot-parent<br/>插件、开关、模式]
     BOM[mimir-boot-bom] -->|托管 ArchUnit| AU[archunit]
     T[starter-test<br/>ArchUnit 规则库] -.optional.-> AU
     P --> R[本仓库 common / starters<br/>严格模式]
@@ -34,8 +34,8 @@ flowchart LR
 
 | 组件 | 职责 | 不承担 |
 |---|---|---|
-| `mimir-boot-code-quality` | 只承载必须以文件形式提供的规则：PMD 规则集 | Java 代码、Spotless/JaCoCo 配置、运行时依赖 |
-| `mimir-boot-parent` | 插件版本、执行绑定、原生开关默认值、四模式预设，以插件依赖引用规则 jar | 规则正文 |
+| `mimir-boot-code-quality` | PMD 规则集、从固定官方插件生成的派生描述符与来源元信息；作为独立插件入口 | Java 类、Spotless/JaCoCo 配置、运行时依赖 |
+| `mimir-boot-parent` | 以规则制品坐标运行检查并声明配对官方实现依赖；管理执行绑定、原生开关默认值和四模式 | 规则正文 |
 | `mimir-boot-bom` | 托管 ArchUnit 版本 | 构建逻辑；插件依赖不受 `dependencyManagement` 管理，规则 jar 不进 BOM |
 | `mimir-boot-starter-test` | 以 optional ArchUnit 提供可参数化的依赖方向规则与 COLA 预设 | 自动执行；下游不写测试则不生效 |
 
@@ -63,7 +63,7 @@ flowchart LR
 
 Parent 发布的公共默认是“执行时只报告”：`pmd.failOnViolation`、`cpd.failOnViolation` 均为 `false`，`dev`、`prod` 跳过，`precheck`、`ci` 执行。本仓库在直接继承 Parent 的 Common 与 10 个 Starter 的 POM 中各自把两个属性设为 `true`（`mimir-boot-starters` 只是聚合器，属性不会被继承），完整验收会拒绝漏设或放宽。下游从报告切换为阻断是显式选择；若将来要改变下游默认值，按破坏性变更走版本说明。
 
-Mimir 的检查参数只写在自己的 execution 内，不改变下游已有 execution 的规则、范围与参数。开关采用插件原生属性（D-108），因此下游已自行配置 PMD 时，自己的 execution 也会读到 Parent 的开关默认值；插件依赖（规则 jar）在插件级合并。下游自有的 Checkstyle 配置不受影响。这是向后兼容的显式例外，影响与恢复方式写入升级说明，见[需求规格 CQ-10](../active/v2.4.0/code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级)。
+按 D-110，Mimir 的检查使用独立插件坐标，避免官方插件分叉目标的配置与下游合并；XML、HTML、缓存、规则临时文件和性能记录均使用 `target/mimir-quality/`。开关采用插件原生属性（D-108），因此下游已自行配置 PMD 时仍会读到 Parent 的开关默认值。下游自有的 Checkstyle 配置不受影响。原生开关共享及新增插件解析要求是显式兼容例外，影响与恢复方式见[需求规格 CQ-10](../active/v2.4.0/code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级)。
 
 Spotless 与 JaCoCo 在下游已是“执行即阻断”。把它们改成只报告会放宽已发布的门禁，因此保持不变。PMD、CPD 与它们共用四模式表，但不新增聚合开关（D-85 独立开关原则）。
 
@@ -91,7 +91,9 @@ Parent 的 `pluginManagement` 在 Flatten 时原样保留属性引用，插件�
 
 ## 演进与决策依据
 
-用户于 2026-11-02 确认工具选型、严格/报告分层、Spotless/JaCoCo 统一治理不合并实现，以及新增规则 jar 模块并入 v2.4.0；决策编号见[版本级 brainstorm](../active/v2.4.0/brainstorm.md#决策日志) D-102～D-108；同日以 D-109 撤销 Checkstyle，由 PMD 接管注释与命名。实施与验收见[需求计划](../active/v2.4.0/code-quality-toolchain/plan.md)。落地验证后将本文状态改为 `verified`，并同步[模块划分与依赖设计](./arch-module-dependencies.md)。
+用户于 2026-11-02 确认工具选型、严格/报告分层、Spotless/JaCoCo 统一治理不合并实现，以及新增规则 jar 模块并入 v2.4.0；决策编号见[版本级 brainstorm](../active/v2.4.0/brainstorm.md#决策日志) D-102～D-108；同日以 D-109 撤销 Checkstyle，由 PMD 接管注释与命名。静态实施要求见[需求计划](../active/v2.4.0/code-quality-toolchain/plan.md)。本地完整门禁与发布前隔离验收已通过，结果与未覆盖边界见[版本记录](../active/v2.4.0/release.md#代码质量工具链实施2026-11-06)；`verified` 不表示正式发布或生产验收。
+
+2026-11-06 用户在接入方案与审查后确认实施独立插件入口（D-110），调整报告路径、规则覆盖入口和版本配对约束；详见[接入设计](../active/v2.4.0/code-quality-toolchain/design.md#分叉配置问题与接入方案)。最小原型验证不替代正式交付。
 
 ## 相关文档
 
