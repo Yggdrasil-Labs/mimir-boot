@@ -9,6 +9,63 @@ updated: 2026-11-06
 
 # v2.4.0 版本记录
 
+## 当前交付状态
+
+十项需求主体均已实施，专项验收及发布收尾仍在进行。详细依据见下方实施记录及各需求文档。
+
+| 需求 | 当前状态 |
+|---|---|
+| [Parent](./parent-build/plan.md) | 主体已实施，本地验证通过 |
+| [BOM](./bom-dependencies/plan.md) | 主体已实施，本地验证通过 |
+| [Common](./common-contracts/plan.md) | 主体已实施，本地验证通过 |
+| [Log](./log-runtime/plan.md) | 主体已实施，D-101 验证通过 |
+| [Exception](./exception-contracts/plan.md) | 主体已实施，与 Web 联合验收通过 |
+| [Web](./web-binding/plan.md) | 主体已实施，与 Exception 联合验收通过 |
+| [MyBatis](./mybatis-capabilities/plan.md) | 主体已实施，见下方实施记录 |
+| [Processor](./mybatis-processor/plan.md) | 主体已实施，本地验证通过 |
+| [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
+| [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
+
+2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
+
+尚未闭环：Parent、BOM、Processor 的 JDK 25 矩阵及仅 BOM 的 Processor release 21 目标；Log 的 D-101 后真实业务消费者启动和 MVC 默认执行器专项；MyBatis 真实 SQL 到 Log 新预设的联调记录、慢 SQL 吞吐及 P95/P99 基准，以及真实 MySQL/PostgreSQL 方言验收。H2 不能替代真实数据库验收。D-101 已撤销旧所有权机制，转换热路径未改，性能基准无需因该修订重测。既有后续技术债见[台账](../tech-debt-tracker.md)。
+
+### 当前测试覆盖率与耗时（2026-11-06）
+
+为统计原始覆盖率与测试时间，使用现有 Maven 缓存单独运行 `bash scripts/engineering.sh java`；内部执行 `./mvnw -B -Pci clean verify`。环境为本地 WSL、Temurin 17.0.19、Maven 3.10.0；代码基线为 `12f45ee`，本次仅修改三份版本文档。非文档输入的 SHA-256 为 `a48e4fec48c3efbb5375d8330e6ddb042302eb87e1f86811f6808ff85c58862c`，构建前后逐文件核对一致。Java 门禁及报告核验通过。
+
+覆盖率按 11 个 Java 模块 JaCoCo XML 的根级计数求和后计算，不取模块百分比的平均值。单元与集成测试共用各模块的 `jacoco.exec`；没有跨模块合并执行数据。沿用 Parent 的 `entity`、`dto`、`vo` 和 `Application.class` 排除项，不计纯 POM 与无 Java 类的质量资源制品。报告文件的摘要已与本次成功构建清单核对。
+
+| 模块 | Surefire 用例 | Failsafe 用例 | 指令覆盖率 | 分支覆盖率 | 行覆盖率 | 测试类累计秒 |
+|---|---:|---:|---:|---:|---:|---:|
+| Common | 125 | 0 | 99.88% | 98.88% | 99.72% | 3.36 |
+| Log | 269 | 22 | 95.13% | 88.03% | 94.71% | 12.45 |
+| Exception | 106 | 60 | 98.66% | 90.49% | 99.05% | 10.23 |
+| Web | 124 | 73 | 95.53% | 84.95% | 96.23% | 13.94 |
+| MyBatis | 404 | 22 | 92.76% | 83.80% | 90.83% | 13.06 |
+| Processor | 26 | 0 | 100.00% | 94.44% | 100.00% | 3.20 |
+| Nacos | 120 | 14 | 93.03% | 80.43% | 93.10% | 11.00 |
+| Test | 195 | 0 | 98.42% | 90.74% | 97.70% | 8.75 |
+| RPC Core | 49 | 0 | 79.73% | 68.64% | 85.05% | 2.88 |
+| Dubbo | 51 | 0 | 81.09% | 80.26% | 84.47% | 18.31 |
+| Feign | 35 | 0 | 96.18% | 81.67% | 96.50% | 5.44 |
+| 合计 | 1,504 | 191 | **94.06%** | **85.62%** | **93.81%** | **102.62** |
+
+指令覆盖为 21,756 / 23,129，分支覆盖为 2,626 / 3,067，行覆盖为 5,000 / 5,330；所有模块均满足现有指令 60%、分支 50% 门槛。RPC Core 的分支覆盖率相对最低，未覆盖指令主要集中在 `RpcHookChain` 与 `RpcExecutionTemplate`；Dubbo 的未覆盖指令集中在 `RpcDubboFilter`。这些是模块自身报告的覆盖情况，不能直接等同于功能缺陷或所有调用链都未被其他模块测试。
+
+| 时间口径 | 本次耗时 | 包含内容 |
+|---|---:|---|
+| Surefire 测试类时间累计 | 73.54 秒 | Surefire XML 的 `testsuite.time` 求和 |
+| Failsafe 测试类时间累计 | 29.08 秒 | Failsafe XML 的 `testsuite.time` 求和 |
+| Maven `clean verify` 子进程 | 159.23 秒 | 编译、测试、PMD/CPD、覆盖率及其他生命周期步骤 |
+| Java 检查入口 | 167.03 秒 | 版本探测、有效模型、Maven 构建和产物核验 |
+
+测试失败、错误、跳过均为 0。用例分组按 Surefire/Failsafe 入口统计：例如 `RpcDubboFilterEndToEndTest` 虽然启动本地 Dubbo，也由 Surefire 执行。类级累计时间不是独立测量的测试阶段墙钟时间，不包含全部 JVM 启动及报告生成开销；Log 的子 JVM 场景计入外层测试，不重复累加。质量 JSON 中 `java-tests` 等汇总节点的 `durationMs=0` 是状态节点占位，不表示没有执行测试。
+
+最慢的三个测试类为 `RpcDubboFilterEndToEndTest`（14.855 秒，4 项）、`SlowSqlMapperIT`（3.688 秒，15 项）、`NacosManagedRefreshIT`（3.031 秒，1 项）。Dubbo 类在每项结束时停止服务，本次日志出现四次各 3,333 毫秒的服务退出等待；可优先评估测试侧生命周期成本，不能据此直接取消必要清理。
+
+上轮同代码提交的完整 `quality` 报告总耗时 990.63 秒（约 16 分 31 秒）：构建模型检查 190.45 秒，隔离消费者 546.52 秒，签名 92.33 秒，Java 阶段 171.64 秒。隔离消费者包含在线依赖预热、文件仓库部署与多次消费者构建，不能把完整门禁耗时当作测试净耗时。这些均为本机单轮结果，受缓存、网络和系统负载影响，不构成 CI 耗时或性能基准承诺；也不替代上方未闭环的业务专项验收。
+
 ## 版本目标与当前阶段
 
 围绕现有模块提供可由下游自由组合的基础能力，不新增模块，优先稳定性与兼容性；唯一例外是代码质量工具链的规则资源模块 `mimir-boot-code-quality`（D-102）。规划版本为 v2.4.0，当前开发制品版本仍以[根 POM](../../../pom.xml)的 revision 为准。
@@ -17,7 +74,7 @@ updated: 2026-11-06
 
 2026-10-29 用户要求停止逐项提问，先提供推荐方案并补齐每项需求的 SDD。本轮在既有 9 个需求目录补齐规格、设计、静态实施计划。此前逐项确认的 D-01～D-96 以及 2026-10-31 审查后确认的 D-97～D-100 保存在[版本级 brainstorm](./brainstorm.md)；未逐项确认的其余签名细节、默认值和边界由本轮推荐明确，文档标记 draft，不追记为用户已确认决策。原问题“默认消息与覆盖消息均为null”采用允许null的推荐，不视为用户曾回答A。
 
-本页是文档入口。下表按现有模块组织，每个已纳入的需求编号均在相应规格与计划内覆盖；Processor和RPC使用精简设计。未纳入方向不因补齐SDD自动变为本轮需求。
+本页汇总当前交付状态并保留各阶段实施记录。下表按现有模块组织，每个已纳入的需求编号均在相应规格与计划内覆盖；Processor和RPC使用精简设计。未纳入方向不因补齐SDD自动变为本轮需求。
 
 ## 推荐方案与需求文档
 
@@ -94,6 +151,8 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 
 ### BOM、Processor、Common 实施（2026-11-01，分支 `feat/v2.4.0-parent-build`）
 
+> 以下待实施和联合验收描述为当时状态；后续完成情况见[当前交付状态](#当前交付状态)及 Exception 与 Web 联合实施记录。
+
 - **范围**：按 [BOM 计划](./bom-dependencies/plan.md)、[Processor 计划](./mybatis-processor/plan.md)、[Common 计划](./common-contracts/plan.md) 实施。BOM 新增 `lombok-mapstruct-binding` 0.2.0、`poi-ooxml`（复用 `poi.version`）、`cola-component-dto` 5.0.0 三个受管坐标并补接入说明；处理器改为 `SourceVersion.latestSupported()`，README 修正冲突说明并补 JDK≥23 非 Parent 消费者开启处理的说明；Common 新增 `ErrorDefinition` 与 `R.failCode`/两类 `fromError`、`PageResult.map`、optional COLA 的 `ColaPageConverters`、不可变 `batch` 模型及 v2.3.0 API 兼容测试。未改 Web、Exception、MyBatis，C-07 的 Jackson 接入与 HTTP/联合验收仍归对应需求。
 - **许可证核对**：binding 为 MIT（缓存 POM），`cola-component-dto` 5.0.0 为 LGPL-2.1（缓存 POM），只以 optional 进入 Common，不向下游传递。
 - **模块测试**：JDK 17 下 Common 与处理器模块测试通过；处理器新增用例在 JDK 21 上于旧实现失败（支持源版本告警）、新实现通过。批量模型的 Jackson 不变量用例含前置自检，确认测试 mapper 确实经私有构造创建条目。
@@ -117,7 +176,15 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **D-101 预设启动机制简化（2026-11-03）**：按 [Log 计划 D-101 修订](./log-runtime/plan.md#d-101-修订预设启动机制简化)删除 `LogPresetOwnership`、`LogPresetBootstrapListener`、`LogbackMaskBootstrap` 与转换器启动期规则缓存。EPP 只做校验、规则选择并写内部属性源（预设选中时必定存在，mask 键仅在用户已配置时写入），`common.xml` 以三条 `springProperty` 写入 LoggerContext，转换器在 Context 带 mask 属性时于 `start()` 切换规则代次（F2，用户选择），刷新恢复“最后刷新者发布”并以“父 Environment 含内部源”守卫预设应用的子上下文；列表编码迁至不依赖 Logback 的 `MaskListCodec`；预设新增拒绝无法解析的 `${` 占位符。经四轮独立文档审查后用户接受剩余风险实施。
 - **D-101 验证**：`./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 通过（单元 268、集成 22，含子 JVM 中 Spring Cloud 场景 6 个、替代后端场景 5 个）。新增覆盖：索引列表三阶段、预设应用启动期并发输出不含明文、旧 XML reset 后重载保留已发布规则、无/含 spring-cloud-context 的双存活应用、真实 `ConfigDataContextRefresher` 推送非法规则时刷新失败且规则不变、bootstrap 残留内部源移除、`${` 校验。随后 `bash scripts/engineering.sh quality --mode full --source worktree` 通过（docs-full、build-model、release 合约/消费者/签名、Java 质量/测试/覆盖率均 passed，Sonar 未启用）。未覆盖：真实业务消费者应用启动未在本修订后验证；性能基准未重测（转换热路径未改）。
 
+### MyBatis 实施与验收补记（2026-11-06）
+
+- **范围**：`e00ece9` 实施慢 SQL 配置、计时、安全结构模板及 `FactoryScopedPaginationInnerInterceptor` 工厂隔离；`1f699d3` 实施可选 COLA 分页转换；`389cdfd` 补充慢 SQL、工厂注册、COLA 与 `searchCount=false` 的使用说明。契约见 [MyBatis 计划](./mybatis-capabilities/plan.md)及[模块 README](../../../mimir-boot-starters/mimir-boot-starter-mybatis/README.md)。
+- **当前验证**：提交 `12f45ee` 的完整门禁中，`SlowSqlMapperIT` 15 项、`SlowSqlJsonCombinationIT` 2 项、`SlowSqlBoundaryIT` 2 项、`ColaOptionalClasspathTest` 1 项、`IPageColaConvertersTest` 5 项均通过，失败、错误和跳过均为 0。覆盖真实 MyBatis/H2 调用、自动与自建工厂注册、并发计时隔离、日志开关组合及无 COLA 类路径。
+- **未闭环**：尚未找到真实 SQL 到 Log 容器/服务器新预设的完整联调记录及慢 SQL 吞吐/P95/P99 基准；真实 MySQL/PostgreSQL 方言仍未验收。已有 H2 与独立 Logger 捕获测试不替代这些专项验证。
+
 ### Web 局部实施（2026-11-05，联合验收待完成）
+
+> 此处保留当时状态；联合验收已在下方 Exception 与 Web 联合实施记录完成。
 
 - **范围**：按 [Web 计划](./web-binding/plan.md) 实施日期绑定、可选安全整数输出、`R.fail` 迁移及异常响应增强候选；业务格式、序列化器和 MixIn 的覆盖边界见 Web README。Exception 统一封装尚未实施，W4/E6 联合验收未完成，不登记为完整交付。
 - **验证**：Web 及依赖模块本地 `verify` 通过；完整 `quality --mode full --source worktree` 在补充既有异常分支测试及最终文档说明前通过，之后新增的 8 个异常分支测试单独通过，含真实 Tomcat 上传超限；补充文档的格式和链接检查另行执行。Java 质量门禁中 JaCoCo 对第三方 JSqlParser 的过大方法插桩失败，但门禁整体通过。
