@@ -42,6 +42,12 @@
     </build>
 
     <dependencies>
+        <!-- 架构规则仅用于本模块测试；starter-test 的 optional 依赖不会传递。 -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Mimir Boot Common -->
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>

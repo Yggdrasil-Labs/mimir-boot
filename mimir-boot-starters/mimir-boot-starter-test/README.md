@@ -301,6 +301,135 @@ class AcceptanceSuiteTest {}
 
 Testcontainers 按业务模块的实际需要单独引入；Starter 不再内置未使用的容器测试依赖。
 
+### 架构依赖规则
+
+架构规则位于 `com.yggdrasil.labs.test.arch`，按需调用，不会自动执行。ArchUnit 是 Starter 的
+optional 依赖；只依赖 Starter 的消费者不会获得 ArchUnit。要使用规则，继承 Parent 或导入
+BOM 后显式添加核心库，以普通 JUnit Jupiter 测试调用 `rule.check(classes)`：
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>io.github.yggdrasil-labs</groupId>
+        <artifactId>mimir-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.tngtech.archunit</groupId>
+        <artifactId>archunit</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+BOM 托管核心库 1.5.1，传递依赖只有 `slf4j-api`，其有效版本由 BOM 管理。不引入
+`archunit-junit5`，避免额外引入与当前 Spring Boot 基线不同的 JUnit Platform 引擎。
+
+所有包参数都传**完整包名**，包括 `LayerSpec.layer(name, packageNames)` 中的包名；例如
+`com.acme.order.domain`。内部会包含它的全部子包，无需传 `..`、`*` 等 ArchUnit 包标识。
+参数缺失或无效会抛出 `IllegalArgumentException`，消息包含参数名；导入为空会抛出
+`IllegalStateException`。分层声明至少包含两层，执行时也必须实际导入至少两个有类的层。
+
+#### COLA 预设与多模块导入
+
+```java
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.yggdrasil.labs.test.arch.ColaArchRules;
+import com.yggdrasil.labs.test.arch.MimirArchClasses;
+import org.junit.jupiter.api.Test;
+
+class ArchitectureTest {
+    @Test
+    void followsColaArchitecture() {
+        JavaClasses classes = MimirArchClasses.importMain("com.acme.order");
+        ColaArchRules.recommended("com.acme.order").check(classes);
+    }
+}
+```
+
+`recommended` 组合 `layered`、`domainIsFrameworkFree` 和 `MimirArchRules.noCycles`。
+COLA 预设采用以下访问关系，未出现的层可选；各层之外的启动、装配代码不受分层规则约束。
+
+| 被访问层 | 允许访问它的其他层 |
+| --- | --- |
+| `adapter` | 无 |
+| `app` | `adapter` |
+| `client` | `adapter`、`app` |
+| `domain` | `app`、`infrastructure` |
+| `infrastructure` | 无 |
+
+领域层不得依赖 Spring、MyBatis、MyBatis-Plus、Servlet、JPA，覆盖 `jakarta` 与 `javax`
+包。`domainIsFrameworkFree` 单独使用时允许领域层缺失；`layered` 与 `recommended`
+仍要求实际出现至少两层。循环规则按根包的直接子包切片，不检查同一直接子包内部的循环。
+
+多模块工程将上述测试放在依赖所有待检查模块的 `start` 模块，并使用 `importMain`。
+它同时导入类路径上的生产输出目录与 jar，排除测试输出目录，适用于 reactor 的 `test`
+和 `verify` 阶段；不要使用排除 jar 的导入选项。若多个模块含同名包且只想检查本模块，
+使用 `MimirArchClasses.importDirectory(Path.of("target/classes"))`；目录不存在或没有类时会失败。
+
+#### 自定义分层与模块白名单
+
+```java
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.yggdrasil.labs.test.arch.LayerSpec;
+import com.yggdrasil.labs.test.arch.MimirArchClasses;
+import com.yggdrasil.labs.test.arch.MimirArchRules;
+import java.nio.file.Path;
+import org.junit.jupiter.api.Test;
+
+class ModuleArchitectureTest {
+    @Test
+    void keepsDependencyDirection() {
+        JavaClasses classes = MimirArchClasses.importDirectory(Path.of("target/classes"));
+        LayerSpec layers = LayerSpec.of("com.acme.order")
+                .layer("controller")
+                .layer("service", "com.acme.order.service", "com.acme.order.usecase")
+                .layer("repository");
+        MimirArchRules.layered(layers).check(classes);
+        MimirArchRules.noCycles("com.acme.order").check(classes);
+        MimirArchRules.noDependencyOn("com.acme.order.repository",
+                "com.acme.order.controller").check(classes);
+        MimirArchRules.onlyDependOnWithin("com.acme", "com.acme.order",
+                "com.acme.common").check(classes);
+    }
+}
+```
+
+自定义层按声明顺序自上而下，下层不得依赖上层，层外的包不参与分层限制。
+`onlyDependOnWithin` 限制命名空间内的依赖，自身包及允许包均含子包，命名空间外的库不受限制。
+违规使用 ArchUnit 原生格式，包含源类、目标类的全限定名和源码位置。
+
+#### 冻结存量违规
+
+存量项目可直接使用 ArchUnit 的 `FreezingArchRule`，仅阻止新增违规：
+
+```java
+import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import com.yggdrasil.labs.test.arch.MimirArchClasses;
+import com.yggdrasil.labs.test.arch.MimirArchRules;
+import org.junit.jupiter.api.Test;
+
+class FrozenArchitectureTest {
+    @Test
+    void introducesNoNewDependencies() {
+        FreezingArchRule.freeze(MimirArchRules.noDependencyOn(
+                "com.acme.order.domain", "com.acme.order.app"))
+                .check(MimirArchClasses.importMain("com.acme.order"));
+    }
+}
+```
+
+首次建立基线，在测试资源 `src/test/resources/archunit.properties` 中配置：
+
+```properties
+freeze.store.default.path=archunit_store
+freeze.store.default.allowStoreCreation=true
+```
+
+检查并保留生成的基线文件。后续运行及 CI 将 `allowStoreCreation` 改为 `false` 或移除该配置
+（默认禁止创建）；已有存储仍可读取并随违规减少而更新。新增违规会报告失败，规则库没有
+额外的冻结封装。
+
 ## 📝 最佳实践
 
 1. **使用测试基类**：继承相应的测试基类，减少样板代码

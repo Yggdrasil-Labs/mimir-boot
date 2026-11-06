@@ -91,6 +91,7 @@ Mimir Boot 依赖版本统一管理（BOM - Bill of Materials），集中声明�
 | 工具与持久化 | `com.squareup:javapoet` | `mimir-boot-starter-mybatis-processor` |
 | 测试 | `com.google.testing.compile:compile-testing` | `mimir-boot-starter-mybatis-processor` |
 | 测试 | `com.google.truth:truth` | `mimir-boot-starter-mybatis-processor` |
+| 测试 | `com.tngtech.archunit:archunit`（`archunit.version=1.5.1`） | `mimir-boot-starter-test` 的可选架构规则；下游按需声明 |
 | 工具与持久化 | `com.alibaba.cola:cola-component-dto` | `mimir-boot-common`（optional） |
 | RPC | `org.apache.dubbo:dubbo-spring-boot-starter` | `mimir-boot-starter-dubbo` |
 | 编译 | `org.projectlombok:lombok` | `mimir-boot-common`、多个 Starter |

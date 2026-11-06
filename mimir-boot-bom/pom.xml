@@ -44,6 +44,7 @@
         <slf4j.version>2.0.20</slf4j.version>
 
         <!-- 测试相关 -->
+        <archunit.version>1.5.1</archunit.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <compile.testing.version>0.24.0</compile.testing.version>
         <truth.version>1.4.2</truth.version>
@@ -93,6 +94,12 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- 仅核心规则库，不引入 JUnit Platform 引擎 -->
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>

@@ -106,6 +106,12 @@
     </build>
 
     <dependencies>
+        <!-- 架构规则仅用于本模块测试；starter-test 的 optional 依赖不会传递。 -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- 公共模块（提供 LogSanitizer 等通用工具） -->
         <dependency>
             <groupId>io.github.yggdrasil-labs</groupId>

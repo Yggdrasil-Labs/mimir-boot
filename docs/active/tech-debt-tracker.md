@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-31
+updated: 2026-11-06
 ---
 
 # 技术债务追踪
@@ -31,6 +31,7 @@ updated: 2026-10-31
 | [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](./v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
 | [TD-049](#td-049-旧日志配置按月滚动) | 旧 logback-spring.xml 归档按月滚动 | starter-log | 中 | 待规划 | YoungerYang-Y | 2026-11-02 | [Log 版本记录](./v2.4.0/release.md) |
 | [TD-050](#td-050-log-模块低优先级清理) | Log 模块低优先级清理（MDC 批量设置语义、内部入口可见性等） | starter-log | 低 | 待规划 | YoungerYang-Y | 2026-11-02 | [Log 版本记录](./v2.4.0/release.md) |
+| [TD-051](#td-051-既有公开类型包循环) | 既有公开类型导致的包循环 | exception / web / nacos / dubbo / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-11-06 | [质量工具链计划](./v2.4.0/code-quality-toolchain/plan.md#t5本仓库依赖方向测试) |
 
 ## 债务明细
 
@@ -116,6 +117,27 @@ updated: 2026-10-31
   - `MdcTaskExecutionAutoConfiguration` 的 `@EnableConfigurationProperties(MdcPropagationProperties.class)` 注册的 Bean 无读取方，开关仅由 `@ConditionalOnProperty` 决定。
 - **处置与验收**：`putAll` 改为逐项 put 须在版本说明中提示行为变更；测试钩子迁入测试源集（同包访问或反射）；去掉多余拷贝；删除无用注册或改为实际读取。D-101 已完成启动机制简化，`SensitiveDataConverterInternals` 可整体迁入测试源集。
 - **目标版本**：待排期。
+
+<a id="td-051-既有公开类型包循环"></a>
+
+### TD-051：既有公开类型导致的包循环
+
+- **来源与范围**：v2.4.0 质量工具链的依赖方向测试发现 Exception 的 `config → handler → config` 既有循环。`ExceptionAutoConfiguration` 创建处理器，而 `MimirExceptionHandler` 的公开构造器及初始化逻辑依赖 `ExceptionProperties` 和其 `Validation` 内部类型。
+- **Nacos 同类边界**：`config → decrypt → config` 中，`ConfigDecryptProcessor` 的既有公开构造器接收 `NacosEncryptProperties`，自动配置与刷新器创建该处理器。不是本轮源码整理引入的依赖。
+- **Web 与 RPC 同类边界**：响应增强器、Feign 客户端与能力类的公开构造器使用本模块 Properties；Dubbo 支持持有器和公开 Snapshot 持有/返回 DubboProperties。自动配置又引用这些类型，构成既有配置包循环。
+- **当前处置**：为保留公开接口与初始化语义，架构测试仅忽略下表九个明确类型对；其余包循环及跨模块禁止依赖继续检查。这是兼容例外，不表示循环已消除。
+
+| 模块 | 来源类型 | 目标类型 |
+|---|---|---|
+| Exception | `MimirExceptionHandler` | `ExceptionProperties`、`ExceptionProperties$Validation` |
+| Web | `ResponseBodyEnhancer` | `WebProperties`、`WebProperties$Response` |
+| Nacos | `ConfigDecryptProcessor` | `NacosEncryptProperties` |
+| Dubbo | `RpcDubboSupportHolder`、`RpcDubboSupportHolder$Snapshot` | `DubboProperties` |
+| Feign | `RpcFeignClient`、`RpcFeignCapability` | `FeignProperties` |
+
+- **处置与验收**：下次调整处理器公开构造器或配置 API 时设计兼容迁移；完成后移除精确例外，并验证依赖方向测试、既有异常响应及配置解密刷新行为。
+- **目标版本**：待排期。
+- **复查条件**：上述公开构造器、配置属性或模块分层变化时，以及每月架构回顾。
 
 ## 历史说明
 

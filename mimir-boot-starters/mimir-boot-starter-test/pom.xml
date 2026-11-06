@@ -40,6 +40,13 @@
     </build>
 
     <dependencies>
+        <!-- 架构规则按需使用，不向既有消费者传递 ArchUnit -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- spring-boot-test contains @SpringBootTest annotation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
