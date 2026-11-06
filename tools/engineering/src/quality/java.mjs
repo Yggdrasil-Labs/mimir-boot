@@ -215,8 +215,8 @@ function appendVerificationFindings(report, findings = []) {
     }
 }
 
-function normalizeBuildFailure(status, findings, prefix) {
-    const scopedFindings = findings.filter((finding) => finding.rule?.startsWith(prefix));
+function normalizeBuildFailure(status, findings, prefix, kind = null) {
+    const scopedFindings = findings.filter((finding) => finding.rule?.startsWith(prefix) && (!kind || finding.kind === kind));
     if (scopedFindings.some((finding) => !finding.rule.endsWith('-missing'))) return 'failed';
     if (status === 'passed' || (status === 'failed' && scopedFindings.length > 0)) return 'not_run';
     return status;
@@ -239,6 +239,9 @@ async function finishCancelledJava(report, options, runStarted) {
     const reason = cancellationReason();
     if (!report.checks.some((check) => check.id === 'java-tests')) appendResult(report, { check: stageCheck('java-tests', 'not_run', reason), findings: [] });
     if (!report.checks.some((check) => check.id === 'java-coverage')) appendResult(report, { check: stageCheck('java-coverage', 'not_run', reason), findings: [] });
+    for (const id of ['java-pmd', 'java-cpd']) {
+        if (!report.checks.some((check) => check.id === id)) appendResult(report, { check: stageCheck(id, 'not_run', reason), findings: [] });
+    }
     if (!report.checks.some((check) => check.id === 'java-sonar')) {
         const sonarMode = process.env.RUN_SONAR || 'false';
         const sonarRequired = sonarMode !== 'false';
@@ -310,6 +313,7 @@ async function runJavaQualityInternal(options) {
         });
         appendResult(report, { check: stageCheck('java-tests', 'not_run', 'Java 版本不满足要求'), findings: [] });
         appendResult(report, { check: stageCheck('java-coverage', 'not_run', 'Java 版本不满足要求'), findings: [] });
+        for (const id of ['java-pmd', 'java-cpd']) appendResult(report, { check: stageCheck(id, 'not_run', 'Java 版本不满足要求'), findings: [] });
         const sonarMode = process.env.RUN_SONAR || 'false';
         const sonarRequired = sonarMode !== 'false';
         appendResult(report, { check: stageCheck('java-sonar', sonarRequired ? 'not_run' : 'not_applicable', sonarRequired ? 'Java 版本不满足要求' : 'RUN_SONAR=false', sonarRequired), findings: [] });
@@ -450,7 +454,7 @@ async function runJavaQualityInternal(options) {
             verification = await verifyReports(options.root, expectedPath);
             appendVerificationFindings(report, verification.findings);
             appendResult(report, {
-                check: stageCheck('java-reports-verify', verification.exitCode === 0 ? 'passed' : 'failed', verification.exitCode === 0 ? null : 'Java 测试或覆盖率报告核验失败'),
+                check: stageCheck('java-reports-verify', verification.exitCode === 0 ? 'passed' : 'failed', verification.exitCode === 0 ? null : 'Java 测试、覆盖率或 PMD/CPD 报告核验失败'),
                 findings: [],
             });
         } catch (error) {
@@ -471,6 +475,11 @@ async function runJavaQualityInternal(options) {
     }
     appendResult(report, { check: stageCheck('java-tests', testsStatus, testsStatus === 'passed' ? null : '测试未完成或报告核验失败'), findings: [] });
     appendResult(report, { check: stageCheck('java-coverage', coverageStatus, coverageStatus === 'passed' ? null : '覆盖率未完成或报告核验失败'), findings: [] });
+    for (const kind of ['pmd', 'cpd']) {
+        let status = verification?.[`${kind}Status`] || 'not_run';
+        if (buildResult.exitCode !== 0) status = normalizeBuildFailure(status, verificationFindings, 'quality-report-', kind);
+        appendResult(report, { check: stageCheck(`java-${kind}`, status, status === 'passed' ? null : `${kind.toUpperCase()} 未完成或报告核验失败`), findings: [] });
+    }
 
     if (sonarConfigurationFailed) {
         appendResult(report, { check: stageCheck('java-sonar', 'error', 'Sonar 配置无效', true), findings: [] });

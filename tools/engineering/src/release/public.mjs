@@ -112,7 +112,8 @@ export async function verifyPublic(version, env = process.env) {
             attempt++;
             process.stdout.write(`公开制品验证：${version}，第 ${attempt}${attemptsText ? `/${attemptsText}` : ''} 次尝试，已用 ${elapsed()}，总时限 ${timeoutText}s。\n`);
             try {
-                for (const [artifact, extension] of [['mimir-boot', 'pom'], ['mimir-boot-starter-web', 'pom'], ['mimir-boot-starter-web', 'jar']]) {
+                for (const [artifact, extension] of [['mimir-boot', 'pom'], ['mimir-boot-starter-web', 'pom'], ['mimir-boot-starter-web', 'jar'],
+                    ['mimir-boot-code-quality', 'pom'], ['mimir-boot-code-quality', 'jar']]) {
                     const destination = path.join(directory, `${artifact}.${extension}`);
                     await rm(destination, { force: true });
                     const url = new URL(`io/github/yggdrasil-labs/${artifact}/${version}/${artifact}-${version}.${extension}`, base).href;

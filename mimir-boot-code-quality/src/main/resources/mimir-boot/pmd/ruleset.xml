@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Mimir Boot Java 质量规则" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>公开类型和方法的 Javadoc、Java 命名与常见坏味道；适用于 PMD 7.17.0。</description>
+  <!-- 检查公开类、接口、枚举及方法的 Javadoc；排除构造器、重写方法、访问器、字段和有效可见性非 public 的声明。 -->
+  <rule ref="category/java/documentation.xml/CommentRequired">
+    <properties>
+      <property name="classCommentRequirement" value="Required"/>
+      <property name="enumCommentRequirement" value="Required"/>
+      <property name="publicMethodCommentRequirement" value="Required"/>
+      <property name="protectedMethodCommentRequirement" value="Ignored"/>
+      <property name="methodWithOverrideCommentRequirement" value="Ignored"/>
+      <property name="accessorCommentRequirement" value="Ignored"/>
+      <property name="fieldCommentRequirement" value="Ignored"/>
+      <property name="serialVersionUIDCommentRequired" value="Ignored"/>
+      <property name="serialPersistentFieldsCommentRequired" value="Ignored"/>
+      <property name="violationSuppressXPath" value=".[self::ConstructorDeclaration or @EffectiveVisibility != 'public']"/>
+    </properties>
+  </rule>
+  <!-- 检查未附着到有效声明的 Javadoc，避免注释放错位置而未进入 API 文档。 -->
+  <rule ref="category/java/documentation.xml/DanglingJavadoc"/>
+  <!-- 检查类、接口、枚举等类型名称是否符合命名约定。 -->
+  <rule ref="category/java/codestyle.xml/ClassNamingConventions"/>
+  <!-- 检查方法名是否符合小写字母开头的驼峰命名约定。 -->
+  <rule ref="category/java/codestyle.xml/MethodNamingConventions"/>
+  <!-- 分别检查实例字段、静态字段和常量的名称，区分普通字段与常量的命名形式。 -->
+  <rule ref="category/java/codestyle.xml/FieldNamingConventions"/>
+  <!-- 检查方法和构造器的形参名称，避免不符合约定的大小写或下划线。 -->
+  <rule ref="category/java/codestyle.xml/FormalParameterNamingConventions"/>
+  <!-- 检查局部变量名称，保持方法内部命名风格一致。 -->
+  <rule ref="category/java/codestyle.xml/LocalVariableNamingConventions"/>
+  <!-- 检查泛型类型参数的命名，如 T、K、V 等类型占位符。 -->
+  <rule ref="category/java/codestyle.xml/TypeParameterNamingConventions"/>
+  <!-- 检查包名中的大写字符，保持包名使用小写。 -->
+  <rule ref="category/java/codestyle.xml/PackageCase"/>
+  <!-- 查找未使用的私有字段，减少无效状态。 -->
+  <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
+  <!-- 查找未被调用的私有方法，减少不可达或遗留代码。 -->
+  <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
+  <!-- 查找未被使用的局部变量，减少无意义的声明。 -->
+  <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+  <!-- 查找未使用的形参；沿用默认范围，仅检查私有方法和私有构造器，避免要求修改公开签名。 -->
+  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"/>
+  <!-- 检查赋值后未被读取就被覆盖或离开作用域的值，发现无效赋值。 -->
+  <rule ref="category/java/bestpractices.xml/UnusedAssignment"/>
+  <!-- 检查 catch 中重新抛出的异常是否保留原异常信息，避免丢失诊断堆栈。 -->
+  <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
+  <!-- 检查覆盖父类或接口方法时是否遗漏 Override 注解。 -->
+  <rule ref="category/java/bestpractices.xml/MissingOverride"/>
+  <!-- 检查直接使用 System.out 或 System.err 输出的代码，避免绕过日志框架。 -->
+  <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
+  <!-- 检查直接调用 printStackTrace 的代码，避免异常输出脱离统一日志管理。 -->
+  <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+  <!-- 检查用 size 与零比较判断集合是否为空的写法，提示使用 isEmpty。 -->
+  <rule ref="category/java/bestpractices.xml/UseCollectionIsEmpty"/>
+  <!-- 识别仅用于遍历元素的索引循环，提示使用增强 for 循环。 -->
+  <rule ref="category/java/bestpractices.xml/ForLoopCanBeForeach"/>
+  <!-- 检查空 catch 块，提醒明确处理异常而非无意吞掉异常。 -->
+  <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+  <!-- 检查 equals 与 hashCode 是否成对覆盖，避免破坏哈希集合的对象相等契约。 -->
+  <rule ref="category/java/errorprone.xml/OverrideBothEqualsAndHashcode"/>
+  <!-- 检查对象的 == 或 != 比较，提示区分值相等与引用身份；有意的身份比较须保留语义。 -->
+  <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals"/>
+  <!-- 检查集合、Map 或数组方法返回 null 的情况，优先返回空结果；既有 null 契约按兼容要求处理。 -->
+  <rule ref="category/java/errorprone.xml/ReturnEmptyCollectionRatherThanNull"/>
+  <!-- 检查连接、流等资源是否在使用后关闭，避免资源泄漏。 -->
+  <rule ref="category/java/errorprone.xml/CloseResource"/>
+  <!-- 检查调用 equals(null) 的写法，null 判断应使用 == 或 !=。 -->
+  <rule ref="category/java/errorprone.xml/EqualsNull"/>
+  <!-- 检查逻辑运算符使用错误的 null 判断，避免空指针解引用或条件恒真、恒假。 -->
+  <rule ref="category/java/errorprone.xml/BrokenNullCheck"/>
+  <!-- 检查条件或运算表达式中的赋值，避免隐藏状态修改或把比较误写成赋值。 -->
+  <rule ref="category/java/errorprone.xml/AssignmentInOperand"/>
+  <!-- 检查 switch 分支的隐式贯穿，避免遗漏跳出语句而继续执行下一分支。 -->
+  <rule ref="category/java/errorprone.xml/ImplicitSwitchFallThrough"/>
+  <!-- 检查构造期间调用可被子类覆盖的方法，避免访问尚未初始化的子类状态。 -->
+  <rule ref="category/java/errorprone.xml/ConstructorCallsOverridableMethod"/>
+  <!-- 检查字符串大小写转换是否显式指定 Locale，明确其区域设置行为。 -->
+  <rule ref="category/java/errorprone.xml/UseLocaleWithCaseConversions"/>
+  <!-- 检查循环末尾的 break、continue 或 return 等跳转，发现可疑或冗余的循环控制。 -->
+  <rule ref="category/java/errorprone.xml/AvoidBranchingStatementAsLastInLoop"/>
+  <!-- 检查圈复杂度：方法报告阈值为 15，类的总复杂度沿用 PMD 默认阈值 80。 -->
+  <rule ref="category/java/design.xml/CyclomaticComplexity"><properties><property name="methodReportLevel" value="15"/></properties></rule>
+  <!-- 检查嵌套和控制流带来的认知复杂度，方法报告阈值为 20。 -->
+  <rule ref="category/java/design.xml/CognitiveComplexity"><properties><property name="reportLevel" value="20"/></properties></rule>
+  <!-- 检查方法的非循环执行路径数量，沿用 PMD 默认阈值 200，避免分支组合过多。 -->
+  <rule ref="category/java/design.xml/NPathComplexity"/>
+  <!-- 简化仅返回 true 或 false 的条件分支，使布尔结果直接由条件表达。 -->
+  <rule ref="category/java/design.xml/SimplifyBooleanReturns"/>
+  <!-- 简化包含布尔字面量的三元表达式，提示使用等价的逻辑运算。 -->
+  <rule ref="category/java/design.xml/SimplifiedTernary"/>
+  <!-- 检查直接创建并抛出的 Throwable、Exception、RuntimeException 或 Error，提示使用更具体的异常类型。 -->
+  <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"/>
+  <!-- 检查方法或构造器笼统声明 throws Exception 的情况，使异常契约更明确。 -->
+  <rule ref="category/java/design.xml/SignatureDeclareThrowsException"/>
+  <!-- 检查仅转调父类同名方法的冗余覆盖，避免没有新增行为的重写。 -->
+  <rule ref="category/java/design.xml/UselessOverridingMethod"/>
+  <!-- 检查不安全的双重检查锁定，避免其他线程读取尚未完成初始化的对象。 -->
+  <rule ref="category/java/multithreading.xml/DoubleCheckedLocking"/>
+</ruleset>

@@ -108,14 +108,15 @@ export async function validateBuildInputs(root, environment = process.env) {
         if (error.code === 'ENOENT') return '';
         throw error;
     });
-    const overrides = /(?:^|\s)-D(?:test|it\.test|skipTests|skipITs|maven\.(?:test|main|compiler)[.\w]*|surefire\.[.\w]+|failsafe\.[.\w]+|jacoco\.[.\w]+|spotless[.\w]*|junit\.[.\w]+|argLine|groups|excludedGroups|forkCount|forkMode|disableXmlReport|includeJUnit5Engines|excludeJUnit5Engines)(?=[=\s"']|$)/u;
+    // 来源为固定 PMD 描述符的四个 Mojo；无前缀属性也能改变扫描、输出或重复检测结果。
+    const overrides = /(?:^|\s)-D(?:test|it\.test|skipTests|skipITs|maven\.(?:test|main|compiler)[.\w]*|surefire\.[.\w]+|failsafe\.[.\w]+|jacoco\.[.\w]+|spotless[.\w]*|junit\.[.\w]+|pmd\.[.\w]+|cpd\.[.\w]+|minimumPriority|minimumTokens|aggregate|format|encoding|linkXRef|outputEncoding|output\.format|targetJdk|project\.build\.directory|argLine|groups|excludedGroups|forkCount|forkMode|disableXmlReport|includeJUnit5Engines|excludeJUnit5Engines)(?=[=\s"']|$)/u;
     for (const [name, input] of [['.mvn/jvm.config', jvmConfig], ...['MAVEN_OPTS', 'MAVEN_DEBUG_OPTS', 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS']
         .map((name) => [name, environment[name] || ''])]) {
         // 只保守检测禁用键与参数文件，不解释或重写 JVM/shell 参数。
         const unquoted = input.replace(/["']/gu, '');
         if (/-D[^\s=]*["']/u.test(input) || overrides.test(unquoted)
             || /(?:^|\s)(?:@|-XX:VMOptionsFile=)/u.test(unquoted)) {
-            throw new Error(`${name} 不得覆盖测试、编译、覆盖率或格式门禁参数，也不支持含引号的属性键或参数文件`);
+            throw new Error(`${name} 不得覆盖测试、编译、覆盖率、格式或 PMD/CPD 门禁参数，也不支持含引号的属性键或参数文件`);
         }
     }
 }
@@ -149,6 +150,13 @@ async function readExpected(expectedPath) {
     if (expected.schemaVersion !== SCHEMA_VERSION || !expected.runId || !Array.isArray(expected.modules) || !expected.modules.length || !expected.executionRoot) {
         throw new Error('期望报告矩阵缺少 schemaVersion、runId、executionRoot 或 modules');
     }
+    for (const module of expected.modules) {
+        for (const kind of ['pmd', 'cpd']) {
+            if (typeof module?.[kind]?.required !== 'boolean') {
+                throw new Error(`期望报告矩阵中 ${module?.path || '未知模块'} 的 ${kind}.required 缺失或不是布尔值，请重新生成期望报告矩阵`);
+            }
+        }
+    }
     return expected;
 }
 
@@ -168,7 +176,7 @@ export async function recordArtifacts(root, expectedPath, { buildSucceeded = tru
     if (!expected.cleanedAt) throw new Error('期望报告矩阵尚未清理旧构建产物');
     for (const module of expected.modules) {
         for (const artifact of Object.values(module.artifacts)) {
-            const artifactPath = resolveArtifact(root, artifact.path);
+            const artifactPath = await resolveBuildArtifact(root, module.path, artifact.path);
             artifact.sha256 = await exists(artifactPath) ? await sha256(artifactPath) : null;
         }
         for (const [kind, type] of [['surefire', 'unit'], ['failsafe', 'integration']]) {
@@ -328,18 +336,42 @@ function counter(element, name) {
     return Number(value);
 }
 
-async function validateArtifact(root, module, artifactName, findings) {
+async function validateArtifact(root, module, artifactName, findings, prefix = 'coverage-artifact') {
     const artifact = module.artifacts[artifactName];
-    const file = resolveArtifact(root, artifact.path);
+    const file = await resolveBuildArtifact(root, module.path, artifact.path);
+    const qualityKind = prefix === 'quality-report' ? { kind: artifactName.slice(0, -3) } : {};
     if (!await exists(file)) {
-        findings.push({ rule: 'coverage-artifact-missing', module: module.path, message: `缺少 ${artifact.path}` });
+        findings.push({ rule: `${prefix}-missing`, module: module.path, ...qualityKind, message: `缺少 ${artifact.path}` });
         return null;
     }
     const actualHash = await sha256(file);
     if (!artifact.sha256 || actualHash !== artifact.sha256) {
-        findings.push({ rule: 'coverage-artifact-stale', module: module.path, message: `${artifact.path} 与本次构建清单摘要不一致` });
+        findings.push({ rule: `${prefix}-stale`, module: module.path, ...qualityKind, message: `${artifact.path} 与本次构建清单摘要不一致` });
     }
     return file;
+}
+
+async function validateQualityReport(root, module, kind, findings) {
+    if (module[kind].required === false) return;
+    const file = await validateArtifact(root, module, `${kind}Xml`, findings, 'quality-report');
+    if (!file) return;
+    try {
+        const document = new DOMParser({ onError: (_level, message) => { throw new Error(message); } })
+            .parseFromString(await readFile(file, 'utf8'), 'application/xml');
+        const report = document.documentElement;
+        if (document.doctype || report?.localName !== (kind === 'pmd' ? 'pmd' : 'pmd-cpd')) {
+            throw new Error('报告根元素无效或包含 DTD');
+        }
+        const entries = Array.from(report.getElementsByTagName('*'));
+        const violations = entries.filter((entry) => entry.localName === (kind === 'pmd' ? 'violation' : 'duplication'));
+        const errors = entries.filter((entry) => ['error', 'configerror', 'processingerror', 'configurationerror'].includes(entry.localName.toLowerCase()));
+        if (violations.length) findings.push({ rule: 'quality-report-violation', module: module.path, kind,
+            message: `${module.artifacts[`${kind}Xml`].path} 包含 ${violations.length} 项违规` });
+        if (errors.length) findings.push({ rule: 'quality-report-processing-error', module: module.path, kind,
+            message: `${module.artifacts[`${kind}Xml`].path} 包含 ${errors.length} 项处理或配置错误` });
+    } catch (error) {
+        findings.push({ rule: 'quality-report-invalid', module: module.path, kind, message: `${file}：${error.message}` });
+    }
 }
 
 export async function verifyReports(root, expectedPath) {
@@ -354,6 +386,7 @@ export async function verifyReports(root, expectedPath) {
     for (const module of expected.modules) {
         await validateTestReports(root, module, 'surefire', findings);
         await validateTestReports(root, module, 'failsafe', findings);
+        for (const kind of ['pmd', 'cpd']) await validateQualityReport(root, module, kind, findings);
         if (module.coverage?.required === false) continue;
         const xml = await validateArtifact(root, module, 'jacocoXml', findings);
         await validateArtifact(root, module, 'jacocoExec', findings);
@@ -383,7 +416,9 @@ export async function verifyReports(root, expectedPath) {
     }
     const testsStatus = findings.some((f) => f.rule.startsWith('test-report')) ? 'failed' : 'passed';
     const coverageStatus = findings.some((f) => f.rule.startsWith('coverage-')) ? 'failed' : 'passed';
-    return { testsStatus, coverageStatus, sonarStatus: 'not_applicable', schemaVersion: SCHEMA_VERSION, runId: expected.runId, executionRoot: root, expectedPath, checks: expected.modules.map((module) => ({ id: `module:${module.path}`, status: findings.some((finding) => finding.module === module.path) ? 'failed' : module.exemption && !module.tests.unit.required && !module.tests.integration.required ? 'not_applicable' : 'passed', reason: module.exemption || null })), findings, overall: findings.length === 0 ? 'passed' : 'failed', exitCode: findings.length === 0 ? 0 : 1 };
+    const qualityStatuses = Object.fromEntries(['pmd', 'cpd'].map((kind) => [`${kind}Status`,
+        findings.some((finding) => finding.rule.startsWith('quality-report-') && finding.kind === kind) ? 'failed' : 'passed']));
+    return { testsStatus, coverageStatus, ...qualityStatuses, sonarStatus: 'not_applicable', schemaVersion: SCHEMA_VERSION, runId: expected.runId, executionRoot: root, expectedPath, checks: expected.modules.map((module) => ({ id: `module:${module.path}`, status: findings.some((finding) => finding.module === module.path) ? 'failed' : module.exemption && !module.tests.unit.required && !module.tests.integration.required ? 'not_applicable' : 'passed', reason: module.exemption || null })), findings, overall: findings.length === 0 ? 'passed' : 'failed', exitCode: findings.length === 0 ? 0 : 1 };
 }
 
 async function main() {

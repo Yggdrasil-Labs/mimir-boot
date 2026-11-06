@@ -107,7 +107,7 @@ export async function verifyBuildModel() {
     if (cache) await mkdir(cache, { recursive: true });
     const temporary = await mkdtemp(path.join(os.tmpdir(), 'mimir-effective-poms-'));
     try {
-        for (const relative of ['pom.xml', 'mimir-boot-bom/pom.xml', 'mimir-boot-parent/pom.xml']) {
+        for (const relative of ['pom.xml', 'mimir-boot-bom/pom.xml', 'mimir-boot-code-quality/pom.xml', 'mimir-boot-parent/pom.xml']) {
             command(path.join(ROOT, 'mvnw'), ['-B', '-N', '-f', path.join(ROOT, relative),
                 'install', '-Dgpg.skip=true', ...cacheArgs], `无法安装 ${relative} 元数据`);
         }

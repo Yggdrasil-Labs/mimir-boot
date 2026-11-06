@@ -38,7 +38,7 @@ pre-push 对待推送的提交快照执行离线 quick，检查该提交中的�
 | 模式 | 内容 |
 | --- | --- |
 | quick | 按变更检查文档与 Java 格式 |
-| full | 文档格式、内部链接、导航；构建签名模型；发布工具契约；隔离 Parent/BOM/Starter 消费者；临时 GPG 签名与失败场景；Maven 单元/集成测试、覆盖率和报告核验 |
+| full | 文档格式、内部链接、导航；构建签名模型；发布工具契约；隔离 Parent/BOM/Starter 消费者；临时 GPG 签名与失败场景；Maven 单元/集成测试、覆盖率、PMD/CPD 和报告核验 |
 
 full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 会清理构建产物，因此 Maven 质量构建在最后执行，保留最终测试和 JaCoCo 报告。Java 子检查可单独运行 `bash scripts/engineering.sh java`；其 Maven 基础步骤是 `./mvnw -B -Pci clean verify`，完整入口会继续核验报告。
 
@@ -60,6 +60,10 @@ Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar
 
 `java-build-model.mjs` 与报告核验器承担跨模块、跨版本的构建范围和报告完整性检查，长期由 Java 子检查与 full 复用。修改后按影响范围运行实际 Java 子检查或 full，临时专项探针不进入工具目录。
 
+有 Java 主源码的 JAR 模块必须在 `ci` 下严格运行独立坐标 `mimir-boot-code-quality` 的 `pmd`、`cpd` execution；有效配置采用 Parent 白名单，拒绝额外参数、扫描范围变化、跳过和放宽阈值。插件版本须与当前规则制品一致，官方 PMD 实现须与描述符来源版本配对。两类 XML 位于各模块的 `target/mimir-quality/pmd.xml`、`cpd.xml`，与测试和覆盖率产物一起清理并绑定本轮 SHA-256；缺失、摘要变化、违规、处理或配置错误均阻断，汇总为 `java-pmd`、`java-cpd`。纯 POM 和无 Java 主源码的资源 JAR 明确豁免这两项报告。
+
+JVM 输入检查同时拒绝 `pmd.*`、`cpd.*` 及描述符的无前缀质量属性（如 `minimumPriority`、`minimumTokens`、`aggregate`、`format`），防止有效 POM 未展示的用户属性改变检查。签名模型预热在 Parent 前安装规则资源 JAR。发布消费者长期核验其无普通依赖、无 Java 类、描述符来源和坐标，以及发布 Parent 的字面版本绑定；继承 Parent 的夹具通过同源插件仓库解析该插件，并以离线 `precheck` 验证真实主源码的两类报告。以上扩展继续复用 `java`、full、CI 与发布消费者入口，后续版本升级质量插件或发布 Parent 时仍须维护。
+
 本地 full 默认 `RUN_SONAR=false`，只等价 CI 基础检查，Sonar 在报告中标记为 `not_applicable`。只有已确认目标 Sonar 项目、分支和上传授权，并由受控环境提供 `RUN_SONAR=true`、`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 时，Java 子检查才会在 `clean verify` 通过且报告核验通过后，独立运行 `./mvnw -B -Pci sonar:sonar` 并等待 Quality Gate；不在文档或日志中写入凭据。CI 的凭据与 push 事件策略由工作流传入。公网制品验证只能在发布后进行，本地 fixture 验证检查器的成功、损坏制品、404 与重试行为。
 
 手动补偿迁移前的旧 tag 时，仅执行该 tag 自带的旧版 CI、消费者及已有签名契约；缺少必需旧入口则失败，不借用新分支代码。旧 tag 不具备新 Portal 解析器时跳过这项辅助观察，发布后的公开制品门禁仍必须通过；当前版本及自动发布不允许降级。
@@ -74,7 +78,7 @@ Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar
 | `contracts` | 发布工作流、制品布局和本地 HTTP 故障场景 |
 | `consumer` | 隔离发布及下游 Parent/BOM 消费者验收 |
 | `signing --preheat` | 隔离缓存、一次性 GPG 密钥的签名验收 |
-| `public <x.y.z>` | 验证 Maven Central 公开 POM 坐标和 JAR |
+| `public <x.y.z>` | 验证 Maven Central 根 POM、starter-web 与规则资源制品的公开 POM 坐标和 JAR |
 | `portal-state <JSON 文件>` | 解析 Portal 观察响应 |
 
 `public` 默认总时限为 1200 秒、重试间隔为 30 秒，分别通过 `MIMIR_PUBLIC_VERIFY_TIMEOUT_SECONDS` 和 `MIMIR_PUBLIC_VERIFY_INTERVAL_SECONDS` 调整。总时限包括下载、制品校验与重试等待；显式设置 `MIMIR_PUBLIC_VERIFY_ATTEMPTS` 时额外限制尝试次数。404、408、429、5xx 和临时网络故障可重试，其他 HTTP 错误、POM 解析或坐标校验失败、JAR 目录不可读均立即失败。JAR 检查使用 `jar tf`，只验证归档目录可读，不校验全部条目内容或签名。日志包含制品 URL、HTTP 状态和累计耗时。
@@ -87,5 +91,7 @@ Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar
 - `scripts/lib/`：受管运行时准备、缓存锁、Git 快照及启动失败处理。
 
 报告记录检查状态、命令、日志位置、源 tree/commit 和配置摘要。退出码 0 表示通过，1 表示验收失败，2 表示参数或工具错误；工具准备失败不会放行。使用 `--report <绝对 JSON 路径>` 指定完整门禁的报告位置。
+
+构建清单中的每个模块须明确声明布尔型 `pmd.required` 和 `cpd.required`；只有显式 `false` 才豁免对应报告。旧清单缺少这些字段时，清理、产物登记和独立核验都会拒绝并要求重新生成，不将缺少证据解释为检查通过。
 
 隔离发布仅保留本轮预热得到的 Maven 版本元数据，供 GPG 插件等版本范围依赖解析；不会将第三方制品加入隔离镜像，也不会开放外网。该处理遵循 [Maven 元数据规则](https://maven.apache.org/repositories/metadata.html)，本地镜像仍为临时 `file://` 仓库。

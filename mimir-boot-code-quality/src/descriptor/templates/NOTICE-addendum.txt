@@ -1,0 +1,2 @@
+
+Mimir Boot 从 Apache Maven PMD Plugin @pmd.upstream.version@ 派生插件描述符：修改制品坐标、名称和前缀，仅保留 pmd/check/cpd/cpd-check，移除描述符依赖清单；实现仍通过官方坐标加载。

@@ -11,6 +11,7 @@
     <url>${project.url}</url>
 
     <modules>
+        <module>mimir-boot-code-quality</module>
         <module>mimir-boot-parent</module>
         <module>mimir-boot-bom</module>
         <module>mimir-boot-common</module>

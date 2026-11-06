@@ -18,6 +18,10 @@
     <properties>
         <!-- 启用发布到 Maven Central -->
         <maven.deploy.skip>false</maven.deploy.skip>
+        <!-- 本仓库 Java 模块在质量模式下阻断违规与 PMD 处理错误。 -->
+        <pmd.failOnViolation>true</pmd.failOnViolation>
+        <cpd.failOnViolation>true</cpd.failOnViolation>
+        <pmd.skipPmdError>false</pmd.skipPmdError>
     </properties>
 
     <build>

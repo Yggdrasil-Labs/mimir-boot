@@ -13,7 +13,7 @@
     <packaging>pom</packaging>
 
     <name>Mimir Boot Parent</name>
-    <description>Mimir Boot 父 POM，提供统一的 Maven 插件版本管理、构建配置和代码质量工具（JaCoCo、Spotless、Maven Enforcer）</description>
+    <description>Mimir Boot 父 POM，提供统一的 Maven 插件版本管理、构建配置和代码质量工具（JaCoCo、Spotless、PMD、CPD、Maven Enforcer）</description>
     <url>https://github.com/Yggdrasil-Labs/mimir-boot</url>
 
     <properties>
@@ -36,6 +36,9 @@
         <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
         <maven.versions.plugin.version>2.23.0</maven.versions.plugin.version>
         <maven.dependency.plugin.version>3.11.0</maven.dependency.plugin.version>
+        <!-- 描述符来源与官方实现必须成套升级，不能单独覆盖此版本。 -->
+        <maven.pmd.plugin.version>3.28.0</maven.pmd.plugin.version>
+        <mimir-boot-code-quality.version>${project.version}</mimir-boot-code-quality.version>
         <jacoco.plugin.version>0.8.15</jacoco.plugin.version>
         <flatten.plugin.version>1.8.0</flatten.plugin.version>
         <maven.enforcer.plugin.version>3.6.3</maven.enforcer.plugin.version>
@@ -59,6 +62,10 @@
         <maven.test.skip>false</maven.test.skip>
         <jacoco.skip>true</jacoco.skip>
         <spotless.check.skip>true</spotless.check.skip>
+        <pmd.skip>true</pmd.skip>
+        <cpd.skip>true</cpd.skip>
+        <pmd.failOnViolation>false</pmd.failOnViolation>
+        <cpd.failOnViolation>false</cpd.failOnViolation>
         <!-- 默认不签名、不要求本机私钥；显式 -Dgpg.skip=false 开启，构建模式不覆盖。 -->
         <gpg.skip>true</gpg.skip>
 
@@ -252,6 +259,58 @@
                     </executions>
                 </plugin>
 
+                <!-- 独立坐标隔离官方插件的分叉配置与报告，复用固定版本的官方实现。 -->
+                <plugin>
+                    <groupId>io.github.yggdrasil-labs</groupId>
+                    <artifactId>mimir-boot-code-quality</artifactId>
+                    <version>${mimir-boot-code-quality.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-pmd-plugin</artifactId>
+                            <!-- 与规则制品描述符来源绑定；下游单独覆盖版本不受支持。 -->
+                            <version>3.28.0</version>
+                        </dependency>
+                    </dependencies>
+                    <executions>
+                        <!-- ID 必须与分叉目标 pmd 一致，确保官方 check 取得报告配置。 -->
+                        <execution>
+                            <id>pmd</id>
+                            <phase>verify</phase>
+                            <goals><goal>check</goal></goals>
+                            <configuration>
+                                <rulesets><ruleset>mimir-boot/pmd/ruleset.xml</ruleset></rulesets>
+                                <targetJdk>${java.version}</targetJdk>
+                                <targetDirectory>${project.build.directory}/mimir-quality</targetDirectory>
+                                <outputDirectory>${project.build.directory}/mimir-quality/site</outputDirectory>
+                                <analysisCacheLocation>${project.build.directory}/mimir-quality/pmd.cache</analysisCacheLocation>
+                                <benchmarkOutputFilename>${project.build.directory}/mimir-quality/pmd-benchmark.txt</benchmarkOutputFilename>
+                                <rulesetsTargetDirectory>${project.build.directory}/mimir-quality/rulesets</rulesetsTargetDirectory>
+                                <includeTests>false</includeTests>
+                                <excludeRoots><excludeRoot>${project.build.directory}/generated-sources</excludeRoot></excludeRoots>
+                                <linkXRef>false</linkXRef>
+                                <analysisCache>true</analysisCache>
+                                <printFailingErrors>true</printFailingErrors>
+                                <failurePriority>5</failurePriority>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>cpd</id>
+                            <phase>verify</phase>
+                            <goals><goal>cpd-check</goal></goals>
+                            <configuration>
+                                <minimumTokens>100</minimumTokens>
+                                <targetDirectory>${project.build.directory}/mimir-quality</targetDirectory>
+                                <outputDirectory>${project.build.directory}/mimir-quality/site</outputDirectory>
+                                <includeTests>false</includeTests>
+                                <excludeRoots><excludeRoot>${project.build.directory}/generated-sources</excludeRoot></excludeRoots>
+                                <linkXRef>false</linkXRef>
+                                <printFailingErrors>true</printFailingErrors>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
                 <!-- 发布 Parent 需要保留可继承的构建插件与属性。 -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -266,7 +325,8 @@
                             <dependencyManagement>resolve</dependencyManagement>
                             <!-- 插件配置中的属性引用由下游继承时再解析。 -->
                             <pluginManagement>keep</pluginManagement>
-                            <properties>keep</properties>
+                            <!-- 固定规则制品版本；以后新增引用型属性也可能在生产者侧被固定。 -->
+                            <properties>extended_interpolate</properties>
                             <!-- 模式、JDK 激活与属性引用须在消费者构建时解析，不能固化生产者的激活结果。 -->
                             <profiles>keep</profiles>
                             <build>keep</build>
@@ -459,6 +519,12 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
 
+            <!-- 默认跳过；precheck/ci 开启，两类检查分别使用原生开关。 -->
+            <plugin>
+                <groupId>io.github.yggdrasil-labs</groupId>
+                <artifactId>mimir-boot-code-quality</artifactId>
+            </plugin>
+
             <!-- SonarQube Maven Plugin (代码质量分析) -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
@@ -561,6 +627,8 @@
                 <maven.test.skip>false</maven.test.skip>
                 <jacoco.skip>true</jacoco.skip>
                 <spotless.check.skip>true</spotless.check.skip>
+                <pmd.skip>true</pmd.skip>
+                <cpd.skip>true</cpd.skip>
             </properties>
         </profile>
 
@@ -571,6 +639,8 @@
                 <maven.test.skip>false</maven.test.skip>
                 <jacoco.skip>false</jacoco.skip>
                 <spotless.check.skip>false</spotless.check.skip>
+                <pmd.skip>false</pmd.skip>
+                <cpd.skip>false</cpd.skip>
             </properties>
         </profile>
 
@@ -581,6 +651,8 @@
                 <maven.test.skip>false</maven.test.skip>
                 <jacoco.skip>false</jacoco.skip>
                 <spotless.check.skip>false</spotless.check.skip>
+                <pmd.skip>false</pmd.skip>
+                <cpd.skip>false</cpd.skip>
             </properties>
             <build>
                 <plugins>
@@ -608,6 +680,8 @@
                 <maven.test.skip>true</maven.test.skip>
                 <jacoco.skip>true</jacoco.skip>
                 <spotless.check.skip>false</spotless.check.skip>
+                <pmd.skip>true</pmd.skip>
+                <cpd.skip>true</cpd.skip>
             </properties>
         </profile>
 

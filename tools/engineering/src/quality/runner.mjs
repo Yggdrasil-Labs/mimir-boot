@@ -386,7 +386,7 @@ function appendMissingJavaChecks(report, childReport, reason) {
     const existing = new Set(report.checks.map((check) => check.id));
     const childIds = new Set(childReport?.checks?.map((check) => check.id) || []);
     const sonarMode = process.env.RUN_SONAR || 'false';
-    for (const id of ['java-tests', 'java-coverage', 'java-sonar']) {
+    for (const id of ['java-tests', 'java-coverage', 'java-pmd', 'java-cpd', 'java-sonar']) {
         if (existing.has(id) || childIds.has(id)) continue;
         const sonar = id === 'java-sonar';
         appendResult(report, {
@@ -411,7 +411,7 @@ async function runJavaCheck(report, options) {
     const result = await runEngineeringTool({ root: options.root, toolPath: 'scripts/lib/engineering-tool.sh', entry: 'src/quality/java.mjs', args, logPath });
     const childReport = await readChildReport(childReportPath);
     addChildFindings(report, childReport, 'java');
-    const requiredIds = ['java-tests', 'java-coverage', 'java-sonar'];
+    const requiredIds = ['java-tests', 'java-coverage', 'java-pmd', 'java-cpd', 'java-sonar'];
     const validationError = childResultError(result, childReport, validateChildReport(childReport, requiredIds));
     const effectiveResult = validationError ? reportChildFailure(report, 'java-quality', result, validationError) : result;
     appendResult(report, { check: processCheck('java-quality', command, effectiveResult, logPath), findings: [] });

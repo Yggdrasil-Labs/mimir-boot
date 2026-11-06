@@ -1,0 +1,186 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.yggdrasil-labs</groupId>
+        <artifactId>mimir-boot</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>mimir-boot-code-quality</artifactId>
+    <packaging>jar</packaging>
+    <name>Mimir Boot Code Quality</name>
+    <description>Mimir Boot Java 质量规则与隔离的 Maven PMD 插件入口，不含 Java 类及运行时依赖</description>
+    <properties>
+        <maven.deploy.skip>false</maven.deploy.skip>
+        <!-- 必须与 Parent 的官方实现版本一同升级，摘要固定官方描述符内容。 -->
+        <pmd.upstream.version>3.28.0</pmd.upstream.version>
+        <pmd.descriptor.sha256>c6e78de09f5dcc43ec8785076c1149443351d73417cce677395b2980f59def28</pmd.descriptor.sha256>
+    </properties>
+    <build>
+        <plugins>
+            <!-- 只提取元数据，不声明项目依赖，也不重打包官方实现类。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.11.0</version>
+                <executions>
+                    <execution>
+                        <id>extract-pmd-descriptor</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.apache.maven.plugins</groupId>
+                                    <artifactId>maven-pmd-plugin</artifactId>
+                                    <version>${pmd.upstream.version}</version>
+                                    <type>jar</type>
+                                    <includes>META-INF/maven/plugin.xml,META-INF/LICENSE,META-INF/NOTICE,META-INF/maven/org.apache.maven.plugins/maven-pmd-plugin/pom.properties</includes>
+                                    <outputDirectory>${project.build.directory}/pmd-descriptor-source</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-pmd-descriptor</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <loadproperties
+                                        srcFile="${project.build.directory}/pmd-descriptor-source/META-INF/maven/org.apache.maven.plugins/maven-pmd-plugin/pom.properties"
+                                        prefix="upstream"/>
+                                <checksum
+                                        file="${project.build.directory}/pmd-descriptor-source/META-INF/maven/plugin.xml"
+                                        algorithm="SHA-256"
+                                        property="upstream.descriptor.sha256"/>
+                                <condition property="upstream.valid">
+                                    <and>
+                                        <equals arg1="${upstream.groupId}" arg2="org.apache.maven.plugins"/>
+                                        <equals arg1="${upstream.artifactId}" arg2="maven-pmd-plugin"/>
+                                        <equals arg1="${upstream.version}" arg2="${pmd.upstream.version}"/>
+                                        <equals arg1="${upstream.descriptor.sha256}" arg2="${pmd.descriptor.sha256}"/>
+                                    </and>
+                                </condition>
+                                <fail
+                                        unless="upstream.valid"
+                                        message="官方 PMD 描述符来源、版本或 SHA-256 不匹配"/>
+                                <mkdir dir="${project.build.outputDirectory}/META-INF/maven"/>
+                                <xslt
+                                        in="${project.build.directory}/pmd-descriptor-source/META-INF/maven/plugin.xml"
+                                        out="${project.build.outputDirectory}/META-INF/maven/plugin.xml"
+                                        style="${project.basedir}/src/descriptor/plugin-descriptor.xsl"
+                                        force="true">
+                                    <param name="upstream-version" expression="${pmd.upstream.version}"/>
+                                    <param name="plugin-group-id" expression="${project.groupId}"/>
+                                    <param name="plugin-artifact-id" expression="${project.artifactId}"/>
+                                    <param name="plugin-version" expression="${project.version}"/>
+                                </xslt>
+                                <xmlproperty
+                                        file="${project.build.outputDirectory}/META-INF/maven/plugin.xml"
+                                        prefix="generated"/>
+                                <condition property="generated.valid">
+                                    <and>
+                                        <equals arg1="${generated.plugin.groupId}" arg2="${project.groupId}"/>
+                                        <equals arg1="${generated.plugin.artifactId}" arg2="${project.artifactId}"/>
+                                        <equals arg1="${generated.plugin.version}" arg2="${project.version}"/>
+                                        <equals arg1="${generated.plugin.goalPrefix}" arg2="mimir-quality"/>
+                                    </and>
+                                </condition>
+                                <fail
+                                        unless="generated.valid"
+                                        message="生成的 PMD 插件描述符坐标不匹配"/>
+
+                                <!-- 模板只替换明确声明的变量，原始许可证和 NOTICE 保持原样复制。 -->
+                                <copy
+                                        file="${project.build.directory}/pmd-descriptor-source/META-INF/LICENSE"
+                                        tofile="${project.build.outputDirectory}/META-INF/LICENSE"
+                                        overwrite="true"/>
+                                <copy
+                                        file="${project.build.directory}/pmd-descriptor-source/META-INF/NOTICE"
+                                        tofile="${project.build.outputDirectory}/META-INF/NOTICE"
+                                        overwrite="true"/>
+                                <copy
+                                        file="${project.basedir}/src/descriptor/templates/NOTICE-addendum.txt"
+                                        tofile="${project.build.directory}/pmd-notice-addendum.txt"
+                                        encoding="UTF-8"
+                                        overwrite="true">
+                                    <filterset>
+                                        <filter token="pmd.upstream.version" value="${pmd.upstream.version}"/>
+                                    </filterset>
+                                </copy>
+                                <concat
+                                        destfile="${project.build.outputDirectory}/META-INF/NOTICE"
+                                        append="true"
+                                        binary="true">
+                                    <file file="${project.build.directory}/pmd-notice-addendum.txt"/>
+                                </concat>
+                                <mkdir dir="${project.build.outputDirectory}/META-INF/mimir-boot"/>
+                                <copy
+                                        file="${project.basedir}/src/descriptor/templates/pmd-source.properties"
+                                        tofile="${project.build.outputDirectory}/META-INF/mimir-boot/pmd-source.properties"
+                                        encoding="UTF-8"
+                                        overwrite="true">
+                                    <filterset>
+                                        <filter token="pmd.upstream.version" value="${pmd.upstream.version}"/>
+                                        <filter token="pmd.descriptor.sha256" value="${pmd.descriptor.sha256}"/>
+                                    </filterset>
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven.source.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 无 Java 源码，以说明文件提供 Central 要求的 Javadoc 附件。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classesDirectory>${project.basedir}/src/main/javadoc</classesDirectory>
+                            <classifier>javadoc</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

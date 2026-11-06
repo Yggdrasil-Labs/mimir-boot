@@ -97,6 +97,76 @@ async function assertParentFailsafe(parentPom) {
     }
 }
 
+async function assertParentQuality(parentPom, revision) {
+    const root = parsePom(await runtime.readFile(parentPom, 'utf8'), parentPom);
+    const properties = directElements(root, 'properties')[0];
+    const version = text(directElements(properties, 'mimir-boot-code-quality.version')[0]);
+    if (version !== revision || directElements(properties, 'revision').length) {
+        fail('发布 Parent 的质量制品版本必须为本轮字面版本，且不得保留 revision 属性');
+    }
+    for (const property of Array.from(properties?.childNodes || []).filter((node) => node.nodeType === 1)) {
+        if (text(property)?.includes(projectRoot) || path.isAbsolute(text(property) || '')) {
+            fail(`发布 Parent 属性包含生产者路径：${property.localName}`);
+        }
+    }
+    const plugins = Array.from(root.getElementsByTagNameNS(MAVEN_NAMESPACE, 'plugin')).filter((node) =>
+        text(directElements(node, 'groupId')[0]) === 'io.github.yggdrasil-labs'
+        && text(directElements(node, 'artifactId')[0]) === 'mimir-boot-code-quality');
+    const implementationVersion = text(directElements(properties, 'maven.pmd.plugin.version')[0]);
+    if (!plugins.length || !implementationVersion || implementationVersion.includes('${')) fail('发布 Parent 缺少固定质量实现版本');
+    let implementationDeclared = false;
+    for (const plugin of plugins) {
+        const configuredVersion = text(directElements(plugin, 'version')[0]);
+        if (configuredVersion && ![revision, '${mimir-boot-code-quality.version}'].includes(configuredVersion)) fail('发布 Parent 质量插件版本与制品不一致');
+        const dependencies = directElements(directElements(plugin, 'dependencies')[0], 'dependency');
+        if (!dependencies.length) continue; // build/plugins 的空声明从 pluginManagement 继承。
+        implementationDeclared = true;
+        if (dependencies.length !== 1 || text(directElements(dependencies[0], 'groupId')[0]) !== 'org.apache.maven.plugins'
+            || text(directElements(dependencies[0], 'artifactId')[0]) !== 'maven-pmd-plugin'
+            || text(directElements(dependencies[0], 'version')[0]) !== implementationVersion) {
+            fail('发布 Parent 的官方 PMD 实现必须固定且与来源配对');
+        }
+    }
+    if (!implementationDeclared) fail('发布 Parent 缺少官方 PMD 实现依赖');
+    if (implementationVersion !== await readPomProperty(path.join(projectRoot, 'mimir-boot-code-quality/pom.xml'), 'pmd.upstream.version')) {
+        fail('发布 Parent 官方 PMD 实现版本与描述符来源版本不一致');
+    }
+    return implementationVersion;
+}
+
+async function assertQualityArtifact(repositoryDirectory, revision, implementationVersion, workDirectory, logsDirectory) {
+    const pom = await findPublishedPom(repositoryDirectory, revision, 'mimir-boot-code-quality');
+    const model = parsePom(await runtime.readFile(pom, 'utf8'), pom);
+    if (directElements(model, 'dependencies').length) fail('规则资源制品 POM 不得声明普通依赖');
+    const directory = path.dirname(pom);
+    const jars = (await runtime.readdir(directory)).filter((name) => name.endsWith('.jar') && !/-(?:sources|javadoc)\.jar$/u.test(name));
+    if (jars.length !== 1) fail('规则资源制品必须恰好发布一个主 jar');
+    const jar = path.join(directory, jars[0]);
+    const listing = path.join(logsDirectory, 'quality-jar-list.log');
+    const listed = await runCommand('jar', ['tf', jar], { logPath: listing });
+    if (listed.exitCode !== 0) fail('规则资源 jar 无法读取');
+    if ((await runtime.readFile(listing, 'utf8')).split(/\r?\n/u).some((name) => /\.(?:class|jar)$/u.test(name))) fail('规则资源 jar 不得包含 Java 类或第三方 jar');
+    const extracted = path.join(workDirectory, 'quality-jar');
+    await runtime.mkdir(extracted, { recursive: true });
+    const entries = ['META-INF/maven/plugin.xml', 'META-INF/mimir-boot/pmd-source.properties',
+        'META-INF/LICENSE', 'META-INF/NOTICE', 'mimir-boot/pmd/ruleset.xml'];
+    const unpacked = await runCommand('jar', ['xf', jar, ...entries], { cwd: extracted });
+    if (unpacked.exitCode !== 0) fail('规则资源 jar 无法解包');
+    for (const entry of entries) if (!await nonEmptyFile(path.join(extracted, entry))) fail(`规则资源 jar 缺少 ${entry}`);
+    const descriptor = parser.parseFromString(await runtime.readFile(path.join(extracted, entries[0]), 'utf8'), 'application/xml');
+    const descriptorValue = (name) => text(Array.from(descriptor.documentElement?.childNodes || []).find((node) => node.nodeType === 1 && node.localName === name));
+    if (descriptor.doctype || descriptor.documentElement?.localName !== 'plugin'
+        || descriptorValue('groupId') !== 'io.github.yggdrasil-labs' || descriptorValue('artifactId') !== 'mimir-boot-code-quality'
+        || descriptorValue('version') !== revision) fail('规则资源 jar 的插件描述符坐标错误');
+    const provenance = new Map((await runtime.readFile(path.join(extracted, entries[1]), 'utf8')).split(/\r?\n/u)
+        .filter((line) => line.includes('=')).map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
+    if (provenance.get('groupId') !== 'org.apache.maven.plugins' || provenance.get('artifactId') !== 'maven-pmd-plugin'
+        || provenance.get('version') !== implementationVersion
+        || provenance.get('descriptorSha256') !== await readPomProperty(path.join(projectRoot, 'mimir-boot-code-quality/pom.xml'), 'pmd.descriptor.sha256')) {
+        fail('规则资源 jar 的描述符来源与 Parent 官方实现不一致');
+    }
+}
+
 async function assertCompactPom(pom, artifact) {
     const root = parsePom(await runtime.readFile(pom, 'utf8'), pom);
     const versions = Array.from(root.getElementsByTagNameNS(MAVEN_NAMESPACE, 'version')).map(text);
@@ -115,6 +185,7 @@ async function assertPublishedArtifacts(repositoryDir, revision) {
         'mimir-boot',
         'mimir-boot-parent',
         'mimir-boot-bom',
+        'mimir-boot-code-quality',
         'mimir-boot-common',
         'mimir-boot-starters',
         ...starterArtifacts,
@@ -217,7 +288,7 @@ async function main() {
         const bomRocketMqVersion = await readPomProperty(path.join(projectRoot, 'mimir-boot-bom/pom.xml'), 'rocketmq.version');
         const springBootVersion = await readPomProperty(path.join(projectRoot, 'pom.xml'), 'spring.boot.version');
 
-        const producerSelector = [':mimir-boot-bom', ':mimir-boot-starters', ...starterArtifacts.map((artifact) => `:${artifact}`)].join(',');
+        const producerSelector = [':mimir-boot-bom', ':mimir-boot-code-quality', ':mimir-boot-starters', ...starterArtifacts.map((artifact) => `:${artifact}`)].join(',');
         const producerProjects = ['-pl', producerSelector, '-am'];
         const onlineMaven = [mvnw, '-B', '-s', settingsFile, '-f', path.join(projectRoot, 'pom.xml'), `-Dmaven.repo.local=${producerCacheDirectory}`, ...producerProjects];
         await runConsumerMaven('root-online-clean-deploy', [...onlineMaven, 'clean', 'deploy', '-Dmaven.test.skip=true', '-Dmaven.source.skip=true', '-Dmaven.javadoc.skip=true', '-Dmaven.deploy.skip=true', '-Dgpg.skip=true'], logsDirectory);
@@ -238,7 +309,9 @@ async function main() {
         await assertPublishedArtifacts(repositoryDirectory, revision);
         const parentPom = await findPublishedPom(repositoryDirectory, revision, 'mimir-boot-parent');
         await assertParentFailsafe(parentPom);
-        const compactArtifacts = ['mimir-boot', 'mimir-boot-bom', 'mimir-boot-common', 'mimir-boot-starters', ...starterArtifacts];
+        const implementationVersion = await assertParentQuality(parentPom, revision);
+        await assertQualityArtifact(repositoryDirectory, revision, implementationVersion, workDirectory, logsDirectory);
+        const compactArtifacts = ['mimir-boot', 'mimir-boot-bom', 'mimir-boot-code-quality', 'mimir-boot-common', 'mimir-boot-starters', ...starterArtifacts];
         for (const artifact of compactArtifacts) await assertCompactPom(await findPublishedPom(repositoryDirectory, revision, artifact), artifact);
 
         await writeConsumerFixture(consumerDirectory, revision, repositoryDirectory);
@@ -249,7 +322,9 @@ async function main() {
         await runConsumerMaven('consumer-online-tree', [...onlineConsumerMaven, 'dependency:tree', `-DoutputFile=${path.join(consumerDirectory, 'target/online-dependency-tree.txt')}`], logsDirectory);
         await runConsumerMaven('consumer-online-clean-verify', [...onlineConsumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 缺少 ParentLifecycleIT Failsafe 报告');
-        await assertFixtureMimirRepositoryMarkers(consumerCacheDirectory, ['mimir-boot', 'mimir-boot-parent', 'mimir-boot-common', ...starterArtifacts], repositoryDirectory);
+        // 报告渲染会解析运行时皮肤等构件；预热实际 precheck 路径后才进入离线验收。
+        await runConsumerMaven('consumer-online-quality-precheck', [...onlineConsumerMaven, '-Pprecheck', 'clean', 'verify'], logsDirectory);
+        await assertFixtureMimirRepositoryMarkers(consumerCacheDirectory, ['mimir-boot', 'mimir-boot-parent', 'mimir-boot-code-quality', 'mimir-boot-common', ...starterArtifacts], repositoryDirectory);
         await backfillMavenCache({ targetDirectory: sharedCacheDirectory, sourceDirectories: [consumerCacheDirectory], announce: false });
 
         const consumerMaven = [mvnw, '-B', '-o', '-s', blockedSettingsFile, '-f', path.join(consumerDirectory, 'pom.xml'), `-Dmaven.repo.local=${consumerCacheDirectory}`];
@@ -260,6 +335,23 @@ async function main() {
         if (!consumerTree.includes(`co.elastic.clients:elasticsearch-java:jar:${bootElasticsearchVersion}`)) fail('consumer 隔离依赖树未使用 Spring Boot 管理的 Elasticsearch 版本');
         await runConsumerMaven('consumer-isolated-clean-verify', [...consumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 隔离执行缺少 ParentLifecycleIT Failsafe 报告');
+        await runConsumerMaven('consumer-quality-precheck', [...consumerMaven, '-Pprecheck', 'clean', 'verify'], logsDirectory);
+        for (const kind of ['pmd', 'cpd']) {
+            const report = path.join(consumerDirectory, `target/mimir-quality/${kind}.xml`);
+            if (!await nonEmptyFile(report)) fail(`发布 Parent 消费者缺少 ${kind} 质量报告`);
+            const document = parser.parseFromString(await runtime.readFile(report, 'utf8'), 'application/xml');
+            const expected = kind === 'pmd' ? 'pmd' : 'pmd-cpd';
+            const entries = Array.from(document.getElementsByTagName('*'));
+            if (document.doctype || document.documentElement?.localName !== expected
+                || entries.some((node) => ['duplication', 'error', 'configerror', 'processingerror', 'configurationerror'].includes(node.localName.toLowerCase()))) {
+                fail(`发布 Parent 消费者的 ${kind} 报告包含重复、处理错误或无效 XML`);
+            }
+            const violations = entries.filter((node) => node.localName === 'violation');
+            if (kind === 'pmd' && (violations.length !== 1 || violations[0].getAttribute('rule') !== 'CommentRequired'
+                || !violations[0].parentNode.getAttribute('name')?.replaceAll('\\', '/').endsWith('/ParentQualityContract.java'))) {
+                fail('发布 Parent 消费者必须只报告预设的公开方法注释违规');
+            }
+        }
 
         await writeBomConsumerFixture(bomConsumerDirectory, revision, repositoryDirectory);
         await seedMavenCaches(sharedCacheDirectory, [bomConsumerCacheDirectory], { announce: false });

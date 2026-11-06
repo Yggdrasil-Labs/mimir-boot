@@ -27,6 +27,10 @@ function repositoryXml(repositoryDir) {
     return `<repository><id>fixture</id><url>file://${escapeXml(repositoryDir)}</url></repository>`;
 }
 
+function pluginRepositoryXml(repositoryDir) {
+    return `<pluginRepository><id>fixture</id><url>file://${escapeXml(repositoryDir)}</url></pluginRepository>`;
+}
+
 export function createPom(artifact, version = '2.2.2') {
     return `<project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
@@ -39,6 +43,7 @@ export function createPom(artifact, version = '2.2.2') {
 
 const consumerTest = `package io.github.yggdrasil.labs.fixture;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -48,8 +53,8 @@ class IsolatedConsumerTest {
 
     @Test
     void startsContextWithPublishedTestDependencies() {
-        new ApplicationContextRunner()
-                .run(context -> assertTrue(context.isRunning()));
+        assertEquals("fixture", new ParentQualityContract().value());
+        new ApplicationContextRunner().run(context -> assertTrue(context.isRunning()));
     }
 }
 `;
@@ -84,6 +89,19 @@ class AlwaysFailIT {
 }
 `;
 
+// 发布 Parent 的生命周期契约需要真实主源码，避免 PMD/CPD 因无输入而空跑。
+const consumerMain = `package io.github.yggdrasil.labs.fixture;
+
+/** 发布 Parent 的质量生命周期样例。 */
+public final class ParentQualityContract {
+
+    // 保留一个可预测的公开方法注释违规，用于验证发布 Parent 的只报告默认行为。
+    public String value() {
+        return "fixture";
+    }
+}
+`;
+
 function consumerPom(revision, repositoryDir) {
     const dependencies = [
         ...starterArtifacts.slice(0, -1).map((artifact) => `        <dependency><groupId>io.github.yggdrasil-labs</groupId><artifactId>${artifact}</artifactId></dependency>`),
@@ -107,6 +125,9 @@ function consumerPom(revision, repositoryDir) {
     <repositories>
         ${repositoryXml(repositoryDir)}
     </repositories>
+    <pluginRepositories>
+        ${pluginRepositoryXml(repositoryDir)}
+    </pluginRepositories>
     <dependencies>
 ${dependencies}
     </dependencies>
@@ -171,6 +192,9 @@ function failureConsumerPom(revision, repositoryDir) {
     <repositories>
         ${repositoryXml(repositoryDir)}
     </repositories>
+    <pluginRepositories>
+        ${pluginRepositoryXml(repositoryDir)}
+    </pluginRepositories>
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -184,6 +208,7 @@ function failureConsumerPom(revision, repositoryDir) {
 
 export async function writeConsumerFixture(directory, revision, repositoryDir) {
     await writeText(path.join(directory, 'pom.xml'), consumerPom(revision, repositoryDir));
+    await writeText(path.join(directory, 'src/main/java/io/github/yggdrasil/labs/fixture/ParentQualityContract.java'), consumerMain);
     const testDirectory = path.join(directory, 'src/test/java/io/github/yggdrasil/labs/fixture');
     await writeText(path.join(testDirectory, 'IsolatedConsumerTest.java'), consumerTest);
     await writeText(path.join(testDirectory, 'ParentLifecycleIT.java'), lifecycleIntegrationTest);

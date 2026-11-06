@@ -18,6 +18,13 @@ const PLUGINS = {
     integration: ['org.apache.maven.plugins', 'maven-failsafe-plugin'],
     coverage: ['org.jacoco', 'jacoco-maven-plugin'],
     format: ['com.diffplug.spotless', 'spotless-maven-plugin'],
+    quality: ['io.github.yggdrasil-labs', 'mimir-boot-code-quality'],
+};
+const QUALITY_PARAMETERS = {
+    pmd: ['rulesets', 'targetJdk', 'targetDirectory', 'outputDirectory', 'analysisCacheLocation',
+        'benchmarkOutputFilename', 'rulesetsTargetDirectory', 'includeTests', 'excludeRoots', 'linkXRef',
+        'analysisCache', 'printFailingErrors', 'failurePriority'],
+    cpd: ['minimumTokens', 'targetDirectory', 'outputDirectory', 'includeTests', 'excludeRoots', 'linkXRef', 'printFailingErrors'],
 };
 function elements(node, ...names) {
     return names.reduce((nodes, name) => nodes.flatMap((parent) =>
@@ -551,6 +558,91 @@ async function formatExpectation(module, files) {
     return { required: true, reason: null, ...choices[0], skip: false };
 }
 
+function qualityConfiguration(node, execution, module, kind) {
+    const get = config(node, execution);
+    const names = new Set([one(node, 'configuration'), one(execution, 'configuration')].flatMap((configuration) =>
+        Array.from(configuration?.childNodes || []).filter((child) => child.nodeType === 1).map((child) => child.localName)));
+    for (const name of names) {
+        if (!QUALITY_PARAMETERS[kind].includes(name)) throw new Error(`${module.path} ${kind} 不支持配置参数 ${name}`);
+    }
+    function normalized(element) {
+        const children = Array.from(element?.childNodes || []).filter((child) => child.nodeType === 1);
+        if (children.some((child) => child.namespaceURI !== NAMESPACE)) throw new Error(`${module.path} ${kind} 配置命名空间无效`);
+        const attributes = Array.from(element.attributes).filter((attribute) => !attribute.name.startsWith('xmlns'))
+            .map((attribute) => [attribute.name, attribute.value]).sort(([first], [second]) => first.localeCompare(second));
+        return { attributes, value: children.length ? children.map((child) => [child.localName, normalized(child)])
+            : resolved(value(element), `${module.path} ${kind} 配置`, module.props).replaceAll(module.directory, '${module}') };
+    }
+    return new Map([...names].map((name) => [name, JSON.stringify(normalized(get(name)))]));
+}
+
+/** 以 Parent 为配置基线，拒绝额外参数；原生用户属性另外核对，避免它们绕过有效配置。 */
+async function qualityExpectation(root, module, reactor, files, buildDirectory) {
+    if (!files.length) return { pmd: { required: false, reason: '没有 Java 主源码' },
+        cpd: { required: false, reason: '没有 Java 主源码' }, artifacts: {} };
+    const baseline = reactor.find((item) => item.path === 'mimir-boot-parent');
+    const resource = reactor.find((item) => item.path === 'mimir-boot-code-quality');
+    if (!baseline || !resource) throw new Error(`${module.path} 缺少 Parent 或质量规则制品模型`);
+    const strict = new Map([['pmd.skip', 'false'], ['cpd.skip', 'false'], ['pmd.failOnViolation', 'true'],
+        ['cpd.failOnViolation', 'true'], ['pmd.skipPmdError', 'false']]);
+    for (const [name, expected] of strict) {
+        if (module.props.get(name) !== expected) throw new Error(`${module.path} ${name} 必须为 ${expected}`);
+    }
+    for (const [name, input] of module.props) {
+        if ((name.startsWith('pmd.') || name.startsWith('cpd.')) && !strict.has(name)
+            && !(name === 'pmd.maxAllowedViolations' && input === '0')) {
+            throw new Error(`${module.path} 不支持质量用户属性 ${name}=${input}`);
+        }
+    }
+    // 描述符中除 pmd/cpd 前缀外仍有原生用户属性，POM 注入同样不能改变报告和扫描。
+    for (const name of ['aggregate', 'format', 'encoding', 'linkXRef', 'outputEncoding', 'output.format',
+        'targetJdk', 'minimumPriority', 'minimumTokens']) {
+        if (module.props.has(name)) throw new Error(`${module.path} 不支持质量用户属性 ${name}`);
+    }
+    const sourceVersion = resolved(resource.props.get('pmd.upstream.version'), '描述符来源版本', resource.props);
+    const artifacts = {};
+    for (const current of [baseline, module]) {
+        const node = plugin(current.model, 'quality');
+        if (!node) throw new Error(`${current.path} 缺少实际质量 build/plugins`);
+        const version = resolved(text(node, 'version'), `${current.path} 质量插件版本`, current.props);
+        if (version !== text(resource.model, 'version') || current.props.get('mimir-boot-code-quality.version') !== version) {
+            throw new Error(`${current.path} mimir-boot-code-quality.version 必须等于规则制品版本`);
+        }
+        const dependencies = elements(node, 'dependencies', 'dependency');
+        if (dependencies.length !== 1 || text(dependencies[0], 'groupId') !== 'org.apache.maven.plugins'
+            || text(dependencies[0], 'artifactId') !== 'maven-pmd-plugin'
+            || text(dependencies[0], 'version') !== sourceVersion || current.props.get('maven.pmd.plugin.version') !== sourceVersion
+            || text(dependencies[0], 'type') && text(dependencies[0], 'type') !== 'jar'
+            || text(dependencies[0], 'classifier') || one(dependencies[0], 'exclusions')) {
+            throw new Error(`${current.path} 官方 PMD 实现依赖必须唯一且与描述符来源版本 ${sourceVersion} 一致`);
+        }
+        if (elements(node, 'executions', 'execution').length !== 2) throw new Error(`${current.path} 质量插件只支持 pmd/cpd 两个 execution`);
+    }
+    for (const [kind, goal] of [['pmd', 'check'], ['cpd', 'cpd-check']]) {
+        const configurations = [];
+        for (const current of [baseline, module]) {
+            const node = plugin(current.model, 'quality');
+            const found = requireOneGoal(node, goal, 'verify', current.path);
+            if (found.phase !== 'verify' || text(found.execution, 'id') !== kind
+                || !samePatterns(elements(found.execution, 'goals', 'goal').map(value), [goal])) {
+                throw new Error(`${current.path} ${kind} 必须唯一绑定 verify/${goal} 且保持分叉目标 execution ID`);
+            }
+            configurations.push(qualityConfiguration(node, found.execution, current, kind));
+        }
+        for (const name of QUALITY_PARAMETERS[kind]) {
+            if (!configurations[0].has(name) || configurations[0].get(name) !== configurations[1].get(name)) {
+                throw new Error(`${module.path} ${kind} 参数 ${name} 必须与 Parent 配置一致`);
+            }
+        }
+        const node = plugin(module.model, 'quality');
+        const get = requireOneGoal(node, goal, 'verify', module.path).get;
+        const directory = await configuredPath(root, module.directory, value(get('targetDirectory')), `${kind} targetDirectory`);
+        if (directory !== path.join(buildDirectory, 'mimir-quality')) throw new Error(`${module.path} ${kind} targetDirectory 必须为 target/mimir-quality`);
+        artifacts[`${kind}Xml`] = { path: relative(root, await resolveBuildArtifact(root, module.path, path.join(directory, `${kind}.xml`))), sha256: null };
+    }
+    return { pmd: { required: true, reason: null }, cpd: { required: true, reason: null }, artifacts };
+}
+
 /** 基于本轮实际 effective POM 和源码生成验收期望，不从构建产物推导适用范围。 */
 export async function generateExpectedFromModel(root, runId, effectivePomSource) {
     if (!root || !path.isAbsolute(root)) throw new Error('executionRoot 必须是绝对路径');
@@ -584,11 +676,13 @@ export async function generateExpectedFromModel(root, runId, effectivePomSource)
         const unit = await testExpectation(root, module, 'unit', testDeclarations, buildDirectory, reactor);
         const integration = await testExpectation(root, module, 'integration', testDeclarations, buildDirectory, reactor);
         const { coverage, artifacts } = await coverageExpectation(root, module, reactor, main, buildDirectory, { unit, integration });
+        const quality = await qualityExpectation(root, module, reactor, main, buildDirectory);
         modules.push({ path: module.path, packaging, javaSources, exemption, tests: { unit, integration },
-            coverage, format: await formatExpectation(module, [...main, ...tests]), artifacts });
+            coverage, format: await formatExpectation(module, [...main, ...tests]), pmd: quality.pmd, cpd: quality.cpd,
+            artifacts: { ...artifacts, ...quality.artifacts } });
     }
     const artifactPaths = modules.flatMap((module) => Object.values(module.artifacts).map((artifact) => artifact.path));
-    if (new Set(artifactPaths).size !== artifactPaths.length) throw new Error('不同 Reactor 模块的 JaCoCo 产物路径发生重叠');
+    if (new Set(artifactPaths).size !== artifactPaths.length) throw new Error('不同 Reactor 模块的构建产物路径发生重叠');
     const reportDirectories = modules.flatMap((module) => Object.values(module.tests)
         .filter((test) => test.required).map((test) => test.reportsDirectory));
     if (new Set(reportDirectories).size !== reportDirectories.length) throw new Error('必需测试阶段的报告目录发生重叠');

@@ -250,8 +250,11 @@ async function verifyPublicFixture(directory) {
     const rootPath = artifactPath('mimir-boot', 'pom');
     const pomPath = artifactPath('mimir-boot-starter-web', 'pom');
     const jarPath = artifactPath('mimir-boot-starter-web', 'jar');
+    const qualityPomPath = artifactPath('mimir-boot-code-quality', 'pom');
+    const qualityJarPath = artifactPath('mimir-boot-code-quality', 'jar');
     const pom = (artifact) => `<project xmlns="http://maven.apache.org/POM/4.0.0"><groupId>io.github.yggdrasil-labs</groupId><artifactId>${artifact}</artifactId><version>${version}</version></project>`;
-    const content = new Map([[rootPath, pom('mimir-boot')], [pomPath, pom('mimir-boot-starter-web')]]);
+    const content = new Map([[rootPath, pom('mimir-boot')], [pomPath, pom('mimir-boot-starter-web')],
+        [qualityPomPath, pom('mimir-boot-code-quality')]]);
     const jarContent = path.join(directory, 'jar-content');
     await mkdir(jarContent);
     await writeFile(path.join(jarContent, 'fixture.txt'), 'fixture');
@@ -259,6 +262,7 @@ async function verifyPublicFixture(directory) {
     await command('jar', ['--create', '--file', jar, '-C', jarContent, '.']);
     const validJar = await readFile(jar);
     content.set(jarPath, validJar);
+    content.set(qualityJarPath, validJar);
     let requests = [];
     let mode = 'normal';
     const server = createServer((request, response) => {
@@ -274,6 +278,7 @@ async function verifyPublicFixture(directory) {
         MIMIR_PUBLIC_VERIFY_ATTEMPTS: String(attempts), MIMIR_PUBLIC_VERIFY_INTERVAL_SECONDS: '0' });
     try {
         await run(1);
+        for (const file of [qualityPomPath, qualityJarPath]) assert.equal(requests.filter((item) => item === file).length, 1);
         for (const invalid of [pom('unexpected-artifact'), '<project>']) {
             content.set(rootPath, invalid);
             await assert.rejects(run(1));
