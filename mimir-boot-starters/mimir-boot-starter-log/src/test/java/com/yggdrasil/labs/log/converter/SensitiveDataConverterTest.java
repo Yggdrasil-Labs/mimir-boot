@@ -603,31 +603,28 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         int threadCount = 10;
         int iterations = 100;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
         List<Future<?>> futures = new java.util.ArrayList<>();
-
-        for (int i = 0; i < threadCount; i++) {
-            futures.add(
-                    executor.submit(
-                            () -> {
-                                try {
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                futures.add(
+                        executor.submit(
+                                () -> {
                                     for (int j = 0; j < iterations; j++) {
                                         String message = "password=123456" + j;
                                         String result = converter.maskSensitiveData(message);
-                                        assertNotNull(result);
-                                        assertTrue(result.contains("****"));
+                                        assertEquals("password=****", result);
                                     }
-                                } finally {
-                                    latch.countDown();
-                                }
-                            }));
-        }
+                                }));
+            }
 
-        assertTrue(latch.await(10, TimeUnit.SECONDS));
-        for (Future<?> future : futures) {
-            future.get(10, TimeUnit.SECONDS);
+            // 收集每个任务的异常，避免工作线程中的断言失败被线程池吞掉。
+            assertAll(
+                    "所有并发脱敏任务都应完成",
+                    futures.stream().map(future -> () -> future.get(10, TimeUnit.SECONDS)));
+        } finally {
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS), "脱敏线程池未按时停止");
         }
-        executor.shutdown();
     }
 
     @Test
@@ -635,32 +632,42 @@ class SensitiveDataConverterTest extends BaseUnitTest {
         // 测试并发更新模式
         int threadCount = 5;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
         List<Future<?>> futures = new java.util.ArrayList<>();
-
-        for (int i = 0; i < threadCount; i++) {
-            final int patternId = i;
-            futures.add(
-                    executor.submit(
-                            () -> {
-                                try {
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                final int patternId = i;
+                futures.add(
+                        executor.submit(
+                                () -> {
+                                    ready.countDown();
+                                    assertTrue(start.await(10, TimeUnit.SECONDS), "并发规则任务未收到起跑信号");
                                     SensitiveDataConverter.addCustomPattern(
                                             "pattern" + patternId + "\\d+");
                                     SensitiveDataConverter.reloadConfig();
-                                    String message = "pattern" + patternId + "123";
+                                    String message = "前缀 pattern" + patternId + "123 后缀";
                                     String result = converter.maskSensitiveData(message);
-                                    assertNotNull(result);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            }));
-        }
+                                    assertEquals("前缀 **** 后缀", result, "规则未生效：pattern" + patternId);
+                                    return null;
+                                }));
+            }
 
-        assertTrue(latch.await(10, TimeUnit.SECONDS));
-        for (Future<?> future : futures) {
-            future.get(10, TimeUnit.SECONDS);
+            assertTrue(ready.await(10, TimeUnit.SECONDS), "并发规则任务未全部就绪");
+            start.countDown();
+            assertAll(
+                    "所有并发规则任务都应完成",
+                    futures.stream().map(future -> () -> future.get(10, TimeUnit.SECONDS)));
+
+            // 全部更新结束后仍须同时保留五条规则，防止并发写入相互覆盖。
+            assertEquals(
+                    "**** **** **** **** ****",
+                    converter.maskSensitiveData(
+                            "pattern0123 pattern1123 pattern2123 pattern3123 pattern4123"));
+        } finally {
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS), "规则更新线程池未按时停止");
         }
-        executor.shutdown();
     }
 
     @Test

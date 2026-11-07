@@ -36,70 +36,18 @@ import ch.qos.logback.core.read.ListAppender;
 class MapperPackageDetectorTest extends BaseUnitTest {
 
     @Test
-    void testDetectMapperPackages_returnsSet() {
+    void detectsPackagesThroughPublicClasspathEntryPoint() {
         Set<String> packages = MapperPackageDetector.detectMapperPackages();
         assertNotNull(packages);
-        // 结果可能是空的（如果没有找到 mapper），也可能包含检测到的包
-    }
-
-    @Test
-    void testDetectMapperPackages_doesNotThrowException() {
-        assertDoesNotThrow(
-                () -> {
-                    Set<String> packages = MapperPackageDetector.detectMapperPackages();
-                    assertNotNull(packages);
-                });
-    }
-
-    @Test
-    void testDetectMapperPackages_handlesIOException() {
-        // 测试 IO 异常处理 - 由于是静态方法且依赖 classpath，我们主要验证不会抛出异常
-        assertDoesNotThrow(
-                () -> {
-                    Set<String> packages = MapperPackageDetector.detectMapperPackages();
-                    assertNotNull(packages);
-                });
-    }
-
-    @Test
-    void testDetectMapperPackages_handlesGeneralException() {
-        // 测试通用异常处理
-        assertDoesNotThrow(
-                () -> {
-                    Set<String> packages = MapperPackageDetector.detectMapperPackages();
-                    assertNotNull(packages);
-                });
-    }
-
-    @Test
-    void testDetectMapperPackages_includesAllPackages() {
-        // 验证检测到的包包括所有以 .mapper 结尾的包，包括默认包前缀下的包
-        // 这是为了确保所有 mapper 都能被正确扫描到，避免通配符匹配失败的问题
-        Set<String> packages = MapperPackageDetector.detectMapperPackages();
-
-        // 验证所有包都添加了通配符后缀
-        for (String pkg : packages) {
-            assertTrue(
-                    pkg.endsWith(MybatisConstants.PACKAGE_WILDCARD_SUFFIX),
-                    "检测到的包应该包含通配符后缀: " + pkg);
-            // 移除通配符后缀后，包应该以 .mapper 结尾
-            String packageWithoutWildcard =
-                    pkg.replace(MybatisConstants.PACKAGE_WILDCARD_SUFFIX, "");
-            assertTrue(
-                    packageWithoutWildcard.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX),
-                    "包应该以 .mapper 结尾: " + pkg);
-        }
-    }
-
-    @Test
-    void testDetectMapperPackages_addsWildcardSuffix() {
-        // 验证检测到的包都添加了通配符后缀
-        Set<String> packages = MapperPackageDetector.detectMapperPackages();
-
-        for (String pkg : packages) {
-            assertTrue(
-                    pkg.endsWith(MybatisConstants.PACKAGE_WILDCARD_SUFFIX),
-                    "检测到的包应该包含通配符后缀: " + pkg);
+        for (String packageName : packages) {
+            assertTrue(packageName.endsWith(MybatisConstants.PACKAGE_WILDCARD_SUFFIX));
+            String basePackage =
+                    packageName.substring(
+                            0,
+                            packageName.length()
+                                    - MybatisConstants.PACKAGE_WILDCARD_SUFFIX.length());
+            assertTrue(basePackage.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX));
+            assertFalse(basePackage.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX + "."));
         }
     }
 
@@ -174,6 +122,48 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         } finally {
             LogTestUtils.cleanupLogger(MapperPackageDetector.class.getName(), appender);
         }
+    }
+
+    @Test
+    void returnsEmptySetForNoResources() {
+        assertEquals(Set.of(), MapperPackageDetector.detectMapperPackages(new Resource[0]));
+    }
+
+    @Test
+    void skipsResourcesWithIoOrRuntimeUrlFailures() {
+        Resource ioFailure = resourceWithUrlFailure("IO failure", new IOException("unavailable"));
+        Resource runtimeFailure =
+                resourceWithUrlFailure("runtime failure", new IllegalStateException("broken"));
+
+        assertEquals(
+                Set.of(), MapperPackageDetector.detectMapperPackages(ioFailure, runtimeFailure));
+    }
+
+    private static Resource resourceWithUrlFailure(String description, Exception failure) {
+        return new AbstractResource() {
+            @Override
+            public String getDescription() {
+                return description;
+            }
+
+            @Override
+            public InputStream getInputStream() {
+                return InputStream.nullInputStream();
+            }
+
+            @Override
+            public URL getURL() throws IOException {
+                if (failure instanceof IOException ioException) {
+                    throw ioException;
+                }
+                throw (RuntimeException) failure;
+            }
+
+            @Override
+            public boolean isReadable() {
+                return true;
+            }
+        };
     }
 
     private static Resource resource(String description, String url) throws Exception {
@@ -598,44 +588,6 @@ class MapperPackageDetectorTest extends BaseUnitTest {
     }
 
     @Test
-    void testDetectMapperPackages_withPackageNotEndingWithMapper() {
-        // 测试包名不以 .mapper 结尾的情况
-        // 由于我们无法直接控制检测到的包，这个测试主要验证逻辑正确性
-        Set<String> packages = MapperPackageDetector.detectMapperPackages();
-        assertNotNull(packages);
-
-        // 验证所有包都以 .mapper 结尾（在添加通配符之前）
-        // 这说明第 62 行的 endsWith 检查正常工作，过滤掉了不以 .mapper 结尾的包
-        for (String pkg : packages) {
-            String withoutWildcard = pkg.replace(MybatisConstants.PACKAGE_WILDCARD_SUFFIX, "");
-            assertTrue(
-                    withoutWildcard.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX),
-                    "包应该以 .mapper 结尾: " + pkg);
-        }
-    }
-
-    @Test
-    void testDetectMapperPackages_withDefaultPackagePrefix() {
-        // 测试检测到的包以默认包前缀开头的情况
-        // 根据实现，默认包前缀的包会被过滤（不添加到结果中）
-        Set<String> packages = MapperPackageDetector.detectMapperPackages();
-        assertNotNull(packages);
-
-        // 验证所有包都不以默认包前缀开头（因为会被过滤）
-        for (String pkg : packages) {
-            String withoutWildcard = pkg.replace(MybatisConstants.PACKAGE_WILDCARD_SUFFIX, "");
-            // 根据实现，默认包前缀的包会被过滤，所以结果中不应该包含
-            assertFalse(
-                    withoutWildcard.startsWith(MybatisConstants.DEFAULT_PACKAGE_PREFIX + "."),
-                    "默认包前缀的包应该被过滤: " + pkg);
-            // 但所有包都应该以 .mapper 结尾
-            assertTrue(
-                    withoutWildcard.endsWith(MybatisConstants.MAPPER_PACKAGE_SUFFIX),
-                    "包应该以 .mapper 结尾: " + pkg);
-        }
-    }
-
-    @Test
     void testDetectMapperPackages_filtersDefaultPackagePrefix() throws Exception {
         // 测试默认包前缀过滤逻辑
         // 通过反射测试 extractPackageFromUrl，然后验证过滤逻辑
@@ -744,15 +696,6 @@ class MapperPackageDetectorTest extends BaseUnitTest {
         // 应该使用最后一个 "!/" 之后的部分
         assertNotNull(result);
         assertTrue(result.contains("com/example"));
-    }
-
-    @Test
-    void testDetectMapperPackages_withEmptyResult() {
-        // 测试在没有找到任何 mapper 包时返回空集合
-        Set<String> packages = MapperPackageDetector.detectMapperPackages();
-        assertNotNull(packages);
-        // 结果可能是空的（如果没有找到 mapper），这是正常的
-        // 我们主要验证方法不会抛出异常
     }
 
     @Test

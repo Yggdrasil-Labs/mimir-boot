@@ -2,10 +2,14 @@ package com.yggdrasil.labs.test.base;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
+
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.web.servlet.MockMvc;
 
 import com.yggdrasil.labs.test.config.TestConfiguration;
 import com.yggdrasil.labs.test.util.TestUtils;
@@ -19,8 +23,11 @@ import com.yggdrasil.labs.test.util.TestUtils;
  * @since 1.0.0
  */
 @SpringBootTest(classes = TestConfiguration.class)
-@ActiveProfiles("test")
 class BaseWebTestTest extends BaseWebTest {
+
+    @Autowired private ApplicationContext applicationContext;
+
+    @Autowired private MockMvc mockMvc;
 
     private boolean setUpCalled = false;
 
@@ -45,17 +52,12 @@ class BaseWebTestTest extends BaseWebTest {
 
     @Test
     void testBaseWebTest_MockMvc() {
-        // 验证 MockMvc 已自动配置
-        // 注意：如果没有实际的 Controller，MockMvc 可能为 null
-        // 这里主要验证配置是否正确
-        // @AutoConfigureMockMvc 注解确保 MockMvc 会被配置
-        assertNotNull(this, "测试实例不应为 null");
+        assertNotNull(mockMvc, "BaseWebTest 应自动配置 MockMvc");
     }
 
     @Test
     void testBaseWebTest_SpringContext() {
-        // 验证 Spring 上下文已加载
-        assertNotNull(this, "测试实例不应为 null");
+        assertNotNull(applicationContext, "Spring ApplicationContext 应已注入");
     }
 
     @Test
@@ -69,8 +71,10 @@ class BaseWebTestTest extends BaseWebTest {
 
     @Test
     void testBaseWebTest_Profile() {
-        // 验证 test profile 已激活
-        assertNotNull(this, "测试实例不应为 null");
+        assertTrue(
+                Arrays.asList(applicationContext.getEnvironment().getActiveProfiles())
+                        .contains("test"),
+                "BaseIntegrationTest 应通过继承激活 test profile");
     }
 
     @Test

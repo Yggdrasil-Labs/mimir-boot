@@ -110,6 +110,20 @@ class DubboAutoConfigurationTest {
     }
 
     @Test
+    void bindsContextPropagationSwitchWithoutDisablingAdapter() {
+        runner.withPropertyValues("mimir.boot.dubbo.context-propagation-enabled=false")
+                .run(
+                        context -> {
+                            assertThat(context).hasNotFailed();
+                            DubboProperties bound = context.getBean(DubboProperties.class);
+                            assertThat(bound.isEnabled()).isTrue();
+                            assertThat(bound.isContextPropagationEnabled()).isFalse();
+                            assertThat(context.getBean(RpcDubboSupportHolder.class).getProperties())
+                                    .isSameAs(bound);
+                        });
+    }
+
+    @Test
     void runsAfterRpcCoreAutoConfiguration() {
         AutoConfiguration autoConfiguration =
                 DubboAutoConfiguration.class.getAnnotation(AutoConfiguration.class);

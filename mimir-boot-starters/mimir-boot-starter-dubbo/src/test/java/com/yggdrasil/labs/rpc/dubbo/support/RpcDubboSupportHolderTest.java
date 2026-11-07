@@ -1,19 +1,16 @@
 package com.yggdrasil.labs.rpc.dubbo.support;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,13 +86,6 @@ class RpcDubboSupportHolderTest {
         assertSame(hookChain, snapshot.hookChain());
         assertSame(tracerBridge, snapshot.tracerBridge());
         assertSame(properties, snapshot.properties());
-    }
-
-    @Test
-    void shouldUseThreadSafeSnapshotStorage() throws NoSuchFieldException {
-        Field snapshotField = RpcDubboSupportHolder.class.getDeclaredField("SNAPSHOT");
-
-        assertEquals(AtomicReference.class, snapshotField.getType());
     }
 
     @Test

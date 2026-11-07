@@ -1,30 +1,50 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
+import static com.yggdrasil.labs.common.constant.CommonConstants.REQUEST_ID;
+import static com.yggdrasil.labs.common.constant.CommonConstants.TRACE_ID;
+import static com.yggdrasil.labs.common.constant.HttpHeaderConstants.REQUEST_ID_HEADER;
+import static com.yggdrasil.labs.common.constant.HttpHeaderConstants.TRACE_ID_HEADER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.rpc.AppResponse;
 import org.apache.dubbo.rpc.AsyncRpcResult;
+import org.apache.dubbo.rpc.FutureContext;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
+import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcInvocation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.slf4j.MDC;
 
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallResult;
 import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
+import com.yggdrasil.labs.rpc.core.tracing.MdcRpcTracerBridge;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTraceScope;
 import com.yggdrasil.labs.rpc.core.tracing.RpcTracerBridge;
 import com.yggdrasil.labs.rpc.dubbo.config.DubboProperties;
@@ -463,6 +483,24 @@ class RpcDubboFilterTest {
     }
 
     @Test
+    void shouldCompleteFailureLifecycleWhenAsyncFutureCompletesExceptionally() throws Exception {
+        RuntimeException primary = new IllegalStateException("async future failure");
+
+        Throwable error =
+                assertProviderAsyncFailureLifecycle(
+                        future -> future.completeExceptionally(primary));
+
+        assertSame(primary, error);
+    }
+
+    @Test
+    void shouldCompleteFailureLifecycleWhenAsyncFutureIsCancelled() throws Exception {
+        Throwable error = assertProviderAsyncFailureLifecycle(future -> future.cancel(false));
+
+        assertInstanceOf(CancellationException.class, error);
+    }
+
+    @Test
     void shouldNotInvokeHooksWhenProviderExtractionFailsBeforeInvocationOpens() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
@@ -506,28 +544,6 @@ class RpcDubboFilterTest {
         when(invoker.invoke(invocation)).thenReturn(result);
         when(invocation.getMethodName()).thenReturn("m1");
         when(invocation.getObjectAttachments()).thenReturn(null);
-        when(tracerBridge.inject(any())).thenReturn(Map.of("x-trace-id", "t1"));
-
-        Result actual = filter.invoke(invoker, invocation);
-
-        assertSame(result, actual);
-        verify(hook).before(any());
-        verify(hook).after(any(), any(RpcCallResult.class));
-        verify(hook).cleanup(any());
-    }
-
-    @Test
-    void shouldHandleMixedAttachmentTypes() {
-        Invocation invocation = mock(Invocation.class);
-        Invoker<?> invoker = mockInvoker();
-        Result result = mock(Result.class);
-        when(invoker.invoke(invocation)).thenReturn(result);
-        when(invocation.getMethodName()).thenReturn("m1");
-        Map<String, Object> attachments = new HashMap<>();
-        attachments.put("k1", "string");
-        attachments.put("k2", 123);
-        attachments.put("k3", true);
-        when(invocation.getObjectAttachments()).thenReturn(attachments);
         when(tracerBridge.inject(any())).thenReturn(Map.of("x-trace-id", "t1"));
 
         Result actual = filter.invoke(invoker, invocation);
@@ -627,7 +643,7 @@ class RpcDubboFilterTest {
     }
 
     @Test
-    void shouldHandleMultipleAttachments() {
+    void shouldConvertStringNumericAndBooleanAttachmentsToMetadata() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker();
         Result result = mock(Result.class);
@@ -685,6 +701,112 @@ class RpcDubboFilterTest {
         assertSame(beforeFailure, thrown);
         verify(invoker, never()).invoke(any());
         org.junit.jupiter.api.Assertions.assertEquals(1, cleanupCalls.get());
+    }
+
+    private Throwable assertProviderAsyncFailureLifecycle(
+            Consumer<CompletableFuture<AppResponse>> completion) throws Exception {
+        // AsyncRpcResult 会迁移调用线程上下文并登记 Future，测试结束时一并恢复。
+        RpcContext.RestoreContext previousRpcContext = new RpcContext.RestoreContext();
+        var previousCancellationContext = RpcContext.getCancellationContext();
+        CompletableFuture<?> previousFuture = FutureContext.getContext().getCompletableFuture();
+        Map<String, String> previousMdc = MDC.getCopyOfContextMap();
+        ExecutorService completionWorker = Executors.newSingleThreadExecutor();
+        try {
+            RpcInvocation invocation = new RpcInvocation();
+            invocation.setMethodName("asyncFailure");
+            invocation.setObjectAttachments(
+                    Map.of(
+                            TRACE_ID_HEADER,
+                            "upstream-trace",
+                            REQUEST_ID_HEADER,
+                            "upstream-request"));
+            Invoker<?> invoker = mockInvoker(CommonConstants.PROVIDER_SIDE);
+            CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+            Result result = new AsyncRpcResult(responseFuture, invocation);
+            when(invoker.invoke(invocation)).thenReturn(result);
+            RpcDubboSupportHolder.set(hookChain, new MdcRpcTracerBridge(), properties);
+            List<Map<String, String>> terminalHookMdc = new ArrayList<>();
+            doAnswer(
+                            call -> {
+                                terminalHookMdc.add(MDC.getCopyOfContextMap());
+                                return null;
+                            })
+                    .when(hook)
+                    .onError(any(), any());
+            doAnswer(
+                            call -> {
+                                terminalHookMdc.add(MDC.getCopyOfContextMap());
+                                return null;
+                            })
+                    .when(hook)
+                    .cleanup(any());
+            Map<String, String> callerMdc =
+                    Map.of(
+                            TRACE_ID,
+                            "caller-trace",
+                            REQUEST_ID,
+                            "caller-request",
+                            "marker",
+                            "caller");
+            Map<String, String> workerMdc =
+                    Map.of(
+                            TRACE_ID,
+                            "worker-trace",
+                            REQUEST_ID,
+                            "worker-request",
+                            "marker",
+                            "worker");
+            MDC.setContextMap(callerMdc);
+
+            Result actual = filter.invoke(invoker, invocation);
+
+            assertSame(result, actual);
+            assertEquals(callerMdc, MDC.getCopyOfContextMap());
+            verify(hook, times(1)).before(any());
+            verify(hook, never()).after(any(), any());
+            verify(hook, never()).onError(any(), any());
+            verify(hook, never()).cleanup(any());
+
+            Map<String, String> restoredWorkerMdc =
+                    completionWorker
+                            .submit(
+                                    () -> {
+                                        MDC.setContextMap(workerMdc);
+                                        completion.accept(responseFuture);
+                                        return MDC.getCopyOfContextMap();
+                                    })
+                            .get(5, TimeUnit.SECONDS);
+
+            assertEquals(workerMdc, restoredWorkerMdc);
+            assertEquals(callerMdc, MDC.getCopyOfContextMap());
+            ArgumentCaptor<RpcCallResult> resultCaptor =
+                    ArgumentCaptor.forClass(RpcCallResult.class);
+            verify(hook, times(1)).onError(any(), resultCaptor.capture());
+            verify(hook, times(1)).cleanup(any());
+            verify(hook, never()).after(any(), any());
+            assertFalse(resultCaptor.getValue().isSuccess());
+            Throwable error = resultCaptor.getValue().getError().orElseThrow();
+            // Dubbo 的完成回调返回依赖阶段，取消也经 ExecutionException 保留原始异常。
+            ExecutionException thrown = assertThrows(ExecutionException.class, actual::get);
+            assertSame(error, thrown.getCause());
+            Map<String, String> expectedHookMdc = new HashMap<>(workerMdc);
+            expectedHookMdc.put(TRACE_ID, "upstream-trace");
+            expectedHookMdc.put(REQUEST_ID, "upstream-request");
+            assertEquals(List.of(expectedHookMdc, expectedHookMdc), terminalHookMdc);
+            return error;
+        } finally {
+            previousRpcContext.restore();
+            RpcContext.restoreCancellationContext(previousCancellationContext);
+            FutureContext.getContext().setFuture(previousFuture);
+            if (previousMdc == null) {
+                MDC.clear();
+            } else {
+                MDC.setContextMap(previousMdc);
+            }
+            RpcDubboSupportHolder.set(hookChain, tracerBridge, properties);
+            completionWorker.shutdownNow();
+            assertTrue(completionWorker.awaitTermination(5, TimeUnit.SECONDS), "异步完成线程未及时结束");
+        }
     }
 
     private Invoker<?> mockInvoker() {

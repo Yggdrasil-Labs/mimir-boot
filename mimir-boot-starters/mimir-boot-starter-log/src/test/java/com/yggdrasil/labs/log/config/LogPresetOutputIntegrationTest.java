@@ -32,6 +32,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
 import ch.qos.logback.classic.AsyncAppender;
+import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 
@@ -62,6 +63,9 @@ class LogPresetOutputIntegrationTest {
         try (ConfigurableApplicationContext context =
                 start(SERVER, "--spring.profiles.active=prod")) {
             emitAll();
+        } finally {
+            // 关闭 Spring 上下文不会排空 Logback 异步队列，统计出口前须等待日志停止。
+            ((LoggerContext) LoggerFactory.getILoggerFactory()).stop();
         }
         Path dir = logPath.resolve("route-app");
 

@@ -44,6 +44,13 @@
     </build>
 
     <dependencies>
+        <!-- Web 测试基类的自测需要真实 MVC 环境，不向测试 Starter 的消费者传递。 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- 架构规则按需使用，不向既有消费者传递 ArchUnit -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>

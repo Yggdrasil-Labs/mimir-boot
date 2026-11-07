@@ -255,6 +255,8 @@ FilterChain chain = FilterChainMockBuilder.create()
 
 #### BaseWebTest
 
+使用方应已具备 Spring MVC 运行时，例如通过 `spring-boot-starter-web` 引入。
+
 Web 测试基类，提供：
 
 - 自动配置 Spring Boot 测试环境

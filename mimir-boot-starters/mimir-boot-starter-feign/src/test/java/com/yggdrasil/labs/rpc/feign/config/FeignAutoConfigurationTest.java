@@ -117,6 +117,19 @@ class FeignAutoConfigurationTest {
     }
 
     @Test
+    void bindsContextPropagationSwitchWithoutDisablingAdapter() {
+        runner.withPropertyValues("mimir.boot.feign.context-propagation-enabled=false")
+                .run(
+                        context -> {
+                            assertThat(context).hasNotFailed();
+                            FeignProperties bound = context.getBean(FeignProperties.class);
+                            assertThat(bound.isEnabled()).isTrue();
+                            assertThat(bound.isContextPropagationEnabled()).isFalse();
+                            assertThat(context).hasSingleBean(RpcFeignCapability.class);
+                        });
+    }
+
+    @Test
     void runsAfterRpcCoreAutoConfiguration() {
         AutoConfiguration autoConfiguration =
                 FeignAutoConfiguration.class.getAnnotation(AutoConfiguration.class);

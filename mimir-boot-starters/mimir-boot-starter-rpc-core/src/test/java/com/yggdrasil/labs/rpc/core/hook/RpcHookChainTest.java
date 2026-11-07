@@ -106,6 +106,49 @@ class RpcHookChainTest {
     }
 
     @Test
+    void shouldOnlyCleanEnteredHooksInReverseOrderWhenClosedWithoutResult() {
+        List<String> events = new ArrayList<>();
+        RpcHook first = recordingHook("first", events, null, null);
+        RpcHook second =
+                recordingHook("second", events, null, new IllegalStateException("cleanup failure"));
+        RpcHookInvocation invocation = new RpcHookChain(List.of(first, second)).open(context());
+
+        invocation.before();
+        Assertions.assertDoesNotThrow(invocation::close);
+        invocation.close();
+        invocation.completeSuccess(RpcCallResult.success(Duration.ZERO));
+        RuntimeException lateFailure = new RuntimeException("late failure");
+        invocation.completeFailure(RpcCallResult.failure(Duration.ZERO, lateFailure), lateFailure);
+
+        Assertions.assertEquals(
+                List.of("first-before", "second-before", "second-cleanup", "first-cleanup"),
+                events);
+        Assertions.assertTrue(invocation.isClosed());
+    }
+
+    @Test
+    void shouldOnlyCleanEnteredAsyncHooksInReverseOrderWhenCompletedWithoutResult() {
+        List<String> events = new ArrayList<>();
+        RpcHook first = recordingHook("first", events, null, null);
+        RpcHook second =
+                recordingHook("second", events, null, new IllegalStateException("cleanup failure"));
+        RpcAsyncHookInvocation invocation =
+                new RpcHookChain(List.of(first, second)).openAsync(context());
+
+        invocation.before();
+        Assertions.assertDoesNotThrow(invocation::completeWithoutResult);
+        invocation.completeWithoutResult();
+        invocation.completeSuccess(RpcCallResult.success(Duration.ZERO));
+        RuntimeException lateFailure = new RuntimeException("late failure");
+        invocation.completeFailure(RpcCallResult.failure(Duration.ZERO, lateFailure), lateFailure);
+
+        Assertions.assertEquals(
+                List.of("first-before", "second-before", "second-cleanup", "first-cleanup"),
+                events);
+        Assertions.assertTrue(invocation.isClosed());
+    }
+
+    @Test
     void shouldCleanEnteredHooksInReverseOrderWhenBeforeFails() {
         List<String> events = new ArrayList<>();
         RuntimeException primary = new RuntimeException("before failure");
@@ -165,29 +208,35 @@ class RpcHookChainTest {
         CountDownLatch go = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(3);
         try {
-            executor.submit(
-                    () ->
-                            awaitAndRun(
-                                    ready,
-                                    go,
-                                    () ->
-                                            first.completeSuccess(
-                                                    RpcCallResult.success(Duration.ZERO))));
-            executor.submit(
-                    () ->
-                            awaitAndRun(
-                                    ready,
-                                    go,
-                                    () ->
-                                            first.completeFailure(
-                                                    RpcCallResult.failure(
-                                                            Duration.ZERO,
-                                                            new RuntimeException("failure")),
-                                                    new RuntimeException("failure"))));
-            executor.submit(() -> awaitAndRun(ready, go, first::close));
+            var successFuture =
+                    executor.submit(
+                            () ->
+                                    awaitAndRun(
+                                            ready,
+                                            go,
+                                            () ->
+                                                    first.completeSuccess(
+                                                            RpcCallResult.success(Duration.ZERO))));
+            var failureFuture =
+                    executor.submit(
+                            () ->
+                                    awaitAndRun(
+                                            ready,
+                                            go,
+                                            () ->
+                                                    first.completeFailure(
+                                                            RpcCallResult.failure(
+                                                                    Duration.ZERO,
+                                                                    new RuntimeException(
+                                                                            "failure")),
+                                                            new RuntimeException("failure"))));
+            var closeFuture = executor.submit(() -> awaitAndRun(ready, go, first::close));
             Assertions.assertTrue(ready.await(5, TimeUnit.SECONDS));
             go.countDown();
             executor.shutdown();
+            successFuture.get(5, TimeUnit.SECONDS);
+            failureFuture.get(5, TimeUnit.SECONDS);
+            closeFuture.get(5, TimeUnit.SECONDS);
             Assertions.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         } finally {
             executor.shutdownNow();
@@ -309,29 +358,33 @@ class RpcHookChainTest {
         CountDownLatch go = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            executor.submit(
-                    () ->
-                            awaitAndRun(
-                                    ready,
-                                    go,
-                                    () ->
-                                            first.completeFailure(
-                                                    RpcCallResult.failure(
-                                                            Duration.ZERO, firstPrimary),
-                                                    firstPrimary)));
-            executor.submit(
-                    () ->
-                            awaitAndRun(
-                                    ready,
-                                    go,
-                                    () ->
-                                            second.completeFailure(
-                                                    RpcCallResult.failure(
-                                                            Duration.ZERO, secondPrimary),
-                                                    secondPrimary)));
+            var firstFuture =
+                    executor.submit(
+                            () ->
+                                    awaitAndRun(
+                                            ready,
+                                            go,
+                                            () ->
+                                                    first.completeFailure(
+                                                            RpcCallResult.failure(
+                                                                    Duration.ZERO, firstPrimary),
+                                                            firstPrimary)));
+            var secondFuture =
+                    executor.submit(
+                            () ->
+                                    awaitAndRun(
+                                            ready,
+                                            go,
+                                            () ->
+                                                    second.completeFailure(
+                                                            RpcCallResult.failure(
+                                                                    Duration.ZERO, secondPrimary),
+                                                            secondPrimary)));
             Assertions.assertTrue(ready.await(5, TimeUnit.SECONDS));
             go.countDown();
             executor.shutdown();
+            firstFuture.get(5, TimeUnit.SECONDS);
+            secondFuture.get(5, TimeUnit.SECONDS);
             Assertions.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         } finally {
             executor.shutdownNow();
@@ -387,6 +440,11 @@ class RpcHookChainTest {
                 if (beforeFailure != null) {
                     throw beforeFailure;
                 }
+            }
+
+            @Override
+            public void after(RpcCallContext context, RpcCallResult result) {
+                events.add(name + "-after");
             }
 
             @Override

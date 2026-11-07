@@ -2,10 +2,13 @@ package com.yggdrasil.labs.test.base;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
+
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.ApplicationContext;
 
 import com.yggdrasil.labs.test.config.TestConfiguration;
 import com.yggdrasil.labs.test.util.TestUtils;
@@ -19,8 +22,9 @@ import com.yggdrasil.labs.test.util.TestUtils;
  * @since 1.0.0
  */
 @SpringBootTest(classes = TestConfiguration.class)
-@ActiveProfiles("test")
 class BaseIntegrationTestTest extends BaseIntegrationTest {
+
+    @Autowired private ApplicationContext applicationContext;
 
     private boolean setUpCalled = false;
 
@@ -45,9 +49,7 @@ class BaseIntegrationTestTest extends BaseIntegrationTest {
 
     @Test
     void testBaseIntegrationTest_SpringContext() {
-        // 验证 Spring 上下文已加载
-        // BaseIntegrationTest 使用 @SpringBootTest，所以 Spring 上下文应该可用
-        assertNotNull(this, "测试实例不应为 null");
+        assertNotNull(applicationContext, "Spring ApplicationContext 应已注入");
     }
 
     @Test
@@ -61,9 +63,10 @@ class BaseIntegrationTestTest extends BaseIntegrationTest {
 
     @Test
     void testBaseIntegrationTest_Profile() {
-        // 验证 test profile 已激活
-        // 这通过 @ActiveProfiles("test") 实现
-        assertNotNull(this, "测试实例不应为 null");
+        assertTrue(
+                Arrays.asList(applicationContext.getEnvironment().getActiveProfiles())
+                        .contains("test"),
+                "BaseIntegrationTest 应通过继承激活 test profile");
     }
 
     @Test

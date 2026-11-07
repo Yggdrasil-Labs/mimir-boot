@@ -351,8 +351,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusInterceptor interceptor =
                 cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
 
-        // 通过反射获取内部拦截器列表（尝试多个可能的字段名）
-        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+        List<InnerInterceptor> innerInterceptors = interceptor.getInterceptors();
 
         assertNotNull(innerInterceptors);
         assertFalse(innerInterceptors.isEmpty());
@@ -369,45 +368,6 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         assertTrue(hasOptimisticLocker, "乐观锁拦截器应该总是被添加");
     }
 
-    /** 通过反射获取 MybatisPlusInterceptor 的内部拦截器列表 尝试多个可能的字段名以兼容不同版本 */
-    @SuppressWarnings("unchecked")
-    private List<InnerInterceptor> getInnerInterceptors(MybatisPlusInterceptor interceptor)
-            throws Exception {
-        // 尝试常见的字段名
-        String[] possibleFieldNames = {"interceptors", "interceptorList", "innerInterceptors"};
-
-        for (String fieldName : possibleFieldNames) {
-            try {
-                java.lang.reflect.Field field =
-                        MybatisPlusInterceptor.class.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                Object value = field.get(interceptor);
-                if (value instanceof List) {
-                    return (List<InnerInterceptor>) value;
-                }
-            } catch (NoSuchFieldException e) {
-                // 继续尝试下一个字段名
-            }
-        }
-
-        // 如果所有字段名都失败，尝试查找所有 List 类型的字段
-        java.lang.reflect.Field[] fields = MybatisPlusInterceptor.class.getDeclaredFields();
-        for (java.lang.reflect.Field field : fields) {
-            if (List.class.isAssignableFrom(field.getType())) {
-                field.setAccessible(true);
-                Object value = field.get(interceptor);
-                if (value instanceof List && !((List<?>) value).isEmpty()) {
-                    Object first = ((List<?>) value).get(0);
-                    if (first instanceof InnerInterceptor) {
-                        return (List<InnerInterceptor>) value;
-                    }
-                }
-            }
-        }
-
-        throw new IllegalStateException("无法通过反射获取 MybatisPlusInterceptor 的内部拦截器列表");
-    }
-
     @Test
     void testPaginationInterceptorMayBeAdded() throws Exception {
         // 验证分页拦截器在类存在时可能被添加（如果 MyBatis-Plus 版本支持）
@@ -417,8 +377,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
         MybatisPlusInterceptor interceptor =
                 cfg.mybatisPlusInterceptor(props, createEmptyBeanFactory());
 
-        // 通过反射获取内部拦截器列表
-        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+        List<InnerInterceptor> innerInterceptors = interceptor.getInterceptors();
 
         assertNotNull(innerInterceptors);
         // 至少应该有乐观锁拦截器
@@ -469,8 +428,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
         MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
 
-        // 通过反射获取内部拦截器列表
-        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+        List<InnerInterceptor> innerInterceptors = interceptor.getInterceptors();
 
         assertNotNull(innerInterceptors);
         // 应该至少包含：分页（可选）+ 乐观锁 + 2个自定义拦截器
@@ -494,8 +452,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
         MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
 
-        // 通过反射获取内部拦截器列表
-        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+        List<InnerInterceptor> innerInterceptors = interceptor.getInterceptors();
 
         assertNotNull(innerInterceptors);
 
@@ -703,8 +660,7 @@ class MybatisPlusAutoConfigurationTest extends BaseUnitTest {
 
         MybatisPlusInterceptor interceptor = cfg.mybatisPlusInterceptor(props, beanFactory);
 
-        // 通过反射获取内部拦截器列表
-        List<InnerInterceptor> innerInterceptors = getInnerInterceptors(interceptor);
+        List<InnerInterceptor> innerInterceptors = interceptor.getInterceptors();
 
         assertNotNull(innerInterceptors);
         // 应该只包含乐观锁拦截器（可能还有分页拦截器）
