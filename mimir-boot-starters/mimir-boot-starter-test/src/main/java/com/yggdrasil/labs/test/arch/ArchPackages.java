@@ -17,7 +17,7 @@ final class ArchPackages {
     static String requirePackage(String value, String parameter) {
         if (value == null
                 || !value.matches(
-                        "[\\p{javaJavaIdentifierStart}][\\p{javaJavaIdentifierPart}]*(\\.[\\p{javaJavaIdentifierStart}][\\p{javaJavaIdentifierPart}]*)*")) {
+                        "[\\p{javaJavaIdentifierStart}][\\p{javaJavaIdentifierPart}]*(\\.[\\p{javaJavaIdentifierStart}][\\p{javaJavaIdentifierPart}]*)*+")) {
             throw new IllegalArgumentException(parameter + " 必须是非空的完整包名");
         }
         return value;
