@@ -2,6 +2,7 @@ package com.yggdrasil.labs.log.web;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -660,7 +661,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
         assertTrue(event.getFormattedMessage().contains("/api/search"));
-        assertTrue(!event.getFormattedMessage().contains("token=secret-token"));
+        assertFalse(event.getFormattedMessage().contains("token=secret-token"));
     }
 
     @Test

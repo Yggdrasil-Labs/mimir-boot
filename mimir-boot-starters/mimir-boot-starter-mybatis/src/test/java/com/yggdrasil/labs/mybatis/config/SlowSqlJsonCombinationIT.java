@@ -148,7 +148,7 @@ class SlowSqlJsonCombinationIT {
                                 context -> context.getEnvironment().setActiveProfiles(profile));
         runner.run(
                 context -> {
-                    assertTrue(context.getStartupFailure() == null);
+                    assertNull(context.getStartupFailure());
                     var interceptors = context.getBeansOfType(InnerInterceptor.class);
                     if (Boolean.FALSE.equals(explicit)) {
                         assertTrue(interceptors.isEmpty());

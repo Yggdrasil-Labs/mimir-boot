@@ -1,7 +1,7 @@
 package com.yggdrasil.labs.log.config;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.util.HashMap;
@@ -25,8 +25,8 @@ class LogbackMaskResourceTest extends BaseUnitTest {
                     DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resource);
             Map<String, String> patterns = patternsByAppender(document);
 
-            assertEquals(true, patterns.get("FILE_ACCESS").contains("%mask"));
-            assertEquals(true, patterns.get("FILE_SQL").contains("%mask"));
+            assertTrue(patterns.get("FILE_ACCESS").contains("%mask"));
+            assertTrue(patterns.get("FILE_SQL").contains("%mask"));
         }
     }
 
