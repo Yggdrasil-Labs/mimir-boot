@@ -97,7 +97,7 @@ Then 不报告重复。
 
 Given 两个测试类含 300 个 token 的相同片段；注解处理器生成的两个类也含 300 个 token 的相同片段
 When 执行 CPD 检查
-Then 两处均不报告重复。
+Then `target/mimir-quality/tests/cpd.xml` 记录测试重复，生产报告不包含该片段；生成源码仍不报告。
 
 ## 行为 CQ-04：模式与独立开关
 
@@ -139,7 +139,7 @@ Then 构建失败并指出该文件与行号。
 
 Given 测试源码违反[测试规则集](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)中的任意一条规则
 When 执行 `./mvnw -Pci clean verify`
-Then 本仓库构建失败；测试源码只应用该规则集，生成源码不检查，CPD 仍只检查 main。
+Then 本仓库构建失败；测试源码只应用该规则集，生成源码不检查，CPD 按主、测试源码分别比较。
 
 ### 场景：下游测试违规默认只报告
 
@@ -285,7 +285,7 @@ Then 主源码使用下游规则，原 41 条生产规则不生效；测试规�
 ### 场景：单独运行检查
 
 Given 下游开启对应工具，且默认 `target/pmd.xml` / `target/cpd.xml` 留有自身官方插件报告
-When 用独立插件的完整坐标调用 `check@pmd`、`test-check@test-pmd` 或 `cpd-check@cpd`
+When 用独立插件的完整坐标调用 `check@pmd`、`test-check@test-pmd`、`cpd-check@cpd` 或 `test-cpd-check@test-cpd`
 Then 只判定本次生成的 `target/mimir-quality/` 下对应报告；不把默认目录报告当作 Mimir 检查结果。
 
 ### 场景：覆盖规则制品版本
@@ -319,7 +319,7 @@ And 其规则集、`minimumTokens` 等其余有效配置与升级前相同。
 
 ### 场景：恢复升级前行为
 
-Given 同上下游，在 POM 中设置 `pmd.skip=false`、`cpd.skip=false`、`pmd.failOnViolation=true`、`cpd.failOnViolation=true`，并把独立 `mimir-boot-code-quality` 插件的 `pmd`、`cpd` execution 的 `phase` 设为 `none`
+Given 同上下游，在 POM 中设置 `pmd.skip=false`、`cpd.skip=false`、`pmd.failOnViolation=true`、`cpd.failOnViolation=true`，并把独立 `mimir-boot-code-quality` 插件的 `pmd`、`test-pmd`、`cpd`、`test-cpd` execution 的 `phase` 设为 `none`
 When 以默认模式执行 `verify`，源码含一处违反下游自身规则的问题
 Then 只有下游 execution 运行，并且构建失败，与升级前一致
 And 若只设置属性、不关闭 Mimir execution，Mimir execution 也会执行，并按严格模式报告 Mimir 规则的违规。Parent README 与版本升级说明须给出完整配置。
@@ -335,5 +335,5 @@ Then 其开关、引擎版本与执行结果与升级前相同（Parent 不声�
 - 运行时基线：全部检查在 JDK 17 上可运行；本规格不要求更高构建 JDK。
 - 下游默认模式不执行两类新检查；但 PMD 插件在 `build/plugins` 中声明并绑定 `verify`，执行到该阶段的任何构建（含 `install`、`deploy`）都需要能从插件仓库（镜像或 `<pluginRepositories>`）解析 PMD 插件与规则 jar。内网镜像未同步时，日常 `install` 也会失败。
 - 本仓库 `./mvnw -Pci clean verify` 的耗时增幅目标 ≤ 20%（推荐值，以实施前后同机测量为准）。
-- 报告路径固定为模块 `target/mimir-quality/pmd.xml`、`target/mimir-quality/tests/pmd.xml`、`target/mimir-quality/cpd.xml`。
+- 报告路径固定为模块 `target/mimir-quality/pmd.xml`、`target/mimir-quality/tests/pmd.xml`、`target/mimir-quality/cpd.xml`、`target/mimir-quality/tests/cpd.xml`。
 - 新规则 jar 不含 Java 类，不向下游运行时传递任何依赖。

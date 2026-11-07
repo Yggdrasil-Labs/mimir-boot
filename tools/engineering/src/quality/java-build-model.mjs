@@ -581,7 +581,7 @@ async function qualityExpectation(root, module, reactor, files, testFiles, build
     const mainRequired = files.length > 0;
     const testRequired = testFiles.length > 0;
     if (!mainRequired && !testRequired) return { pmd: { required: false, mainRequired, testRequired, reason: '没有 Java 源码' },
-        cpd: { required: false, reason: '没有 Java 主源码' }, artifacts: {} };
+        cpd: { required: false, mainRequired, testRequired, reason: '没有 Java 源码' }, artifacts: {} };
     const baseline = reactor.find((item) => item.path === 'mimir-boot-parent');
     const resource = reactor.find((item) => item.path === 'mimir-boot-code-quality');
     if (!baseline || !resource) throw new Error(`${module.path} 缺少 Parent 或质量规则制品模型`);
@@ -618,7 +618,7 @@ async function qualityExpectation(root, module, reactor, files, testFiles, build
             || text(dependencies[0], 'classifier') || one(dependencies[0], 'exclusions')) {
             throw new Error(`${current.path} 官方 PMD 实现依赖必须唯一且与描述符来源版本 ${sourceVersion} 一致`);
         }
-        if (elements(node, 'executions', 'execution').length !== 3) throw new Error(`${current.path} 质量插件只支持 pmd/test-pmd/cpd 三个 execution`);
+        if (elements(node, 'executions', 'execution').length !== 4) throw new Error(`${current.path} 质量插件只支持 pmd/test-pmd/cpd/test-cpd 四个 execution`);
     }
     for (const { id, kind, goal, includeTests, ruleset, required, artifactName } of [
         { id: 'pmd', kind: 'pmd', goal: 'check', includeTests: 'false', ruleset: 'main-ruleset.xml',
@@ -626,6 +626,7 @@ async function qualityExpectation(root, module, reactor, files, testFiles, build
         { id: 'test-pmd', kind: 'pmd', goal: 'test-check', includeTests: 'true', ruleset: 'test-ruleset.xml',
             required: testRequired, artifactName: 'pmdTestXml' },
         { id: 'cpd', kind: 'cpd', goal: 'cpd-check', includeTests: 'false', required: mainRequired, artifactName: 'cpdXml' },
+        { id: 'test-cpd', kind: 'cpd', goal: 'test-cpd-check', includeTests: 'true', required: testRequired, artifactName: 'cpdTestXml' },
     ]) {
         const configurations = [];
         for (const current of [baseline, module]) {
@@ -654,14 +655,14 @@ async function qualityExpectation(root, module, reactor, files, testFiles, build
         const node = plugin(module.model, 'quality');
         const get = requireOneGoal(node, goal, 'verify', module.path).get;
         const directory = await configuredPath(root, module.directory, value(get('targetDirectory')), `${id} targetDirectory`);
-        const reportDirectory = id === 'test-pmd' ? 'mimir-quality/tests' : 'mimir-quality';
+        const reportDirectory = includeTests === 'true' ? 'mimir-quality/tests' : 'mimir-quality';
         if (directory !== path.join(buildDirectory, reportDirectory)) throw new Error(`${module.path} ${id} targetDirectory 必须为 target/${reportDirectory}`);
         if (required) {
             artifacts[artifactName] = { path: relative(root, await resolveBuildArtifact(root, module.path, path.join(directory, `${kind}.xml`))), sha256: null };
         }
     }
     return { pmd: { required: mainRequired || testRequired, mainRequired, testRequired, reason: null },
-        cpd: { required: mainRequired, reason: mainRequired ? null : '没有 Java 主源码' }, artifacts };
+        cpd: { required: mainRequired || testRequired, mainRequired, testRequired, reason: null }, artifacts };
 }
 
 /** 基于本轮实际 effective POM 和源码生成验收期望，不从构建产物推导适用范围。 */

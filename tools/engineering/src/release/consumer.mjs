@@ -162,17 +162,19 @@ async function assertQualityArtifact(repositoryDirectory, revision, implementati
         || descriptorValue('version') !== revision) fail('规则资源 jar 的插件描述符坐标错误');
     const mojos = Array.from(descriptor.getElementsByTagName('mojo'));
     const goals = mojos.map((mojo) => text(descriptorChild(mojo, 'goal'))).sort();
-    if (JSON.stringify(goals) !== JSON.stringify(['check', 'cpd', 'cpd-check', 'pmd', 'test-check', 'test-pmd'])) {
-        fail('规则资源 jar 的插件描述符必须只包含主源码/测试 PMD 与 CPD 的六个目标');
+    if (JSON.stringify(goals) !== JSON.stringify(['check', 'cpd', 'cpd-check', 'pmd', 'test-check', 'test-cpd', 'test-cpd-check', 'test-pmd'])) {
+        fail('规则资源 jar 的插件描述符必须只包含主源码/测试 PMD 与 CPD 的八个目标');
     }
-    const testReport = mojos.find((mojo) => text(descriptorChild(mojo, 'goal')) === 'test-pmd');
-    const testConfiguration = descriptorChild(testReport, 'configuration');
-    const testCheck = mojos.find((mojo) => text(descriptorChild(mojo, 'goal')) === 'test-check');
-    if (['compileSourceRoots', 'testSourceRoots'].some((name) =>
-        descriptorChild(testConfiguration, name)?.getAttribute('default-value') !== '${project.testCompileSourceRoots}')
-        || descriptorChild(testConfiguration, 'includeTests')?.getAttribute('default-value') !== 'true'
-        || text(descriptorChild(testCheck, 'executeGoal')) !== 'test-pmd') {
-        fail('测试 PMD 必须显式绑定 Maven 测试源码根并分叉测试报告目标');
+    for (const [reportGoal, checkGoal] of [['test-pmd', 'test-check'], ['test-cpd', 'test-cpd-check']]) {
+        const testReport = mojos.find((mojo) => text(descriptorChild(mojo, 'goal')) === reportGoal);
+        const testConfiguration = descriptorChild(testReport, 'configuration');
+        const testCheck = mojos.find((mojo) => text(descriptorChild(mojo, 'goal')) === checkGoal);
+        if (['compileSourceRoots', 'testSourceRoots'].some((name) =>
+            descriptorChild(testConfiguration, name)?.getAttribute('default-value') !== '${project.testCompileSourceRoots}')
+            || descriptorChild(testConfiguration, 'includeTests')?.getAttribute('default-value') !== 'true'
+            || text(descriptorChild(testCheck, 'executeGoal')) !== reportGoal) {
+            fail(`${reportGoal} 必须显式绑定 Maven 测试源码根并分叉测试报告目标`);
+        }
     }
     const provenance = new Map((await runtime.readFile(path.join(extracted, entries[1]), 'utf8')).split(/\r?\n/u)
         .filter((line) => line.includes('=')).map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
@@ -352,10 +354,11 @@ async function main() {
         await runConsumerMaven('consumer-isolated-clean-verify', [...consumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 隔离执行缺少 ParentLifecycleIT Failsafe 报告');
         await runConsumerMaven('consumer-quality-precheck', [...consumerMaven, '-Pprecheck', 'clean', 'verify'], logsDirectory);
-        for (const [kind, relativeReport, expectedRule, expectedFile] of [
+        for (const [kind, relativeReport, expectedRule, expectedFile, expectedDuplications = 0] of [
             ['pmd', 'pmd.xml', 'CommentRequired', '/code/main/io/github/yggdrasil/labs/fixture/ParentQualityContract.java'],
             ['pmd', 'tests/pmd.xml', 'UnnecessaryBooleanAssertion', '/code/tests/io/github/yggdrasil/labs/fixture/ParentLifecycleIT.java'],
             ['cpd', 'cpd.xml', null, null],
+            ['cpd', 'tests/cpd.xml', null, '/code/tests/io/github/yggdrasil/labs/fixture/IsolatedConsumerTest.java', 1],
         ]) {
             const report = path.join(consumerDirectory, 'target/mimir-quality', relativeReport);
             if (!await nonEmptyFile(report)) fail(`发布 Parent 消费者缺少 ${relativeReport} 质量报告`);
@@ -363,8 +366,21 @@ async function main() {
             const expected = kind === 'pmd' ? 'pmd' : 'pmd-cpd';
             const entries = Array.from(document.getElementsByTagName('*'));
             if (document.doctype || document.documentElement?.localName !== expected
-                || entries.some((node) => ['duplication', 'error', 'configerror', 'processingerror', 'configurationerror'].includes(node.localName.toLowerCase()))) {
-                fail(`发布 Parent 消费者的 ${relativeReport} 报告包含重复、处理错误或无效 XML`);
+                || entries.some((node) => ['error', 'configerror', 'processingerror', 'configurationerror'].includes(node.localName.toLowerCase()))) {
+                fail(`发布 Parent 消费者的 ${relativeReport} 报告包含处理错误或无效 XML`);
+            }
+            const duplications = entries.filter((node) => node.localName === 'duplication');
+            if (duplications.length !== expectedDuplications) fail(`发布 Parent 消费者的 ${relativeReport} 必须恰好包含 ${expectedDuplications} 组预设重复`);
+            if (expectedDuplications) {
+                const duplication = duplications[0];
+                const tokens = Number(duplication.getAttribute('tokens'));
+                const files = Array.from(duplication.childNodes).filter((node) => node.nodeType === 1 && node.localName === 'file');
+                const locations = new Set(files.map((file) => `${file.getAttribute('path')}:${file.getAttribute('line')}:${file.getAttribute('column')}`));
+                if (!Number.isSafeInteger(tokens) || tokens < 100 || files.length < 2 || locations.size < 2
+                    || files.some((file) => !file.getAttribute('path')?.replaceAll('\\', '/').endsWith(expectedFile)
+                        || !Number.isSafeInteger(Number(file.getAttribute('line'))) || Number(file.getAttribute('line')) < 1)) {
+                    fail(`发布 Parent 消费者的 ${relativeReport} 必须报告 ${expectedFile} 至少两个位置的 100 tokens 预设重复`);
+                }
             }
             const violations = entries.filter((node) => node.localName === 'violation');
             if (kind === 'pmd' && (violations.length !== 1 || violations[0].getAttribute('rule') !== expectedRule

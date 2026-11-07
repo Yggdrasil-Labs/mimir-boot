@@ -44,6 +44,6 @@ updated: 2026-11-07
 - PMD/CPD 使用 `maven-pmd-plugin` 3.28.0 自带的 PMD 7.17.0，不单独覆盖；`CommentRequired` 用 `violationSuppressXPath` 排除构造器与非公开可见性，以满足 D-107；本仓库让 PMD 处理错误也阻断构建。
 - PMD 按 Maven 主、测试源码根分别检查，共用原生开关；测试采用[独立规则集](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)。
 - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test，不引入 `archunit-junit5`。
-- CPD `minimumTokens=100`，不检查测试源码。
+- CPD 按模块分别比较主、测试源码，两者 `minimumTokens=100`，共用原生开关。
 - 不改 Git hook；本地入口为 `./mvnw -Pprecheck verify`。
 - 发布 Parent 的规则 jar 版本通过 Flatten 属性插值固化，详见[设计](./design.md#发布-parent-的规则-jar-版本)。

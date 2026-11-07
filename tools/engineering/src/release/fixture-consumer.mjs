@@ -54,7 +54,28 @@ class IsolatedConsumerTest {
     @Test
     void startsContextWithPublishedTestDependencies() {
         assertEquals("fixture", new ParentQualityContract().value());
+        assertEquals(1225, firstCpdContractSum());
+        assertEquals(1225, secondCpdContractSum());
         new ApplicationContextRunner().run(context -> assertTrue(context.isRunning()));
+    }
+
+    // 两段相同计算仅用于证明发布 Parent 的测试 CPD 确实扫描并报告重复。
+    private int firstCpdContractSum() {
+        return java.util.stream.IntStream.of(
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+                40, 41, 42, 43, 44, 45, 46, 47, 48, 49).sum();
+    }
+
+    private int secondCpdContractSum() {
+        return java.util.stream.IntStream.of(
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+                40, 41, 42, 43, 44, 45, 46, 47, 48, 49).sum();
     }
 }
 `;

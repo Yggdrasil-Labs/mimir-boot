@@ -2,7 +2,7 @@
 
 本模块提供 PMD 7.17.0 的 Java 质量规则，资源路径为 `mimir-boot/pmd/main-ruleset.xml` 和 `mimir-boot/pmd/test-ruleset.xml`。它采用 `jar` 打包，不含 Java 类，发布 POM 不声明依赖，不进入 BOM。普通依赖不会引入 PMD。
 
-同一个 jar 还提供独立 Maven 插件入口：从官方 `org.apache.maven.plugins:maven-pmd-plugin:3.28.0` 生成描述符，保留原四个目标，并派生 `test-pmd`、`test-check`，使用 `mimir-quality` 前缀。测试入口将分析根绑定到 Maven 实际测试源码根，并保留测试类路径；所有目标仍复用官方实现。请使用生命周期绑定或完整坐标，不依赖短前缀自动解析。
+同一个 jar 还提供独立 Maven 插件入口：从官方 `org.apache.maven.plugins:maven-pmd-plugin:3.28.0` 生成描述符，保留原四个目标，并派生 `test-pmd`、`test-check`、`test-cpd`、`test-cpd-check`，使用 `mimir-quality` 前缀。测试入口将分析根绑定到 Maven 实际测试源码根，并保留测试类路径；所有目标仍复用官方实现。请使用生命周期绑定或完整坐标，不依赖短前缀自动解析。
 
 ## 继承 Parent
 
@@ -15,11 +15,12 @@ mvn -Pprecheck verify
 mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:check@pmd -Dpmd.skip=false
 mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:test-check@test-pmd -Dpmd.skip=false
 mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:cpd-check@cpd -Dcpd.skip=false
+mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:test-cpd-check@test-cpd -Dcpd.skip=false
 ```
 
 默认和 `dev`、`prod` 模式跳过两类检查；`precheck`、`ci` 模式运行并逐条报告，默认不因违规失败。设置 `pmd.failOnViolation=true`、`cpd.failOnViolation=true` 可分别阻断。PMD 分析错误是否阻断由 `pmd.skipPmdError` 控制，严格模式应设为 `false`。
 
-XML 报告在 `target/mimir-quality/pmd.xml`（主源码）、`target/mimir-quality/tests/pmd.xml`（测试）和 `target/mimir-quality/cpd.xml`。下游已有官方插件使用各自报告目录；不要将两套插件指向相同位置。开关及已有官方插件的迁移方式见 [Parent 说明](../mimir-boot-parent/README.md#pmdcpd-检查与升级)。
+XML 报告在 `target/mimir-quality/pmd.xml`（主源码）、`target/mimir-quality/tests/pmd.xml`（测试）、`target/mimir-quality/cpd.xml`（主源码）和 `target/mimir-quality/tests/cpd.xml`（测试）。下游已有官方插件使用各自报告目录；不要将两套插件指向相同位置。开关及已有官方插件的迁移方式见 [Parent 说明](../mimir-boot-parent/README.md#pmdcpd-检查与升级)。
 
 ## 只导入 BOM
 
@@ -74,7 +75,7 @@ BOM 不管理插件依赖版本，也不自动启用检查。以下为仅检查�
 - 测试断言与声明：`UnnecessaryBooleanAssertion`、`DetachedTestCase`、`SimplifiableTestAssertion`、`JUnit5TestShouldBePackagePrivate`。
 - 通用错误：`UnusedLocalVariable`、`BrokenNullCheck`、`EmptyCatchBlock`、`ImplicitSwitchFallThrough`。
 
-Parent 的两个 PMD 执行共用 `pmd.skip` 与 `pmd.failOnViolation`：默认跳过，启用后默认只报告；CPD 仍只检查主源码。仅关闭测试检查时，将 `test-pmd` execution 的 `phase` 设为 `none`。
+Parent 的两个 PMD 执行共用 `pmd.skip` 与 `pmd.failOnViolation`：默认跳过，启用后默认只报告；CPD 的主、测试检查也共用 `cpd.skip` 与 `cpd.failOnViolation`，分别比较各自源码，阈值均为 100 tokens。仅关闭测试检查时，分别将 `test-pmd`、`test-cpd` execution 的 `phase` 设为 `none`。
 
 Javadoc 要求不覆盖构造器、`@Override` 方法、getter/setter、protected 方法、字段及有效可见性非 public 的类型或方法。record 和注解类型本身暂无类型级检查；不核对 `@param` 等标签与签名的一致性、不检查首句或标签描述是否为空，也没有 record 组件命名规则。
 

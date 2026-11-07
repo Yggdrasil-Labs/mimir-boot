@@ -155,15 +155,15 @@ async function readExpected(expectedPath) {
             if (typeof module?.[kind]?.required !== 'boolean') {
                 throw new Error(`期望报告矩阵中 ${module?.path || '未知模块'} 的 ${kind}.required 缺失或不是布尔值，请重新生成期望报告矩阵`);
             }
-        }
-        // 明确分开适用范围，避免仅有测试源码时要求主报告，或旧清单漏核验测试报告。
-        if (typeof module.pmd.mainRequired !== 'boolean' || typeof module.pmd.testRequired !== 'boolean'
-            || module.pmd.required !== (module.pmd.mainRequired || module.pmd.testRequired)) {
-            throw new Error(`期望报告矩阵中 ${module.path} 的 PMD 主源码/测试范围缺失或不一致，请重新生成期望报告矩阵`);
-        }
-        for (const [required, name] of [[module.pmd.mainRequired, 'pmdXml'], [module.pmd.testRequired, 'pmdTestXml']]) {
-            if (required && !module.artifacts?.[name]?.path) {
-                throw new Error(`期望报告矩阵中 ${module.path} 缺少 ${name} 产物登记，请重新生成期望报告矩阵`);
+            // 两工具均明确分开适用范围，避免仅测试模块要求主报告或旧清单漏核验测试报告。
+            if (typeof module[kind].mainRequired !== 'boolean' || typeof module[kind].testRequired !== 'boolean'
+                || module[kind].required !== (module[kind].mainRequired || module[kind].testRequired)) {
+                throw new Error(`期望报告矩阵中 ${module.path} 的 ${kind.toUpperCase()} 主源码/测试范围缺失或不一致，请重新生成期望报告矩阵`);
+            }
+            for (const [required, name] of [[module[kind].mainRequired, `${kind}Xml`], [module[kind].testRequired, `${kind}TestXml`]]) {
+                if (required && !module.artifacts?.[name]?.path) {
+                    throw new Error(`期望报告矩阵中 ${module.path} 缺少 ${name} 产物登记，请重新生成期望报告矩阵`);
+                }
             }
         }
     }
@@ -349,7 +349,7 @@ function counter(element, name) {
 async function validateArtifact(root, module, artifactName, findings, prefix = 'coverage-artifact') {
     const artifact = module.artifacts[artifactName];
     const file = await resolveBuildArtifact(root, module.path, artifact.path);
-    const qualityKind = prefix === 'quality-report' ? { kind: artifactName === 'pmdTestXml' ? 'pmd' : artifactName.slice(0, -3) } : {};
+    const qualityKind = prefix === 'quality-report' ? { kind: artifactName.replace(/(?:Test)?Xml$/u, '') } : {};
     if (!await exists(file)) {
         findings.push({ rule: `${prefix}-missing`, module: module.path, ...qualityKind, message: `缺少 ${artifact.path}` });
         return null;
@@ -398,7 +398,8 @@ export async function verifyReports(root, expectedPath) {
         await validateTestReports(root, module, 'failsafe', findings);
         if (module.pmd.mainRequired) await validateQualityReport(root, module, 'pmd', 'pmdXml', findings);
         if (module.pmd.testRequired) await validateQualityReport(root, module, 'pmd', 'pmdTestXml', findings);
-        if (module.cpd.required) await validateQualityReport(root, module, 'cpd', 'cpdXml', findings);
+        if (module.cpd.mainRequired) await validateQualityReport(root, module, 'cpd', 'cpdXml', findings);
+        if (module.cpd.testRequired) await validateQualityReport(root, module, 'cpd', 'cpdTestXml', findings);
         if (module.coverage?.required === false) continue;
         const xml = await validateArtifact(root, module, 'jacocoXml', findings);
         await validateArtifact(root, module, 'jacocoExec', findings);

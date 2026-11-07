@@ -335,6 +335,24 @@
                                 <printFailingErrors>true</printFailingErrors>
                             </configuration>
                         </execution>
+                        <!-- 测试 CPD 只比较测试源码，沿用与主源码相同的阈值和原生开关。 -->
+                        <execution>
+                            <id>test-cpd</id>
+                            <phase>verify</phase>
+                            <goals><goal>test-cpd-check</goal></goals>
+                            <configuration>
+                                <minimumTokens>100</minimumTokens>
+                                <targetDirectory>${project.build.directory}/mimir-quality/tests</targetDirectory>
+                                <outputDirectory>${project.build.directory}/mimir-quality/tests/site</outputDirectory>
+                                <includeTests>true</includeTests>
+                                <excludeRoots>
+                                    <excludeRoot>${project.build.directory}/generated-sources</excludeRoot>
+                                    <excludeRoot>${project.build.directory}/generated-test-sources</excludeRoot>
+                                </excludeRoots>
+                                <linkXRef>false</linkXRef>
+                                <printFailingErrors>true</printFailingErrors>
+                            </configuration>
+                        </execution>
                     </executions>
                 </plugin>
 

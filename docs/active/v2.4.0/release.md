@@ -275,8 +275,8 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 
 规则入口现为 `main-ruleset.xml` 和 `test-ruleset.xml`；旧 `ruleset.xml` 已删除，不保留别名。
 
-启用新版 Parent 的 PMD 后，主源码使用原 41 条规则，测试源码启用 8 条测试规则；默认跳过和只报告行为不变，CPD 仍仅扫描主源码。已开启 PMD 严格模式的下游须处理测试违规，或将 `test-pmd` execution 的 `phase` 设为 `none`。
+启用新版 Parent 的 PMD 后，主源码使用原 41 条规则，测试源码启用 8 条测试规则；默认跳过和只报告行为不变，CPD 分别比较主、测试源码，阈值均为 100 tokens。已开启 PMD/CPD 严格模式的下游须处理测试违规，或将 `test-pmd`、`test-cpd` execution 的 `phase` 设为 `none`。
 
 继承新版 Parent 的构建执行到 `verify` 时，即使跳过质量分析，也需要解析同版本 `mimir-boot-code-quality`；内网镜像需同步规则制品、官方 PMD 插件及其传递依赖，或配置同源 `pluginRepositories`。仅有普通 `repositories` 不足以解析插件制品。
 
-Mimir 使用独立插件坐标和报告目录，下游原插件的规则不合并；原生 `pmd.*` / `cpd.*` 开关仍被两套插件共同读取。已有官方检查需要恢复原行为时，设置相应 `*.skip=false`、`*.failOnViolation=true`，并按需关闭独立插件的 `pmd` / `test-pmd` / `cpd` execution，完整配置见 [Parent 升级说明](../../../mimir-boot-parent/README.md#pmdcpd-检查与升级)。手动单独运行必须选择 `check@pmd` / `test-check@test-pmd` / `cpd-check@cpd`；规则制品版本只支持同上游来源版本的覆盖，跨来源升级须配对升级 Parent 与规则制品。
+Mimir 使用独立插件坐标和报告目录，下游原插件的规则不合并；原生 `pmd.*` / `cpd.*` 开关仍被两套插件共同读取。已有官方检查需要恢复原行为时，设置相应 `*.skip=false`、`*.failOnViolation=true`，并按需关闭独立插件的 `pmd` / `test-pmd` / `cpd` / `test-cpd` execution，完整配置见 [Parent 升级说明](../../../mimir-boot-parent/README.md#pmdcpd-检查与升级)。手动单独运行必须选择 `check@pmd` / `test-check@test-pmd` / `cpd-check@cpd` / `test-cpd-check@test-cpd`；规则制品版本只支持同上游来源版本的覆盖，跨来源升级须配对升级 Parent 与规则制品。

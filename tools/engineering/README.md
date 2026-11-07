@@ -62,9 +62,9 @@ Java 门禁的所有 Maven 子进程（版本、effective model、构建、Sonar
 
 `java-build-model.mjs` 与报告核验器承担跨模块、跨版本的构建范围和报告完整性检查，长期由 Java 子检查与 full 复用。修改后按影响范围运行实际 Java 子检查或 full，临时专项探针不进入工具目录。
 
-PMD 要求有主源码或测试源码的 JAR 模块在 `ci` 下严格运行独立坐标 `mimir-boot-code-quality` 的 `pmd`、`test-pmd` execution，分别通过 `check`、`test-check` 使用唯一的 main/test 规则入口；CPD 保持 `cpd` execution 的 `cpd-check`，只要求有主源码的 JAR 模块。三次执行必须唯一绑定 `verify`，有效配置逐项匹配 Parent 白名单：主源码 PMD 与 CPD 的 `includeTests=false`，测试 PMD 的 `includeTests=true`；拒绝参数差异、跳过和放宽阈值。插件版本须与当前规则制品一致，官方 PMD 实现须与描述符来源版本配对。XML 位于各模块的 `target/mimir-quality/pmd.xml`、`target/mimir-quality/tests/pmd.xml` 和 `target/mimir-quality/cpd.xml`；仅登记有对应源码的报告，测试 PMD 的报告、缓存和规则复制目录与主源码隔离。它们与测试和覆盖率产物一起清理并绑定本轮 SHA-256；缺失、摘要变化、违规、处理或配置错误均阻断，两份 PMD 统一汇总为 `java-pmd`，CPD 汇总为 `java-cpd`。纯 POM 和无 Java 源码的资源 JAR 明确豁免这两项检查。
+PMD 与 CPD 要求有主源码或测试源码的 JAR 模块在 `ci` 下严格运行独立坐标 `mimir-boot-code-quality` 的四个 execution：`pmd`/`check`、`test-pmd`/`test-check`、`cpd`/`cpd-check` 和 `test-cpd`/`test-cpd-check`。四次执行必须唯一绑定 `verify`，有效配置逐项匹配 Parent 白名单：主源码 PMD 与 CPD 的 `includeTests=false`，测试 PMD 与 CPD 的 `includeTests=true`；PMD 分别使用唯一的 main/test 规则入口，测试 CPD 的最低重复片段为 100 tokens；拒绝参数差异、跳过和放宽阈值。插件版本须与当前规则制品一致，官方 PMD 实现须与描述符来源版本配对。XML 位于各模块的 `target/mimir-quality/pmd.xml`、`target/mimir-quality/tests/pmd.xml`、`target/mimir-quality/cpd.xml` 和 `target/mimir-quality/tests/cpd.xml`；仅登记有对应源码的报告，测试报告及 PMD 缓存、规则复制目录与主源码隔离。它们与测试和覆盖率产物一起清理并绑定本轮 SHA-256；缺失、摘要变化、违规、处理或配置错误均阻断，两份 PMD 统一汇总为 `java-pmd`，两份 CPD 统一汇总为 `java-cpd`。纯 POM 和无 Java 源码的资源 JAR 明确豁免这两项检查。
 
-JVM 输入检查同时拒绝 `pmd.*`、`cpd.*` 及描述符的无前缀质量属性（如 `minimumPriority`、`minimumTokens`、`aggregate`、`format`），防止有效 POM 未展示的用户属性改变检查。签名模型预热在 Parent 前安装规则资源 JAR。发布消费者长期核验其无普通依赖、无 Java 类、描述符来源、坐标和六个目标，以及发布 Parent 的字面版本绑定；继承 Parent 的夹具通过同源插件仓库解析该插件，并以离线 `precheck` 验证自定义 `code/main`、`code/tests` 源码根下分别仅报告一条预设 PMD 违规及主源码 CPD 报告。失败消费者和 BOM-only 夹具保持既有目录约定。以上扩展继续复用 `java`、full、CI 与发布消费者入口，后续版本升级质量插件或发布 Parent 时仍须维护。
+JVM 输入检查同时拒绝 `pmd.*`、`cpd.*` 及描述符的无前缀质量属性（如 `minimumPriority`、`minimumTokens`、`aggregate`、`format`），防止有效 POM 未展示的用户属性改变检查。签名模型预热在 Parent 前安装规则资源 JAR。发布消费者长期核验其无普通依赖、无 Java 类、描述符来源、坐标和八个目标，以及两个测试报告目标的 Maven 测试源码根、`includeTests` 默认值和对应 check 的分叉目标；发布 Parent 保持字面版本绑定。继承 Parent 的夹具通过同源插件仓库解析该插件，并以离线 `precheck` 验证自定义 `code/main`、`code/tests` 源码根下的四份报告：主源码和测试 PMD 各一条预设违规，主源码 CPD 零重复，测试 CPD 精确一组至少 100 tokens 的预设重复且定位到 `IsolatedConsumerTest` 的两个不同位置。该夹具的两段重复计算是发布 Parent 测试 CPD 契约的长期输入，防止空报告假通过；仍使用默认只报告行为，PMD 与 CPD 原生开关分别独立。失败消费者和 BOM-only 夹具保持既有目录约定。以上扩展继续复用 `java`、full、CI 与发布消费者入口，后续版本升级质量插件或发布 Parent 时仍须维护。
 
 本地 full 默认 `RUN_SONAR=false`，只等价 CI 基础检查，Sonar 在报告中标记为 `not_applicable`。只有已确认目标 Sonar 项目、分支和上传授权，并由受控环境提供 `RUN_SONAR=true`、`SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY` 时，Java 子检查才会在 `clean verify` 通过且报告核验通过后，独立运行 `./mvnw -B -Pci sonar:sonar` 并等待 Quality Gate；不在文档或日志中写入凭据。CI 的凭据与 push 事件策略由工作流传入。公网制品验证只能在发布后进行，本地 fixture 验证检查器的成功、损坏制品、404 与重试行为。
 
@@ -94,6 +94,6 @@ JVM 输入检查同时拒绝 `pmd.*`、`cpd.*` 及描述符的无前缀质量属
 
 报告记录检查状态、命令、日志位置、源 tree/commit 和配置摘要。退出码 0 表示通过，1 表示验收失败，2 表示参数或工具错误；工具准备失败不会放行。使用 `--report <绝对 JSON 路径>` 指定完整门禁的报告位置。
 
-构建清单中的每个模块须明确声明布尔型 `pmd.required`、`pmd.mainRequired`、`pmd.testRequired` 和 `cpd.required`；`pmd.required` 必须等于两个 PMD 范围的逻辑或，只有对应范围显式 `false` 才豁免报告。主源码和测试范围分开登记，避免仅测试模块被要求提供主报告，也避免漏核验测试报告。旧清单缺少这些字段时，清理、产物登记和独立核验都会拒绝并要求重新生成，不将缺少证据解释为检查通过。
+构建清单中的每个模块须分别明确声明 PMD、CPD 的布尔型 `required`、`mainRequired` 和 `testRequired`；各工具的 `required` 必须等于其主源码与测试范围的逻辑或，只有对应范围显式 `false` 才豁免报告。主源码和测试范围分开登记，避免仅测试模块被要求提供主报告，也避免漏核验测试报告。旧清单缺少这些字段时，清理、产物登记和独立核验都会拒绝并要求重新生成，不将缺少证据解释为检查通过。
 
 隔离发布仅保留本轮预热得到的 Maven 版本元数据，供 GPG 插件等版本范围依赖解析；不会将第三方制品加入隔离镜像，也不会开放外网。该处理遵循 [Maven 元数据规则](https://maven.apache.org/repositories/metadata.html)，本地镜像仍为临时 `file://` 仓库。

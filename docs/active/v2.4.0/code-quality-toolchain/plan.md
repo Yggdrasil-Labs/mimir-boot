@@ -42,7 +42,7 @@ updated: 2026-11-07
 - D-107：规则库在 starter-test，提供通用与 COLA 预设；Javadoc 只要求公开类型与方法，不要求 `@author`。
 - D-108：开关保持插件原生属性；CQ-10 的兼容影响写入升级说明，不改用 Mimir 私有开关。
 - D-109：不引入 Checkstyle，注释与命名由 PMD 选定规则负责；接受不检查 Javadoc 标签与签名一致性。
-- D-110：规则 jar 同时提供独立插件入口，复用固定版本官方实现，Mimir 报告放入 `target/mimir-quality/`；直接调用必须选择 `check@pmd` / `test-check@test-pmd` / `cpd-check@cpd`，规则制品只支持同上游来源版本覆盖。
+- D-110：规则 jar 同时提供独立插件入口，复用固定版本官方实现，Mimir 报告放入 `target/mimir-quality/`；直接调用必须选择 `check@pmd` / `test-check@test-pmd` / `cpd-check@cpd` / `test-cpd-check@test-cpd`，规则制品只支持同上游来源版本覆盖。
 - 推荐方案：
   - PMD 插件 3.28.0，使用内置 PMD 7.17.0；`CommentRequired` 以 `violationSuppressXPath` 排除构造器与非公开可见性；本仓库设 `pmd.skipPmdError=false`；
   - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test；
@@ -118,7 +118,7 @@ Acceptance：
 
 - `./mvnw -pl mimir-boot-code-quality clean install` 产出主 jar、`-sources.jar`、`-javadoc.jar`，主 jar 内资源路径正确。
 - 用插件内置的 PMD 加载规则集，在一个临时样例上运行，没有配置错误（未知规则名会直接报错）。
-- 主 jar 无 Java 类，发布 POM 无依赖；描述符公开原四个目标与两个测试派生目标，来源版本与 Parent 官方实现依赖配对；连续两次构建均通过。
+- 主 jar 无 Java 类，发布 POM 无依赖；描述符公开原四个目标与四个测试派生目标，来源版本与 Parent 官方实现依赖配对；连续两次构建均通过。
 - 用规格 CQ-01 的各场景样例验证 `CommentRequired` 与 `violationSuppressXPath`：public 类的 public 方法缺 Javadoc 报告；构造器、`@Override`、getter/setter、protected 方法、字段、package-private 类及其中的 public 方法均不报告。XPath 属性无法表达这一范围时**暂停对齐**。
 - 确认 `ClassNamingConventions` 的 `utilityClassPattern` 默认值；若要求工具类后缀，按设计改为与 `classPattern` 相同。
 
@@ -130,7 +130,7 @@ Files：
 
 - Modify：`mimir-boot-parent/pom.xml`
   - 新增设计中的属性；
-  - 独立 `mimir-boot-code-quality` 插件的 `pluginManagement` 配置：插件级放版本与固定官方实现依赖，检查参数写在 `pmd`、`test-pmd`、`cpd` 三个 execution 内，输出目录按设计隔离；
+  - 独立 `mimir-boot-code-quality` 插件的 `pluginManagement` 配置：插件级放版本与固定官方实现依赖，检查参数写在 `pmd`、`test-pmd`、`cpd`、`test-cpd` 四个 execution 内，输出目录按设计隔离；
   - 插件在 `build/plugins` 中公开声明；
   - 四种模式补充两个 skip；
   - Flatten 的 `properties` 由 `keep` 改为 `extended_interpolate`，并加注释说明：以后新增的引用型属性可能在生产者侧被固定；
@@ -163,7 +163,7 @@ Acceptance：
   任一项不成立时暂停，并回到设计中的备选方案对齐。
 - 临时消费者已有自己的 PMD execution 时，升级前后这些 execution 的有效配置除开关属性外完全相同。
 - Parent 需求已有的四模式验证与发布 Parent 验证，在本改动后复跑仍然成立。
-- 以完整坐标 `:check@pmd`、`:test-check@test-pmd`、`:cpd-check@cpd` 单独运行；在默认目录已有另一套报告时仍只判定 Mimir 报告。省略 execution 选择器不属于支持入口，README 不提供此类命令。
+- 以完整坐标 `:check@pmd`、`:test-check@test-pmd`、`:cpd-check@cpd`、`:test-cpd-check@test-cpd` 单独运行；在默认目录已有另一套报告时仍只判定 Mimir 报告。省略 execution 选择器不属于支持入口，README 不提供此类命令。
 - 规则制品版本覆盖只允许相同上游来源版本；跨来源升级须配对升级 Parent 和规则制品，并列入升级说明。
 
 ### T3：本仓库严格模式与存量治理
@@ -258,7 +258,7 @@ Purpose：完整验收能证明严格模式真正生效，发布契约覆盖新�
 Files：
 
 - Modify：`tools/engineering/src/quality/verify-build-model.mjs`：在隔离缓存中先安装规则 jar，再安装 Parent。
-- Modify：`tools/engineering/src/quality/java-build-model.mjs`：按设计白名单核对三个 execution 与规则 jar 版本，模块配置必须与 Parent 一致；两个 PMD 分别扫描 Maven 主、测试源码根，CPD 仅扫描 main。
+- Modify：`tools/engineering/src/quality/java-build-model.mjs`：按设计白名单核对四个 execution 与规则 jar 版本，模块配置必须与 Parent 一致；两个 PMD 分别扫描 Maven 主、测试源码根，CPD 也按主、测试源码分别比较。
 - Modify：`tools/engineering/src/quality/java.mjs`、`verify-java-reports.mjs`：
   - 两类报告纳入构建前清理、同次构建产物登记与报告核验，必须产出报告的模块按设计确定；
   - Java 子报告新增 `java-pmd`、`java-cpd` 检查项与对应规则 id；

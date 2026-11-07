@@ -13,7 +13,7 @@
         <xsl:if test="count(plugin/mojos/mojo[goal = 'pmd' or goal = 'check' or goal = 'cpd' or goal = 'cpd-check']) != 4">
             <xsl:message terminate="yes">官方 PMD 描述符缺少所需目标</xsl:message>
         </xsl:if>
-        <xsl:comment>由 Apache Maven PMD Plugin <xsl:value-of select="$upstream-version"/> 派生；修改坐标、名称和前缀，保留四个原目标并派生两个测试目标，移除描述符依赖清单。官方实现通过插件依赖提供。</xsl:comment>
+        <xsl:comment>由 Apache Maven PMD Plugin <xsl:value-of select="$upstream-version"/> 派生；修改坐标、名称和前缀，保留四个原目标并派生四个测试目标，移除描述符依赖清单。官方实现通过插件依赖提供。</xsl:comment>
         <xsl:apply-templates/>
     </xsl:template>
     <xsl:template match="@*|node()">
@@ -30,7 +30,7 @@
     <xsl:template match="/plugin/mojos">
         <xsl:copy>
             <xsl:apply-templates select="@*|node()"/>
-            <xsl:apply-templates select="mojo[goal = 'pmd' or goal = 'check']" mode="test"/>
+            <xsl:apply-templates select="mojo[goal = 'pmd' or goal = 'check' or goal = 'cpd' or goal = 'cpd-check']" mode="test"/>
         </xsl:copy>
     </xsl:template>
     <xsl:template match="@*|node()" mode="test">
@@ -40,9 +40,9 @@
         <goal>test-<xsl:value-of select="."/></goal>
     </xsl:template>
     <xsl:template match="mojo/description" mode="test">
-        <description>Mimir 测试源码 PMD 入口，复用官方实现与原生开关，报告位于独立测试目录。</description>
+        <description>Mimir 测试源码质量入口，复用官方实现与原生开关，报告位于独立测试目录。</description>
     </xsl:template>
-    <xsl:template match="mojo/executeGoal" mode="test"><executeGoal>test-pmd</executeGoal></xsl:template>
+    <xsl:template match="mojo/executeGoal" mode="test"><executeGoal>test-<xsl:value-of select="."/></executeGoal></xsl:template>
     <!-- 显式绑定测试根，防止 Maven 忽略空集合后由官方 Mojo 回退到主源码根。 -->
     <xsl:template match="mojo/configuration/compileSourceRoots" mode="test">
         <!-- 双花括号让 Maven 表达式原样进入描述符，避免 XSLT 提前求值。 -->
