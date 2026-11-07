@@ -54,7 +54,7 @@ Central Publisher 0.11.0 与 Maven 3.10 的 staging 元数据布局不兼容，�
 | 失败类型 | 处理方式 |
 | --- | --- |
 | 网络抖动、制品传播延迟、凭据或 runner 瞬态故障，代码未变 | 重跑同一 Tag 的失败 workflow/job；它仍使用同一 Tag 的同一份代码 |
-| 源码、POM、配置或测试错误 | 在 `main` 提交修复，等待新的 Release Please PR、版本和 Tag；不要给旧 Tag 换提交 |
+| 源码、POM、配置或测试错误 | 在 `develop` 修复并经 PR 合入 `main`，等待新的 Release Please PR、版本和 Tag；不要给旧 Tag 换提交 |
 | 某个远程副作用已成功，后续步骤失败 | 先保留成功证据，只补偿缺失动作；不要重复上传已有版本或重复创建已存在的 Release |
 | Central bundle 校验失败且该版本尚未发布 | 上传成功不代表发布成功；核对 Portal 错误和公开制品后，修复打包环境，再手动选择 `publish_maven_central` 补偿该 Tag。已成功的 GitHub Packages 不重复上传 |
 | `create-tag.yml` 尚未创建 Tag | 修复权限/配置后重跑；手动恢复时必须同时填写版本和目标合并 SHA，并通过 manifest 校验 |

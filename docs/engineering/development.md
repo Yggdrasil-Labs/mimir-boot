@@ -29,6 +29,22 @@ git config --get core.hooksPath
 
 日常开发按改动范围做定向验证。已安装的提交和推送 hook 执行 quick，完整验收由匹配触发条件的 CI 和发布工作流执行；本地也可显式运行 full。各阶段的输入、触发条件和成功含义见[测试与质量](./testing.md#自动检查发生在哪里)。
 
+## 分支与合并
+
+日常开发使用 `develop`，完成本地预检后推送该分支并创建目标为 `main` 的 PR。合并前分支须与最新 `main` 同步，`build`（GitHub Actions）和 `SonarCloud Code Analysis`（SonarQube Cloud）两项检查必须通过。这些要求作为协作规范执行，远端暂不强制分支保护，保留维护者明确授权的直接推送入口。
+
+```mermaid
+flowchart LR
+    A[develop 开发与本地预检] --> B[PR 到 main]
+    B --> C[CI 与 Sonar 通过]
+    C --> D[合并 main]
+    D --> E[将 main 同步回 develop]
+```
+
+Release Please 和依赖升级可使用各自的自动化分支创建 PR，遵守相同检查要求；发布后的下一开发版本由现有工作流直接回写 `main`，无需额外 PR。fork 和 Dependabot PR 不获得 Sonar 凭据；维护者审核后将变更接入仓库内分支，重新提交 PR 完成 Sonar 检查。
+
+PR 合并后将 `main` 合回 `develop`，保留发布版本和自动化变更。检查结果只证明其对应的提交；检查通过不自动授权提交、推送或合并。
+
 ## 找到修改位置
 
 | 改动 | 首先查看 | 同步检查 |

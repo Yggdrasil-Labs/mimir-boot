@@ -19,7 +19,9 @@ final class BindingFieldPath {
     /** 未知根类型直接回退；已知类型仅允许声明属性与可确认的容器位置。 */
     static String resolve(String field, ResolvableType type) {
         if (type.resolve() == null) return "$";
-        return new BindingFieldPath(withoutControls(field), type).parse();
+        String normalizedField = withoutControls(field);
+        if (normalizedField == null) return "$";
+        return new BindingFieldPath(normalizedField, type).parse();
     }
 
     /** 按原顺序处理容器、分隔符和属性，不从输入值补全缺失类型。 */
