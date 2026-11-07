@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -20,6 +20,13 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+    env:
+      # 按 PR 作者判断，维护者重跑 Dependabot PR 时也不注入 Sonar 凭据。
+      RUN_SONAR: >-
+        ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+             (github.event_name == 'pull_request' &&
+              github.event.pull_request.head.repo.full_name == github.repository &&
+              github.event.pull_request.user.login != 'dependabot[bot]')) && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -39,10 +46,9 @@ jobs:
         env:
           # setup-java 默认向此变量追加 -ntp，Java 门禁要求 Maven 命令参数固定。
           MAVEN_ARGS: ''
-          RUN_SONAR: ${{ github.event_name == 'push' && secrets.SONAR_TOKEN != '' && secrets.SONAR_ORGANIZATION != '' && secrets.SONAR_PROJECT_KEY != '' && 'true' || 'false' }}
-          SONAR_TOKEN: ${{ github.event_name == 'push' && secrets.SONAR_TOKEN || '' }}
-          SONAR_ORGANIZATION: ${{ github.event_name == 'push' && secrets.SONAR_ORGANIZATION || '' }}
-          SONAR_PROJECT_KEY: ${{ github.event_name == 'push' && secrets.SONAR_PROJECT_KEY || '' }}
+          SONAR_TOKEN: ${{ env.RUN_SONAR == 'true' && secrets.SONAR_TOKEN || '' }}
+          SONAR_ORGANIZATION: ${{ env.RUN_SONAR == 'true' && secrets.SONAR_ORGANIZATION || '' }}
+          SONAR_PROJECT_KEY: ${{ env.RUN_SONAR == 'true' && secrets.SONAR_PROJECT_KEY || '' }}
           QUALITY_REPORT_DIR: ${{ runner.temp }}/mimir-quality/java
           QUALITY_BASE_COMMIT: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: bash scripts/engineering.sh quality --mode full --source worktree --report "${RUNNER_TEMP}/mimir-quality/quality-report.json"

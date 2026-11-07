@@ -50,11 +50,12 @@ PMD 负责注释、命名和精选坏味道，CPD 负责重复代码，ArchUnit 
 |---|---|---|---|
 | 本地 commit | 暂存区快照 | quick | 本次提交的适用格式检查通过 |
 | 本地 push | 各待推送引用指向的提交快照 | quick | 待推送提交的适用格式检查通过 |
-| push 到 `main` 或 `develop` | CI 检出的工作树 | full | 该 CI 输入的完整基础验收通过 |
-| 目标分支为 `main` 的 PR | CI 检出的 PR 工作树 | full | 该 PR 的 CI 验收通过 |
+| push 到 `main` | CI 检出的工作树 | full + Sonar | 合并后该提交的基础验收及云端门禁通过 |
+| 同仓库、作者非 Dependabot、目标为 `main` 的 PR | CI 检出的 PR 工作树 | full + Sonar | 该 PR 的基础验收及云端门禁通过 |
+| fork 或 Dependabot、目标为 `main` 的 PR | CI 检出的 PR 工作树 | full，不注入 Sonar 凭据 | 基础验收通过，仍缺少合并必需的 Sonar 结果 |
 | 发布 Tag 或手动发布补偿 | 工作流选择的 Tag 及相关验证输入 | 发布前完整验收与发布后制品验证 | 按[发布指南](./release.md)判断最终结果 |
 
-普通特性分支仅 push、不创建目标为 `main` 的 PR，不会因此触发 `ci.yml`。本地 push 成功不等于 CI 或发布成功。
+`develop` 等分支仅 push、不创建目标为 `main` 的 PR，不触发 `ci.yml`；创建 PR 后由 PR 事件执行完整检查，避免同一提交重复运行 push 与 PR 门禁。本地 push 成功不等于 CI 或发布成功。合并约束见[分支与合并](./development.md#分支与合并)。
 
 `--source worktree` 包含当前未提交内容；`index` 和 `commit` 分别检查暂存快照和指定提交。工作区结果不能替代不同输入的 hook 或 CI 结果。
 
@@ -64,7 +65,8 @@ PMD 负责注释、命名和精选坏味道，CPD 负责重复代码，ArchUnit 
 - `setup-dev.sh`、`prepare`、独立 docs/Java 检查和 full 在准备工具或缺少依赖时可能联网。本地 full 是可选的提前验收，不是每次 commit/push 的额外固定步骤。
 - full 包含临时仓库中的消费者和签名验证，不向正式制品仓库发布；真实上传和公开制品检查在发布流程中进行。
 - 同一工作树避免并行构建，`clean` 会重建产物。报告存放在 `target/` 外，避免被构建清理。
-- 本地默认 `RUN_SONAR=false`；CI 仅在上述 push 事件且三项凭据齐全时启用 Sonar。PR 不使用这些凭据；本地上传需确认目标项目、分支和授权。每次 push 不固定要求本地 full，按改动范围、排障或受控复现需要选择性运行。
+- 本地默认 `RUN_SONAR=false`；CI 对 `main` push 及同仓库、作者非 Dependabot 的 PR 设置 `RUN_SONAR=true`。缺少任一 Sonar 凭据时阻断检查，不降级为跳过。fork 与 Dependabot PR 不注入这些凭据，维护者审核后须在仓库内分支重新提交 PR 获得必需的 Sonar 结果。
+- 本地上传需确认目标项目、分支和授权。每次 push 不固定要求本地 full，按改动范围、排障或受控复现需要选择性运行。
 
 Sonar 的变量为 `SONAR_TOKEN`、`SONAR_ORGANIZATION`、`SONAR_PROJECT_KEY`；凭据由受控环境注入，不写入文档或命令示例。
 
