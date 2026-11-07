@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ruleset name="Mimir Boot Java 质量规则" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
-  <description>公开类型和方法的 Javadoc、Java 命名与常见坏味道；适用于 PMD 7.17.0。</description>
+<ruleset name="Mimir Boot 主源码规则" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>主源码的公开 API 注释、Java 命名与常见坏味道；扫描根由 Maven 主源码入口提供，适用于 PMD 7.17.0。</description>
   <!-- 检查公开类、接口、枚举及方法的 Javadoc；排除构造器、重写方法、访问器、字段和有效可见性非 public 的声明。 -->
   <rule ref="category/java/documentation.xml/CommentRequired">
     <properties>

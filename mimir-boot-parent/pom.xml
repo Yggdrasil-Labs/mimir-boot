@@ -279,7 +279,10 @@
                             <phase>verify</phase>
                             <goals><goal>check</goal></goals>
                             <configuration>
-                                <rulesets><ruleset>mimir-boot/pmd/ruleset.xml</ruleset></rulesets>
+                                <!-- 主源码规则由 Maven 的实际 compileSourceRoots 决定范围。 -->
+                                <rulesets>
+                                    <ruleset>mimir-boot/pmd/main-ruleset.xml</ruleset>
+                                </rulesets>
                                 <targetJdk>${java.version}</targetJdk>
                                 <targetDirectory>${project.build.directory}/mimir-quality</targetDirectory>
                                 <outputDirectory>${project.build.directory}/mimir-quality/site</outputDirectory>
@@ -288,6 +291,30 @@
                                 <rulesetsTargetDirectory>${project.build.directory}/mimir-quality/rulesets</rulesetsTargetDirectory>
                                 <includeTests>false</includeTests>
                                 <excludeRoots><excludeRoot>${project.build.directory}/generated-sources</excludeRoot></excludeRoots>
+                                <linkXRef>false</linkXRef>
+                                <analysisCache>true</analysisCache>
+                                <printFailingErrors>true</printFailingErrors>
+                                <failurePriority>5</failurePriority>
+                            </configuration>
+                        </execution>
+                        <!-- 测试入口将分析根绑定到 Maven 实际 testCompileSourceRoots。 -->
+                        <execution>
+                            <id>test-pmd</id>
+                            <phase>verify</phase>
+                            <goals><goal>test-check</goal></goals>
+                            <configuration>
+                                <rulesets><ruleset>mimir-boot/pmd/test-ruleset.xml</ruleset></rulesets>
+                                <targetJdk>${java.version}</targetJdk>
+                                <targetDirectory>${project.build.directory}/mimir-quality/tests</targetDirectory>
+                                <outputDirectory>${project.build.directory}/mimir-quality/tests/site</outputDirectory>
+                                <analysisCacheLocation>${project.build.directory}/mimir-quality/tests/pmd.cache</analysisCacheLocation>
+                                <benchmarkOutputFilename>${project.build.directory}/mimir-quality/tests/pmd-benchmark.txt</benchmarkOutputFilename>
+                                <rulesetsTargetDirectory>${project.build.directory}/mimir-quality/tests/rulesets</rulesetsTargetDirectory>
+                                <includeTests>true</includeTests>
+                                <excludeRoots>
+                                    <excludeRoot>${project.build.directory}/generated-sources</excludeRoot>
+                                    <excludeRoot>${project.build.directory}/generated-test-sources</excludeRoot>
+                                </excludeRoots>
                                 <linkXRef>false</linkXRef>
                                 <analysisCache>true</analysisCache>
                                 <printFailingErrors>true</printFailingErrors>

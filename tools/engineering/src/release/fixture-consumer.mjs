@@ -69,6 +69,7 @@ class ParentLifecycleIT {
 
     @Test
     void isExecutedByThePublishedParentFailsafeConfiguration() {
+        // 同时作为 PMD 测试扫描及默认只报告契约的已知违规。
         assertTrue(true);
     }
 }
@@ -128,6 +129,10 @@ function consumerPom(revision, repositoryDir) {
     <pluginRepositories>
         ${pluginRepositoryXml(repositoryDir)}
     </pluginRepositories>
+    <build>
+        <sourceDirectory>code/main</sourceDirectory>
+        <testSourceDirectory>code/tests</testSourceDirectory>
+    </build>
     <dependencies>
 ${dependencies}
     </dependencies>
@@ -208,8 +213,8 @@ function failureConsumerPom(revision, repositoryDir) {
 
 export async function writeConsumerFixture(directory, revision, repositoryDir) {
     await writeText(path.join(directory, 'pom.xml'), consumerPom(revision, repositoryDir));
-    await writeText(path.join(directory, 'src/main/java/io/github/yggdrasil/labs/fixture/ParentQualityContract.java'), consumerMain);
-    const testDirectory = path.join(directory, 'src/test/java/io/github/yggdrasil/labs/fixture');
+    await writeText(path.join(directory, 'code/main/io/github/yggdrasil/labs/fixture/ParentQualityContract.java'), consumerMain);
+    const testDirectory = path.join(directory, 'code/tests/io/github/yggdrasil/labs/fixture');
     await writeText(path.join(testDirectory, 'IsolatedConsumerTest.java'), consumerTest);
     await writeText(path.join(testDirectory, 'ParentLifecycleIT.java'), lifecycleIntegrationTest);
 }

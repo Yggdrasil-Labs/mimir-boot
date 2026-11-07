@@ -577,8 +577,10 @@ function qualityConfiguration(node, execution, module, kind) {
 }
 
 /** 以 Parent 为配置基线，拒绝额外参数；原生用户属性另外核对，避免它们绕过有效配置。 */
-async function qualityExpectation(root, module, reactor, files, buildDirectory) {
-    if (!files.length) return { pmd: { required: false, reason: '没有 Java 主源码' },
+async function qualityExpectation(root, module, reactor, files, testFiles, buildDirectory) {
+    const mainRequired = files.length > 0;
+    const testRequired = testFiles.length > 0;
+    if (!mainRequired && !testRequired) return { pmd: { required: false, mainRequired, testRequired, reason: '没有 Java 源码' },
         cpd: { required: false, reason: '没有 Java 主源码' }, artifacts: {} };
     const baseline = reactor.find((item) => item.path === 'mimir-boot-parent');
     const resource = reactor.find((item) => item.path === 'mimir-boot-code-quality');
@@ -616,31 +618,50 @@ async function qualityExpectation(root, module, reactor, files, buildDirectory) 
             || text(dependencies[0], 'classifier') || one(dependencies[0], 'exclusions')) {
             throw new Error(`${current.path} 官方 PMD 实现依赖必须唯一且与描述符来源版本 ${sourceVersion} 一致`);
         }
-        if (elements(node, 'executions', 'execution').length !== 2) throw new Error(`${current.path} 质量插件只支持 pmd/cpd 两个 execution`);
+        if (elements(node, 'executions', 'execution').length !== 3) throw new Error(`${current.path} 质量插件只支持 pmd/test-pmd/cpd 三个 execution`);
     }
-    for (const [kind, goal] of [['pmd', 'check'], ['cpd', 'cpd-check']]) {
+    for (const { id, kind, goal, includeTests, ruleset, required, artifactName } of [
+        { id: 'pmd', kind: 'pmd', goal: 'check', includeTests: 'false', ruleset: 'main-ruleset.xml',
+            required: mainRequired, artifactName: 'pmdXml' },
+        { id: 'test-pmd', kind: 'pmd', goal: 'test-check', includeTests: 'true', ruleset: 'test-ruleset.xml',
+            required: testRequired, artifactName: 'pmdTestXml' },
+        { id: 'cpd', kind: 'cpd', goal: 'cpd-check', includeTests: 'false', required: mainRequired, artifactName: 'cpdXml' },
+    ]) {
         const configurations = [];
         for (const current of [baseline, module]) {
             const node = plugin(current.model, 'quality');
             const found = requireOneGoal(node, goal, 'verify', current.path);
-            if (found.phase !== 'verify' || text(found.execution, 'id') !== kind
-                || !samePatterns(elements(found.execution, 'goals', 'goal').map(value), [goal])) {
-                throw new Error(`${current.path} ${kind} 必须唯一绑定 verify/${goal} 且保持分叉目标 execution ID`);
+            const goals = elements(found.execution, 'goals', 'goal').map(value);
+            if (found.phase !== 'verify' || text(found.execution, 'id') !== id || goals.length !== 1 || goals[0] !== goal) {
+                throw new Error(`${current.path} ${id} 必须唯一绑定 verify/${goal} 且保持分叉目标 execution ID`);
             }
             configurations.push(qualityConfiguration(node, found.execution, current, kind));
         }
+        if (configurations[0].get('includeTests') !== JSON.stringify({ attributes: [], value: includeTests })) {
+            throw new Error(`Parent ${id} includeTests 必须为 ${includeTests}`);
+        }
+        if (kind === 'pmd') {
+            // 两次 Maven 调用各用一个规则入口，不依赖源码目录名在 XML 中分流。
+            const rulesets = JSON.stringify({ attributes: [],
+                value: [['ruleset', { attributes: [], value: `mimir-boot/pmd/${ruleset}` }]] });
+            if (configurations[0].get('rulesets') !== rulesets) throw new Error(`Parent ${id} 必须仅使用 ${ruleset}`);
+        }
         for (const name of QUALITY_PARAMETERS[kind]) {
             if (!configurations[0].has(name) || configurations[0].get(name) !== configurations[1].get(name)) {
-                throw new Error(`${module.path} ${kind} 参数 ${name} 必须与 Parent 配置一致`);
+                throw new Error(`${module.path} ${id} 参数 ${name} 必须与 Parent 配置一致`);
             }
         }
         const node = plugin(module.model, 'quality');
         const get = requireOneGoal(node, goal, 'verify', module.path).get;
-        const directory = await configuredPath(root, module.directory, value(get('targetDirectory')), `${kind} targetDirectory`);
-        if (directory !== path.join(buildDirectory, 'mimir-quality')) throw new Error(`${module.path} ${kind} targetDirectory 必须为 target/mimir-quality`);
-        artifacts[`${kind}Xml`] = { path: relative(root, await resolveBuildArtifact(root, module.path, path.join(directory, `${kind}.xml`))), sha256: null };
+        const directory = await configuredPath(root, module.directory, value(get('targetDirectory')), `${id} targetDirectory`);
+        const reportDirectory = id === 'test-pmd' ? 'mimir-quality/tests' : 'mimir-quality';
+        if (directory !== path.join(buildDirectory, reportDirectory)) throw new Error(`${module.path} ${id} targetDirectory 必须为 target/${reportDirectory}`);
+        if (required) {
+            artifacts[artifactName] = { path: relative(root, await resolveBuildArtifact(root, module.path, path.join(directory, `${kind}.xml`))), sha256: null };
+        }
     }
-    return { pmd: { required: true, reason: null }, cpd: { required: true, reason: null }, artifacts };
+    return { pmd: { required: mainRequired || testRequired, mainRequired, testRequired, reason: null },
+        cpd: { required: mainRequired, reason: mainRequired ? null : '没有 Java 主源码' }, artifacts };
 }
 
 /** 基于本轮实际 effective POM 和源码生成验收期望，不从构建产物推导适用范围。 */
@@ -676,7 +697,7 @@ export async function generateExpectedFromModel(root, runId, effectivePomSource)
         const unit = await testExpectation(root, module, 'unit', testDeclarations, buildDirectory, reactor);
         const integration = await testExpectation(root, module, 'integration', testDeclarations, buildDirectory, reactor);
         const { coverage, artifacts } = await coverageExpectation(root, module, reactor, main, buildDirectory, { unit, integration });
-        const quality = await qualityExpectation(root, module, reactor, main, buildDirectory);
+        const quality = await qualityExpectation(root, module, reactor, main, tests, buildDirectory);
         modules.push({ path: module.path, packaging, javaSources, exemption, tests: { unit, integration },
             coverage, format: await formatExpectation(module, [...main, ...tests]), pmd: quality.pmd, cpd: quality.cpd,
             artifacts: { ...artifacts, ...quality.artifacts } });

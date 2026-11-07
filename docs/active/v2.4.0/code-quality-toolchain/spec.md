@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-11-02
-updated: 2026-11-06
+updated: 2026-11-07
 ---
 
 # 代码质量工具链规格
@@ -67,11 +67,17 @@ Given 源码存在未使用的 import、超过 6 行的普通注释，以及返�
 When 执行 PMD 检查
 Then PMD 不报告这三类问题（`UnnecessaryImport`、`CommentSize`、`LinguisticNaming` 未启用）。
 
-### 场景：测试与生成源码不检查
+### 场景：测试不应用生产规则，生成源码不检查
 
-Given `src/test/java` 中有空 catch 块，注解处理器生成的源码中有未使用的私有字段
+Given 下游 `src/test/java` 中有空 catch 块，注解处理器生成的源码中有未使用的私有字段
 When 执行 PMD 检查
 Then 两处均不产生违规。
+
+### 场景：自定义源码目录
+
+Given 下游把主、测试源码根改为 `code/main`、`code/tests`，其中分别有生产、测试规则违规
+When 开启严格 PMD
+Then 两个入口分别报告对应违规并阻断；不得因目录名不同而生成空报告并通过。
 
 ## 行为 CQ-03：重复代码检查
 
@@ -128,6 +134,18 @@ Then 构建成功，命令行属性优先。
 Given 本仓库任一模块 main 源码新增一个缺少 Javadoc 的公开方法
 When 执行 `./mvnw -Pci clean verify`
 Then 构建失败并指出该文件与行号。
+
+### 场景：本仓库测试规则
+
+Given 测试源码违反 `UnnecessaryBooleanAssertion`、`DetachedTestCase`、`SimplifiableTestAssertion` 或 `JUnit5TestShouldBePackagePrivate`
+When 执行 `./mvnw -Pci clean verify`
+Then 本仓库构建失败；测试源码只应用这四条规则，生产规则不应用于测试源码，生成源码不检查，CPD 仍只检查 main。
+
+### 场景：下游测试违规默认只报告
+
+Given 下游测试源码违反一条测试规则
+When 在 `precheck` 或 `ci` 启用 PMD，保持默认 `pmd.failOnViolation=false`
+Then 生成报告但构建不因该违规失败；显式设置 `pmd.failOnViolation=true` 时阻断构建。
 
 ### 场景：完整验收纳入新检查
 
@@ -248,7 +266,7 @@ Then 两类检查使用规则 jar 中的规则执行，规则 jar 版本等于 P
 
 ### 场景：仅导入 BOM 的消费者
 
-Given 消费者使用其他父 POM 并导入 BOM，自行声明 `maven-pmd-plugin` 3.28.0，插件依赖为 `io.github.yggdrasil-labs:mimir-boot-code-quality`（版本与导入的 BOM 相同），`rulesets` 为 `mimir-boot/pmd/ruleset.xml`，并设置 `failOnViolation=true`
+Given 消费者使用其他父 POM 并导入 BOM，自行声明 `maven-pmd-plugin` 3.28.0，插件依赖为 `io.github.yggdrasil-labs:mimir-boot-code-quality`（版本与导入的 BOM 相同），`rulesets` 为 `mimir-boot/pmd/main-ruleset.xml`，并设置 `failOnViolation=true`
 When 对含一处缺少 Javadoc 的公开方法的源码执行 PMD 检查
 Then 报告的违规与继承 Parent 时相同，构建失败。
 
@@ -262,12 +280,12 @@ Then 构建失败并提示缺少版本（插件依赖不受 BOM 的 `dependencyM
 
 Given 下游在自身 POM 中为 `mimir-boot-code-quality` 的 `pmd` execution 配置 `rulesets` 为 `config/pmd.xml`
 When 以 `precheck` 执行 PMD 检查
-Then 使用下游规则，Mimir 规则不生效。
+Then 主源码使用下游规则，原 41 条生产规则不生效；测试规则仍由 `test-pmd` execution 独立配置。
 
 ### 场景：单独运行检查
 
 Given 下游开启对应工具，且默认 `target/pmd.xml` / `target/cpd.xml` 留有自身官方插件报告
-When 用独立插件的完整坐标调用 `check@pmd` 或 `cpd-check@cpd`
+When 用独立插件的完整坐标调用 `check@pmd`、`test-check@test-pmd` 或 `cpd-check@cpd`
 Then 只判定本次生成的 `target/mimir-quality/` 下对应报告；不把默认目录报告当作 Mimir 检查结果。
 
 ### 场景：覆盖规则制品版本
@@ -317,5 +335,5 @@ Then 其开关、引擎版本与执行结果与升级前相同（Parent 不声�
 - 运行时基线：全部检查在 JDK 17 上可运行；本规格不要求更高构建 JDK。
 - 下游默认模式不执行两类新检查；但 PMD 插件在 `build/plugins` 中声明并绑定 `verify`，执行到该阶段的任何构建（含 `install`、`deploy`）都需要能从插件仓库（镜像或 `<pluginRepositories>`）解析 PMD 插件与规则 jar。内网镜像未同步时，日常 `install` 也会失败。
 - 本仓库 `./mvnw -Pci clean verify` 的耗时增幅目标 ≤ 20%（推荐值，以实施前后同机测量为准）。
-- 报告路径固定为模块 `target/mimir-quality/pmd.xml`、`target/mimir-quality/cpd.xml`。
+- 报告路径固定为模块 `target/mimir-quality/pmd.xml`、`target/mimir-quality/tests/pmd.xml`、`target/mimir-quality/cpd.xml`。
 - 新规则 jar 不含 Java 类，不向下游运行时传递任何依赖。

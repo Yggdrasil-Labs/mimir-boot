@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-07
 ---
 
 # 代码质量工具链方案大纲
@@ -37,11 +37,12 @@ updated: 2026-11-02
 | D-108 | 开关保持插件原生属性；已自行配置 PMD 的下游受影响，作为向后兼容的显式例外写入升级说明并给出恢复配置（规格 CQ-10），不改用 Mimir 私有开关 |
 | D-109 | 不引入 Checkstyle：注释与命名改由 PMD 选定规则负责（`CommentRequired`、`DanglingJavadoc` 与 codestyle 命名规则），修订 D-103；接受不检查 Javadoc 标签与签名一致性等缺口（2026-11-02 用户确认） |
 
-## 本轮推荐（非用户逐项确认）
+## 接入约定
 
 接入形态按 D-110 更新为[独立插件入口](./design.md#分叉配置问题与接入方案)，规则制品来源与官方实现版本须配对，Mimir 输出使用 `target/mimir-quality/`。
 
 - PMD/CPD 使用 `maven-pmd-plugin` 3.28.0 自带的 PMD 7.17.0，不单独覆盖；`CommentRequired` 用 `violationSuppressXPath` 排除构造器与非公开可见性，以满足 D-107；本仓库让 PMD 处理错误也阻断构建。
+- PMD 按 Maven 主、测试源码根分别检查，共用原生开关；测试仅启用[四条专用规则](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)。
 - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test，不引入 `archunit-junit5`。
 - CPD `minimumTokens=100`，不检查测试源码。
 - 不改 Git hook；本地入口为 `./mvnw -Pprecheck verify`。

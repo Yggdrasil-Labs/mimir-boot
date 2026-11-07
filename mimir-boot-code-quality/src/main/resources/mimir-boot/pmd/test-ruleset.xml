@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Mimir Boot 测试源码规则" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>四条已确认的测试规则；扫描根由 Maven 测试源码入口提供。</description>
+  <!-- 检查 assertTrue(true) 等无效常量断言。 -->
+  <rule ref="category/java/errorprone.xml/UnnecessaryBooleanAssertion"/>
+  <!-- 检查测试类中疑似遗漏测试注解的方法。 -->
+  <rule ref="category/java/errorprone.xml/DetachedTestCase"/>
+  <!-- 检查可用 assertTrue、assertFalse、assertNull 等直接表达的断言。 -->
+  <rule ref="category/java/bestpractices.xml/SimplifiableTestAssertion"/>
+  <!-- 检查 JUnit 5 测试类和方法是否使用包可见性。 -->
+  <rule ref="category/java/bestpractices.xml/JUnit5TestShouldBePackagePrivate"/>
+</ruleset>

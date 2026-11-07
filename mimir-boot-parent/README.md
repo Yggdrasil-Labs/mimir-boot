@@ -360,6 +360,8 @@ mvn -Pci clean verify
 
 默认模式跳过检查。`precheck` 和 `ci` 执行并逐条输出违规，默认只报告；本仓库 Java 模块另外启用严格属性。下游可以分别开启阻断或关闭检查：
 
+启用 PMD 后，主源码使用 41 条生产规则，测试源码使用 4 条测试规则；CPD 仍只扫描主源码。升级后已有测试也会纳入 PMD，仅关闭测试检查时，将 `test-pmd` execution 的 `phase` 设为 `none`。
+
 ```bash
 mvn -Pprecheck verify
 mvn -Pprecheck verify -Dpmd.failOnViolation=true -Dcpd.failOnViolation=true -Dpmd.skipPmdError=false
@@ -367,10 +369,11 @@ mvn -Pci verify -Dcpd.skip=true
 
 # 直接调用必须选中对应 execution，使分叉目标取得规则与报告配置
 mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:check@pmd -Dpmd.skip=false
+mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:test-check@test-pmd -Dpmd.skip=false
 mvn io.github.yggdrasil-labs:mimir-boot-code-quality:YOUR_RELEASE_VERSION:cpd-check@cpd -Dcpd.skip=false
 ```
 
-规则、替换示例及仅导入 BOM 的完整配置见 [规则模块](../mimir-boot-code-quality/README.md)。继承 Parent 时，替换规则须覆盖 `io.github.yggdrasil-labs:mimir-boot-code-quality` 的 `pmd` execution，不能覆盖已有官方插件来修改 Mimir 规则。两类 XML 报告位于 `target/mimir-quality/pmd.xml`、`target/mimir-quality/cpd.xml`；HTML、缓存、基准及规则副本也在该目录下。
+规则、替换示例及仅导入 BOM 的完整配置见 [规则模块](../mimir-boot-code-quality/README.md)。继承 Parent 时，替换规则须覆盖 `io.github.yggdrasil-labs:mimir-boot-code-quality` 的 `pmd` execution，不能覆盖已有官方插件来修改 Mimir 规则。两类 XML 报告位于 `target/mimir-quality/pmd.xml`、`target/mimir-quality/tests/pmd.xml`、`target/mimir-quality/cpd.xml`；HTML、缓存、基准及规则副本也在该目录下。
 
 插件及实现依赖从插件仓库解析。内网镜像需同步规则制品、`org.apache.maven.plugins:maven-pmd-plugin:3.28.0` 与传递依赖；未配置镜像时，除普通 `<repositories>` 外还需配置相同来源的 `<pluginRepositories>`。规则制品版本只支持同官方描述符来源版本的覆盖；跨来源必须成套升级 Parent，不能单独替换官方实现或 PMD 依赖。
 
@@ -383,7 +386,7 @@ Mimir 入口使用独立插件坐标和类加载器。下游已有 `maven-pmd-pl
 - `precheck`、`ci` 预设两个 skip 为 `false`，`dev`、`prod` 为 `true`；命令行 `-D` 优先于这些属性。若下游在插件配置中写了字面开关，须自行核实其优先级。
 - 官方插件依赖位于独立 Mimir 插件中，不与下游官方插件的依赖配置合并。两套报告应使用不同目录；下游主动指定同一目录时仍会互相覆盖。
 
-只保留下游原检查时，关闭 Mimir 的两个 execution，再恢复需要的原生开关：
+只保留下游原检查时，关闭 Mimir 的三个 execution，再恢复需要的原生开关：
 
 ```xml
 <properties>
@@ -399,6 +402,7 @@ Mimir 入口使用独立插件坐标和类加载器。下游已有 `maven-pmd-pl
             <artifactId>mimir-boot-code-quality</artifactId>
             <executions>
                 <execution><id>pmd</id><phase>none</phase></execution>
+                <execution><id>test-pmd</id><phase>none</phase></execution>
                 <execution><id>cpd</id><phase>none</phase></execution>
             </executions>
         </plugin>

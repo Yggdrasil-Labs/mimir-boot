@@ -149,15 +149,31 @@ async function assertQualityArtifact(repositoryDirectory, revision, implementati
     const extracted = path.join(workDirectory, 'quality-jar');
     await runtime.mkdir(extracted, { recursive: true });
     const entries = ['META-INF/maven/plugin.xml', 'META-INF/mimir-boot/pmd-source.properties',
-        'META-INF/LICENSE', 'META-INF/NOTICE', 'mimir-boot/pmd/ruleset.xml'];
+        'META-INF/LICENSE', 'META-INF/NOTICE',
+        'mimir-boot/pmd/main-ruleset.xml', 'mimir-boot/pmd/test-ruleset.xml'];
     const unpacked = await runCommand('jar', ['xf', jar, ...entries], { cwd: extracted });
     if (unpacked.exitCode !== 0) fail('规则资源 jar 无法解包');
     for (const entry of entries) if (!await nonEmptyFile(path.join(extracted, entry))) fail(`规则资源 jar 缺少 ${entry}`);
     const descriptor = parser.parseFromString(await runtime.readFile(path.join(extracted, entries[0]), 'utf8'), 'application/xml');
-    const descriptorValue = (name) => text(Array.from(descriptor.documentElement?.childNodes || []).find((node) => node.nodeType === 1 && node.localName === name));
+    const descriptorChild = (parent, name) => Array.from(parent?.childNodes || []).find((node) => node.nodeType === 1 && node.localName === name);
+    const descriptorValue = (name) => text(descriptorChild(descriptor.documentElement, name));
     if (descriptor.doctype || descriptor.documentElement?.localName !== 'plugin'
         || descriptorValue('groupId') !== 'io.github.yggdrasil-labs' || descriptorValue('artifactId') !== 'mimir-boot-code-quality'
         || descriptorValue('version') !== revision) fail('规则资源 jar 的插件描述符坐标错误');
+    const mojos = Array.from(descriptor.getElementsByTagName('mojo'));
+    const goals = mojos.map((mojo) => text(descriptorChild(mojo, 'goal'))).sort();
+    if (JSON.stringify(goals) !== JSON.stringify(['check', 'cpd', 'cpd-check', 'pmd', 'test-check', 'test-pmd'])) {
+        fail('规则资源 jar 的插件描述符必须只包含主源码/测试 PMD 与 CPD 的六个目标');
+    }
+    const testReport = mojos.find((mojo) => text(descriptorChild(mojo, 'goal')) === 'test-pmd');
+    const testConfiguration = descriptorChild(testReport, 'configuration');
+    const testCheck = mojos.find((mojo) => text(descriptorChild(mojo, 'goal')) === 'test-check');
+    if (['compileSourceRoots', 'testSourceRoots'].some((name) =>
+        descriptorChild(testConfiguration, name)?.getAttribute('default-value') !== '${project.testCompileSourceRoots}')
+        || descriptorChild(testConfiguration, 'includeTests')?.getAttribute('default-value') !== 'true'
+        || text(descriptorChild(testCheck, 'executeGoal')) !== 'test-pmd') {
+        fail('测试 PMD 必须显式绑定 Maven 测试源码根并分叉测试报告目标');
+    }
     const provenance = new Map((await runtime.readFile(path.join(extracted, entries[1]), 'utf8')).split(/\r?\n/u)
         .filter((line) => line.includes('=')).map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
     if (provenance.get('groupId') !== 'org.apache.maven.plugins' || provenance.get('artifactId') !== 'maven-pmd-plugin'
@@ -336,20 +352,24 @@ async function main() {
         await runConsumerMaven('consumer-isolated-clean-verify', [...consumerMaven, 'clean', 'verify'], logsDirectory);
         if (!(await nonEmptyFile(path.join(consumerDirectory, 'target/failsafe-reports/TEST-io.github.yggdrasil.labs.fixture.ParentLifecycleIT.xml')))) fail('consumer 隔离执行缺少 ParentLifecycleIT Failsafe 报告');
         await runConsumerMaven('consumer-quality-precheck', [...consumerMaven, '-Pprecheck', 'clean', 'verify'], logsDirectory);
-        for (const kind of ['pmd', 'cpd']) {
-            const report = path.join(consumerDirectory, `target/mimir-quality/${kind}.xml`);
-            if (!await nonEmptyFile(report)) fail(`发布 Parent 消费者缺少 ${kind} 质量报告`);
+        for (const [kind, relativeReport, expectedRule, expectedFile] of [
+            ['pmd', 'pmd.xml', 'CommentRequired', '/code/main/io/github/yggdrasil/labs/fixture/ParentQualityContract.java'],
+            ['pmd', 'tests/pmd.xml', 'UnnecessaryBooleanAssertion', '/code/tests/io/github/yggdrasil/labs/fixture/ParentLifecycleIT.java'],
+            ['cpd', 'cpd.xml', null, null],
+        ]) {
+            const report = path.join(consumerDirectory, 'target/mimir-quality', relativeReport);
+            if (!await nonEmptyFile(report)) fail(`发布 Parent 消费者缺少 ${relativeReport} 质量报告`);
             const document = parser.parseFromString(await runtime.readFile(report, 'utf8'), 'application/xml');
             const expected = kind === 'pmd' ? 'pmd' : 'pmd-cpd';
             const entries = Array.from(document.getElementsByTagName('*'));
             if (document.doctype || document.documentElement?.localName !== expected
                 || entries.some((node) => ['duplication', 'error', 'configerror', 'processingerror', 'configurationerror'].includes(node.localName.toLowerCase()))) {
-                fail(`发布 Parent 消费者的 ${kind} 报告包含重复、处理错误或无效 XML`);
+                fail(`发布 Parent 消费者的 ${relativeReport} 报告包含重复、处理错误或无效 XML`);
             }
             const violations = entries.filter((node) => node.localName === 'violation');
-            if (kind === 'pmd' && (violations.length !== 1 || violations[0].getAttribute('rule') !== 'CommentRequired'
-                || !violations[0].parentNode.getAttribute('name')?.replaceAll('\\', '/').endsWith('/ParentQualityContract.java'))) {
-                fail('发布 Parent 消费者必须只报告预设的公开方法注释违规');
+            if (kind === 'pmd' && (violations.length !== 1 || violations[0].getAttribute('rule') !== expectedRule
+                || !violations[0].parentNode.getAttribute('name')?.replaceAll('\\', '/').endsWith(expectedFile))) {
+                fail(`发布 Parent 消费者的 ${relativeReport} 必须仅报告 ${expectedFile} 的 ${expectedRule} 违规`);
             }
         }
 
