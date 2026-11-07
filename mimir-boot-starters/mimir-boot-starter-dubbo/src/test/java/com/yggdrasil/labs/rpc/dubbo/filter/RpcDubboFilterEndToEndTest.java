@@ -20,6 +20,7 @@ import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.ServiceConfig;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 
@@ -36,6 +37,16 @@ import com.yggdrasil.labs.rpc.dubbo.support.RpcDubboSupportHolder;
 class RpcDubboFilterEndToEndTest {
 
     private DubboBootstrap bootstrap;
+
+    @BeforeEach
+    void setUp() {
+        bootstrap = DubboBootstrap.newInstance();
+        // 场景均等待调用完成；仅缩短当前测试应用的退出等待，仍完整停止服务。
+        bootstrap
+                .getApplicationModel()
+                .modelEnvironment()
+                .updateAppConfigMap(Map.of("dubbo.service.shutdown.wait", "100"));
+    }
 
     @AfterEach
     void tearDown() {
@@ -66,7 +77,6 @@ class RpcDubboFilterEndToEndTest {
         reference.setCheck(true);
         reference.setFilter("rpcDubboFilter");
 
-        bootstrap = DubboBootstrap.newInstance();
         bootstrap
                 .application(new ApplicationConfig("rpc-dubbo-filter-integration-test"))
                 .protocol(protocol)
@@ -104,7 +114,6 @@ class RpcDubboFilterEndToEndTest {
         reference.setCheck(true);
         reference.setFilter("rpcDubboFilter");
 
-        bootstrap = DubboBootstrap.newInstance();
         bootstrap
                 .application(new ApplicationConfig("rpc-dubbo-mdc-integration-test"))
                 .protocol(protocol)
@@ -182,7 +191,6 @@ class RpcDubboFilterEndToEndTest {
         reference.setCheck(true);
         reference.setFilter("rpcDubboFilter");
 
-        bootstrap = DubboBootstrap.newInstance();
         bootstrap
                 .application(new ApplicationConfig("rpc-dubbo-mdc-async-integration-test"))
                 .protocol(protocol)

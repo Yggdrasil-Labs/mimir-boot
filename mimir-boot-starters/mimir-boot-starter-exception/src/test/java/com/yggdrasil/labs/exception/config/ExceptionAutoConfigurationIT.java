@@ -1,10 +1,8 @@
 package com.yggdrasil.labs.exception.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -12,12 +10,16 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.MethodValidationResult;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import com.yggdrasil.labs.common.response.R;
@@ -124,17 +126,28 @@ class ExceptionAutoConfigurationIT {
     }
 
     @Test
-    void handlerPreservesReturnValueValidationServerErrorStatus() {
+    void handlerPreservesReturnValueValidationServerErrorStatus() throws Exception {
+        var method = String.class.getMethod("toString");
+        var result =
+                new ParameterValidationResult(
+                        new MethodParameter(method, -1),
+                        null,
+                        List.of(
+                                new DefaultMessageSourceResolvable(
+                                        new String[] {"NotNull"}, "返回值不能为空")),
+                        null,
+                        null,
+                        null);
+        var exception =
+                new HandlerMethodValidationException(
+                        MethodValidationResult.create("value", method, List.of(result)));
+        assertThat(exception.isForReturnValue()).isTrue();
         runner.run(
                 ctx -> {
-                    HandlerMethodValidationException exception =
-                            mock(HandlerMethodValidationException.class);
-                    when(exception.isForReturnValue()).thenReturn(true);
-
                     Object response =
                             ctx.getBean(MimirExceptionHandler.class)
                                     .handleHandlerMethodValidationException(
-                                            exception, mock(HttpServletRequest.class));
+                                            exception, new MockHttpServletRequest());
 
                     assertThat(response).isInstanceOf(ResponseEntity.class);
                     assertThat(((ResponseEntity<?>) response).getStatusCode())
