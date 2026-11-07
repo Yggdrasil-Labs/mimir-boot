@@ -73,8 +73,8 @@ bash scripts/engineering.sh java
 # 本地质量预检（本仓库 PMD/CPD 为严格模式）
 ./mvnw -Pprecheck verify
 
-# Java 子检查中的 Maven 基础构建步骤
-./mvnw -Pci clean verify
+# Java 子检查中的 Maven 基础构建步骤示例（入口按可用 CPU 选择，最多 4 线程）
+./mvnw -T4 -Pci clean verify
 
 # 统一完整验收（本地与 CI 基础检查共用）
 bash scripts/engineering.sh quality --mode full --source worktree

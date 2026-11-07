@@ -1,7 +1,7 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -420,11 +420,14 @@ async function runJavaQualityInternal(options) {
     let buildResult = commandResult(2);
     if (expectedReady) {
         const buildLog = path.join(options.reportDirectory, 'logs', 'java-build.log');
-        buildResult = await runCommand({ command: path.join(options.root, 'mvnw'), args: ['-B', '-Pci', 'clean', 'verify'], cwd: options.root, logPath: buildLog });
+        // 按可用 CPU 限制模块并行度，最多四线程；模块内部保持既有执行方式。
+        const reactorThreads = Math.min(4, availableParallelism());
+        const buildArgs = ['-B', `-T${reactorThreads}`, '-Pci', 'clean', 'verify'];
+        buildResult = await runCommand({ command: path.join(options.root, 'mvnw'), args: buildArgs, cwd: options.root, logPath: buildLog });
         appendResult(report, {
             check: createCheck({
                 id: 'java-build',
-                command: ['./mvnw', '-B', '-Pci', 'clean', 'verify'],
+                command: ['./mvnw', ...buildArgs],
                 logPath: buildLog,
                 status: buildResult.exitCode === 0 ? 'passed' : buildResult.exitCode === 1 ? 'failed' : 'error',
                 exitCode: buildResult.exitCode,

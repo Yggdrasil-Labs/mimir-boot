@@ -40,7 +40,9 @@ pre-push 对待推送的提交快照执行离线 quick，检查该提交中的�
 | quick | 按变更检查文档与 Java 格式 |
 | full | 文档格式、内部链接、导航；构建签名模型；发布工具契约；隔离 Parent/BOM/Starter 消费者；临时 GPG 签名与失败场景；Maven 单元/集成测试、覆盖率、PMD/CPD 和报告核验 |
 
-full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 会清理构建产物，因此 Maven 质量构建在最后执行，保留最终测试和 JaCoCo 报告。Java 子检查可单独运行 `bash scripts/engineering.sh java`；其 Maven 基础步骤是 `./mvnw -B -Pci clean verify`，完整入口会继续核验报告。
+full 不根据 CI 环境或 Git 变更范围删减基础检查。发布 fixture 会清理构建产物，因此 Maven 质量构建在最后执行，保留最终测试和 JaCoCo 报告。Java 子检查可单独运行 `bash scripts/engineering.sh java`；其 Maven 基础步骤是 `./mvnw -B -T<线程数> -Pci clean verify`，完整入口会继续核验报告。
+
+线程数取 `min(4, os.availableParallelism())`：单核串行，双核使用两个线程，四核及以上最多四个线程。只并行独立 Reactor 模块，模块内部保持既有 Surefire/Failsafe 执行方式。该调度长期由 `java`、full 与 CI 共用；有效模型、逐类测试报告、覆盖率及 PMD/CPD 核验继续覆盖全部适用模块。命令仍由工具生成，不通过 `MAVEN_ARGS` 接受额外参数。
 
 Java 子检查通过本轮 `-Pci help:effective-pom` 获取完整 reactor，检查适用插件的执行阶段、扫描范围、报告路径和最低阈值，并明确纯 POM/无源码豁免。它只支持本仓库的 POM/JAR 模块、标准 `src/main/java`/`src/test/java` 和 `target` 输出目录，以及 Parent 的 `*Test`/`*Tests`、`*IT`/`*IntegrationTest` 规则；不模拟 Maven 通用选择器或额外执行 JUnit 发现。配置不在支持范围时明确失败，不能转成无测试豁免。
 

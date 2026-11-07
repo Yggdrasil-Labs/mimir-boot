@@ -14,12 +14,14 @@
 | 文档格式、链接与导航 | `bash scripts/engineering.sh docs --root "$PWD" --mode full --self-test` | Markdown、内部链接、导航和工具自检 | 文档语义正确或 Java 行为通过 |
 | Java 构建、测试、覆盖率及报告 | `bash scripts/engineering.sh java` | CI Maven 构建并核验报告 | 完整发布契约或远端 CI 通过 |
 | 仓库完整验收 | `bash scripts/engineering.sh quality --mode full --source worktree` | 文档、构建模型、发布契约、消费者、签名及 Java 检查 | 不同提交的 CI、未启用的 Sonar 或真实发布成功 |
-| 排查 Maven 本身 | `./mvnw -Pci clean verify` | Java 子检查的基础构建步骤 | 上层报告核验和仓库完整验收通过 |
+| 排查 Maven 本身 | `./mvnw -T4 -Pci clean verify` | Java 子检查的基础构建步骤示例；资源较少时减少线程 | 上层报告核验和仓库完整验收通过 |
 | 本地质量预检 | `./mvnw -Pprecheck verify` | PMD/CPD 及该模式启用的其他检查；本仓库违规阻断 | 发布或远端 CI 通过 |
 
 本仓库的 `test` 不执行 Failsafe 的 `*IT` / `*IntegrationTest`；需要这些用例时运行到 `verify`。测试选择规则以 [Parent POM](../../mimir-boot-parent/pom.xml) 为准，不能仅凭测试类名称或命令退出码推断覆盖范围。
 
 开发中按需选择定向测试或 quick；交付时按改动范围选择文档 full、Java 或 quality full，不把表中命令当作必跑清单。quality full 已包含文档 full 和 Java 子检查，Java 子检查已包含 Maven `clean verify`；同一状态通过上层检查后，无需重复子步骤。定向测试和 quick 不能替代需要的完整验收。
+
+Java 子检查按可用 CPU 数选择 Reactor 线程数，上限为 4：单核使用 `-T1`，双核使用 `-T2`，四核及以上使用 `-T4`，不启用 JUnit 方法或类并行。测试用例累计时间与 Maven 构建墙钟时间分别统计；并行后不同模块的测试时间可以重叠，不能相加得到构建耗时。排查并发相关问题时，可去掉原生 Maven 命令的 `-T` 参数作串行对照；统一入口仍会按既定命令验证完整报告。
 
 ```mermaid
 flowchart TD
