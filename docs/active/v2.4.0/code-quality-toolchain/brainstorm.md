@@ -42,7 +42,7 @@ updated: 2026-11-07
 接入形态按 D-110 更新为[独立插件入口](./design.md#分叉配置问题与接入方案)，规则制品来源与官方实现版本须配对，Mimir 输出使用 `target/mimir-quality/`。
 
 - PMD/CPD 使用 `maven-pmd-plugin` 3.28.0 自带的 PMD 7.17.0，不单独覆盖；`CommentRequired` 用 `violationSuppressXPath` 排除构造器与非公开可见性，以满足 D-107；本仓库让 PMD 处理错误也阻断构建。
-- PMD 按 Maven 主、测试源码根分别检查，共用原生开关；测试仅启用[四条专用规则](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)。
+- PMD 按 Maven 主、测试源码根分别检查，共用原生开关；测试采用[独立规则集](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)。
 - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test，不引入 `archunit-junit5`。
 - CPD `minimumTokens=100`，不检查测试源码。
 - 不改 Git hook；本地入口为 `./mvnw -Pprecheck verify`。

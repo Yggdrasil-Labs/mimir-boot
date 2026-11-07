@@ -60,7 +60,7 @@ class LogPresetOutputIntegrationTest {
 
     @Test
     void server_routes_each_event_to_expected_files_only(CapturedOutput output) throws IOException {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(SERVER, "--spring.profiles.active=prod")) {
             emitAll();
         } finally {
@@ -88,7 +88,7 @@ class LogPresetOutputIntegrationTest {
     @Test
     void container_writes_each_event_once_to_stdout_and_creates_no_files(CapturedOutput output)
             throws IOException {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(CONTAINER, "--spring.profiles.active=prod")) {
             emitAll();
         }
@@ -105,12 +105,12 @@ class LogPresetOutputIntegrationTest {
 
     @Test
     void prod_third_party_warn_can_be_overridden_by_logging_level(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(CONTAINER, "--spring.profiles.active=prod")) {
             LoggerFactory.getLogger("org.springframework.context.Probe")
                     .info("spring-default {}", id);
         }
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         CONTAINER,
                         "--spring.profiles.active=prod",
@@ -142,7 +142,7 @@ class LogPresetOutputIntegrationTest {
                         },
                         true,
                         StandardCharsets.UTF_8);
-        try (ConfigurableApplicationContext context = start(CONTAINER)) {
+        try (ConfigurableApplicationContext ignoredContext = start(CONTAINER)) {
             System.setOut(failing);
             LoggerFactory.getLogger("demo.route").error("stdout-failure {}", id);
             System.setOut(original);
@@ -159,7 +159,7 @@ class LogPresetOutputIntegrationTest {
     private boolean producerBlocks(boolean neverBlock) throws Exception {
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch entered = new CountDownLatch(1);
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         SERVER,
                         "--mimir.boot.log.async.queue-size=1",

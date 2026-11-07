@@ -69,7 +69,12 @@ BOM 不管理插件依赖版本，也不自动启用检查。以下为仅检查�
 
 `main-ruleset.xml` 直接定义 41 条生产规则，检查公开类型和方法的 Javadoc、Java 命名和常见坏味道。扫描范围由 Maven 实际源码根决定，支持自定义目录与追加源码根；规则 XML 不过滤路径。默认排除 `target/generated-sources`，CPD 阈值为 100 tokens。
 
-`test-ruleset.xml` 通过 `test-pmd` 入口，仅对 Maven 实际测试源码根应用 `UnnecessaryBooleanAssertion`、`DetachedTestCase`、`SimplifiableTestAssertion`、`JUnit5TestShouldBePackagePrivate`，排除 `target/generated-test-sources`。Parent 的两个 PMD 执行共用 `pmd.skip` 与 `pmd.failOnViolation`：默认跳过，启用后默认只报告；CPD 仍只检查主源码。仅关闭测试检查时，将 `test-pmd` execution 的 `phase` 设为 `none`。
+`test-ruleset.xml` 通过 `test-pmd` 入口检查 Maven 实际测试源码根，排除 `target/generated-test-sources`，启用 8 条规则：
+
+- 测试断言与声明：`UnnecessaryBooleanAssertion`、`DetachedTestCase`、`SimplifiableTestAssertion`、`JUnit5TestShouldBePackagePrivate`。
+- 通用错误：`UnusedLocalVariable`、`BrokenNullCheck`、`EmptyCatchBlock`、`ImplicitSwitchFallThrough`。
+
+Parent 的两个 PMD 执行共用 `pmd.skip` 与 `pmd.failOnViolation`：默认跳过，启用后默认只报告；CPD 仍只检查主源码。仅关闭测试检查时，将 `test-pmd` execution 的 `phase` 设为 `none`。
 
 Javadoc 要求不覆盖构造器、`@Override` 方法、getter/setter、protected 方法、字段及有效可见性非 public 的类型或方法。record 和注解类型本身暂无类型级检查；不核对 `@param` 等标签与签名的一致性、不检查首句或标签描述是否为空，也没有 record 组件命名规则。
 

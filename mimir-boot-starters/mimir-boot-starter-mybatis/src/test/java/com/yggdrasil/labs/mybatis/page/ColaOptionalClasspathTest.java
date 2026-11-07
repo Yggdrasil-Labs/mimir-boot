@@ -59,7 +59,7 @@ class ColaOptionalClasspathTest {
                                 .invoke(
                                         application,
                                         (Object) new String[] {"--spring.main.banner-mode=off"});
-                try (AutoCloseable closeable = (AutoCloseable) context) {
+                try (AutoCloseable ignoredScope = (AutoCloseable) context) {
                     Class<?> mapperType =
                             Class.forName(ProbeMapper.class.getName(), true, isolated);
                     Class<?> contextType =

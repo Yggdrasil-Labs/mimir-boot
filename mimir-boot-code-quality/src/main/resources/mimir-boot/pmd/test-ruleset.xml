@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ruleset name="Mimir Boot 测试源码规则" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
-  <description>四条已确认的测试规则；扫描根由 Maven 测试源码入口提供。</description>
+  <description>测试断言、声明与常见错误；扫描根由 Maven 测试源码入口提供。</description>
   <!-- 检查 assertTrue(true) 等无效常量断言。 -->
   <rule ref="category/java/errorprone.xml/UnnecessaryBooleanAssertion"/>
   <!-- 检查测试类中疑似遗漏测试注解的方法。 -->
@@ -9,4 +9,12 @@
   <rule ref="category/java/bestpractices.xml/SimplifiableTestAssertion"/>
   <!-- 检查 JUnit 5 测试类和方法是否使用包可见性。 -->
   <rule ref="category/java/bestpractices.xml/JUnit5TestShouldBePackagePrivate"/>
+  <!-- 检查声明或赋值后未使用的局部变量，减少无效的测试准备。 -->
+  <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+  <!-- 检查逻辑运算符写反的空值判断，避免判断本身触发空指针异常。 -->
+  <rule ref="category/java/errorprone.xml/BrokenNullCheck"/>
+  <!-- 检查空 catch 块，避免无意吞掉异常而让测试通过。 -->
+  <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+  <!-- 检查传统 switch 分支的意外贯穿，避免遗漏 break 或 return。 -->
+  <rule ref="category/java/errorprone.xml/ImplicitSwitchFallThrough"/>
 </ruleset>

@@ -40,7 +40,7 @@ flowchart TD
 
 ## 自动检查发生在哪里
 
-PMD 负责注释、命名和精选坏味道，CPD 负责重复代码，ArchUnit 以模块测试约束依赖方向；格式、覆盖率与环境约束仍由原工具负责，详见[定位矩阵](../design-docs/arch-code-quality-toolchain.md#定位矩阵)。继承 Parent 并启用 PMD 后，主源码应用生产规则，测试源码应用[四条测试规则](../../mimir-boot-code-quality/README.md#规则边界与替换)；CPD 仅检查 main。报告仍位于各 Java 模块 `target/mimir-quality/pmd.xml`、`tests/pmd.xml` 与 `cpd.xml`，完整门禁检查配置未被放宽、报告属于同一次构建且无违规/处理错误。
+PMD 负责注释、命名和精选坏味道，CPD 负责重复代码，ArchUnit 以模块测试约束依赖方向；格式、覆盖率与环境约束仍由原工具负责，详见[定位矩阵](../design-docs/arch-code-quality-toolchain.md#定位矩阵)。继承 Parent 并启用 PMD 后，主源码应用生产规则，测试源码应用[测试规则集](../../mimir-boot-code-quality/README.md#规则边界与替换)；CPD 仅检查 main。报告仍位于各 Java 模块 `target/mimir-quality/pmd.xml`、`tests/pmd.xml` 与 `cpd.xml`，完整门禁检查配置未被放宽、报告属于同一次构建且无违规/处理错误。
 
 只运行一个工具时，使用[规则模块 README](../../mimir-boot-code-quality/README.md)的完整坐标并带 `check@pmd`、`test-check@test-pmd` 或 `cpd-check@cpd`；不能省略 execution 选择器，否则裸 goal 使用 `default-cli`，可能读取另一目录的报告。
 

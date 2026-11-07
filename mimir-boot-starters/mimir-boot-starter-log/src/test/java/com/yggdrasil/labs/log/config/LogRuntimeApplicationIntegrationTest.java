@@ -68,7 +68,7 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void container_preset_masks_all_three_phases_and_exception_chain(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(Map.of(), "--logging.config=" + CONTAINER)) {
             LOG.info("phase3 {} {}", marker, SECRETS);
         }
@@ -83,7 +83,7 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void default_properties_single_rule_and_empty_list_hold_across_phases(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         Map.of("mimir.boot.log.mask.enabled-patterns", "password"),
                         "--logging.config=" + CONTAINER)) {
@@ -95,7 +95,7 @@ class LogRuntimeApplicationIntegrationTest {
         }
 
         marker = UUID.randomUUID().toString();
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         Map.of("mimir.boot.log.mask.enabled-patterns", List.of()),
                         "--logging.config=" + CONTAINER)) {
@@ -108,7 +108,7 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void configuration_argument_overrides_default_properties(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         Map.of("mimir.boot.log.mask.enabled-patterns", "password"),
                         "--logging.config=" + CONTAINER,
@@ -122,15 +122,15 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void sequential_new_legacy_new_starts_leave_no_residue(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(Map.of(), "--logging.config=" + CONTAINER)) {
             LOG.info("first {} {}", marker, SECRETS);
         }
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(Map.of(), "--logging.file.path=" + logPath, "--spring.profiles.active=dev")) {
             LOG.info("legacy {} {}", marker, SECRETS);
         }
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         Map.of(),
                         "--logging.config=" + CONTAINER,
@@ -147,7 +147,7 @@ class LogRuntimeApplicationIntegrationTest {
     @Test
     void reload_and_custom_pattern_during_bean_creation_keep_preset_defaults(
             CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(Map.of("test.reload", "true"), "--logging.config=" + CONTAINER)) {
             LOG.info("phase3 {} {} order=42", marker, SECRETS);
         }
@@ -174,7 +174,7 @@ class LogRuntimeApplicationIntegrationTest {
         }
         assertThat(lineOf(output, "destroy")).contains("token=****");
 
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(Map.of(), "--logging.file.path=" + logPath, "--spring.profiles.active=dev")) {
             LOG.info("after {} {}", marker, SECRETS);
         }
@@ -223,7 +223,7 @@ class LogRuntimeApplicationIntegrationTest {
         } finally {
             parent.close();
         }
-        try (ConfigurableApplicationContext next =
+        try (ConfigurableApplicationContext ignoredNext =
                 start(Map.of(), "--logging.file.path=" + logPath, "--spring.profiles.active=dev")) {
             LOG.info("next {} {}", marker, SECRETS);
         }
@@ -261,7 +261,7 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void indexed_list_like_yaml_holds_across_phases(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(
                         Map.of(),
                         "--logging.config=" + CONTAINER,
@@ -308,7 +308,7 @@ class LogRuntimeApplicationIntegrationTest {
     @Test
     void legacy_xml_reloaded_after_reset_keeps_published_rules(CapturedOutput output)
             throws Exception {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(Map.of(), "--logging.file.path=" + logPath, "--spring.profiles.active=dev")) {
             SensitiveDataConverter.publishConfiguration(List.of("token"), List.of(), "****");
             LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();

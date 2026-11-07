@@ -360,7 +360,7 @@ mvn -Pci clean verify
 
 默认模式跳过检查。`precheck` 和 `ci` 执行并逐条输出违规，默认只报告；本仓库 Java 模块另外启用严格属性。下游可以分别开启阻断或关闭检查：
 
-启用 PMD 后，主源码使用 41 条生产规则，测试源码使用 4 条测试规则；CPD 仍只扫描主源码。升级后已有测试也会纳入 PMD，仅关闭测试检查时，将 `test-pmd` execution 的 `phase` 设为 `none`。
+启用 PMD 后，主源码使用 41 条生产规则，测试源码使用 8 条测试规则；CPD 仍只扫描主源码。升级后已有测试也会纳入 PMD，仅关闭测试检查时，将 `test-pmd` execution 的 `phase` 设为 `none`。
 
 ```bash
 mvn -Pprecheck verify

@@ -68,7 +68,7 @@ class LegacyBootstrapScenarios {
 
     @Test
     void legacy_rules_in_application_config_still_apply(CapturedOutput output) {
-        try (ConfigurableApplicationContext context =
+        try (ConfigurableApplicationContext ignoredContext =
                 start(null, "--spring.config.name=mimir-legacy-bootstrap-old")) {
             LoggerFactory.getLogger("demo.bootstrap").info("phase3 {} {}", marker, SECRETS);
             assertThat(contextProperty()).isEqualTo("password,token");
@@ -79,7 +79,7 @@ class LegacyBootstrapScenarios {
     @Test
     void preset_from_system_property_loads_in_bootstrap_with_defaults(CapturedOutput output) {
         System.setProperty("logging.config", CONTAINER);
-        try (ConfigurableApplicationContext context = start(null)) {
+        try (ConfigurableApplicationContext ignoredContext = start(null)) {
             LoggerFactory.getLogger("demo.bootstrap").info("phase3 {} {}", marker, SECRETS);
         }
         assertThreePhases(output, "password=**** token=**** secret=**** api_key=****");
@@ -98,7 +98,7 @@ class LegacyBootstrapScenarios {
                         new SystemEnvironmentPropertySource(
                                 StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
                                 variables));
-        try (ConfigurableApplicationContext context = start(environment)) {
+        try (ConfigurableApplicationContext ignoredContext = start(environment)) {
             LoggerFactory.getLogger("demo.bootstrap").info("phase3 {} {}", marker, SECRETS);
         }
         assertThreePhases(output, "password=**** token=**** secret=**** api_key=****");
@@ -109,7 +109,7 @@ class LegacyBootstrapScenarios {
             CapturedOutput output) {
         ConfigurableApplicationContext first =
                 startPlain(CONTAINER, "--mimir.boot.log.mask.enabled-patterns=password");
-        try (ConfigurableApplicationContext second =
+        try (ConfigurableApplicationContext ignoredSecond =
                 startPlain(
                         "classpath:com/yggdrasil/labs/log/logback/server.xml",
                         "--mimir.boot.log.async.queue-size=4096",

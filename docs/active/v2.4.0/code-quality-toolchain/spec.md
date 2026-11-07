@@ -67,9 +67,9 @@ Given 源码存在未使用的 import、超过 6 行的普通注释，以及返�
 When 执行 PMD 检查
 Then PMD 不报告这三类问题（`UnnecessaryImport`、`CommentSize`、`LinguisticNaming` 未启用）。
 
-### 场景：测试不应用生产规则，生成源码不检查
+### 场景：测试与生成源码的规则边界
 
-Given 下游 `src/test/java` 中有空 catch 块，注解处理器生成的源码中有未使用的私有字段
+Given 下游测试目录中的公开辅助类缺少 Javadoc，注解处理器生成的源码中有未使用的私有字段
 When 执行 PMD 检查
 Then 两处均不产生违规。
 
@@ -137,9 +137,9 @@ Then 构建失败并指出该文件与行号。
 
 ### 场景：本仓库测试规则
 
-Given 测试源码违反 `UnnecessaryBooleanAssertion`、`DetachedTestCase`、`SimplifiableTestAssertion` 或 `JUnit5TestShouldBePackagePrivate`
+Given 测试源码违反[测试规则集](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)中的任意一条规则
 When 执行 `./mvnw -Pci clean verify`
-Then 本仓库构建失败；测试源码只应用这四条规则，生产规则不应用于测试源码，生成源码不检查，CPD 仍只检查 main。
+Then 本仓库构建失败；测试源码只应用该规则集，生成源码不检查，CPD 仍只检查 main。
 
 ### 场景：下游测试违规默认只报告
 

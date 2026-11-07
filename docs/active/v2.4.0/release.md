@@ -275,7 +275,7 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 
 规则入口现为 `main-ruleset.xml` 和 `test-ruleset.xml`；旧 `ruleset.xml` 已删除，不保留别名。
 
-启用新版 Parent 的 PMD 后，主源码使用原 41 条规则，测试源码新增 4 条测试规则；默认跳过和只报告行为不变，CPD 仍仅扫描主源码。已开启 PMD 严格模式的下游须处理测试违规，或将 `test-pmd` execution 的 `phase` 设为 `none`。
+启用新版 Parent 的 PMD 后，主源码使用原 41 条规则，测试源码启用 8 条测试规则；默认跳过和只报告行为不变，CPD 仍仅扫描主源码。已开启 PMD 严格模式的下游须处理测试违规，或将 `test-pmd` execution 的 `phase` 设为 `none`。
 
 继承新版 Parent 的构建执行到 `verify` 时，即使跳过质量分析，也需要解析同版本 `mimir-boot-code-quality`；内网镜像需同步规则制品、官方 PMD 插件及其传递依赖，或配置同源 `pluginRepositories`。仅有普通 `repositories` 不足以解析插件制品。
 

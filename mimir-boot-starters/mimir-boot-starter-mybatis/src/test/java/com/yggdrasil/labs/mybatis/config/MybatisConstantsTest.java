@@ -107,15 +107,9 @@ class MybatisConstantsTest extends BaseUnitTest {
         Constructor<MybatisConstants> constructor = MybatisConstants.class.getDeclaredConstructor();
         assertTrue(Modifier.isPrivate(constructor.getModifiers()));
 
-        // 验证无法通过反射创建实例
+        // 显式开启反射访问后覆盖私有构造器；调用异常应使测试失败。
         constructor.setAccessible(true);
-        try {
-            MybatisConstants instance = constructor.newInstance();
-            // 如果成功创建实例，验证它不为 null（虽然不应该创建）
-            assertNotNull(instance);
-        } catch (Exception e) {
-            // 如果抛出异常也是可以接受的（某些 JVM 可能会阻止实例化）
-        }
+        assertNotNull(constructor.newInstance());
     }
 
     @Test

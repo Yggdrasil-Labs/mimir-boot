@@ -108,7 +108,7 @@ flowchart TB
 | execution / goal | 规则与源码根 | XML 报告 |
 |---|---|---|
 | `pmd` / `check` | 41 条生产规则，Maven 实际 `compileSourceRoots`，`includeTests=false` | `target/mimir-quality/pmd.xml` |
-| `test-pmd` / `test-check` | 4 条测试规则，Maven 实际 `testCompileSourceRoots`，`includeTests=true` | `target/mimir-quality/tests/pmd.xml` |
+| `test-pmd` / `test-check` | 8 条测试规则，Maven 实际 `testCompileSourceRoots`，`includeTests=true` | `target/mimir-quality/tests/pmd.xml` |
 | `cpd` / `cpd-check` | 主源码重复，`includeTests=false` | `target/mimir-quality/cpd.xml` |
 
 `test-pmd`、`test-check` 从固定官方描述符派生：前者将 `compileSourceRoots`、`testSourceRoots` 默认值均绑定到 Maven 实际 `testCompileSourceRoots`，启用测试源码与测试类路径，由官方文件集合去重；后者分叉 `test-pmd`。规则 XML 不按目录名过滤，因此支持自定义、追加源码根。测试报告、HTML、缓存、规则副本与基准均隔离到 `target/mimir-quality/tests/`；默认排除生成的测试源码目录。
@@ -166,7 +166,7 @@ flowchart TB
 | 资源路径 | 内容 |
 |---|---|
 | `mimir-boot/pmd/main-ruleset.xml` | 直接定义 41 条生产规则，范围由 Maven 主源码入口决定 |
-| `mimir-boot/pmd/test-ruleset.xml` | 直接定义 4 条测试规则，范围由 Maven 测试源码入口决定 |
+| `mimir-boot/pmd/test-ruleset.xml` | 直接定义 8 条测试规则，范围由 Maven 测试源码入口决定 |
 
 - 发布附件：源码包由 `maven-source-plugin` 的 `jar-no-fork` 打包资源。没有 Java 源码时 Javadoc 插件不产出附件，因此用 `maven-jar-plugin` 以 `javadoc` 分类器打包模块内的说明文件，满足 Central 对附件的要求。
 - 其他构建设置：Flatten 沿用根 POM 配置；与 Common 一样显式设置 `maven.deploy.skip=false`；签名沿用根 POM 的 `sign-artifacts`。
@@ -176,7 +176,7 @@ flowchart TB
 
 生产规则集承载注释、命名与坏味道三个维度（D-109）。注释与命名规则来自 documentation、codestyle 类目，但只启用下表列出的规则，不整体引入类目。
 
-Parent 分别由 `pmd` 与 `test-pmd` execution 加载 `main-ruleset.xml`、`test-ruleset.xml`，共用 PMD 原生开关；41 条生产规则与 4 条测试规则不按路径名判断源码类别。11 个本仓库模块统一继承；CPD 仍只检查主源码。
+Parent 分别由 `pmd` 与 `test-pmd` execution 加载 `main-ruleset.xml`、`test-ruleset.xml`，共用 PMD 原生开关；41 条生产规则与 8 条测试规则不按路径名判断源码类别。11 个本仓库模块统一继承；CPD 仍只检查主源码。
 
 | 维度 | 类目 | 规则 |
 |---|---|---|
