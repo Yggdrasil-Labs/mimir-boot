@@ -271,12 +271,7 @@ class RpcDubboFilterTest {
         Result actual = filter.invoke(invoker, invocation);
 
         assertSame(result, actual);
-        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
-        verify(hook).onError(any(), resultCaptor.capture());
-        verify(hook).cleanup(any());
-        verify(hook, never()).after(any(), any());
-        org.junit.jupiter.api.Assertions.assertFalse(resultCaptor.getValue().isSuccess());
-        assertSame(ex, resultCaptor.getValue().getError().orElseThrow());
+        assertFailureHooks(ex);
     }
 
     @Test
@@ -474,12 +469,7 @@ class RpcDubboFilterTest {
 
         responseFuture.complete(new AppResponse(ex));
 
-        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
-        verify(hook).onError(any(), resultCaptor.capture());
-        verify(hook).cleanup(any());
-        verify(hook, never()).after(any(), any());
-        org.junit.jupiter.api.Assertions.assertFalse(resultCaptor.getValue().isSuccess());
-        assertSame(ex, resultCaptor.getValue().getError().orElseThrow());
+        assertFailureHooks(ex);
     }
 
     @Test
@@ -597,22 +587,22 @@ class RpcDubboFilterTest {
     @Test
     void shouldHandlePartialNullInSupportHolder() {
         RpcDubboSupportHolder.set(hookChain, null, properties);
-        Invocation invocation = mock(Invocation.class);
-        Invoker<?> invoker = mockInvoker();
-        Result result = mock(Result.class);
-        when(invoker.invoke(invocation)).thenReturn(result);
-        when(invocation.getMethodName()).thenReturn("m1");
-        when(invocation.getObjectAttachments()).thenReturn(Map.of());
-
-        Result actual = filter.invoke(invoker, invocation);
-
-        assertSame(result, actual);
-        verifyNoInteractions(hook, tracerBridge);
+        assertBypassedWithReadyInvocation();
     }
 
     @Test
     void shouldHandleNullPropertiesInSupportHolder() {
         RpcDubboSupportHolder.set(hookChain, tracerBridge, null);
+        assertBypassedWithReadyInvocation();
+    }
+
+    @Test
+    void shouldHandleNullHookChainInSupportHolder() {
+        RpcDubboSupportHolder.set(null, tracerBridge, properties);
+        assertBypassedWithReadyInvocation();
+    }
+
+    private void assertBypassedWithReadyInvocation() {
         Invocation invocation = mock(Invocation.class);
         Invoker<?> invoker = mockInvoker();
         Result result = mock(Result.class);
@@ -626,20 +616,13 @@ class RpcDubboFilterTest {
         verifyNoInteractions(hook, tracerBridge);
     }
 
-    @Test
-    void shouldHandleNullHookChainInSupportHolder() {
-        RpcDubboSupportHolder.set(null, tracerBridge, properties);
-        Invocation invocation = mock(Invocation.class);
-        Invoker<?> invoker = mockInvoker();
-        Result result = mock(Result.class);
-        when(invoker.invoke(invocation)).thenReturn(result);
-        when(invocation.getMethodName()).thenReturn("m1");
-        when(invocation.getObjectAttachments()).thenReturn(Map.of());
-
-        Result actual = filter.invoke(invoker, invocation);
-
-        assertSame(result, actual);
-        verifyNoInteractions(hook, tracerBridge);
+    private void assertFailureHooks(Throwable expectedError) {
+        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
+        verify(hook).onError(any(), resultCaptor.capture());
+        verify(hook).cleanup(any());
+        verify(hook, never()).after(any(), any());
+        assertFalse(resultCaptor.getValue().isSuccess());
+        assertSame(expectedError, resultCaptor.getValue().getError().orElseThrow());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.yggdrasil.labs.mybatis.typehandler;
 
+import static com.yggdrasil.labs.mybatis.typehandler.CryptoTypeHandlerSupport.assertLegacyAndV2Ciphertext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -130,11 +131,6 @@ class IntegerCryptoTypeHandlerTest extends BaseUnitTest {
         java.sql.PreparedStatement statement = mock(java.sql.PreparedStatement.class);
         v1Writer.setNonNullParameter(statement, 1, 42, null);
         v2Writer.setNonNullParameter(statement, 2, 42, null);
-        org.mockito.ArgumentCaptor<String> v1 = org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.ArgumentCaptor<String> v2 = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(statement).setString(eq(1), v1.capture());
-        verify(statement).setString(eq(2), v2.capture());
-        assertFalse(v1.getValue().startsWith("v2:"));
-        assertTrue(v2.getValue().startsWith("v2:"));
+        assertLegacyAndV2Ciphertext(statement);
     }
 }

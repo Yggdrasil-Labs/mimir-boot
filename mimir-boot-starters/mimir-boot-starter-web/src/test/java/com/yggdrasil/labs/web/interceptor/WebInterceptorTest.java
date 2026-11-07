@@ -149,14 +149,7 @@ class WebInterceptorTest extends BaseUnitTest {
     void restoresIpOnAsyncTimeout() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        request.setRemoteAddr("198.51.100.10");
-        org.slf4j.MDC.put("ip", "ip-before");
-        org.slf4j.MDC.put("external", "keep-me");
-
-        webInterceptor.preHandle(request, response, new Object());
-        webInterceptor.afterConcurrentHandlingStarted(request, response, new Object());
-        request.setRemoteAddr("198.51.100.11");
-        webInterceptor.preHandle(request, response, new Object());
+        prepareAsyncRedispatch(request, response);
         webInterceptor.afterCompletion(
                 request, response, new Object(), new RuntimeException("async timeout"));
 
@@ -168,6 +161,16 @@ class WebInterceptorTest extends BaseUnitTest {
     void restoresIpOnAsyncError() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
+        prepareAsyncRedispatch(request, response);
+        webInterceptor.afterCompletion(
+                request, response, new Object(), new RuntimeException("async error"));
+
+        assertEquals("ip-before", org.slf4j.MDC.get("ip"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
+    }
+
+    private void prepareAsyncRedispatch(
+            MockHttpServletRequest request, MockHttpServletResponse response) throws Exception {
         request.setRemoteAddr("198.51.100.10");
         org.slf4j.MDC.put("ip", "ip-before");
         org.slf4j.MDC.put("external", "keep-me");
@@ -176,10 +179,5 @@ class WebInterceptorTest extends BaseUnitTest {
         webInterceptor.afterConcurrentHandlingStarted(request, response, new Object());
         request.setRemoteAddr("198.51.100.11");
         webInterceptor.preHandle(request, response, new Object());
-        webInterceptor.afterCompletion(
-                request, response, new Object(), new RuntimeException("async error"));
-
-        assertEquals("ip-before", org.slf4j.MDC.get("ip"));
-        assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
 }

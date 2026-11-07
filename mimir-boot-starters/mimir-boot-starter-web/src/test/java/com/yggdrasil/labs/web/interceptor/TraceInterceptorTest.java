@@ -368,16 +368,7 @@ class TraceInterceptorTest extends BaseUnitTest {
     void restoresSnapshotOnAsyncError() throws Exception {
         MockHttpServletRequest localRequest = new MockHttpServletRequest();
         MockHttpServletResponse localResponse = new MockHttpServletResponse();
-        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "initial-trace-id");
-        org.slf4j.MDC.put("traceId", "trace-before");
-        org.slf4j.MDC.put("requestId", "request-before");
-        org.slf4j.MDC.put("external", "keep-me");
-
-        traceInterceptor.preHandle(localRequest, localResponse, handler);
-        traceInterceptor.afterConcurrentHandlingStarted(localRequest, localResponse, handler);
-        localRequest.removeHeader(HttpHeaderConstants.TRACE_ID_HEADER);
-        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "redispatch-trace-id");
-        traceInterceptor.preHandle(localRequest, localResponse, handler);
+        prepareAsyncRedispatch(localRequest, localResponse);
         traceInterceptor.afterCompletion(
                 localRequest, localResponse, handler, new RuntimeException("async error"));
 
@@ -390,6 +381,18 @@ class TraceInterceptorTest extends BaseUnitTest {
     void restoresSnapshotOnAsyncTimeout() throws Exception {
         MockHttpServletRequest localRequest = new MockHttpServletRequest();
         MockHttpServletResponse localResponse = new MockHttpServletResponse();
+        prepareAsyncRedispatch(localRequest, localResponse);
+        traceInterceptor.afterCompletion(
+                localRequest, localResponse, handler, new RuntimeException("async timeout"));
+
+        assertEquals("trace-before", org.slf4j.MDC.get("traceId"));
+        assertEquals("request-before", org.slf4j.MDC.get("requestId"));
+        assertEquals("keep-me", org.slf4j.MDC.get("external"));
+    }
+
+    private void prepareAsyncRedispatch(
+            MockHttpServletRequest localRequest, MockHttpServletResponse localResponse)
+            throws Exception {
         localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "initial-trace-id");
         org.slf4j.MDC.put("traceId", "trace-before");
         org.slf4j.MDC.put("requestId", "request-before");
@@ -400,12 +403,6 @@ class TraceInterceptorTest extends BaseUnitTest {
         localRequest.removeHeader(HttpHeaderConstants.TRACE_ID_HEADER);
         localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "redispatch-trace-id");
         traceInterceptor.preHandle(localRequest, localResponse, handler);
-        traceInterceptor.afterCompletion(
-                localRequest, localResponse, handler, new RuntimeException("async timeout"));
-
-        assertEquals("trace-before", org.slf4j.MDC.get("traceId"));
-        assertEquals("request-before", org.slf4j.MDC.get("requestId"));
-        assertEquals("keep-me", org.slf4j.MDC.get("external"));
     }
 
     @Test

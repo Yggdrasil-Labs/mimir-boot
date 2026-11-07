@@ -249,22 +249,9 @@ class AccessLogFilterTest extends BaseUnitTest {
 
     @Test
     void logsAsyncErrorWithThrowableExactlyOnce() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/async-error-with-throwable");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("JUnit");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.isAsyncStarted()).thenReturn(true);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        response.setStatus(500);
         AsyncContext asyncContext = mock(AsyncContext.class);
-        when(request.getAsyncContext()).thenReturn(asyncContext);
-
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
-
-        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
-        verify(asyncContext).addListener(listenerCaptor.capture());
-        AsyncListener listener = listenerCaptor.getValue();
+        AsyncListener listener =
+                startAsyncRequest("/api/async-error-with-throwable", 500, asyncContext);
         listener.onError(new AsyncEvent(asyncContext, new IllegalArgumentException("boom")));
         listener.onComplete(new AsyncEvent(asyncContext));
 
@@ -276,22 +263,8 @@ class AccessLogFilterTest extends BaseUnitTest {
 
     @Test
     void logsAsyncErrorWithoutThrowableExactlyOnce() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/async-error");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("JUnit");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.isAsyncStarted()).thenReturn(true);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        response.setStatus(500);
         AsyncContext asyncContext = mock(AsyncContext.class);
-        when(request.getAsyncContext()).thenReturn(asyncContext);
-
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
-
-        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
-        verify(asyncContext).addListener(listenerCaptor.capture());
-        AsyncListener listener = listenerCaptor.getValue();
+        AsyncListener listener = startAsyncRequest("/api/async-error", 500, asyncContext);
         listener.onError(new AsyncEvent(asyncContext, null));
         listener.onComplete(new AsyncEvent(asyncContext));
 
@@ -303,22 +276,8 @@ class AccessLogFilterTest extends BaseUnitTest {
 
     @Test
     void logsAsyncTimeoutExactlyOnce() throws Exception {
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/async-timeout");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getHeader("User-Agent")).thenReturn("JUnit");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        when(request.isAsyncStarted()).thenReturn(true);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        response.setStatus(503);
         AsyncContext asyncContext = mock(AsyncContext.class);
-        when(request.getAsyncContext()).thenReturn(asyncContext);
-
-        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
-
-        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
-        verify(asyncContext).addListener(listenerCaptor.capture());
-        AsyncListener listener = listenerCaptor.getValue();
+        AsyncListener listener = startAsyncRequest("/api/async-timeout", 503, asyncContext);
         listener.onTimeout(new AsyncEvent(asyncContext));
         listener.onError(new AsyncEvent(asyncContext, new IllegalStateException("late")));
 
@@ -326,6 +285,25 @@ class AccessLogFilterTest extends BaseUnitTest {
         String message = listAppender.list.get(0).getFormattedMessage();
         assertTrue(message.contains("Outcome=[TIMEOUT]"));
         assertTrue(message.contains("ErrorType=[ASYNC_TIMEOUT]"));
+    }
+
+    private AsyncListener startAsyncRequest(String uri, int status, AsyncContext asyncContext)
+            throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn(uri);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getHeader("User-Agent")).thenReturn("JUnit");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.100");
+        when(request.isAsyncStarted()).thenReturn(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(status);
+        when(request.getAsyncContext()).thenReturn(asyncContext);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
+
+        ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
+        verify(asyncContext).addListener(listenerCaptor.capture());
+        return listenerCaptor.getValue();
     }
 
     @Test
@@ -883,20 +861,7 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0\r\n伪造的日志");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
-        doAnswer(
-                        invocation -> {
-                            HttpServletResponse resp = invocation.getArgument(1);
-                            resp.setStatus(200);
-                            return null;
-                        })
-                .when(chain)
-                .doFilter(any(), any());
-
-        filter.doFilter(request, response, chain);
-
-        assertEquals(1, listAppender.list.size());
-        ILoggingEvent event = listAppender.list.get(0);
-        String message = event.getFormattedMessage();
+        String message = filterSuccessfulRequestAndReadLog(request, response, chain);
 
         assertTrue(message.contains("\\n"), "换行符应该被转义为 \\n");
         assertEquals(1, listAppender.list.size(), "应该只有一条日志，不应该被注入额外的日志条目");
@@ -914,6 +879,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
 
+        String message = filterSuccessfulRequestAndReadLog(request, response, chain);
+
+        assertTrue(message.contains("\\t"), "制表符应该被转义为 \\t");
+    }
+
+    private String filterSuccessfulRequestAndReadLog(
+            HttpServletRequest request, MockHttpServletResponse response, FilterChain chain)
+            throws Exception {
         doAnswer(
                         invocation -> {
                             HttpServletResponse resp = invocation.getArgument(1);
@@ -927,9 +900,7 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         assertEquals(1, listAppender.list.size());
         ILoggingEvent event = listAppender.list.get(0);
-        String message = event.getFormattedMessage();
-
-        assertTrue(message.contains("\\t"), "制表符应该被转义为 \\t");
+        return event.getFormattedMessage();
     }
 
     @Test

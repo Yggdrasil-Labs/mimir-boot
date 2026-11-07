@@ -48,6 +48,7 @@ import org.springframework.core.env.PropertySource;
 import com.alibaba.cloud.nacos.NacosConfigManager;
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.config.ConfigService;
+import com.yggdrasil.labs.nacos.config.NacosRefreshSettingsSupport.Settings;
 import com.yggdrasil.labs.nacos.crypto.ConfigCryptoUtils;
 
 /** 仅通过 nacos-live profile 启用，验证真实服务推送和消费者代理。 */
@@ -583,14 +584,14 @@ class NacosLiveRefreshIT {
         @RefreshScope
         @ConfigurationProperties("live.required")
         Settings requiredSettings(Lifecycle lifecycle) {
-            return new Settings(lifecycle);
+            return new Settings(lifecycle.initialized, lifecycle.destroyed);
         }
 
         @Bean(initMethod = "initialize", destroyMethod = "destroy")
         @RefreshScope
         @ConfigurationProperties("live.fallback")
         Settings fallbackSettings(Lifecycle lifecycle) {
-            return new Settings(lifecycle);
+            return new Settings(lifecycle.initialized, lifecycle.destroyed);
         }
 
         @Bean
@@ -628,40 +629,6 @@ class NacosLiveRefreshIT {
 
         int requiredTimeout() {
             return required.getTimeout();
-        }
-    }
-
-    public static class Settings {
-        private final Lifecycle lifecycle;
-        private String secret;
-        private int timeout = 30;
-
-        Settings(Lifecycle lifecycle) {
-            this.lifecycle = lifecycle;
-        }
-
-        public void initialize() {
-            lifecycle.initialized.incrementAndGet();
-        }
-
-        public void destroy() {
-            lifecycle.destroyed.incrementAndGet();
-        }
-
-        public String getSecret() {
-            return secret;
-        }
-
-        public void setSecret(String secret) {
-            this.secret = secret;
-        }
-
-        public int getTimeout() {
-            return timeout;
-        }
-
-        public void setTimeout(int timeout) {
-            this.timeout = timeout;
         }
     }
 }

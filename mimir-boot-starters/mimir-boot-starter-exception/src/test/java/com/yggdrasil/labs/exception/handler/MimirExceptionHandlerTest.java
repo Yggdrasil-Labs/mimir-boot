@@ -315,20 +315,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         logger.addAppender(appender);
 
         try {
-            Object response = handler.handleHttpMessageNotReadableException(exception, request);
-
-            R<?> result = responseBody(response);
-            assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
-            assertEquals("请求体格式错误", result.getMessage());
-            List<ILoggingEvent> events =
-                    appender.list.stream()
-                            .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
-                            .toList();
-            assertEquals(1, events.size());
-            ILoggingEvent event = events.get(0);
+            ILoggingEvent event = assertUnreadableMessageResponseAndLog(exception, appender);
             String formattedMessage = event.getFormattedMessage();
-            assertTrue(formattedMessage.contains("type=HttpMessageNotReadableException"));
-            assertTrue(formattedMessage.contains("uri=" + request.getRequestURI()));
             assertTrue(
                     formattedMessage.contains("line=" + parseException.getLocation().getLineNr()));
             assertTrue(
@@ -357,20 +345,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
         logger.addAppender(appender);
 
         try {
-            Object response = handler.handleHttpMessageNotReadableException(exception, request);
-
-            R<?> result = responseBody(response);
-            assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
-            assertEquals("请求体格式错误", result.getMessage());
-            List<ILoggingEvent> events =
-                    appender.list.stream()
-                            .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
-                            .toList();
-            assertEquals(1, events.size());
-            ILoggingEvent event = events.get(0);
+            ILoggingEvent event = assertUnreadableMessageResponseAndLog(exception, appender);
             String formattedMessage = event.getFormattedMessage();
-            assertTrue(formattedMessage.contains("type=HttpMessageNotReadableException"));
-            assertTrue(formattedMessage.contains("uri=" + request.getRequestURI()));
             assertFalse(formattedMessage.contains(sensitiveValue));
             assertFalse(formattedMessage.contains(rawMessage));
             assertFalse(formattedMessage.contains(cause.getMessage()));
@@ -379,6 +355,25 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
             logger.detachAppender(appender);
             appender.stop();
         }
+    }
+
+    private ILoggingEvent assertUnreadableMessageResponseAndLog(
+            HttpMessageNotReadableException exception, ListAppender<ILoggingEvent> appender) {
+        Object response = handler.handleHttpMessageNotReadableException(exception, request);
+
+        R<?> result = responseBody(response);
+        assertEquals(ErrorCode.PARAM_INVALID.getCode(), result.getCode());
+        assertEquals("请求体格式错误", result.getMessage());
+        List<ILoggingEvent> events =
+                appender.list.stream()
+                        .filter(event -> event.getFormattedMessage().contains("HTTP 消息不可读异常"))
+                        .toList();
+        assertEquals(1, events.size());
+        ILoggingEvent event = events.get(0);
+        String formattedMessage = event.getFormattedMessage();
+        assertTrue(formattedMessage.contains("type=HttpMessageNotReadableException"));
+        assertTrue(formattedMessage.contains("uri=" + request.getRequestURI()));
+        return event;
     }
 
     @Test
