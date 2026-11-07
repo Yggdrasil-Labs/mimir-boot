@@ -23,6 +23,7 @@ import jakarta.validation.metadata.ConstraintDescriptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.ResolvableType;
 import org.springframework.validation.AbstractBindingResult;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
@@ -38,6 +39,11 @@ import com.yggdrasil.labs.exception.validation.ValidationErrorDetail;
 import com.yggdrasil.labs.exception.validation.ValidationErrorSource;
 
 class ValidationErrorExtractorTest {
+
+    @Test
+    void shouldUseUnknownFieldPathWhenBindingFieldIsNull() {
+        assertEquals("$", BindingFieldPath.resolve(null, ResolvableType.forClass(String.class)));
+    }
 
     @Test
     void shouldRetainFlatPathFallbacksForMalformedListPositionsAndSeparators() throws Exception {
