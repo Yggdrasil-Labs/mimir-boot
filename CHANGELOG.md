@@ -1,5 +1,102 @@
 # Changelog
 
+## [2.4.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.3.0...v2.4.0) (2026-11-08)
+
+
+### ✨ Features
+
+* **common:** 新增错误定义工厂、分页映射、COLA 转换与批量结果 ([ff7c44e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ff7c44ee84b53f873748574e4ea479b5af7b4419))
+* **exception:** 完善异常响应与校验契约 ([41dc1f8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/41dc1f8e91a4742c04f9cbdfb9a340e747f04b89))
+* **log:** 增加日志预设与上下文传播 ([0d7bd94](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0d7bd94c902ed6d116db38119de1f3af5a0c74a4))
+* **mybatis:** 增加可选 COLA 分页转换 ([1f699d3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1f699d3aa6c462c7ee6f8d50d95ec4a14fb80fb8))
+* **mybatis:** 增加慢 SQL 观测并隔离分页配置 ([e00ece9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e00ece94a5d58ac43d5451366625c5e3a64b9bb7))
+* **processor:** 支持源版本跟随编译器并修正冲突说明 ([cfacdc9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/cfacdc908038d861192d146cd29729005efb5704))
+* **quality:** 为测试源码接入独立 PMD 门禁 ([4290a67](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4290a67cfb348ae51045baa3781ca8b9ff6794b4))
+* **quality:** 扩展测试 PMD 错误检查规则 ([8e1ff74](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8e1ff749023c5b322bb20a3a5b8625922622eefe))
+* **quality:** 接入独立测试 CPD 门禁 ([91ac2c4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/91ac2c45c33026b2ef84e3fe774d2531634ef225))
+* **rpc:** 预告旧接口移除并完善迁移支持 ([bb4ff0d](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bb4ff0d01b1d267eac9a56aabc44e5c8e61e54c4))
+* **test:** 增加可选架构规则库与模块依赖检查 ([4b5cba7](https://github.com/Yggdrasil-Labs/mimir-boot/commit/4b5cba7f8669fb42815487bff1a975916efe7f11))
+* **web:** 完善绑定序列化与异常响应增强 ([a289a55](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a289a55766365826fad80e29336814e9cb4eb652))
+
+
+### 🐛 Bug Fixes
+
+* **exception:** 修复缺失绑定字段的路径解析空指针 ([79d11f3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/79d11f3332605ae3374c3ae6f410c32274516912))
+* **quality:** 修复 Sonar 缺陷并启用 PR 门禁 ([#342](https://github.com/Yggdrasil-Labs/mimir-boot/issues/342)) ([8dc9d3f](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8dc9d3f3bb7122155e463394a48b3caafeda3a5f))
+* **release:** 修复 Central 发布兼容性与公开制品验证 ([fc27369](https://github.com/Yggdrasil-Labs/mimir-boot/commit/fc27369cb695a3de4009193332728819c217d518))
+* **test:** 修复包名校验的长输入栈溢出 ([bf01288](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bf01288281831401f402b94e644186f8f098e5a8))
+
+
+### 📝 Documentation
+
+* **archive:** 归档 v2.3.0 需求与交付记录 ([8d33639](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8d336399a61e66a51d08c836376049ef83062030))
+* **mybatis:** 补充慢 SQL 与分页使用说明 ([389cdfd](https://github.com/Yggdrasil-Labs/mimir-boot/commit/389cdfd2b09dfdc85ed63869ba0497b741e40af9))
+* **planning:** 完善 v2.4.0 需求规划文档 ([e4a7d78](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e4a7d78bcf2c26e9994f050c408905fceefb0dd2))
+* **planning:** 整理 v2.4.0 版本级头脑风暴与规划记录 ([369d7c1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/369d7c1f7435ba387df1509a5d89ab1d3471a282))
+* **planning:** 更新日志与 RPC 实施记录 ([18a1778](https://github.com/Yggdrasil-Labs/mimir-boot/commit/18a1778205ec5ea10c258116625fa1ac0000e7b2))
+* **planning:** 登记 BOM、Processor、Common 实施与验证记录 ([7cd4684](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7cd4684acb31b6fe6caccce589044bc79ba87991))
+* **quality:** 同步质量工具链设计与验收记录 ([12f45ee](https://github.com/Yggdrasil-Labs/mimir-boot/commit/12f45ee0d1bba5b83948f1492400707ddf814fd2))
+* **quality:** 记录代码质量工具链方案 ([f93cb7c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f93cb7c5bf6f0b7d5bd1e2f148a816cef0f7d29b))
+* **release:** 整理 v2.4.0 交付状态与测试基线 ([ed1022c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/ed1022c76b9bc8605f9a3851bb6cecd336b138ed))
+* **release:** 记录 Web 与异常模块实施验证 ([316fae8](https://github.com/Yggdrasil-Labs/mimir-boot/commit/316fae8fd268ff377f5fe88cc02835f6d84f1196))
+* **release:** 记录测试优化与并行验收结果 ([74c5986](https://github.com/Yggdrasil-Labs/mimir-boot/commit/74c5986035ccd9ca82fcb4026ec34e761cd096dc))
+
+
+### ♻️ Code Refactoring
+
+* **quality:** 整理现有代码以满足静态检查 ([556afa0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/556afa03a1e9c3f0bd54f3e84ca435270c48904d))
+
+
+### ⚡ Performance Improvements
+
+* **quality:** 按可用 CPU 并行构建模块 ([da64145](https://github.com/Yggdrasil-Labs/mimir-boot/commit/da641451f9e52f01fc8d4be9307e4886ff5450c2))
+* **test:** 缩短测试启动与关闭耗时 ([3ae58b9](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3ae58b95a5ef70f0ff5f9a889f2868e960533c3a))
+
+
+### ✅ Tests
+
+* **quality:** 提炼重复测试准备与断言 ([c371957](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c37195734ffe1e161bb9b124bc47715072bad1e5))
+* **quality:** 简化日志与 MyBatis 测试断言 ([5bb5cd1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5bb5cd15de611bf79e881a243f1d1583b7f89aad))
+* 强化行为断言并整理重复测试 ([7927743](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7927743d59f37eed1fd8715cf4dc6f1906ffeddd))
+
+
+### 🔨 Build System
+
+* **bom:** 托管 binding、OOXML 与 COLA DTO 配套版本 ([5b26e85](https://github.com/Yggdrasil-Labs/mimir-boot/commit/5b26e8538b93b046d5cbde3ef7c03a223e8c970b))
+* **parent:** 完善构建配置与发布契约 ([e1588d2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e1588d2e941d41966e7edc14ab5721c577347f61))
+* **quality:** 接入独立质量插件与发布门禁 ([790baca](https://github.com/Yggdrasil-Labs/mimir-boot/commit/790baca2f0139a4ad850bc76bba065abb158de4d))
+
+
+### 👷 Continuous Integration
+
+* **deps:** 升级 setup-java 至 6.1.0 ([#332](https://github.com/Yggdrasil-Labs/mimir-boot/issues/332)) ([02345a2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/02345a2f1a897a59d86f0886112055fc00e6ad45))
+* **sonar:** 启用可信 PR 检查并对齐开发规范 ([d9c5e2c](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d9c5e2cace1e948c152da3a8d728b17869af3381))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.3.1-SNAPSHOT for next development cycle ([f34fcf3](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f34fcf33e26f6ae15ccbe695987c2be17d103b96))
+* **deps-dev:** bump the engineering-npm-minor-patch group across 1 directory with 2 updates ([14ddc69](https://github.com/Yggdrasil-Labs/mimir-boot/commit/14ddc69ad72b2ae68be545b8df77c74dc7fa5801))
+* **deps-dev:** bump the engineering-npm-minor-patch group across 1 directory with 2 updates ([#335](https://github.com/Yggdrasil-Labs/mimir-boot/issues/335)) ([915e6c1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/915e6c1e478cfd77b9a16a6c2ff6fe5c04b66dde))
+* **deps-dev:** 升级 compile-testing 至 0.24.0 ([#328](https://github.com/Yggdrasil-Labs/mimir-boot/issues/328)) ([29708ce](https://github.com/Yggdrasil-Labs/mimir-boot/commit/29708ce1c53964610d6f037a30b34a35316d08df))
+* **deps:** bump com.alibaba.fastjson2:fastjson2 ([8f78068](https://github.com/Yggdrasil-Labs/mimir-boot/commit/8f78068d61c47e9bac71bc9f902d0095f2b1a62f))
+* **deps:** bump com.alibaba.fastjson2:fastjson2 from 2.0.65 to 2.0.66 in the utilities group across 1 directory ([#333](https://github.com/Yggdrasil-Labs/mimir-boot/issues/333)) ([f0529d0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/f0529d0be4fbe0e15f464bccf99b43f9c8fb5965))
+* **deps:** bump com.esotericsoftware:kryo from 5.6.2 to 5.7.1 ([#320](https://github.com/Yggdrasil-Labs/mimir-boot/issues/320)) ([1d9ea49](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1d9ea49232611dedd4ad3331a5549ad763858f85))
+* **deps:** bump com.google.guava:guava from 33.7.2-jre to 33.8.0-jre ([a6ba35e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/a6ba35ef73dc6650d13e4f9be10317747e4e25c8))
+* **deps:** bump com.google.guava:guava from 33.7.2-jre to 33.8.0-jre ([#340](https://github.com/Yggdrasil-Labs/mimir-boot/issues/340)) ([85c6f9e](https://github.com/Yggdrasil-Labs/mimir-boot/commit/85c6f9ec7393d2ee342e2095bb15a679589b8b54))
+* **deps:** bump com.xuxueli:xxl-job-core ([09180b1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/09180b11ccddec05bc2ebbb74dee0f6cf4e96e72))
+* **deps:** bump com.xuxueli:xxl-job-core from 3.4.2 to 3.5.0 in the scheduling group across 1 directory ([#326](https://github.com/Yggdrasil-Labs/mimir-boot/issues/326)) ([45ff42b](https://github.com/Yggdrasil-Labs/mimir-boot/commit/45ff42b4b1306c00c8deba1a107c42095be20734))
+* **deps:** bump okhttp.version from 5.5.0 to 5.5.1 ([c1f5b48](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c1f5b481a8a82aa7ebe867a89e113de100f6ec16))
+* **deps:** bump okhttp.version from 5.5.0 to 5.5.1 ([#338](https://github.com/Yggdrasil-Labs/mimir-boot/issues/338)) ([1dcb5e0](https://github.com/Yggdrasil-Labs/mimir-boot/commit/1dcb5e0b6d26ac636000dfd5fe87bba76f326428))
+* **deps:** bump org.sonatype.central:central-publishing-maven-plugin ([d7c5adf](https://github.com/Yggdrasil-Labs/mimir-boot/commit/d7c5adff9dc8a750a761136575337266546ab82b))
+* **deps:** bump org.sonatype.central:central-publishing-maven-plugin from 0.11.0 to 0.12.0 ([#329](https://github.com/Yggdrasil-Labs/mimir-boot/issues/329)) ([bd16aab](https://github.com/Yggdrasil-Labs/mimir-boot/commit/bd16aaba03ba97e1b92db4d18c938ec47b7dde1a))
+* **deps:** bump the database group with 2 updates ([3524987](https://github.com/Yggdrasil-Labs/mimir-boot/commit/3524987b22839299ed6a76558de26c70058ffdc3))
+* **deps:** bump the database group with 2 updates ([#336](https://github.com/Yggdrasil-Labs/mimir-boot/issues/336)) ([420a7c2](https://github.com/Yggdrasil-Labs/mimir-boot/commit/420a7c2dc2b3e1a31f6771a620e6290f17981c00))
+* **deps:** bump the maven-plugins group across 1 directory with 9 updates ([9fbf8be](https://github.com/Yggdrasil-Labs/mimir-boot/commit/9fbf8bed9f1a330eb2cb222a0ff063b68f8c0998))
+* **deps:** bump the maven-plugins group across 1 directory with 9 updates ([#341](https://github.com/Yggdrasil-Labs/mimir-boot/issues/341)) ([7b08e62](https://github.com/Yggdrasil-Labs/mimir-boot/commit/7b08e62f7509236f7bc94733df374dde092d2410))
+* **deps:** 升级 Hutool 至 5.8.48 ([#325](https://github.com/Yggdrasil-Labs/mimir-boot/issues/325)) ([e38ca80](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e38ca80f590190f0a5882cce2dd448d057b5086a))
+* **deps:** 升级 Spotless 与 Versions Maven 插件 ([#327](https://github.com/Yggdrasil-Labs/mimir-boot/issues/327)) ([eca9ef6](https://github.com/Yggdrasil-Labs/mimir-boot/commit/eca9ef6034f087a8cd4f1f30ff235892d8eabd35))
+
 ## [2.3.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.2.1...v2.3.0) (2026-10-12)
 
 
