@@ -26,7 +26,7 @@ updated: 2026-11-06
 | [Parent](./parent-build/brainstorm.md) | P-01 编译目标约束；P-02 保留 classpath 处理器发现；P-04 测试与质量检查开关统一；PC-01 保证 GPG 签名可选；PC-02 合并重复格式检查；PC-03 接通插件版本属性；P-03、P-05 只做使用说明与验证 | 跨 Maven 版本可复现构建未纳入 |
 | [BOM](./bom-dependencies/brainstorm.md) | 管理 `lombok-mapstruct-binding`、`poi-ooxml`、`cola-component-dto`；验证聚焦本轮变更；保持框架基线 | B-04 安全补丁版本覆盖未采纳 |
 | [Common](./common-contracts/brainstorm.md) | C-01 错误码定义接口；C-02 分页逐条转换及 COLA 分页响应支持；C-04 批量操作结果；C-07 R 的 JSON 只保留 success | C-05、C-08 暂缓；C-03、C-06、C-09 未纳入 |
-| [Log](./log-runtime/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播 | L-03 访问日志采样、完整 JSON 日志未纳入 |
+| [Log 运行预设](./log-runtime/brainstorm.md)、[日志治理](./log-governance/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播；L-04 可选 JSON 日志治理（仅规划） | L-03 访问日志采样未纳入；业务步骤链路暂缓 |
 | [Exception](./exception-contracts/brainstorm.md) | E-01 标准 HTTP 异常语义补齐；E-02 统一校验错误明细 | E-03 安全、异步超时与客户端断开语义未采纳 |
 | [Web](./web-binding/brainstorm.md) | W-01 日期格式统一接入；W-02 大整数 JSON 输出 | W-03 回传 requestId 保留候选 |
 | [MyBatis](./mybatis-capabilities/brainstorm.md) | M-04 慢 SQL 记录；`IPage` 转 COLA `PageResponse`；`searchCount=false` 使用说明 | M-01 撤销；M-02、以 `PageResult` 输出的 M-03 暂缓；防全表更新与删除、单页上限、审计人类型可配置未纳入 |
@@ -102,6 +102,8 @@ updated: 2026-11-06
   - 待设计：属性命名与优先级、早期初始化与已有自定义 Logback 配置的兼容；默认脱敏启用前补吞吐与延迟基准（[可靠性标准](../../../docs/standards/reliability.md)），并核对 ContextRefreshedEvent 前后的有效规则；异步 appender 为 `discardingThreshold=0` 且未开启 `neverBlock`，队列满时会阻塞业务线程，服务器预设默认值需一并考虑。
 - **L-02 业务任务 MDC 传播（D-33、D-34）**：优先适配 Spring Boot 默认执行器，自建执行器提供统一接入入口；传播任务提交时的全部 MDC 字段快照，完成或异常后恢复执行线程原上下文；不等同于 Span 传播。硬约束：Boot 3.3.13 默认执行器以 `getIfUnique()` 选取 `TaskDecorator`，Mimir 不得以普通 `TaskDecorator` Bean 默认接入，否则与业务已有装饰器同时存在时两者都不生效；设计时评估复用 Spring 6.1 的 `ContextPropagatingTaskDecorator`。`MdcUtil` 类注释所称“子线程自动传递”与代码不符，需校准。
 
+- **L-04 JSON 日志治理（D-111～D-113）**：显式启用 JSON，普通日志统一外层、访问日志独立字段、SQL 保留消息字符串；`context` / `attributes` 分组，MDC 默认全量加排除名单，沿用有效脱敏规则；扩展值限于 JSON 基础类型及 Map/List。保留原输出策略，仅关联已有 Trace/Span，不纳入业务步骤链路。2026-11-06 完成方向讨论与复核修订，当前仅有[方案大纲](./log-governance/brainstorm.md)，未实施。
+
 ### Exception
 
 [MimirExceptionHandler](../../../mimir-boot-starters/mimir-boot-starter-exception/src/main/java/com/yggdrasil/labs/exception/handler/MimirExceptionHandler.java) 已覆盖业务、系统、校验与常见 HTTP 异常，并支持替换响应工厂；`BizException` 默认 HTTP 200 的契约保持不变。
@@ -151,7 +153,6 @@ updated: 2026-11-06
 | B-04 | BOM 安全补丁版本覆盖 | 未采纳 | 保持框架基线时为 Tomcat、Jackson、Netty、Logback 等提供补丁版本管理 |
 | E-03 | 安全、异步超时与客户端断开的异常语义 | 未采纳 | `Exception` 兜底会把方法级 `AccessDeniedException`、`AuthenticationException` 处理为 500，`AsyncRequestTimeoutException` 返回 500，客户端断开按 error 记录 |
 | L-03 | 访问日志采样与分路径慢阈值 | 未纳入 | 需消费方维护规则 |
-| — | 完整 JSON 日志输出 | 未纳入（D-30） | 已有统一文本输出 |
 | W-03 | 回传已有 requestId（`X-Request-Id`） | 保留候选（D-45） | 常量已存在，当前无响应路径使用 |
 | — | 防全表更新与删除、分页单页上限、审计人类型可配置 | 未纳入（D-51） | — |
 | — | Processor 已存在同名类时跳过生成、按实体只生成 Mapper | 未纳入（D-71） | 内部项目无需求 |
@@ -297,10 +298,15 @@ updated: 2026-11-06
 | D-108 | 代码质量工具链开关保持插件原生属性；已自行配置 PMD 的下游受影响，作为向后兼容的显式例外写入升级说明并给出恢复配置，不改用 Mimir 私有开关 | 有效（2026-11-02 用户确认），见[代码质量规格 CQ-10](./code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级) |
 | D-109 | 不引入 Checkstyle：注释与命名改由 PMD 选定规则负责（`CommentRequired`、`DanglingJavadoc` 与 codestyle 命名规则），修订 D-103；接受不检查 Javadoc 标签与签名一致性等缺口 | 有效（2026-11-02 用户确认），见[代码质量设计](./code-quality-toolchain/design.md#pmd-规则集cq-01cq-02) |
 | D-110 | 规则 jar 同时提供独立 Maven 插件入口，复用官方实现并隔离报告至 `target/mimir-quality/`；保留原生属性。直接调用选择 `check@pmd` / `cpd-check@cpd`；规则制品版本覆盖只支持同上游来源版本 | 有效（2026-11-06 用户在方案审查后要求开始实施）；见[接入设计](./code-quality-toolchain/design.md#分叉配置问题与接入方案) |
+| D-111 | 纳入 L-04 可选 JSON 日志治理，字段、脱敏、类型与失败边界见[方案大纲](./log-governance/brainstorm.md)；保留原默认行为，暂缓业务步骤链路及完整 tracing 接入 | 有效（2026-11-06 用户确认整体范围），仅规划未实施 |
+| D-112 | L-04 补充：`format=json` 仅对 container、server 预设生效，非预设下配置即启动失败；Encoder 为 optional 依赖并由 BOM 管理版本；JSON 访问日志保留原拼接消息 | 有效（2026-11-08 用户确认），见[方案大纲](./log-governance/brainstorm.md#已确认决策) |
+| D-113 | L-04 补充：公开 Mimir JSON 编码器供自定义 XML 引用，`json.*` 配置不论是否选用预设均生效，`format` 仍仅对预设生效；事件自带键值对沿用扩展值类型规则，不调用 `toString()`；性能只做 text/json 基准记录，不设发布门槛 | 有效（2026-11-08 用户确认），见[方案大纲](./log-governance/brainstorm.md#已确认决策) |
 | D-15、D-19、D-26、D-35、D-40、D-50、D-70、D-72、D-74、D-76、D-78、D-80 | 各模块依次收口并进入下一模块；不代表详细设计定稿或授权实施 | 过程记录 |
 
 ## 当前产物状态
 
 原有 9 项需求与后续纳入的代码质量工具链均已有 `spec.md`、`design.md`、`plan.md` 和主体实现。当前处于专项验收及发布收尾阶段，逐项状态、验证依据和剩余边界统一见[版本记录](./release.md#当前交付状态)。
+
+2026-11-06 新增 L-04 [JSON 日志治理大纲](./log-governance/brainstorm.md)，整体范围已确认，当前仅落盘脑暴草案；未生成正式 SDD 或修改实现。该新增方向不改变 L-01/L-02 的原始范围和验证记录。
 
 本文件保留历史讨论和已确认决策，静态计划保留实施输入，不承担执行进度账本。当前 JDK 17 完整门禁已通过；高版本 JDK、部分专项消费者和性能验收仍有缺口，正式发布尚未完成。

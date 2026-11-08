@@ -11,7 +11,7 @@ updated: 2026-11-07
 
 ## 当前交付状态
 
-十项需求主体均已实施，专项验收及发布收尾仍在进行。详细依据见下方实施记录及各需求文档。
+十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已有 SDD 草稿，未实施。详细依据见下方实施记录及各需求文档。
 
 | 需求 | 当前状态 |
 |---|---|
@@ -25,6 +25,7 @@ updated: 2026-11-07
 | [Processor](./mybatis-processor/plan.md) | 主体已实施，本地验证通过 |
 | [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
 | [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
+| [Log 日志治理（L-04）](./log-governance/plan.md) | SDD 草稿（2026-11-08），未实施 |
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
@@ -122,6 +123,8 @@ updated: 2026-11-07
 
 本页汇总当前交付状态并保留各阶段实施记录。下表按现有模块组织，每个已纳入的需求编号均在相应规格与计划内覆盖；Processor和RPC使用精简设计。未纳入方向不因补齐SDD自动变为本轮需求。
 
+2026-11-06 新增 Log 的 L-04 [JSON 日志治理规划](./log-governance/brainstorm.md)：方向讨论已收敛，2026-11-08 补齐 SDD 草稿（D-112、D-113 补充决定）；与 L-01/L-02 的已记录实施进度分开，不代表 JSON 功能已实现。
+
 ## 推荐方案与需求文档
 
 | 模块 | 覆盖需求 | 推荐方案 | SDD |
@@ -130,6 +133,7 @@ updated: 2026-11-07
 | [BOM讨论](./bom-dependencies/brainstorm.md) | B-01～B-03 | 只托管binding、OOXML、COLA DTO；消费者按需声明；验证继承与import两条路径 | [规格](./bom-dependencies/spec.md) · [设计](./bom-dependencies/design.md) · [计划](./bom-dependencies/plan.md) |
 | [Common讨论](./common-contracts/brainstorm.md) | C-01、C-02、C-04、C-07 | 兼容命名工厂；消息允许为空；复制分页元数据；不可变完整批量结果；COLA独立可选 | [规格](./common-contracts/spec.md) · [设计](./common-contracts/design.md) · [计划](./common-contracts/plan.md) |
 | [Log讨论](./log-runtime/brainstorm.md) | L-01、L-02 | 容器/服务器显式预设；少量可覆盖属性；MDC提交快照与执行后恢复 | [规格](./log-runtime/spec.md) · [设计](./log-runtime/design.md) · [计划](./log-runtime/plan.md) |
+| [Log 日志治理讨论](./log-governance/brainstorm.md) | L-04 | 可选 JSON；访问字段结构化；全量 MDC 加排除；沿用脱敏与路由 | [规格](./log-governance/spec.md) · [设计](./log-governance/design.md) · [计划](./log-governance/plan.md) |
 | [Exception讨论](./exception-contracts/brainstorm.md) | E-01、E-02 | 标准HTTP状态与协议头；结构化校验明细显式启用，保留默认响应形态 | [规格](./exception-contracts/spec.md) · [设计](./exception-contracts/design.md) · [计划](./exception-contracts/plan.md) |
 | [Web讨论](./web-binding/brainstorm.md) | W-01、W-02、C-07接入 | Java Time缺省格式器；大整数按阈值可选字符串化；Web承担R MixIn与兼容开关 | [规格](./web-binding/spec.md) · [设计](./web-binding/design.md) · [计划](./web-binding/plan.md) |
 | [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明 | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
@@ -177,7 +181,7 @@ Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容�
 
 ## 范围边界
 
-Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序、完整JSON日志、W-03请求标识回传等不纳入；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
+Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序、W-03请求标识回传等不纳入；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独纳入规划，尚未实施。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
 
 TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../tech-debt-tracker.md)。
 
