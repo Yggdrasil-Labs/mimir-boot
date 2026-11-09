@@ -26,12 +26,27 @@ updated: 2026-11-09
 | [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
 | [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
 | [Log 日志治理（L-04）](./log-governance/plan.md) | SDD 草稿（2026-11-08），未实施 |
-| [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114），未实施 |
-| [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117），未实施 |
+| [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114）；2026-11-09 本地实施主体，部分验收未完成，见下方记录 |
+| [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117）；2026-11-09 本地实施主体，部分验收未完成，见下方记录 |
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
 尚未闭环：Parent、BOM、Processor 的 JDK 25 矩阵及仅 BOM 的 Processor release 21 目标；Log 的 D-101 后真实业务消费者启动和 MVC 默认执行器专项；MyBatis 真实 SQL 到 Log 新预设的联调记录、慢 SQL 吞吐及 P95/P99 基准，以及真实 MySQL/PostgreSQL 方言验收。H2 不能替代真实数据库验收。D-101 已撤销旧所有权机制，转换热路径未改，性能基准无需因该修订重测。既有后续技术债见[台账](../tech-debt-tracker.md)。
+
+### W-T5 与 T9 本地实施（2026-11-09）
+
+按用户要求先实施简单部分，未提交：
+
+- **Log T9**：`MdcUtil.putAll` 改为合并语义，跳过 null 键与 null/空串值；`MdcTasks.snapshot()` 去掉二次复制；`MdcTaskExecutionAutoConfiguration` 不再注册 `MdcPropagationProperties`；`SensitiveDataConverterInternals` 移入测试源集；旧 `logback-spring.xml` 四个文件 appender 的月目录 `%d` 标记 `aux`。Log README 新增"升级和兼容性"章节，滚动策略补充归档目录说明。
+- **Web W-T5**：`TraceInterceptor` 紧接 `X-Trace-Id` 之后、请求属性与 MDC 之前回传 `X-Request-Id`，响应中已有该头时保留原值。Web README 同步拦截器说明、响应头示例、CORS 暴露头示例及"升级和兼容性"章节。
+- **TDD**：新增行为用例先确认失败再实现：`MdcUtilTest` 的合并与跳过无效条目两条、`LogPresetResourceTest` 旧 XML 主周期一条、`TraceInterceptorTest` 的合法回传、生成回传、再派发单值、写头失败、子类对照五条。`MdcUtilTest` 的"空输入不变"与 `TraceInterceptorTest` 的"已有头保留"在旧实现下本就成立，作为回归护栏保留。
+
+验证：`./mvnw -o -T2 -Pci -pl mimir-boot-starters/mimir-boot-starter-log,mimir-boot-starters/mimir-boot-starter-web -am verify` 通过，Common、Test、Log、Exception、Web 各模块单元与集成测试零失败、零错误、零跳过，覆盖率与 PMD/CPD 门禁通过；Log 主制品 jar 已核对不含 `SensitiveDataConverterInternals`。未运行完整质量入口 `scripts/engineering.sh quality`，不代表 CI、发布或消费者验证。随后经独立代码审查（CONDITIONAL，无 P0），按其意见补充异步再派发与排除路径用例、写头失败的 traceId 断言、开关开启时不注册属性 Bean 的断言（关闭时的同类断言恒成立，仅作对照），Web 升级说明补充"应用内在拦截器之后写该头"的影响，并回写 Web design 与 plan；修复后全量重审为 PASS（加权均分 4.59，无 P0/P1）。
+
+尚未完成的验收（按用户选择留待后续）：
+
+- T9：设计 IC-7 的受控时钟滚动清理集成（`config/LegacyLogbackRollingTest.java`）未实施，遗留归档的长期残留与提前删除两个方向尚无自动化证据，TD-049 不关闭。TD-050 四项已按台账处置条件完成，待复核后关闭。
+- W-T5：真实容器 multipart 413（懒解析与非懒解析）、处理器匹配阶段 405/415/406/400、静态资源映射下的 404、前置 Filter 与更早拦截器拒绝、真实 MVC 链中前置 Filter 已写入值被保留、真实容器 forward 单值、接入 Exception 统一封装的 MVC 链用例（`advice/RequestIdHeaderMvcIntegrationTest.java`、`advice/EagerMultipartTraceMvcIntegrationTest.java`）未实施。已覆盖：拦截器单测（合法回传、生成回传、已有头保留、forward 再派发单值（仅单测）、写头失败不残留 traceId 与 requestId、子类对照）；`MdcAsyncServletIntegrationTest` 嵌入式 Tomcat 下异步再派发后响应只有一个 `X-Request-Id`；`WebAutoConfigurationIT` 的真实 MVC 链成功、处理器内异常、排除路径不带头、总开关关闭与 Reactive 对照。
 
 ### 第二批测试优化与模块并行（2026-11-07）
 

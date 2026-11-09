@@ -107,6 +107,7 @@ updated: 2026-11-09
 - **现状与风险**：Logback 以第一个非 aux 的 `%d` 作为滚动周期（已用 logback-core 1.5.18 实测主日期为 `yyyy-MM`），因此旧配置按月滚动、`maxHistory` 30/60 实为月数，与注释“保留天数”不符；仅按大小滚动，`totalSizeCap` 成为实际上限。v2.4.0 新预设已改为 `%d{yyyy-MM,aux}`。
 - **处置与验收**：评估将旧 XML 改为 `%d{yyyy-MM,aux}` 的兼容影响（按天滚动后归档数量与清理节奏变化），在版本说明中提示后修复；验证主日期为按天、保留天数生效。
 - **规划进展（2026-11-08）**：用户确认纳入 v2.4.0（D-116），任务见 [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾)；尚未实施。
+- **实施进展（2026-11-09）**：本地实施旧 XML 月目录 `%d` 标记 `aux`，主周期按天已由 `LogPresetResourceTest` 验证，README 写入升级说明；设计 IC-7 的受控时钟滚动清理集成未实施，遗留归档两方向尚无自动化证据，本条不关闭，见[版本记录](./v2.4.0/release.md#w-t5-与-t9-本地实施2026-11-09)。未提交、未发布。
 - **目标版本**：v2.4.0。
 
 <a id="td-050-log-模块低优先级清理"></a>
@@ -121,6 +122,7 @@ updated: 2026-11-09
   - `MdcTaskExecutionAutoConfiguration` 的 `@EnableConfigurationProperties(MdcPropagationProperties.class)` 注册的 Bean 无读取方，开关仅由 `@ConditionalOnProperty` 决定。
 - **处置与验收**：`putAll` 改为逐项 put 须在版本说明中提示行为变更；测试钩子迁入测试源集（同包访问或反射）；去掉多余拷贝；删除无用注册或改为实际读取。D-101 已完成启动机制简化，`SensitiveDataConverterInternals` 可整体迁入测试源集。
 - **规划进展（2026-11-08）**：用户确认四项全部纳入 v2.4.0，`putAll` 改为逐项 put（D-117），任务见 [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾)；尚未实施。
+- **实施进展（2026-11-09）**：四项均已本地实施并通过模块 `clean verify` 与独立代码审查（PASS），满足上述处置与验收条件，待复核后关闭，见[版本记录](./v2.4.0/release.md#w-t5-与-t9-本地实施2026-11-09)。未提交、未发布。
 - **目标版本**：v2.4.0。
 
 <a id="td-051-既有公开类型包循环"></a>

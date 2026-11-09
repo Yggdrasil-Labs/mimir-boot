@@ -92,7 +92,7 @@ W4联合矩阵由本任务独占Web测试文件，依赖Exception T1至T3和W-TC
 2026-11-08 按 D-114 追加，未实施；不依赖 W-T1 至 W-T4，可独立交付。行为见[规格 W5](./spec.md#behavior-w5响应回传-requestidd-114)，实现位置与取舍见[设计 W5](./design.md#w5回传requestidd-114)。
 
 - Modify: `interceptor/TraceInterceptor.java`；测试追加到同包既有 `interceptor/TraceInterceptorTest.java`（回传规则、写头失败、子类对照）、`interceptor/MdcAsyncServletIntegrationTest.java`（异步再派发与forward）、`config/WebAutoConfigurationIT.java`（异常响应、总开关，另起 `ReactiveWebApplicationContextRunner` 做非Servlet对照）及 `advice/ExistingMultipartTraceMvcIntegrationTest.java`（真实容器、懒解析413带头）；非懒解析413不带头需真实容器，新建同包 `advice/EagerMultipartTraceMvcIntegrationTest.java`（名称可调整），MockMvc 不能复现 multipart 解析失败。其余真实MVC链用例（处理器匹配阶段的405/415/406/400、默认与 `add-mappings=false` 下的404、前置Filter已写入值被保留、排除路径、Filter拒绝与更早拦截器拒绝、经统一异常封装的4xx/5xx）新建 `advice/RequestIdHeaderMvcIntegrationTest.java`（名称可调整），沿用 `advice/WebExceptionJointMvcIntegrationTest.java` 接入Exception统一封装的上下文组织；`WebAutoConfigurationIT` 只承担总开关与非Servlet对照。W-T4 已完成，不存在并行编辑冲突。
-- Modify: 模块 `README.md` — Trace 拦截器说明补充回传头及不带该头的情况（Filter拒绝、更早拦截器拒绝、排除路径、multipart解析与处理器匹配阶段的失败，均为示例）；CORS 示例补 `X-Request-Id` 并说明跨域读取需显式暴露；README 目前没有升级章节，在"技术栈"之前新增"升级和兼容性"章节（参照 Exception README 的同名小节），写明两类影响：原本没有该头的响应新增该头；在响应上追加该头的反向代理可能产生重复值；并说明应用内已写入的该头会被保留。不带该头的情况按失败阶段说明，不按状态码列举。
+- Modify: 模块 `README.md` — Trace 拦截器说明补充回传头及不带该头的情况（Filter拒绝、更早拦截器拒绝、排除路径、multipart解析与处理器匹配阶段的失败，均为示例）；CORS 示例补 `X-Request-Id` 并说明跨域读取需显式暴露；README 目前没有升级章节，在"技术栈"之前新增"升级和兼容性"章节（参照 Exception README 的同名小节），写明三类影响：原本没有该头的响应新增该头；在响应上追加该头的反向代理可能产生重复值；应用内在拦截器之后用 `addHeader` 写该头会产生重复值、用 `setHeader` 会覆盖框架值；并说明在拦截器之前写入的该头会被保留。不带该头的情况按失败阶段说明，不按状态码列举。
 - 验收：按[设计验证策略](./design.md#验证策略)的 W5 行执行；命令同 W-T4。
 
 ## 决策边界

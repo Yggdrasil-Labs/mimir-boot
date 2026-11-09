@@ -107,7 +107,7 @@ Web任务拥有默认增强器兼容实现及Object包装器保护回归；Excep
 
 `TraceInterceptor.preHandle` 紧接 `X-Trace-Id` 之后、`request.setAttribute` 与MDC入栈写入之前，以 `HttpHeaderConstants.REQUEST_ID_HEADER` 写入 `getOrGenerateRequestId` 的结果，与随后写入MDC的是同一变量。顺序必须保持"先写两个响应头、再写请求属性与MDC"，以延续既有保证：写头失败时MDC不残留本次值（现有 `TraceInterceptorTest.responseHeaderFailureDoesNotLeaveNewTraceIdInMdc`）。选择在 `preHandle` 写入：此时响应尚未提交，后续统一异常封装在同一次派发内输出，响应头保留；写入前以 `response.containsHeader` 判断：响应中已有该头时保留原值、不覆盖。异步再派发或forward再次进入时，该头已由首次写入，自然跳过，不产生重复头。拦截器之前的Filter已写入该头时保留其值，此时响应值可能与日志中的requestId不同，由写入方负责。框架写入的值是拦截器确定的requestId（依次取请求属性、合法请求头、新生成值，不从MDC读取）；之后Controller、Advice或后置Filter再改写该头不在框架保证范围内。
 
-对下游的可感知影响有两类，均写入升级说明：经Trace拦截器处理、且响应中原本没有该头的请求多一个 `X-Request-Id` 头；在响应上追加该头的反向代理（如 Nginx `add_header`）可能让客户端收到两个值，需改为替换或去掉代理侧配置。应用内自行写入该头的Filter不受影响。
+对下游的可感知影响有三类，均写入升级说明（2026-11-09 代码审查补充第三类）：经Trace拦截器处理、且响应中原本没有该头的请求多一个 `X-Request-Id` 头；在响应上追加该头的反向代理（如 Nginx `add_header`）可能让客户端收到两个值，需改为替换或去掉代理侧配置；应用内在拦截器之后才写该头的代码（Controller、`ResponseBodyAdvice`、在 `chain.doFilter` 之后补头的Filter）若用 `addHeader` 会产生两个值，用 `setHeader` 则覆盖框架值，升级说明提示统一使用 `setHeader` 或去掉自写逻辑。在拦截器之前写入该头的Filter不受影响。
 
 只覆盖拦截器已执行的请求，判断依据是失败阶段而不是状态码，下列情形仅为示例。不写该头的有三类：DispatcherServlet之前被Filter拒绝的请求（如安全框架的401/403、`CorsConfig` 注册的 `CorsFilter` 处理的预检与跨域拒绝），以及排在Trace拦截器之前、`preHandle` 返回false或抛异常的拦截器；`WebMvcConfig` 排除的 `/error`、`/actuator/**`、Swagger等路径；`DispatcherServlet.doDispatch` 中先于 `preHandle` 失败的请求。后者包括：`checkMultipart` 阶段的413（默认非懒解析）；`getHandler` 阶段 `RequestMappingInfoHandlerMapping.handleNoMatch` 抛出的405、415、406及 `params` 条件不匹配的400；`spring.web.resources.add-mappings=false` 时 `noHandlerFound` 的404。这些虽然经统一异常封装输出，但发生在 `preHandle` 之前。反之，默认开启静态资源映射时的 `NoResourceFoundException`（404），以及 `resolve-lazily=true` 时的413，都发生在拦截器之后，会带该头。
 
