@@ -4,14 +4,14 @@ status: in-progress
 branch: main
 created: 2026-10-23
 released: null
-updated: 2026-11-07
+updated: 2026-11-09
 ---
 
 # v2.4.0 版本记录
 
 ## 当前交付状态
 
-十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已有 SDD 草稿，未实施。详细依据见下方实施记录及各需求文档。
+十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已有 SDD 草稿，未实施；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已并入对应计划，未实施。详细依据见下方实施记录及各需求文档。
 
 | 需求 | 当前状态 |
 |---|---|
@@ -26,6 +26,8 @@ updated: 2026-11-07
 | [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
 | [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
 | [Log 日志治理（L-04）](./log-governance/plan.md) | SDD 草稿（2026-11-08），未实施 |
+| [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114），未实施 |
+| [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117），未实施 |
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
@@ -132,11 +134,11 @@ updated: 2026-11-07
 | [Parent讨论](./parent-build/brainstorm.md) | P-01～P-05、PC-01～PC-03 | 公共默认值与JDK适配分离；原生开关独立；GPG可选；发布POM保留覆盖能力 | [规格](./parent-build/spec.md) · [设计](./parent-build/design.md) · [计划](./parent-build/plan.md) |
 | [BOM讨论](./bom-dependencies/brainstorm.md) | B-01～B-03 | 只托管binding、OOXML、COLA DTO；消费者按需声明；验证继承与import两条路径 | [规格](./bom-dependencies/spec.md) · [设计](./bom-dependencies/design.md) · [计划](./bom-dependencies/plan.md) |
 | [Common讨论](./common-contracts/brainstorm.md) | C-01、C-02、C-04、C-07 | 兼容命名工厂；消息允许为空；复制分页元数据；不可变完整批量结果；COLA独立可选 | [规格](./common-contracts/spec.md) · [设计](./common-contracts/design.md) · [计划](./common-contracts/plan.md) |
-| [Log讨论](./log-runtime/brainstorm.md) | L-01、L-02 | 容器/服务器显式预设；少量可覆盖属性；MDC提交快照与执行后恢复 | [规格](./log-runtime/spec.md) · [设计](./log-runtime/design.md) · [计划](./log-runtime/plan.md) |
+| [Log讨论](./log-runtime/brainstorm.md) | L-01、L-02、TD-049、TD-050 | 容器/服务器显式预设；少量可覆盖属性；MDC提交快照与执行后恢复；旧XML按天滚动与putAll合并语义（D-116、D-117） | [规格](./log-runtime/spec.md) · [设计](./log-runtime/design.md) · [计划](./log-runtime/plan.md) |
 | [Log 日志治理讨论](./log-governance/brainstorm.md) | L-04 | 可选 JSON；访问字段结构化；全量 MDC 加排除；沿用脱敏与路由 | [规格](./log-governance/spec.md) · [设计](./log-governance/design.md) · [计划](./log-governance/plan.md) |
 | [Exception讨论](./exception-contracts/brainstorm.md) | E-01、E-02 | 标准HTTP状态与协议头；结构化校验明细显式启用，保留默认响应形态 | [规格](./exception-contracts/spec.md) · [设计](./exception-contracts/design.md) · [计划](./exception-contracts/plan.md) |
-| [Web讨论](./web-binding/brainstorm.md) | W-01、W-02、C-07接入 | Java Time缺省格式器；大整数按阈值可选字符串化；Web承担R MixIn与兼容开关 | [规格](./web-binding/spec.md) · [设计](./web-binding/design.md) · [计划](./web-binding/plan.md) |
-| [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明 | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
+| [Web讨论](./web-binding/brainstorm.md) | W-01、W-02、C-07接入、W-03 | Java Time缺省格式器；大整数按阈值可选字符串化；Web承担R MixIn与兼容开关；响应回传requestId（D-114） | [规格](./web-binding/spec.md) · [设计](./web-binding/design.md) · [计划](./web-binding/plan.md) |
+| [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明（D-115 追加项已由 D-119、D-120 撤出） | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
 | [Processor讨论](./mybatis-processor/brainstorm.md) | D-71 | 支持源版本跟随编译器；准确解释生成全限定名冲突 | [规格](./mybatis-processor/spec.md) · [设计](./mybatis-processor/design.md) · [计划](./mybatis-processor/plan.md) |
 | [RPC Core讨论](./rpc-deprecation/brainstorm.md) | D-75 | 仅增强旧入口删除预告，保留原始since、兼容适配与运行行为 | [规格](./rpc-deprecation/spec.md) · [设计](./rpc-deprecation/design.md) · [计划](./rpc-deprecation/plan.md) |
 | [代码质量讨论](./code-quality-toolchain/brainstorm.md) | Q-01～Q-06、D-102～D-110 | 规则 jar 提供独立插件入口；Parent 接入 PMD/CPD，下游各工具独立开关默认只报告，本仓库严格；starter-test 提供 ArchUnit 规则库；Spotless/JaCoCo 语义不变 | [规格](./code-quality-toolchain/spec.md) · [设计](./code-quality-toolchain/design.md) · [计划](./code-quality-toolchain/plan.md) |
@@ -167,7 +169,7 @@ flowchart LR
 
 跨模块约定：Common只定义响应与转换语义，Web拥有C-07的Jackson实现；BOM只托管COLA版本，Common/MyBatis各自维护optional与无COLA类路径；MyBatis产生SQL.SLOW事件，Log负责新预设路由；HTTP状态由异常处理模块决定，Common新工厂不决定HTTP。
 
-Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容需共同交付：适配归属 Web W-TC，联合 MVC 验收归属 Web W-T4，Exception T4 复核其结果；不新增 Exception→Web 依赖，也不扩展 W-03。仅 Exception 模块通过不足以完成 E6/W4 验收。Log 的预设默认规则须保留用户启动默认属性中的显式列表及空列表；无可用 Logback 且未选新预设时，早期入口退出，独立 MDC 能力保持可组合。
+Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容需共同交付：适配归属 Web W-TC，联合 MVC 验收归属 Web W-T4，Exception T4 复核其结果；不新增 Exception→Web 依赖，E6/W4 范围内也不扩展 W-03（W-03 另由 D-114 以 Web W5 纳入）。仅 Exception 模块通过不足以完成 E6/W4 验收。Log 的预设默认规则须保留用户启动默认属性中的显式列表及空列表；无可用 Logback 且未选新预设时，早期入口退出，独立 MDC 能力保持可组合。
 
 2026-10-31 设计审查补充的跨模块约定（除注明的 D-97～D-100 外为推荐，非逐项确认）：
 
@@ -181,7 +183,7 @@ Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容�
 
 ## 范围边界
 
-Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序、W-03请求标识回传等不纳入；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独纳入规划，尚未实施。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
+Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序等不纳入（W-03 请求标识回传原不纳入，2026-11-08 由 D-114 纳入）；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独纳入规划，尚未实施。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
 
 TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../tech-debt-tracker.md)。
 

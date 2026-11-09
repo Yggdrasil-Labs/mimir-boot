@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-06
+updated: 2026-11-09
 ---
 
 # 技术债务追踪
@@ -14,6 +14,7 @@ updated: 2026-11-06
 - **中**：质量门禁、测试可靠性或兼容性存在缺口，需要排期处理。
 - **低**：影响受限的兼容包袱或测试维护项，可随相关改动一并处理。
 - `兼容保留` 表示框架已规避内部主路径，但公开旧接口仍保留已知风险；只有完成迁移或废弃后才能移除。
+- `已排期 vX.Y.Z` 表示已纳入该版本的具体计划但尚未实施，不代表已修复。
 - `部分修复` 必须明确剩余风险；`验收中` 必须区分已有证据和未闭环条件。配置修改或普通构建通过不能替代专项验收。
 - 关闭前核对实现、适用验收和剩余风险结论。风险接受须记录 Owner、原因、影响边界及重新评估条件，不能把接受风险写成已修复。
 - 清理已关闭项前，先确认完整记录已有归属、切换仓库内引用，再删除台账明细及旧锚点；不保留兼容入口。历史执行和验收结论保留原意，后续迁移另记决策。
@@ -29,8 +30,8 @@ updated: 2026-11-06
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-047](#td-047-nacos-消费者迁移) | Nacos 配置删除后的消费者迁移 | starter-nacos / 业务配置消费 | 高 | 待规划 | YoungerYang-Y | 2026-10-09 | [拆分与框架关闭记录](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；实际应用迁移范围待核实 |
 | [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](./v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
-| [TD-049](#td-049-旧日志配置按月滚动) | 旧 logback-spring.xml 归档按月滚动 | starter-log | 中 | 待规划 | YoungerYang-Y | 2026-11-02 | [Log 版本记录](./v2.4.0/release.md) |
-| [TD-050](#td-050-log-模块低优先级清理) | Log 模块低优先级清理（MDC 批量设置语义、内部入口可见性等） | starter-log | 低 | 待规划 | YoungerYang-Y | 2026-11-02 | [Log 版本记录](./v2.4.0/release.md) |
+| [TD-049](#td-049-旧日志配置按月滚动) | 旧 logback-spring.xml 归档按月滚动 | starter-log | 中 | 已排期 v2.4.0 | YoungerYang-Y | 2026-11-02 | [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾) |
+| [TD-050](#td-050-log-模块低优先级清理) | Log 模块低优先级清理（MDC 批量设置语义、内部入口可见性等） | starter-log | 低 | 已排期 v2.4.0 | YoungerYang-Y | 2026-11-02 | [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾) |
 | [TD-051](#td-051-既有公开类型包循环) | 既有公开类型导致的包循环 | exception / web / nacos / dubbo / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-11-06 | [质量工具链计划](./v2.4.0/code-quality-toolchain/plan.md#t5本仓库依赖方向测试) |
 
 ## 债务明细
@@ -55,6 +56,7 @@ updated: 2026-11-06
 - **已缓解范围**：v2.2.1 仅提供应用级 context 绑定，不能消除此风险（证据：`c6006b2`、`4e428e6`）。
 - **本轮调查**：现有 Handler 不接收稳定字段或记录身份；不能用 JDBC 序号或列 alias 替代业务身份。本轮字段加密注册隔离修复不改变 v1/v2 格式，也不构成 AAD 绑定修复，详见[后续计划](../archive/v2.3.0/runtime-debt-followup/plan.md)。
 - **处置与验收**：设计可迁移的字段/记录级 AAD，并验证跨字段、跨记录和历史密文兼容场景。
+- **规划进展（2026-11-08）**：v2.4.0 候选复核中用户确认不纳入本轮，后续版本以 RFC 起步（D-118）；尚无 RFC。
 - **目标版本**：待排期。
 - **复查条件**：字段加密格式、AAD 或密钥迁移方案调整时，核对字段/记录绑定与历史密文兼容性。
 
@@ -81,6 +83,7 @@ updated: 2026-11-06
 - **消费者核对（2026-10-25）**：v2.4.0 规划讨论中静态检查三个内部业务项目源码（未运行，未读取 Nacos 服务端配置内容）。仅 valhalla-project 的 valhalla-auth 接入 Nacos Starter，在 dev、test、prod 配置中导入 `optional:nacos:valhalla-auth.yaml?refreshEnabled=true`；配置 Bean 为普通 `@ConfigurationProperties` 的 `JwtProperties`（`auth.jwt`）与 `TokenProperties`（`auth.token`），均未使用 `@RefreshScope`；`LoginExecutor` 以 `@Value` 读取 `auth.password.lock-threshold`、`lock-duration`，单例下不会随推送刷新；本地配置未见加密值，JWT secret 来自环境变量 `AUTH_JWT_SECRET`。未发现依赖配置删除语义的业务路径。template-project 与 mealmate-project 未接入 Nacos。该结果作为消费者清单起点，不改变本项状态，也不替代 Owner 的实际核实与验收。
 - **验收条件**：清单内实际业务消费路径经真实 Nacos 完整刷新后，验证无下层值时恢复 null/初始化值、有下层值时正确回退，前缀删除、DataId 删除、恢复及重复推送均不使用旧明文；传播到默认刷新器的解密失败保留原目标，修正后恢复消费。对按键更新缓存验证完整刷新时整体失效并重读配置，或使用 RefreshScope 代理读取，不将派生属性键必然进入事件作为前提；对选用业务重置策略的应用验证等价删除语义及自身失败策略。逐项保留应用版本、接入方式和运行证据；未核实项不得按框架回归通过关闭。
 - **边界**：不自动清空任意普通 Bean，不保证擦除其他对象持有的全部历史明文。非枚举 parser、移除 import/资源身份变化、自定义刷新器、legacy bootstrap 与本地文件源消失仍按[Nacos 接入契约](../../mimir-boot-starters/mimir-boot-starter-nacos/README.md#2-配置动态刷新支持)处理；相关应用需自行满足对应契约，不能据默认框架验收推定删除保证。
+- **规划进展（2026-11-08）**：用户确认在 v2.4.0 收尾期间并行核实消费者清单，不作为 v2.4.0 发布条件（D-118）；本项状态与验收条件不变。
 - **目标版本**：待排期。
 - **复查条件**：配置消费方接入或升级、刷新/绑定策略、缓存读取路径或 Spring Cloud 基线变化时，Owner 复核迁移清单和无下层值时的旧明文残留；每月架构回顾确认范围与排期。
 
@@ -103,7 +106,8 @@ updated: 2026-11-06
 - **来源与范围**：2026-11-02 v2.4.0 Log 预设整体审查发现。旧 `logback-spring.xml` 四个文件 appender 的 `fileNamePattern` 为 `%d{yyyy-MM}/xxx-%d{yyyy-MM-dd}-%i.log.gz`，第一个 `%d` 未标记 `aux`。
 - **现状与风险**：Logback 以第一个非 aux 的 `%d` 作为滚动周期（已用 logback-core 1.5.18 实测主日期为 `yyyy-MM`），因此旧配置按月滚动、`maxHistory` 30/60 实为月数，与注释“保留天数”不符；仅按大小滚动，`totalSizeCap` 成为实际上限。v2.4.0 新预设已改为 `%d{yyyy-MM,aux}`。
 - **处置与验收**：评估将旧 XML 改为 `%d{yyyy-MM,aux}` 的兼容影响（按天滚动后归档数量与清理节奏变化），在版本说明中提示后修复；验证主日期为按天、保留天数生效。
-- **目标版本**：待排期。
+- **规划进展（2026-11-08）**：用户确认纳入 v2.4.0（D-116），任务见 [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾)；尚未实施。
+- **目标版本**：v2.4.0。
 
 <a id="td-050-log-模块低优先级清理"></a>
 
@@ -111,12 +115,13 @@ updated: 2026-11-06
 
 - **来源与范围**：2026-11-02 v2.4.0 Log 模块第三轮整体审查，均不影响当前正确性。
 - **现状与风险**：
-  - `MdcUtil.putAll` 注释为“批量设置”，实际经 `MDC.setContextMap` 整体替换，会清除已有 traceId/spanId（既有行为，计划写明本轮不改）。
+  - `MdcUtil.putAll` 注释为“批量设置”，实际经 `MDC.setContextMap` 整体替换，会清除已有 traceId/spanId（既有行为；原 Log 计划写明本轮不改，2026-11-08 由 D-117 改为纳入）。
   - `SensitiveDataConverterInternals` 在 D-101 后只剩测试钩子 `resetForTest(Context)`，仍为 public，下游可调用以清空全局快照、改写 Context 引用。
   - `MdcTasks.snapshot()` 在 `MDC.getCopyOfContextMap()` 已返回副本后再复制一次。
   - `MdcTaskExecutionAutoConfiguration` 的 `@EnableConfigurationProperties(MdcPropagationProperties.class)` 注册的 Bean 无读取方，开关仅由 `@ConditionalOnProperty` 决定。
 - **处置与验收**：`putAll` 改为逐项 put 须在版本说明中提示行为变更；测试钩子迁入测试源集（同包访问或反射）；去掉多余拷贝；删除无用注册或改为实际读取。D-101 已完成启动机制简化，`SensitiveDataConverterInternals` 可整体迁入测试源集。
-- **目标版本**：待排期。
+- **规划进展（2026-11-08）**：用户确认四项全部纳入 v2.4.0，`putAll` 改为逐项 put（D-117），任务见 [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾)；尚未实施。
+- **目标版本**：v2.4.0。
 
 <a id="td-051-既有公开类型包循环"></a>
 

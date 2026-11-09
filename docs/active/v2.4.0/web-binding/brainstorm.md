@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # Web：日期绑定与 JSON 输出方案大纲
@@ -21,7 +21,7 @@ updated: 2026-10-31
 | W-02 | 避免 JavaScript 消费大整数时丢失精度 | 默认关闭；开启后 Long/long、BigInteger 超出 ±(2^53-1) 才输出字符串；时间戳与分页数量保持数字 |
 | C-07 接入协作 | 为 Common 的 R 成功状态收敛提供 Jackson 接入 | 需求归属 [Common](../common-contracts/brainstorm.md)，本模块承担序列化适配，不重复立项 |
 
-W-03 回传 `X-Request-Id` 仍为候选。CORS、请求标识生成、响应增强和 Servlet 异步 MDC 不扩展范围。
+W-03 回传 `X-Request-Id` 原为候选，2026-11-08 由 D-114 纳入，见[规格 W5](./spec.md#behavior-w5响应回传-requestidd-114)。CORS、请求标识生成、响应增强和 Servlet 异步 MDC 不扩展范围。
 
 SDD中的W4仅保持Exception统一封装后的既有traceId增强：公开增强器接口不变，内部Object适配器检查实际R值，保留原MethodParameter及containing class。Exception合并响应后直接交给原生MVC，不额外保证不可表示格式、Resource或条件/Range请求下的固定状态或空体；实现及联合验证归Web W-TC/W-T4。
 

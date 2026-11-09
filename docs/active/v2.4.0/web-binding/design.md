@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # Web 日期绑定与 JSON 输出设计
@@ -11,7 +11,7 @@ updated: 2026-10-31
 
 ## 背景、目标与非目标
 
-源码中JacksonConfig已有日期序列化customizer，WebMvcConfig目前只装配拦截器。目标是W1/W2/W3可独立工作，并由W4保持Exception统一封装后的既有响应增强；业务有清晰覆盖路径。不全局注入spring.mvc属性，不影响传统Date默认值，不自动适配OpenAPI，不扩展请求标识生成、回传或传播策略。
+源码中JacksonConfig已有日期序列化customizer，WebMvcConfig目前只装配拦截器。目标是W1/W2/W3可独立工作，并由W4保持Exception统一封装后的既有响应增强；业务有清晰覆盖路径。不全局注入spring.mvc属性，不影响传统Date默认值，不自动适配OpenAPI，不扩展请求标识生成或传播策略；2026-11-08按D-114仅增加W5回传既有requestId，见下文W5。
 
 ## 架构与依据
 
@@ -103,6 +103,16 @@ OpenAPI/客户端示例应说明业务大整数可能是integer或string，给�
 
 Web任务拥有默认增强器兼容实现及Object包装器保护回归；Exception负责保留原Object公开描述符、构建ResponseEntity并直接交给原生MVC。联合MVC必须使用真实Exception实现，覆盖正常可写的Biz200、System500、普通500、工厂失败回退；不能仅用手写Advice或裸MethodParameter单测代替。不可表示格式等原生处理不纳入固定状态或空体保证。
 
+### W5：回传requestId（D-114）
+
+`TraceInterceptor.preHandle` 紧接 `X-Trace-Id` 之后、`request.setAttribute` 与MDC入栈写入之前，以 `HttpHeaderConstants.REQUEST_ID_HEADER` 写入 `getOrGenerateRequestId` 的结果，与随后写入MDC的是同一变量。顺序必须保持"先写两个响应头、再写请求属性与MDC"，以延续既有保证：写头失败时MDC不残留本次值（现有 `TraceInterceptorTest.responseHeaderFailureDoesNotLeaveNewTraceIdInMdc`）。选择在 `preHandle` 写入：此时响应尚未提交，后续统一异常封装在同一次派发内输出，响应头保留；写入前以 `response.containsHeader` 判断：响应中已有该头时保留原值、不覆盖。异步再派发或forward再次进入时，该头已由首次写入，自然跳过，不产生重复头。拦截器之前的Filter已写入该头时保留其值，此时响应值可能与日志中的requestId不同，由写入方负责。框架写入的值是拦截器确定的requestId（依次取请求属性、合法请求头、新生成值，不从MDC读取）；之后Controller、Advice或后置Filter再改写该头不在框架保证范围内。
+
+对下游的可感知影响有两类，均写入升级说明：经Trace拦截器处理、且响应中原本没有该头的请求多一个 `X-Request-Id` 头；在响应上追加该头的反向代理（如 Nginx `add_header`）可能让客户端收到两个值，需改为替换或去掉代理侧配置。应用内自行写入该头的Filter不受影响。
+
+只覆盖拦截器已执行的请求，判断依据是失败阶段而不是状态码，下列情形仅为示例。不写该头的有三类：DispatcherServlet之前被Filter拒绝的请求（如安全框架的401/403、`CorsConfig` 注册的 `CorsFilter` 处理的预检与跨域拒绝），以及排在Trace拦截器之前、`preHandle` 返回false或抛异常的拦截器；`WebMvcConfig` 排除的 `/error`、`/actuator/**`、Swagger等路径；`DispatcherServlet.doDispatch` 中先于 `preHandle` 失败的请求。后者包括：`checkMultipart` 阶段的413（默认非懒解析）；`getHandler` 阶段 `RequestMappingInfoHandlerMapping.handleNoMatch` 抛出的405、415、406及 `params` 条件不匹配的400；`spring.web.resources.add-mappings=false` 时 `noHandlerFound` 的404。这些虽然经统一异常封装输出，但发生在 `preHandle` 之前。反之，默认开启静态资源映射时的 `NoResourceFoundException`（404），以及 `resolve-lazily=true` 时的413，都发生在拦截器之后，会带该头。
+
+不新增开关，理由是该头只回传请求方已提供或框架已生成并写入日志的标识，不暴露新信息，且新增响应头对已有调用方是增量变化。不在 `ResponseBodyEnhancer` 中处理，避免与W4的body增强及其开关耦合。已有该头时选择保留而不是覆盖：覆盖能保证响应值与日志一致，但会静默替换业务或网关在应用内自行写入的值，退出方式只有子类化拦截器，违反默认向后兼容原则；保留则对已有写入方零影响，代价仅是这类应用的响应值由写入方负责。与 `X-Trace-Id` 的无条件写入不一致是有意的：后者为既有行为，本项不改。也不改用 `OncePerRequestFilter` 写头：Filter 能覆盖405/415/406/413等更早的失败，但 requestId 的校验、生成与请求属性复用都在拦截器中，移到 Filter 需要拆分既有拦截器逻辑并调整与业务 Filter 的顺序，超出本项"回传既有值"的范围。业务以 `TraceInterceptor` 子类替换默认Bean、且覆盖 `preHandle` 不调用父类实现时，不写该头，与 `X-Trace-Id` 一致；调用父类实现的子类仍会写入。
+
 ## 数据模型、错误与非功能约束
 
 只新增WebProperties三个配置组字段及内部序列化/格式器类型，不改响应Java模型。三组字段（`mvc.date-format-enabled`、`serialization.write-large-integers-as-string`、`json.include-legacy-fail`）推荐由计划W-T1一次性加入，W-T2/W-T3只读取，不再修改WebProperties。非法配置启动失败；非法输入绑定失败；serializer异常原样交给Jackson/MVC处理，不用字符串占位伪装成功。关闭数值策略时不注册其模块；关闭W1不注册格式器。
@@ -133,4 +143,5 @@ Web任务拥有默认增强器兼容实现及Object包装器保护回归；Excep
 | W4异常联合 | Web真实应用上下文+MockMvc，依赖Exception统一封装 | Biz200/System500/普通500/工厂失败后的可写R都增强，工厂≤1次；已有traceId不覆盖、MDC双值优先与requestId回退、双空不生成；三个既有关闭入口与自定义增强器允许/拒绝均验证 |
 | W4既有分支与输出形态 | 同一真实MVC链 | 升级前已返回ResponseEntity的8个分支（HandlerMethodValidationException、ConstraintViolationException、缺少请求头、缺少路径变量、406、415、413、NoResourceFound）可写R均补上traceId（既有缺陷回归）；message为null时默认JSON无 `message` 键；下游自定义ResponseBodyAdvice在运行期ResponseEntity下的supports/body记录在案 |
 | W4边界与正常响应 | 同一真实MVC链 | 可写的工厂字符串/其他对象保持原值，null不被构造为新响应；正常R/ResponseEntity<R>仍增强、非R不变；保留原MethodParameter及containing class，不改变原生内容协商及请求处理 |
+| W5回传 | Trace拦截器单测+真实MVC链+ApplicationContextRunner | 合法值原样回传、缺失与非法回传生成值且与MDC一致；拦截器执行后抛出、经统一异常封装的4xx/5xx带该头；默认静态资源映射下的404、懒解析下的413带该头；非懒解析下的413、处理器匹配阶段的405/415/406与params不匹配的400、`add-mappings=false` 时的404不带该头；前置Filter已写入的值被保留；排除路径不带该头；写 `X-Request-Id` 失败时请求属性与MDC均不残留；子类覆盖 `preHandle` 不调用父类时不写、调用父类时写入两组对照；异步再派发与forward各只有一个值；Web总开关关闭时不带该头；非Servlet应用（`ReactiveWebApplicationContextRunner`）上下文中不存在 `TraceInterceptor` 与 `WebMvcConfig`；Filter拒绝与更早拦截器拒绝时无该头；既有 `X-Trace-Id` 用例不变 |
 | 组合 | 总前提成立下8组开关矩阵，另加总开关关闭及非Servlet各一组对照 | 日期/数值/fail互不联动，既有响应增强测试通过；对照组三项均不生效 |

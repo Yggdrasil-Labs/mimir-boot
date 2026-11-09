@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # Exception HTTP 与校验错误规格
@@ -195,7 +195,7 @@ Then 不由默认增强补填 traceId；业务替换增强器继续按其自身�
 
 And 工厂返回非公共响应格式或 null 时不强转、不加字段；默认增强不为 null 构造响应，也不改写框架的内容协商结果。
 
-本行为与 [Web W4](../web-binding/spec.md#behavior-w4异常封装保留响应追踪增强) 共用验收；不新增请求标识生成、回传或传播策略。
+本行为与 [Web W4](../web-binding/spec.md#behavior-w4异常封装保留响应追踪增强) 共用验收；不新增请求标识生成、回传或传播策略（范围限于 E6/W4；requestId 响应头回传另由 [Web W5](../web-binding/spec.md#behavior-w5响应回传-requestidd-114) 按 D-114 提供）。
 
 ## Constraints
 

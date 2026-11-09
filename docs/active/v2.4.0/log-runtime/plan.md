@@ -2,19 +2,19 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-11-02
+updated: 2026-11-09
 ---
 
 # Log 日志预设与任务上下文实施计划
 
 ## Goal
 
-实施 L-01 两类可选日志预设与 L-02 默认业务任务 MDC 传播，满足 [spec](./spec.md) 的六项行为和 [design](./design.md) 的 IC-1 至 IC-6。本文件是静态实施输入；**本轮只补 SDD，以下产品改动和运行验收均未实施**。除 2026-10-31 用户确认的 D-100（Spring Cloud legacy bootstrap 所有权）外，具体方案是自主推荐草案，未将新参数写成用户已确认决定，也不构成 Git、部署或发布授权。
+实施 L-01 两类可选日志预设与 L-02 默认业务任务 MDC 传播，满足 [spec](./spec.md) 的六项行为和 [design](./design.md) 的 IC-1 至 IC-6；2026-11-08 追加的 D-116、D-117 两项行为与 IC-7 由文末 T9 承接。本文件是静态实施输入；**本轮只补 SDD，以下产品改动和运行验收均未实施**。除 2026-10-31 用户确认的 D-100（Spring Cloud legacy bootstrap 所有权）外，具体方案是自主推荐草案，未将新参数写成用户已确认决定，也不构成 Git、部署或发布授权。
 
 ## Context
 
 - 工作目录为仓库根；主要产品范围为 `mimir-boot-starters/mimir-boot-starter-log/`。Java 17 / Boot 3.3.13 / Spring 6.1.21 / Logback 1.5.18，不升级依赖基线。
-- 旧 `logback-spring.xml` 已自动生效，prod root WARN，访问与 SQL 走文件；不得借本需求改旧默认输出或给旧配置自动加四组脱敏。
+- 旧 `logback-spring.xml` 已自动生效，prod root WARN，访问与 SQL 走文件；不得借本需求改旧默认输出或给旧配置自动加四组脱敏（T9 按 D-116 修正旧 XML 滚动周期除外）。
 - 原脱敏在 ContextRefreshedEvent 发布，原转换器有静态快照和首 Context 引用。启动期保护必须补时序，不能只改配置 Bean 默认值。
 - Mimir 令牌不控制 Boot 的 LoggingApplicationListener；独立子 SpringApplication 失败及再次启动可能清理、重置共享日志系统，活跃子失败事件还可能传播给父监听器。父子保障限定为不另启 Boot 日志生命周期的普通子上下文。
 - Boot 的默认执行器只有没有用户 Executor 时才存在；Builder 通过 getIfUnique 选 TaskDecorator，并在设置 decorator 后执行新/旧 customizer。因此“新增普通 TaskDecorator Bean”与“仅追加 customizer”都不满足完整兼容。
@@ -33,7 +33,7 @@ updated: 2026-11-02
 8. 输出故障只承诺保留后端实际检测到的诊断，不增加 stdout 主动检测或逐事件失败计数。PrintStream 吞掉的写入异常可能没有 Logback 错误状态，无异常/无状态错误不等于写出或采集成功。
 9. 无条件注册的 EPP/监听器先做安全类检查和 Boot 后端选择检查；无可用 Logback 且未选新预设时无状态退出，显式选择新预设时明确失败。转换器操作隔离在检查后才加载的内部桥接类；独立 MDC 不依赖该桥接。保留旧自动配置的类条件和实际 ILoggerFactory 检查。
 10. （D-100，用户确认）Spring Cloud legacy bootstrap 应用不取得日志所有权：EPP 与脱敏刷新以字符串检查 Environment 是否含名为 `bootstrap` 的属性源，是则直接返回，不取令牌、不重置/发布、不写 LoggerContext 属性、不清缓存；由主应用取得令牌并按 `application.yml` 发布。不引入 spring-cloud 编译依赖，详见 design IC-4“Spring Cloud legacy bootstrap”。
-11. （审查修订）取得令牌时只重置 Context 引用与启动期缓存，不置空快照；步骤 5 原子替换快照，仅新预设验证失败时置空，消除空快照窗口。转换器跨包内部入口放在 `converter` 包的 public `SensitiveDataConverterInternals`，标注非公共 API。
+11. （审查修订）取得令牌时只重置 Context 引用与启动期缓存，不置空快照；步骤 5 原子替换快照，仅新预设验证失败时置空，消除空快照窗口。转换器跨包内部入口放在 `converter` 包的 public `SensitiveDataConverterInternals`，标注非公共 API（D-101 后仅剩测试钩子，T9 移入测试源集）。
 12. （审查修订）预设 XML 的每个 `<springProperty>` 自带与 IC-3 一致的 `defaultValue`，内部源只覆盖，保证 legacy bootstrap 应用与测试缓存非所有者在无内部源时仍可加载；刷新判定顺序为 bootstrap 源返回 → 无活跃所有者走旧路径 → 所有者根发布 → 其余跳过。
 
 ## Behavior Contract
@@ -46,16 +46,19 @@ updated: 2026-11-02
 | 从日志正式初始化起执行凭据字段脱敏 | 三阶段消息/异常保护；setDefaultProperties 覆盖/空列表不受 Boot 重排影响；普通子上下文不改父日志，顺序独立启动无残留；发布过程无空规则窗口；legacy bootstrap 下主应用持有令牌（D-100） | T1、T2、T5 |
 | 默认业务任务传递完整日志上下文 | 所有自定义键；正常/异常/空/嵌套/拒绝后恢复 | T3、T4、T5 |
 | 与业务执行器扩展协作 | 保留 Boot 业务候选；其他定制器存在即退让；显式 compose 后传播，用户原配置不被覆盖 | T3、T4、T5 |
+| 旧日志配置按天滚动归档（D-116） | 主周期为天、目录按月；超过保留天数的归档被删除；早于"保留天数 + 32 天"的遗留归档保留；回溯窗口内按文件名日期提前删除较新的遗留归档；其余场景（错误文件范围、当月归档、不使用原配置）详见 spec D-116 一节 | T9 |
+| MDC 批量写入保留已有上下文（D-117） | 合并写入；null 键与 null/空值被跳过且不抛异常；空输入不变；需要整体替换的迁移说明详见 spec D-117 一节 | T9 |
 
 ## Task Dependencies
 
 | Task | Depends on | Ownership |
 |---|---|---|
 | T1：预设属性与启动期脱敏 | 无 | log/config 预设属性、EPP、mask配置；converter静态状态；spring.factories；对应配置测试 |
-| T2：两个输出预设 | T1 | 新 logback XML 资源与资源/输出集成测试；不修改旧 XML |
+| T2：两个输出预设 | T1 | 新 logback XML 资源与资源/输出集成测试；不修改旧 XML（旧 XML 滚动周期由 T9 修改） |
 | T3：MDC 统一入口 | 无，可与 T1 并行 | 新 log/task 包的包装/装饰器；MdcUtil 注释；任务单元测试 |
 | T4：Boot 默认执行器适配 | T3 | MDC自动配置、内部旧Customizer适配器、自动配置 imports；上下文测试 |
 | T5：组合验收与接入说明 | T1–T4 | 模块README、独立启动/异步组合测试、已有基准的定向扩展 |
+| T9：TD-049 与 TD-050 收尾（2026-11-08 追加） | T1～T8（均已实施，见[版本记录](../release.md#当前交付状态)） | 旧 `logback-spring.xml`、`MdcUtil`、`MdcTasks`、`MdcTaskExecutionAutoConfiguration`、`SensitiveDataConverterInternals` 迁移及对应测试、README 升级说明；见文末 T9 |
 
 T1/T3 可并行；T2/T4 各自等待对应前置任务。T5 集成时不同时让多人编辑相同 README、imports 或 converter 文件。未列出的同模块测试 helper 可按测试需要新增到 `src/test`；不得新增 `tools/` 一次性验收脚本。
 
@@ -104,7 +107,7 @@ Files：
 - Create: `src/main/resources/com/yggdrasil/labs/log/logback/common.xml`、`container.xml`、`server.xml` — 分别承载新预设共享文本/规则、console-only 和 file-only 输出。
 - Create: `src/test/java/com/yggdrasil/labs/log/config/LogPresetResourceTest.java` — XML、共享片段、真实 appender 参数和级别覆盖。
 - Create: `src/test/java/com/yggdrasil/labs/log/config/LogPresetOutputIntegrationTest.java` — 标准输出/临时文件事件计数、profile 与错误介质边界。
-- 不修改：原 `src/main/resources/logback-spring.xml`；不删除任何资源。
+- 不修改：原 `src/main/resources/logback-spring.xml`（滚动周期由 T9 按 D-116 修改）；不删除任何资源。
 
 Behavior and constraints：见 design IC-1 至 IC-3。通用文件不设置 INFO threshold，允许显式 DEBUG；error 文件保持 ERROR 过滤。三个专用 Logger additivity=false；prod 系列 13 个 WARN 前缀无 Spring 子 Logger 例外。无 NopStatusListener，无 scan=true，不借选择预设打开 SQL 日志生产。（审查补充）三个 XML 中每个 `<springProperty>` 均声明与 design IC-3 默认值一致的 `defaultValue`（规范化字节/毫秒值，见 design IC-4 步骤 5），内部源只覆盖，使 legacy bootstrap 应用与测试缓存非所有者在无内部源时仍能加载。
 
@@ -114,7 +117,7 @@ Acceptance：
 - container 在可写临时工作目录下仍产生 0 个日志文件；server 产生预期四类文件且 stdout 无业务事件；排空后再统计异步输出。
 - 实际 appender 的滚动大小/保留/总量、队列/neverBlock/flush 与覆盖值一致。暂停下游消费验证满队列默认等待，显式非阻塞能观察丢失，清理测试时不遗留阻塞线程。
 - （审查补充）`LogPresetResourceTest` 以不含 `mimirLogPresetResolved` 的 Environment 加载 container/server XML，无 Logback 状态错误，appender 参数等于 IC-3 默认值；逐个解析 `<springProperty>`，断言均有 `defaultValue`；引用 8 个内部键的与默认值表一致，其余（如应用名 `application`）与各自既有默认值一致。
-- 旧 XML 的生产/默认/开发行为沿既有测试验证；坏资源或 XML 不静默回退。文件输出等后端可检测 I/O 失败保留状态证据。
+- 旧 XML 的生产/默认/开发行为沿既有测试验证（滚动周期以 T9 完成后的按天为准）；坏资源或 XML 不静默回退。文件输出等后端可检测 I/O 失败保留状态证据。
 - stdout 故障用受控的失败 OutputStream 包装为 PrintStream，再作为 System.out：写入后以测试侧 checkError 证实底层失败，即使 Logback 无 ERROR 状态也符合诊断边界；断言无备用文件，不以业务未抛错判成功。该注入在独立 JVM 中执行（如采用独立 Failsafe execution，按 T5 的 summaryFile 与 classpath 规则配置），测试结束关闭自建流，不污染其他用例；不把测试侧探测变成生产轮询。
 
 ### T3：MDC 统一入口
@@ -124,7 +127,7 @@ Purpose：提供与执行器无关的完整快照包装，以及明确顺序的�
 Files：
 
 - Create: `src/main/java/com/yggdrasil/labs/log/task/MdcTaskDecorator.java`、`MdcTasks.java` — design IC-5 的公开签名。
-- Modify: `src/main/java/com/yggdrasil/labs/log/util/MdcUtil.java` — 只校准“自动传递子线程”注释与新入口说明；不顺带改现有 putAll/clear 公共语义。
+- Modify: `src/main/java/com/yggdrasil/labs/log/util/MdcUtil.java` — 只校准“自动传递子线程”注释与新入口说明；不顺带改现有 putAll/clear 公共语义（putAll 语义由 2026-11-08 追加的 T9 按 D-117 修改）。
 - Create: `src/test/java/com/yggdrasil/labs/log/task/MdcTaskDecoratorTest.java`、`MdcTasksTest.java` — Runnable、Callable、组合与恢复。
 
 Behavior and constraints：所有 MDC 键均传播；提交处创建快照；空快照 clear；finally 恢复原 Map；业务包装在内、MDC 在外。输入 null 立即 IllegalArgumentException，compose(null) 合法。单次包装多次执行重用原快照，不能在执行时捕获提交上下文。
@@ -202,7 +205,7 @@ Acceptance：
 - 实施者可自行选择内部验证 helper、测试 fixture、不可变集合实现及命名细节；不可改变公开 MdcTasks 签名、列表覆盖/空值语义、默认输出或提交时捕获点。
 - D-100 规定 legacy bootstrap 应用不取得所有权，不得改为由 bootstrap 应用发布或以 spring-cloud 编译依赖实现判定。
 - 精确属性名/默认值/范围、server是否标准输出、队列丢失取舍、默认装配范围、业务候选选择与customizer退让规则及性能门槛均是本设计的契约。若测试证明推荐不可行，先给出原因和替代设计，不能静默变更、减少覆盖或宣称已获用户确认。
-- 超出日志模块、升级 Spring Boot、改变旧 XML 默认行为、接管 Boot 全局日志生命周期或扩展独立子 SpringApplication 自动保护、扩展 Span/所有用户线程池自动传播、修改 tools、Git 写入、外部模板写入、发布或部署均不在本计划自动实施范围。
+- 超出日志模块、升级 Spring Boot、改变旧 XML 默认行为（T9 按 D-116 修正滚动周期除外）、接管 Boot 全局日志生命周期或扩展独立子 SpringApplication 自动保护、扩展 Span/所有用户线程池自动传播、修改 tools、Git 写入、外部模板写入、发布或部署均不在本计划自动实施范围。
 
 ### 启动所有权补充验收（T1/T5）
 
@@ -249,7 +252,7 @@ Acceptance：
 - 刷新守卫：仅处理本上下文刷新；Environment 含 `bootstrap` 源时返回；上下文有父且父 Environment 含 `mimirLogPresetResolved` 时返回（bootstrap 父上下文的内部源已由 EPP 移除）（预设应用的普通子上下文不覆盖父规则）；其余发布。
 - `SensitiveDataConverter.start()` 绑定 SLF4J 当前 LoggerContext（或首次绑定）且该 Context 的三个 mask 属性任一非 null 时置空快照，否则保留（F2，2026-11-03 用户选择）；不新增公共 API。
 - 除上述守卫外刷新统一“最后刷新者发布”，不区分所有者。
-- 旧配置不再提前发布（删除 `publishLegacy` 与 `hasMaskProperties`），早期语义回到 2.3.0；旧 `logback-spring.xml` 不修改。
+- 旧配置不再提前发布（删除 `publishLegacy` 与 `hasMaskProperties`），早期语义回到 2.3.0；旧 `logback-spring.xml` 不修改（T9 按 D-116 修正滚动周期除外）。
 - 预设校验失败不改变已生效规则。
 
 ### D-101 Behavior Contract
@@ -358,5 +361,27 @@ Acceptance:
 ### D-101 Decision Boundary
 
 - 可自行决定：内部常量位置、EPP 内部方法拆分、测试组织与 helper。
-- 须重新对齐：发现某个 spec 场景在新机制下无法满足（尤其 Spring Cloud bootstrap 或含 spring-cloud-context 的多应用）；需要修改旧 `logback-spring.xml`；需要新增公共 API 或改变 `reloadConfig` / `publishConfiguration` 语义。
-- 不在范围：Git 提交、MDC 与访问日志相关改动、TD-050 其余项。
+- 须重新对齐：发现某个 spec 场景在新机制下无法满足（尤其 Spring Cloud bootstrap 或含 spring-cloud-context 的多应用）；需要修改旧 `logback-spring.xml`（T9 按 D-116 修正滚动周期除外）；需要新增公共 API 或改变 `reloadConfig` / `publishConfiguration` 语义。
+- 不在范围：Git 提交、MDC 与访问日志相关改动、TD-050 其余项（TD-050 由 T9 按 D-117 处理）。
+
+## 2026-11-08 追加：TD-049 与 TD-050
+
+按 D-116、D-117 追加，未实施；前提是 T1 至 T8 已实施（见[版本记录](../release.md#当前交付状态)），本节在其结果上修改。本节显式修订以下原约束，仅覆盖下列改动：Context「不得借本需求改旧默认输出」、Key Decision 11 的 `SensitiveDataConverterInternals` 位置、T2「不修改旧 XML」及其旧 XML 验收、T3「不顺带改现有 putAll/clear 公共语义」、全局 Decision Boundary「改变旧 XML 默认行为」、D-101 Behavior Contract「旧 `logback-spring.xml` 不修改」、D-101 Decision Boundary「需要修改旧 `logback-spring.xml` 须重新对齐」与「TD-050 其余项不在范围」，以及 Task Dependencies 表与 T2 Files 中的「不修改旧 XML」，上述各处已就地注明例外；L-04 JSON 日志不在本节范围。行为见 [spec](./spec.md#behavior-旧日志配置按天滚动归档d-116) 中 D-116、D-117 两节，实现与兼容影响见 [design IC-7](./design.md#ic-7-td-049td-050-收尾d-116d-117)。
+
+### T9：TD-049 与 TD-050 收尾
+
+Files（以 `mimir-boot-starters/mimir-boot-starter-log/` 为根）：
+
+- Modify: `src/main/resources/logback-spring.xml` — 四个文件 appender 月目录 `%d` 加 `aux`，校准注释。
+- Modify: `src/main/java/com/yggdrasil/labs/log/util/MdcUtil.java` — `putAll` 改为按 `put` 规则逐项写入，同步类注释示例。
+- Modify: `src/main/java/com/yggdrasil/labs/log/task/MdcTasks.java` — 去掉 `snapshot()` 二次复制。
+- Modify: `src/main/java/com/yggdrasil/labs/log/config/MdcTaskExecutionAutoConfiguration.java` — 删除无读取方的属性类注册。
+- Move: `src/main/java/com/yggdrasil/labs/log/converter/SensitiveDataConverterInternals.java` → 同包 `src/test/java`；移动后以模块 `verify` 检查主源码不再引用该类（主源码编译通过即证明），并核对打包产物的类清单中不含该类。
+- Modify: 模块 `README.md` — README 目前没有升级说明章节，在"技术栈"之前新增"升级和兼容性"章节（参照 Exception README 的"升级和兼容性"小节），按 v2.4.0 分节。内容：下游可观察的两项变更（含 `putAll` 风险示例）；升级前备份或确认采集的要求（备份内容仍在各自保留期内的全部月目录，即从"升级日减去保留天数"所在月份到当月（普通文件 30 天、错误文件 60 天分别计算；例如 03-01 升级时，普通文件需备份 1 月至 3 月，错误文件需备份 12 月至 3 月））；遗留归档手工清理指引；需要更长保留期时优先自定义配置，改用服务器预设会同时改变 root 级别与标准输出路由。
+- Tests: 改写 `src/test/java/com/yggdrasil/labs/log/util/MdcUtilTest.java` 中的 `putAllReplacesExistingContextWhileNullAndEmptyMapsPreserveIt`（原断言整体替换）；旧 XML 主周期断言加入 `config/LogPresetResourceTest.java`；受控时钟滚动清理集成新建 `config/LegacyLogbackRollingTest.java`（名称可调整），复用 `LogPresetResourceTest` 通过 `LogbackLoggingSystem` 加载 XML 的方式（旧 XML 含 `springProperty`、`springProfile`），在临时目录预置归档；自动配置断言加入既有 `config/MdcTaskExecutionAutoConfigurationTest.java`；`MdcTasks` 去掉二次复制后既有 `task/MdcTasksTest.java` 全部通过即可。
+- 与 L-04 的顺序：T9 先于 [L-04 计划](../log-governance/plan.md) 实施（已登记在 L-04 依赖表），两者都改模块 README，不并行编辑；L-04 的旧 XML 输出基线以 T9 完成后为准。
+
+Acceptance：
+
+- 按 [design 测试策略](./design.md#testing-strategy) 的 IC-7 行执行，既有 IC-1 至 IC-6 用例不回退。
+- 模块 `./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am verify` 通过后，按项目规程执行完整质量入口；结果写入[版本记录](../release.md)，TD-049、TD-050 满足台账验收条件后再关闭。

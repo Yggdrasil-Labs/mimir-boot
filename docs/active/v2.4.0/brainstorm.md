@@ -2,7 +2,7 @@
 version: v2.4.0
 status: exploring
 created: 2026-10-23
-updated: 2026-11-06
+updated: 2026-11-09
 ---
 
 # v2.4.0 版本级 Brainstorm
@@ -26,10 +26,10 @@ updated: 2026-11-06
 | [Parent](./parent-build/brainstorm.md) | P-01 编译目标约束；P-02 保留 classpath 处理器发现；P-04 测试与质量检查开关统一；PC-01 保证 GPG 签名可选；PC-02 合并重复格式检查；PC-03 接通插件版本属性；P-03、P-05 只做使用说明与验证 | 跨 Maven 版本可复现构建未纳入 |
 | [BOM](./bom-dependencies/brainstorm.md) | 管理 `lombok-mapstruct-binding`、`poi-ooxml`、`cola-component-dto`；验证聚焦本轮变更；保持框架基线 | B-04 安全补丁版本覆盖未采纳 |
 | [Common](./common-contracts/brainstorm.md) | C-01 错误码定义接口；C-02 分页逐条转换及 COLA 分页响应支持；C-04 批量操作结果；C-07 R 的 JSON 只保留 success | C-05、C-08 暂缓；C-03、C-06、C-09 未纳入 |
-| [Log 运行预设](./log-runtime/brainstorm.md)、[日志治理](./log-governance/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播；L-04 可选 JSON 日志治理（仅规划） | L-03 访问日志采样未纳入；业务步骤链路暂缓 |
+| [Log 运行预设](./log-runtime/brainstorm.md)、[日志治理](./log-governance/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播；L-04 可选 JSON 日志治理（仅规划）；TD-049 旧 XML 按天滚动、TD-050 低优先级清理（D-116、D-117，未实施） | L-03 访问日志采样未纳入；业务步骤链路暂缓 |
 | [Exception](./exception-contracts/brainstorm.md) | E-01 标准 HTTP 异常语义补齐；E-02 统一校验错误明细 | E-03 安全、异步超时与客户端断开语义未采纳 |
-| [Web](./web-binding/brainstorm.md) | W-01 日期格式统一接入；W-02 大整数 JSON 输出 | W-03 回传 requestId 保留候选 |
-| [MyBatis](./mybatis-capabilities/brainstorm.md) | M-04 慢 SQL 记录；`IPage` 转 COLA `PageResponse`；`searchCount=false` 使用说明 | M-01 撤销；M-02、以 `PageResult` 输出的 M-03 暂缓；防全表更新与删除、单页上限、审计人类型可配置未纳入 |
+| [Web](./web-binding/brainstorm.md) | W-01 日期格式统一接入；W-02 大整数 JSON 输出；W-03 回传 requestId（D-114，未实施） | — |
+| [MyBatis](./mybatis-capabilities/brainstorm.md) | M-04 慢 SQL 记录；`IPage` 转 COLA `PageResponse`；`searchCount=false` 使用说明 | M-01 撤销；M-02、以 `PageResult` 输出的 M-03 暂缓；防全表更新与删除、单页上限经 D-115 纳入后撤出（D-119、D-120）；审计人类型可配置未纳入 |
 | [MyBatis Processor](./mybatis-processor/brainstorm.md) | 支持的源版本跟随编译器；纠正 README 生成冲突说明 | 生成控制能力未纳入 |
 | Nacos | 保持现状；核对结果写入 TD-047 | — |
 | [RPC Core](./rpc-deprecation/brainstorm.md) | 保持现状；旧入口改标 `forRemoval = true` 并明确废弃周期 | — |
@@ -102,6 +102,8 @@ updated: 2026-11-06
   - 待设计：属性命名与优先级、早期初始化与已有自定义 Logback 配置的兼容；默认脱敏启用前补吞吐与延迟基准（[可靠性标准](../../../docs/standards/reliability.md)），并核对 ContextRefreshedEvent 前后的有效规则；异步 appender 为 `discardingThreshold=0` 且未开启 `neverBlock`，队列满时会阻塞业务线程，服务器预设默认值需一并考虑。
 - **L-02 业务任务 MDC 传播（D-33、D-34）**：优先适配 Spring Boot 默认执行器，自建执行器提供统一接入入口；传播任务提交时的全部 MDC 字段快照，完成或异常后恢复执行线程原上下文；不等同于 Span 传播。硬约束：Boot 3.3.13 默认执行器以 `getIfUnique()` 选取 `TaskDecorator`，Mimir 不得以普通 `TaskDecorator` Bean 默认接入，否则与业务已有装饰器同时存在时两者都不生效；设计时评估复用 Spring 6.1 的 `ContextPropagatingTaskDecorator`。`MdcUtil` 类注释所称“子线程自动传递”与代码不符，需校准。
 
+- **TD-049、TD-050 收尾（D-116、D-117）**：2026-11-08 纳入。旧 `logback-spring.xml` 四个文件 appender 的月目录 `%d` 标记 `aux`，主滚动周期改为按天，`maxHistory` 恢复为天数语义；TD-050 四项全部处理，其中 `MdcUtil.putAll` 由 `setContextMap` 整体替换改为逐项 put，不再清除已有 traceId/spanId。两处均为可观察行为变更，须写入升级说明。任务见 [Log 计划 T9](./log-runtime/plan.md#t9td-049-与-td-050-收尾)。
+
 - **L-04 JSON 日志治理（D-111～D-113）**：显式启用 JSON，普通日志统一外层、访问日志独立字段、SQL 保留消息字符串；`context` / `attributes` 分组，MDC 默认全量加排除名单，沿用有效脱敏规则；扩展值限于 JSON 基础类型及 Map/List。保留原输出策略，仅关联已有 Trace/Span，不纳入业务步骤链路。2026-11-06 完成方向讨论与复核修订，当前仅有[方案大纲](./log-governance/brainstorm.md)，未实施。
 
 ### Exception
@@ -116,12 +118,14 @@ updated: 2026-11-06
 [Web Starter](../../../mimir-boot-starters/mimir-boot-starter-web/README.md) 已有 JSON 日期配置、CORS、traceId 与 requestId、Servlet 异步 MDC 恢复与响应 traceId 增强。
 
 - **W-01 JSON 与 MVC 参数日期格式统一接入（D-45 至 D-47）**：默认启用、可关闭，MVC 查询参数与表单中的 LocalDate、LocalTime、LocalDateTime 跟随 Mimir JSON 日期格式；Mimir 格式只作为 `spring.mvc.format.*` 的默认值，优先级为 `@DateTimeFormat`、业务显式配置、Mimir 格式、ISO 回退。依据（Boot 3.3.13 与 Spring 6.1.21 源码）：未配置时先按 locale SHORT 解析再回退 ISO，`yyyy-MM-dd HH:mm:ss` 目前不能用于查询参数；自定义格式后 ISO 回退仍保留，只有 locale SHORT 写法会失效，需写入升级说明。待设计：Boot 的 `registerJavaDate` 会把 `spring.mvc.format.date` 同时用于 `java.util.Date`，可能截掉带时间输入的时间部分，需避免或说明；默认值注入方式与开关命名。
+- **W-03 回传 requestId（D-114）**：2026-11-08 纳入。`TraceInterceptor` 在写入 `X-Trace-Id` 的同一位置把本次请求实际使用的 requestId 写入响应头 `X-Request-Id`；响应中已有该头时保留原值（2026-11-09 文档审查后确定，遵循默认向后兼容）；沿用拦截器既有启用条件，不新增开关，不改变 requestId 的校验与生成规则，CORS 默认暴露头不变。任务见 [Web 计划 W-T5](./web-binding/plan.md#w-t5回传-requestid)。
 - **W-02 大整数 JSON 输出（D-45、D-48、D-49）**：Long/long 与 BigInteger 的值超出 JavaScript 安全整数范围（±(2^53-1)）时输出字符串，否则保持数字，`R.timestamp` 与分页数量等保持数字；默认关闭、显式开启，开启后需提示非 Java 调用方与取值跨越边界的字段。待设计：Map 值与基本类型数组的覆盖、与字段级 `@JsonFormat`/`@JsonSerialize` 及消费者 Module 的优先级、OpenAPI 类型描述一致性。
 
 ### MyBatis
 
 - **M-04 慢 SQL 记录（D-51、D-56、D-57）**：默认开启，只输出超过阈值的 SQL，阈值可配置也可整体关闭；使用独立 Logger（如 `SQL.SLOW`）以 WARN 输出语句 ID、耗时与脱敏 SQL，现有 `SQL.JSON` 日志不变。现有 JSON SQL 日志在未配置 `mimir.boot.mybatis.enable-json-sql-log` 时只在 `dev`、`local`、`development`、`test` Profile 下启用，其他环境需显式开启；它在执行前的 `beforePrepare` 阶段输出，无法得到耗时，需另增标准 MyBatis 拦截器计时。慢 SQL 记录默认开启的决定不受此影响。待设计：Executor 或 StatementHandler 层的计时口径、批量与游标查询、是否输出参数、与 L-01 预设的路由衔接、开关与阈值命名。
 - **`IPage` 转 COLA `PageResponse`（D-69）**：见 Common 的 C-02，转换函数遵循 D-55 契约。
+- **防全表更新与删除、分页单页上限（D-115 纳入，D-119、D-120 撤出）**：2026-11-08 曾作为默认关闭的可选能力纳入。文档审查以 BOM 当前的 MyBatis-Plus 3.5.18.1 字节码核对后，两项均撤出本轮，MyBatis 本轮范围恢复为本节其余三项，原因见[暂缓表](#暂缓撤销与未采纳)。
 - **`searchCount=false` 使用说明（D-59）**：在 [MyBatis README](../../../mimir-boot-starters/mimir-boot-starter-mybatis/README.md) 说明单独 count 或只取前 N 条时使用 `new Page<>(current, size, false)`，避免重复 COUNT。
 
 ### MyBatis Processor
@@ -151,14 +155,17 @@ updated: 2026-11-06
 | C-06 | R 数据映射 | 未纳入（D-23） | — |
 | C-09 | R 的集合数据便利入口 | 未采纳 | `R<List<VO>>` 因 `Serializable` 上界无法编译；放宽上界破坏二进制兼容 |
 | B-04 | BOM 安全补丁版本覆盖 | 未采纳 | 保持框架基线时为 Tomcat、Jackson、Netty、Logback 等提供补丁版本管理 |
-| E-03 | 安全、异步超时与客户端断开的异常语义 | 未采纳 | `Exception` 兜底会把方法级 `AccessDeniedException`、`AuthenticationException` 处理为 500，`AsyncRequestTimeoutException` 返回 500，客户端断开按 error 记录 |
+| E-03 | 安全、异步超时与客户端断开的异常语义 | 未采纳（2026-11-08 复核维持，D-118） | `Exception` 兜底会把方法级 `AccessDeniedException`、`AuthenticationException` 处理为 500，`AsyncRequestTimeoutException` 返回 500，客户端断开按 error 记录 |
 | L-03 | 访问日志采样与分路径慢阈值 | 未纳入 | 需消费方维护规则 |
-| W-03 | 回传已有 requestId（`X-Request-Id`） | 保留候选（D-45） | 常量已存在，当前无响应路径使用 |
-| — | 防全表更新与删除、分页单页上限、审计人类型可配置 | 未纳入（D-51） | — |
+| — | 审计人类型可配置 | 未纳入（D-51） | — |
+| — | 分页单页上限 | 未纳入（D-51）；D-115 曾纳入，D-120 撤出 | MyBatis-Plus 原生 `maxLimit` 只截断 size：偏移按截断后 size 计算，COUNT 阶段越界判定按原 size，size 超限的请求翻页会静默漏数据或返回空页；size<0 取全部也会被截断且不计 COUNT。重新评估时应改为超限即拒绝，而不是截断 |
+| — | 防全表更新与删除 | 未纳入（D-51）；D-115 曾纳入，D-119 撤出 | MyBatis-Plus 3.5.18.1 原生判定把 `WHERE status <> ?` 等合法单条件写判为全表，JSqlParser 无法解析的方言语句直接拒绝且异常含 SQL 原文；出现真实需求时评估自研判定 |
 | — | Processor 已存在同名类时跳过生成、按实体只生成 Mapper | 未纳入（D-71） | 内部项目无需求 |
 | — | RPC Core 对接 Spring HTTP Service Client | 未采纳（D-77） | 出现内部 HTTP RPC 场景时评估，遵守 D-02 |
 | — | Dubbo Consumer 端到端验证 | 未纳入（D-79） | — |
-| — | Testcontainers 共享容器配置 | 未纳入（D-81） | — |
+| — | Testcontainers 共享容器配置 | 未纳入（D-81，2026-11-08 复核维持） | — |
+| — | Micrometer Tracing 对接（traceId 生成与 RPC Bridge 默认实现） | 推迟到后续版本（D-118） | 跨 Web、RPC、Log 并替换现有 traceId 生成方式；与 D-111 暂缓的完整 tracing 接入一并评估 |
+| — | Feign 默认超时、重试与熔断 | 未纳入（D-118） | 为已有接入方补默认值会静默改变调用行为 |
 | — | 跨 Maven 版本可复现构建基线 | 未纳入 | Wrapper 为 Maven 3.10.0，已有默认可复现构建支持 |
 
 ## 2026-10-24 代码对照复核
@@ -192,7 +199,7 @@ updated: 2026-11-06
 - 已校准，无需处理：[AGENTS.md](../../../AGENTS.md) 当前的测试与质量门禁入口已是 `./mvnw -Pci clean verify`，原记录的“默认 `verify` 被误称为质量门禁”问题不成立（2026-10-26 核对）。
 - [Parent README](../../../mimir-boot-parent/README.md) 将覆盖率报告描述为在 `test` 阶段生成且不含集成测试，与 POM 在 `verify` 阶段汇总不一致。
 - `MdcUtil` 类注释所称子线程自动传递与代码不符。
-- 技术债：TD-013、TD-023 按 D-75 明确废弃周期；TD-047 按 D-73 补充消费者核对；TD-016 字段与记录级 AAD 不纳入本轮。均见[技术债台账](../tech-debt-tracker.md)。
+- 技术债：TD-013、TD-023 按 D-75 明确废弃周期；TD-047 按 D-73 补充消费者核对；TD-016 字段与记录级 AAD 不纳入本轮，后续版本以 RFC 起步（D-118）。TD-049、TD-050 按 D-116、D-117 纳入本轮；TD-047 消费者清单在收尾期间并行核实，不作为发布条件（D-118）。均见[技术债台账](../tech-debt-tracker.md)。
 
 ## 决策日志
 
@@ -239,12 +246,12 @@ updated: 2026-11-06
 | D-42 | P-03 使用原生 skip 属性，交付为说明与验证 | 有效 |
 | D-43 | P-05 不新增属性，交付为说明与示例 | 有效 |
 | D-44 | L-01 校准为容器输出预设与少量属性入口，复用现有降噪清单 | 有效 |
-| D-45 | Web 纳入 W-01、W-02，W-03 保留候选 | 有效 |
+| D-45 | Web 纳入 W-01、W-02，W-03 保留候选 | 有效；W-03 保留候选部分已被 D-114 替代 |
 | D-46 | W-01 默认启用、可关闭，ISO 回退保留 | 有效 |
 | D-47 | W-01 Mimir 格式仅作为 `spring.mvc.format.*` 默认值 | 有效 |
 | D-48 | W-02 超出 JavaScript 安全整数范围才输出字符串 | 有效 |
 | D-49 | W-02 默认关闭、显式开启 | 有效 |
-| D-51 | MyBatis 纳入 M-01 至 M-04 | M-01 已撤销（D-58），M-02 已暂缓（D-59），M-03 已暂缓（D-65） |
+| D-51 | MyBatis 纳入 M-01 至 M-04 | M-01 已撤销（D-58），M-02 已暂缓（D-59），M-03 已暂缓（D-65）；同次讨论记为未纳入的防全表、单页上限经 D-115 纳入后分别由 D-119、D-120 撤出，仍为未纳入 |
 | D-52 | M-01 按类型归位、`@Order` 覆盖 | 已撤销（D-58） |
 | D-53 | M-01 默认生效、可回退 | 已撤销（D-58） |
 | D-54 | M-02 两步式无总数分页入口 | 已暂缓（D-59） |
@@ -301,6 +308,13 @@ updated: 2026-11-06
 | D-111 | 纳入 L-04 可选 JSON 日志治理，字段、脱敏、类型与失败边界见[方案大纲](./log-governance/brainstorm.md)；保留原默认行为，暂缓业务步骤链路及完整 tracing 接入 | 有效（2026-11-06 用户确认整体范围），仅规划未实施 |
 | D-112 | L-04 补充：`format=json` 仅对 container、server 预设生效，非预设下配置即启动失败；Encoder 为 optional 依赖并由 BOM 管理版本；JSON 访问日志保留原拼接消息 | 有效（2026-11-08 用户确认），见[方案大纲](./log-governance/brainstorm.md#已确认决策) |
 | D-113 | L-04 补充：公开 Mimir JSON 编码器供自定义 XML 引用，`json.*` 配置不论是否选用预设均生效，`format` 仍仅对预设生效；事件自带键值对沿用扩展值类型规则，不调用 `toString()`；性能只做 text/json 基准记录，不设发布门槛 | 有效（2026-11-08 用户确认），见[方案大纲](./log-governance/brainstorm.md#已确认决策) |
+| D-114 | Web 纳入 W-03：响应头回传本次请求使用的 requestId（`X-Request-Id`），沿用 Trace 拦截器既有启用条件，不新增开关；替代 D-45 中 W-03 保留候选的部分 | 有效（2026-11-08 用户确认），未实施 |
+| D-115 | MyBatis 纳入防全表更新与删除、分页单页上限，均为可选且默认不生效；修订暂缓表中按 D-51 记为未纳入的这两项，审计人类型可配置仍未纳入 | 已撤销：防全表部分由 D-119、单页上限由 D-120 撤出 |
+| D-116 | TD-049 纳入本轮：旧 `logback-spring.xml` 月目录 `%d` 标记 `aux`，改为按天滚动，升级说明提示归档节奏变化 | 有效（2026-11-08 用户确认），未实施 |
+| D-117 | TD-050 四项全部纳入本轮；`MdcUtil.putAll` 改为逐项 put，作为行为变更写入升级说明 | 有效（2026-11-08 用户确认），未实施 |
+| D-118 | 2026-11-08 候选复核：E-03 维持未采纳；Micrometer Tracing 对接与 TD-016 AAD 推迟到后续版本，以 RFC 起步；Testcontainers 共享容器、Feign 默认超时与重试不纳入；TD-047 收尾期间并行核实消费者清单，不作为发布条件 | 有效（2026-11-08 用户确认） |
+| D-119 | 防全表更新与删除撤出本轮。依据：文档审查以 BOM 当前的 MyBatis-Plus 3.5.18.1 字节码核对，原生拦截器会误拦 `<>`/`!=` 单条件写，解析失败的方言语句直接拒绝 | 有效（2026-11-08 用户确认） |
+| D-120 | 分页单页上限撤出本轮，D-115 整体撤销，MyBatis 本轮不追加任务。依据：原生截断语义下 size 超限的请求翻页会静默漏数据或返回空页，唯一安全用法依赖调用方自行限制 size | 有效（2026-11-09 用户确认） |
 | D-15、D-19、D-26、D-35、D-40、D-50、D-70、D-72、D-74、D-76、D-78、D-80 | 各模块依次收口并进入下一模块；不代表详细设计定稿或授权实施 | 过程记录 |
 
 ## 当前产物状态
@@ -308,5 +322,7 @@ updated: 2026-11-06
 原有 9 项需求与后续纳入的代码质量工具链均已有 `spec.md`、`design.md`、`plan.md` 和主体实现。当前处于专项验收及发布收尾阶段，逐项状态、验证依据和剩余边界统一见[版本记录](./release.md#当前交付状态)。
 
 2026-11-06 新增 L-04 [JSON 日志治理大纲](./log-governance/brainstorm.md)，整体范围已确认，当前仅落盘脑暴草案；未生成正式 SDD 或修改实现。该新增方向不改变 L-01/L-02 的原始范围和验证记录。
+
+2026-11-08 按 D-114～D-117 追加小范围事项；其中 D-115 的 MyBatis 两项经文档审查后由 D-119、D-120 撤出，最终只有 Web 与 Log 两组任务。不新建需求目录，分别并入 [Web 计划 W-T5](./web-binding/plan.md#w-t5回传-requestid)、[Log 计划 T9](./log-runtime/plan.md#t9td-049-与-td-050-收尾)。行为与设计已同步补入对应 spec、design（Web W5，Log D-116/D-117 两节行为与 IC-7），均未实施。
 
 本文件保留历史讨论和已确认决策，静态计划保留实施输入，不承担执行进度账本。当前 JDK 17 完整门禁已通过；高版本 JDK、部分专项消费者和性能验收仍有缺口，正式发布尚未完成。

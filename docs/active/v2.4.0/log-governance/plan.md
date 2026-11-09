@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 ---
 
 # Log JSON 日志治理实施计划
@@ -33,7 +33,7 @@ updated: 2026-11-08
 
 ## Behavior Contract
 
-- `format` 未设置 / `text` → 两预设与旧 XML 输出逐字节不变，依赖树不变。
+- `format` 未设置 / `text` → 两预设与旧 XML 输出逐字节不变，依赖树不变（旧 XML 以 Log 计划 T9 完成后为基线）。
 - 预设 + `format=json` + 已声明 Encoder → 每事件一行 JSON，字段与类型符合 spec；ERROR 在 server 预设下进 info/error 两文件各一次。
 - `format=json` 且非预设或非 Logback 后端、值非法、`field-length-limits` 非法 → 启动失败，诊断含属性名不含值；缺 Encoder → 启动失败，诊断给出依赖坐标。
 - 访问日志 JSON：`attributes` 九字段类型固定，`errorType` 仅在非 null 且非占位符 `-` 时出现（成功终态代码传入 `-`），`message` 与文本一致。
@@ -46,11 +46,11 @@ updated: 2026-11-08
 | Task | Depends on | Ownership |
 |------|------------|-----------|
 | T1: 依赖与配置校验 | none | `mimir-boot-bom/pom.xml`、log starter `pom.xml`、`config/` 下 EPP 与新增属性类、`json/JsonPointer`、`json/LogJsonSettingsCodec`、`json/LogJsonKeys`、`json/LogJsonSettings` |
-| T2: 结构化脱敏入口 | none | `converter/` 包 |
+| T2: 结构化脱敏入口 | [Log 计划 T9](../log-runtime/plan.md#t9td-049-与-td-050-收尾)（2026-11-08 追加：T9 移动 `converter/SensitiveDataConverterInternals.java`，须先完成） | `converter/` 包 |
 | T3: 字段快照与扩展 SPI | T1（`JsonPointer`、`LogJsonKeys`、`LogJsonSettings`）、T2（`MaskRules`） | 新包 `field/`、`json/` 中快照、规范化、注册表、捕获出口；`config/LogFieldAutoConfiguration` |
 | T4: 访问日志键值对 | T1（`LogJsonKeys.ACCESS_FIELDS` 字段名） | `web/AccessLogFilter.java` |
 | T5: JSON 编码器与预设接入 | T1、T2、T3 | `json/` 中编码器与 Provider、`logback/*.xml` |
-| T6: 集成验收、基准与文档 | T1～T5 | 集成测试、基准类、README、版本文档 |
+| T6: 集成验收、基准与文档 | T1～T5；[Log 计划 T9](../log-runtime/plan.md#t9td-049-与-td-050-收尾)（2026-11-08 追加：T9 先修改模块 README，T6 在其后编辑；T6 验收的旧 XML 输出基线以 T9 完成后为准） | 集成测试、基准类、README、版本文档 |
 
 T1、T2 可并行；T3 在 T1、T2 之后；T4 在 T1 之后，可与 T2、T3 并行。T1、T3、T5 共用 `json/` 包，按文件划分 ownership：`JsonPointer`、`LogJsonSettingsCodec`、`LogJsonKeys`、`LogJsonSettings` 归 T1，快照相关类归 T3，编码器相关类归 T5。规则 Context 绑定由 T2 实现、T5 调用。
 
@@ -217,7 +217,7 @@ Acceptance:
 
 ## Integration Acceptance
 
-- 默认（未设置 format、未声明 Encoder）消费者：两预设与旧 XML 输出、文件集合、依赖树与实施前一致；自定义 XML 的键值对可见性变化仅按升级说明处理。
+- 默认（未设置 format、未声明 Encoder）消费者：两预设与旧 XML 输出、文件集合、依赖树与实施前一致（旧 XML 以 [Log 计划 T9](../log-runtime/plan.md#t9td-049-与-td-050-收尾) 完成后的按天滚动为基线）；自定义 XML 的键值对可见性变化仅按升级说明处理。
 - 预设 + JSON 消费者：应用、访问、SQL、异常事件逐行可解析，字段与类型符合 spec；扩展字段、处理标记、截断与脱敏同时出现时互不干扰。
 - 自定义 XML 消费者按 README 示例接入得到相同字段。
 
