@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  * <ul>
  *   <li>自动生成或从请求头获取 traceId
  *   <li>将 traceId 设置到 MDC 和响应头
+ *   <li>将 requestId 设置到 MDC，并在响应中尚无该头时回传 {@code X-Request-Id}
  * </ul>
  *
  * @author Yggdrasil Labs
@@ -60,6 +61,11 @@ public class TraceInterceptor implements AsyncHandlerInterceptor {
 
         // 将 traceId 添加到响应头
         response.setHeader(HttpHeaderConstants.TRACE_ID_HEADER, traceId);
+        // 回传 requestId；响应中已有该头（前置 Filter 写入或再派发）时保留原值。
+        // 两个响应头须先于请求属性与 MDC 写入，写头失败时不残留本次状态
+        if (!response.containsHeader(HttpHeaderConstants.REQUEST_ID_HEADER)) {
+            response.setHeader(HttpHeaderConstants.REQUEST_ID_HEADER, requestId);
+        }
 
         request.setAttribute(TRACE_ID_ATTRIBUTE, traceId);
         request.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);

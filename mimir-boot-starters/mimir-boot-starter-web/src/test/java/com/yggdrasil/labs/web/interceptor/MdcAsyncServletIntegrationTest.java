@@ -105,6 +105,10 @@ class MdcAsyncServletIntegrationTest {
         assertEquals(
                 TRACE_ID,
                 response.headers().firstValue(HttpHeaderConstants.TRACE_ID_HEADER).orElse(null));
+        // 异步再派发再次进入拦截器时保留首次写入的值，不重复写头
+        assertEquals(
+                List.of(REQUEST_ID),
+                response.headers().allValues(HttpHeaderConstants.REQUEST_ID_HEADER));
 
         MdcSnapshot completion = probe.awaitCompletion();
         assertEquals(DispatcherType.ASYNC, completion.dispatcherType());
@@ -145,6 +149,9 @@ class MdcAsyncServletIntegrationTest {
         assertEquals(
                 initial.traceId(),
                 response.headers().firstValue(HttpHeaderConstants.TRACE_ID_HEADER).orElse(null));
+        assertEquals(
+                List.of(initial.requestId()),
+                response.headers().allValues(HttpHeaderConstants.REQUEST_ID_HEADER));
 
         MdcSnapshot completion = probe.awaitCompletion();
         assertEquals(DispatcherType.ASYNC, completion.dispatcherType());
