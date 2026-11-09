@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnThreading;
 import org.springframework.boot.autoconfigure.task.TaskExecutionAutoConfiguration;
 import org.springframework.boot.autoconfigure.thread.Threading;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.task.ThreadPoolTaskExecutorBuilder;
 import org.springframework.boot.task.ThreadPoolTaskExecutorCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -31,7 +30,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @ConditionalOnClass(ThreadPoolTaskExecutor.class)
 @ConditionalOnProperty(prefix = "mimir.boot.log.mdc", name = "enabled", havingValue = "true")
 @ConditionalOnMissingBean(Executor.class)
-@EnableConfigurationProperties(MdcPropagationProperties.class)
 public class MdcTaskExecutionAutoConfiguration {
 
     /** 旧 Builder 在 Boot 3.4 移除，按类名判断，类不存在时自动忽略 */

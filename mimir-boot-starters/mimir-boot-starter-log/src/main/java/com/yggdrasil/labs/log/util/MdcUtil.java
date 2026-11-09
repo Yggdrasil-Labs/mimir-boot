@@ -26,7 +26,7 @@ import java.util.Map;
  * // 设置请求 ID
  * MdcUtil.setRequestId("req-001");
  *
- * // 批量设置
+ * // 批量设置（合并到当前上下文，不清除已有键）
  * Map<String, String> context = new HashMap<>();
  * context.put("operation", "login");
  * context.put("ip", "192.168.1.1");
@@ -130,11 +130,23 @@ public class MdcUtil {
         org.slf4j.MDC.remove(key);
     }
 
-    /** 批量设置上下文 */
+    /**
+     * 批量设置上下文
+     *
+     * <p>合并写入：未出现在输入中的已有键保留；值按 {@link #put(String, String)} 的规则跳过 null 与空串，并跳过 null 键。
+     *
+     * <p>需要整体替换时使用 {@link #setContextMap(Map)}。
+     */
     public static void putAll(Map<String, String> context) {
-        if (context != null && !context.isEmpty()) {
-            org.slf4j.MDC.setContextMap(context);
+        if (context == null) {
+            return;
         }
+        context.forEach(
+                (key, value) -> {
+                    if (key != null) {
+                        put(key, value);
+                    }
+                });
     }
 
     /** 获取所有上下文 */

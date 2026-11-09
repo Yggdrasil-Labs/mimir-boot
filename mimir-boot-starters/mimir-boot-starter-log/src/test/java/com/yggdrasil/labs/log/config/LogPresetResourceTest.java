@@ -236,7 +236,35 @@ class LogPresetResourceTest {
         assertThat(loggerContext.getLogger("org.springframework").getLevel()).isNull();
     }
 
+    @Test
+    void legacy_xml_rolls_daily_with_monthly_directories() {
+        // TD-049：旧 XML 的月目录 %d 标记 aux 后，主周期为天，maxHistory 按天计
+        StandardEnvironment environment = environment(Map.of());
+        environment.setActiveProfiles("test");
+        initializeLocation("classpath:logback-spring.xml", environment);
+
+        Logger root = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
+        Logger access = loggerContext.getLogger("access.log");
+        Logger sql = loggerContext.getLogger("SQL.JSON");
+        assertLegacyRolling(file(root, "ASYNC_FILE_INFO"), "info", 30, 10_737_418_240L);
+        assertLegacyRolling(file(root, "ASYNC_FILE_ERROR"), "error", 60, 5_368_709_120L);
+        assertLegacyRolling(file(access, "ASYNC_FILE_ACCESS"), "access", 30, 10_737_418_240L);
+        assertLegacyRolling(file(sql, "ASYNC_FILE_SQL"), "sql", 30, 10_737_418_240L);
+    }
+
+    private static void assertLegacyRolling(
+            RollingFileAppender<ILoggingEvent> appender, String name, int history, long cap) {
+        assertRolling(appender, 104_857_600L, history, cap);
+        // 归档仍按月份目录分组，文件名格式与升级前相同
+        assertThat(((TimeBasedRollingPolicy<?>) appender.getRollingPolicy()).getFileNamePattern())
+                .endsWith("/%d{yyyy-MM,aux}/" + name + "-%d{yyyy-MM-dd}-%i.log.gz");
+    }
+
     private void initialize(String preset, StandardEnvironment environment) {
+        initializeLocation("classpath:" + BASE + preset, environment);
+    }
+
+    private void initializeLocation(String location, StandardEnvironment environment) {
         // 未传 LogFile 时 Boot 不按 logging.file.path 设置 LOG_PATH，显式指向临时目录，避免在模块目录生成 logs/
         System.setProperty("LOG_PATH", logPath.toString());
         environment
@@ -245,8 +273,7 @@ class LogPresetResourceTest {
                         new MapPropertySource(
                                 "paths", Map.of("logging.file.path", logPath.toString())));
         loggingSystem.beforeInitialize();
-        loggingSystem.initialize(
-                new LoggingInitializationContext(environment), "classpath:" + BASE + preset, null);
+        loggingSystem.initialize(new LoggingInitializationContext(environment), location, null);
     }
 
     private static StandardEnvironment environment(Map<String, Object> properties) {
