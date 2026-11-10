@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -33,8 +34,11 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
+import org.springframework.web.bind.UnsatisfiedServletRequestParameterException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -572,6 +576,29 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
     }
 
     @Test
+    void shouldMapServletRequestBindingFamilyToBadRequestWithoutEchoingValues() throws Exception {
+        List<ServletRequestBindingException> exceptions =
+                List.of(
+                        new UnsatisfiedServletRequestParameterException(
+                                new String[] {"mode=expected"},
+                                Map.of("mode", new String[] {"secret-value"})),
+                        new MissingRequestCookieException("session", mock(MethodParameter.class)),
+                        new ServletRequestBindingException("binding failed: secret-value"));
+        for (ServletRequestBindingException exception : exceptions) {
+            Object response = handler.handleServletRequestBindingException(exception, request);
+
+            assertResponseEntity(
+                    response, HttpStatus.BAD_REQUEST, ErrorCode.PARAM_INVALID.getCode());
+            R<?> body = (R<?>) ((ResponseEntity<?>) response).getBody();
+            assertFalse(body.getMessage().contains("secret-value"));
+        }
+        assertResponseStatus(
+                "handleServletRequestBindingException",
+                ServletRequestBindingException.class,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void shouldMapMissingPathVariableToInternalServerError() throws Exception {
         assertResponseCode(
                 handler.handleMissingPathVariableException(
@@ -949,7 +976,8 @@ class MimirExceptionHandlerTest extends BaseUnitTest {
                                                 org.springframework.web.bind.annotation
                                                         .ExceptionHandler.class))
                         .toList();
-        assertEquals(21, handlers.size());
+        // v2.4.0 新增 ServletRequestBindingException 分支
+        assertEquals(22, handlers.size());
         for (Method method : handlers) {
             assertEquals(Object.class, method.getReturnType(), method.getName());
             assertEquals(2, method.getParameterCount(), method.getName());

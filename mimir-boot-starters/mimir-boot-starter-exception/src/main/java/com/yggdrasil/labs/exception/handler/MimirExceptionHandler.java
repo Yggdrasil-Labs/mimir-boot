@@ -26,6 +26,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -239,6 +240,27 @@ public class MimirExceptionHandler {
                 sanitizeForLog(request.getRequestURI()));
         String code = ErrorCode.PARAM_MISSING.getCode();
         return createResponse(HttpStatus.BAD_REQUEST, e, code, message, null);
+    }
+
+    /**
+     * 处理其余请求绑定异常（如参数条件不匹配、缺少 Cookie），与 Spring 原生一致返回 HTTP 400。
+     *
+     * <p>缺少请求参数、请求头、路径变量等已有专用分支按继承深度优先匹配，行为不变。异常消息可能包含请求参数值，响应与日志均不回显。
+     *
+     * @param e 触发处理的异常
+     * @param request 当前 HTTP 请求，用于记录请求路径
+     * @return 包含 HTTP 状态及统一响应体的结果
+     */
+    @ExceptionHandler(ServletRequestBindingException.class)
+    public Object handleServletRequestBindingException(
+            ServletRequestBindingException e, HttpServletRequest request) {
+        log.warn(
+                "请求绑定异常: type={}, uri={}",
+                e.getClass().getSimpleName(),
+                sanitizeForLog(request.getRequestURI()));
+        String code = ErrorCode.PARAM_INVALID.getCode();
+        return createResponse(
+                HttpStatus.BAD_REQUEST, e, code, ErrorCode.PARAM_INVALID.getMessage(), null);
     }
 
     /**

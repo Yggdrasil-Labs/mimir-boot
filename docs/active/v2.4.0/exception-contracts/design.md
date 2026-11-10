@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-10
 ---
 
 # Exception HTTP 与校验错误设计
@@ -122,6 +122,7 @@ Object ExceptionResponseFactory.createResponse(String code, String message, Obje
 |---|---|---|
 | MethodArgumentNotValidException、BindException、可确认输入的方法/约束校验、参数类型不匹配、不可读请求体 | PARAM_INVALID `00004` | 400；旧专用消息保留 |
 | 缺请求参数/请求头 | PARAM_MISSING `00003` | 400 |
+| 其余请求绑定异常（`ServletRequestBindingException` 族：参数条件不匹配、缺 Cookie、缺矩阵变量等） | PARAM_INVALID `00004` | 400，与 Spring 原生一致；固定默认文案，不回显可能含请求参数值的异常消息。2026-11-10 补充：此前落入 `Exception` 兜底返回 500。按明确类型纳入，不改为全局适配 ErrorResponse；缺参数、请求头、路径变量的专用分支按继承深度优先 |
 | 返回值校验、未知来源约束、缺路径变量 | SYSTEM_ERROR `10000` | 500 |
 | 404 / NoHandlerFoundException / NoResourceFoundException | DATA_NOT_FOUND `20001` | 404 |
 | 405、406、415 | OPERATION_NOT_ALLOWED `20004` | 保留各自状态 |
