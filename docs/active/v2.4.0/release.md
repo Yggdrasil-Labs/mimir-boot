@@ -4,14 +4,14 @@ status: in-progress
 branch: main
 created: 2026-10-23
 released: null
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # v2.4.0 版本记录
 
 ## 当前交付状态
 
-十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已有 SDD 草稿，未实施；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已并入对应计划，未实施。详细依据见下方实施记录及各需求文档。
+十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已有 SDD 草稿，未实施；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已于 2026-11-09 实施并提交，2026-11-10 补齐专项验收、关闭 TD-049 与 TD-050，完整质量门禁通过；同日修复 Exception 请求绑定异常映射。详细依据见下方实施记录及各需求文档。
 
 | 需求 | 当前状态 |
 |---|---|
@@ -26,8 +26,8 @@ updated: 2026-11-09
 | [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
 | [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
 | [Log 日志治理（L-04）](./log-governance/plan.md) | SDD 草稿（2026-11-08），未实施 |
-| [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114）；2026-11-09 本地实施主体，部分验收未完成，见下方记录 |
-| [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117）；2026-11-09 本地实施主体，部分验收未完成，见下方记录 |
+| [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114）；已实施，计划验收全部完成，见下方记录 |
+| [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117）；已实施，计划验收全部完成，TD-049、TD-050 已关闭，见下方记录 |
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
@@ -35,7 +35,7 @@ updated: 2026-11-09
 
 ### W-T5 与 T9 本地实施（2026-11-09）
 
-按用户要求先实施简单部分，未提交：
+按用户要求先实施简单部分，2026-11-09 提交为 `c30afdc`（Log）、`2ea9df5`（Web），记录见 `8c861bd`：
 
 - **Log T9**：`MdcUtil.putAll` 改为合并语义，跳过 null 键与 null/空串值；`MdcTasks.snapshot()` 去掉二次复制；`MdcTaskExecutionAutoConfiguration` 不再注册 `MdcPropagationProperties`；`SensitiveDataConverterInternals` 移入测试源集；旧 `logback-spring.xml` 四个文件 appender 的月目录 `%d` 标记 `aux`。Log README 新增"升级和兼容性"章节，滚动策略补充归档目录说明。
 - **Web W-T5**：`TraceInterceptor` 紧接 `X-Trace-Id` 之后、请求属性与 MDC 之前回传 `X-Request-Id`，响应中已有该头时保留原值。Web README 同步拦截器说明、响应头示例、CORS 暴露头示例及"升级和兼容性"章节。
@@ -43,10 +43,29 @@ updated: 2026-11-09
 
 验证：`./mvnw -o -T2 -Pci -pl mimir-boot-starters/mimir-boot-starter-log,mimir-boot-starters/mimir-boot-starter-web -am verify` 通过，Common、Test、Log、Exception、Web 各模块单元与集成测试零失败、零错误、零跳过，覆盖率与 PMD/CPD 门禁通过；Log 主制品 jar 已核对不含 `SensitiveDataConverterInternals`。未运行完整质量入口 `scripts/engineering.sh quality`，不代表 CI、发布或消费者验证。随后经独立代码审查（CONDITIONAL，无 P0），按其意见补充异步再派发与排除路径用例、写头失败的 traceId 断言、开关开启时不注册属性 Bean 的断言（关闭时的同类断言恒成立，仅作对照），Web 升级说明补充"应用内在拦截器之后写该头"的影响，并回写 Web design 与 plan；修复后全量重审为 PASS（加权均分 4.59，无 P0/P1）。
 
-尚未完成的验收（按用户选择留待后续）：
+2026-11-09 提交时登记的未完成验收，已于 2026-11-10 全部补齐（未提交、未发布）：
 
-- T9：设计 IC-7 的受控时钟滚动清理集成（`config/LegacyLogbackRollingTest.java`）未实施，遗留归档的长期残留与提前删除两个方向尚无自动化证据，TD-049 不关闭。TD-050 四项已按台账处置条件完成，待复核后关闭。
-- W-T5：真实容器 multipart 413（懒解析与非懒解析）、处理器匹配阶段 405/415/406/400、静态资源映射下的 404、前置 Filter 与更早拦截器拒绝、真实 MVC 链中前置 Filter 已写入值被保留、真实容器 forward 单值、接入 Exception 统一封装的 MVC 链用例（`advice/RequestIdHeaderMvcIntegrationTest.java`、`advice/EagerMultipartTraceMvcIntegrationTest.java`）未实施。已覆盖：拦截器单测（合法回传、生成回传、已有头保留、forward 再派发单值（仅单测）、写头失败不残留 traceId 与 requestId、子类对照）；`MdcAsyncServletIntegrationTest` 嵌入式 Tomcat 下异步再派发后响应只有一个 `X-Request-Id`；`WebAutoConfigurationIT` 的真实 MVC 链成功、处理器内异常、排除路径不带头、总开关关闭与 Reactive 对照。
+- **T9 受控时钟滚动清理**：新增 `config/LegacyLogbackRollingTest`，通过真实 `LogbackLoggingSystem` 加载旧 XML，以 `setCurrentTime` 与活动文件修改时间固定时钟，并经 `cleanUpFuture`、`compressionFuture` 等待异步任务。3 个用例覆盖：首次清理按文件名日期删除回溯窗口内归档、早于"保留天数 + 32 天"的归档永不清理、当月遗留归档首次不删且满期后删除；错误日志 60 天窗口删到前两个月目录；持续运行不回溯而重启重新回溯 32 天。变异检查：去掉 `aux` 恢复按月滚动后 3 个用例全部失败。该测试为行为刻画，不存在先失败阶段。
+- **W-T5 剩余集成**：新增 `advice/RequestIdHeaderMvcIntegrationTest`（接入 Exception 统一封装：500 与缺少参数的 400 带头；处理器匹配阶段 405、415、406 及 params 不匹配不带头；默认静态资源 404 带头；前置 Filter 写入值保留；Filter 拒绝 401 与更早拦截器拒绝 403 不带头）、`advice/EagerMultipartTraceMvcIntegrationTest`（真实容器非懒解析 413 不带头），扩展 `ExistingMultipartTraceMvcIntegrationTest`（懒解析 413 带头）、`MdcAsyncServletIntegrationTest`（真实容器 forward 单值）、`WebAutoConfigurationIT`（`add-mappings=false` 的 404 不带头）。两个 multipart 测试共用的请求构造抽为测试辅助类 `OversizedUploadRequests`。
+- **完整质量门禁**：`bash scripts/engineering.sh quality --mode full --source worktree` 首次因测试源码 CPD 检出上述两个 multipart 测试 13 行重复而失败，抽取辅助类后重跑通过：引导、docs、构建模型、发布契约、隔离消费者、发布签名、Java 质量、测试、覆盖率、PMD、CPD 共 11 项通过，Sonar 按 `RUN_SONAR=false` 不适用。测试共 1,725 项，唯一失败为证明 Failsafe 门禁有效的预期夹具 `AlwaysFailIT`。Exception 修复后再次运行同一入口，11 项通过、Sonar 不适用，测试共 1,727 项，唯一失败仍为预期夹具 `AlwaysFailIT`。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
+- **Exception 请求绑定异常补充映射**：上述 W5 用例发现 params 条件不匹配抛出的 `UnsatisfiedServletRequestParameterException` 经统一封装返回 500，Spring 原生为 400。根因是 `ServletRequestBindingException` 族（另含缺少 Cookie、缺少矩阵变量及基类）无专用分支，落入 `Exception` 兜底。用户确认当即修复：`MimirExceptionHandler` 新增 `handleServletRequestBindingException`，返回 400 与 `PARAM_INVALID`，使用固定文案且日志只记异常类型，不回显请求参数值；缺参数、请求头、路径变量的专用分支按继承深度优先，行为不变。按 E-01 "选择明确类型" 的设计纳入，未改为全局适配 ErrorResponse。单测覆盖整族三种异常及不回显，MVC 集成覆盖真实处理器匹配阶段 400 与缺参数仍为 `PARAM_MISSING`；公开处理方法数量护栏由 21 更新为 22；Web 侧 params 不匹配用例恢复严格断言 400。Exception README 映射表与升级说明、design I2 映射表已同步。
+
+#### TD-049 关闭（2026-11-10，未发布）
+
+来源为 2026-11-02 v2.4.0 Log 预设整体审查：旧 `logback-spring.xml` 四个文件 appender 的 `fileNamePattern` 为 `%d{yyyy-MM}/xxx-%d{yyyy-MM-dd}-%i.log.gz`，第一个 `%d` 未标记 `aux`，Logback 以月为主滚动周期，`maxHistory` 30/60 实为月数，与注释"保留天数"不符，实际只受 `totalSizeCap` 约束。
+
+处置（D-116，提交 `c30afdc`）：月目录 `%d` 标记 `aux`，主周期改为按天，目录、文件名格式与数值不变；Log README 升级说明写明遗留归档两个方向的影响、备份范围与手工清理判断依据。验收：`LogPresetResourceTest` 断言旧 XML 四个 appender 主周期为天；`LegacyLogbackRollingTest` 以受控时钟验证保留天数生效、提前删除与长期残留两个方向及重启回溯，变异检查有效；完整质量门禁通过。台账条目已移除，编号不再复用。
+
+#### TD-050 关闭（2026-11-10，未发布）
+
+来源为 2026-11-02 Log 模块第三轮整体审查，四项均不影响当时正确性：
+
+- `MdcUtil.putAll` 注释为"批量设置"，实际经 `MDC.setContextMap` 整体替换，会清除已有 traceId/spanId。
+- `SensitiveDataConverterInternals` 在 D-101 后只剩测试钩子，仍为 public，下游可调用以清空全局快照、改写 Context 引用。
+- `MdcTasks.snapshot()` 在 `MDC.getCopyOfContextMap()` 已返回副本后再复制一次。
+- `MdcTaskExecutionAutoConfiguration` 注册的 `MdcPropagationProperties` Bean 无读取方。
+
+处置（D-117，提交 `c30afdc`）：`putAll` 改为合并写入并在 Log README 升级说明中提示行为变更；测试钩子移入测试源集，主制品不再包含；去掉多余复制；删除无用注册并保留属性类以生成配置元数据。验收：`MdcUtilTest`、`MdcTasksTest`、`MdcTaskExecutionAutoConfigurationTest` 及 Log 模块 `clean verify`、独立代码审查（PASS）与上述完整质量门禁均通过。台账条目已移除，编号不再复用。
 
 ### 第二批测试优化与模块并行（2026-11-07）
 
@@ -237,9 +256,9 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **集成测试结构调整**：仓库质量门禁只允许单个 Failsafe execution、不允许自定义报告目录与 execution 级排除，与计划的三个独立 execution 冲突。经用户决定，legacy bootstrap 与替代后端两组场景改由 `LogIsolatedJvmIntegrationTest` 按场景组装类路径拉起子 JVM 执行（各 5 个场景），专用依赖不进入测试类路径，由 `maven-dependency-plugin:copy` 构建时复制到 `target/` 供子 JVM 使用；未修改 `tools/`。
 - **未覆盖**：JDK 25 未验证；MVC 默认执行器选择未单独验证；“取得令牌至发布前并发输出”只以单线程语义用例验证，未做多线程竞争测试。未发布。
 - **整体审查修复（2026-11-02）**：MDC 适配改为只作用于 `applicationTaskExecutor` 的 BeanPostProcessor，复用 Boot Builder 自建并显式设置装饰器的线程池不再被覆盖；未选预设的旧配置不取得所有权，恢复“最后刷新者发布”语义；转换器仅在全局引用为空或上下文为 SLF4J 当前 LoggerContext 时重绑；`server.xml` 的 ERROR 过滤移到异步 appender 入队前；EPP 改为在全部 EnvironmentPostProcessor 之后执行；无 SpringApplication 时所有权按 Environment 绑定与释放；早期监听器只订阅三类事件；资源测试改用临时日志目录。审查建议将 `RpcTracerBridge.extract` 改为默认方法，因 RPC 计划决策边界禁止取消旧抽象约束，未采纳。
-- **第二轮审查修复（2026-11-02）**：运行期配置刷新以原 SpringApplication 再次调用 EPP 时跳过（已从 spring-cloud-context 4.1.6 字节码确认该调用路径），避免刷新配置异常时置空脱敏快照；新预设归档目录日期改为 `%d{yyyy-MM,aux}`，按天滚动、保留天数生效（旧 `logback-spring.xml` 同类问题登记 [TD-049](../tech-debt-tracker.md#td-049-旧日志配置按月滚动)，本轮不改旧行为）；取得所有权不再清空转换器 Context 引用；公开 `publishConfiguration` 清除启动期缓存；非 ASCII 首字符查表改为排序数组二分查找；删除仅测试使用的所有权释放入口；EPP 排序说明改为不保证与同为最低优先级处理器的先后。审查再次建议 `RpcTracerBridge.extract` 改默认方法，按 RPC 计划决策边界未采纳。
+- **第二轮审查修复（2026-11-02）**：运行期配置刷新以原 SpringApplication 再次调用 EPP 时跳过（已从 spring-cloud-context 4.1.6 字节码确认该调用路径），避免刷新配置异常时置空脱敏快照；新预设归档目录日期改为 `%d{yyyy-MM,aux}`，按天滚动、保留天数生效（旧 `logback-spring.xml` 同类问题登记 [TD-049](#td-049-关闭2026-11-10未发布)，本轮不改旧行为）；取得所有权不再清空转换器 Context 引用；公开 `publishConfiguration` 清除启动期缓存；非 ASCII 首字符查表改为排序数组二分查找；删除仅测试使用的所有权释放入口；EPP 排序说明改为不保证与同为最低优先级处理器的先后。审查再次建议 `RpcTracerBridge.extract` 改默认方法，按 RPC 计划决策边界未采纳。
 - **第三轮审查修复（2026-11-02）**：未选预设且 Environment 中无任何 `mimir.boot.log.mask.*` 属性时 EPP 不再发布空快照，恢复从 LoggerContext（logback.xml `<property>`）/系统属性懒加载规则；`mimir.boot.log.mdc.enabled` 改为默认 `false`，默认执行器 MDC 适配须显式开启；经用户决定调整 RPC 计划决策边界，`RpcTracerBridge.extract` 改为空默认方法（源码与二进制兼容），仅实现 `extractScope` 的 Bridge 可在 `-Werror` 下编译，README 同步。
-- **Log 模块整体审查修复（2026-11-02）**：LoggerContext 中 mask 列表属性改为可无损往返的编码（顶层逗号转义为 `\,`，拆分跳过 `()`/`{}`/`[]` 内及转义逗号），修复刷新后 `reloadConfig`/`addCustomPattern` 把 `\d{15,18}` 等自定义正则拆坏导致规则失效（2.3.0 起既有，预设使该路径常规化）；新预设校验全部先于发布，失败时不再置空全局快照（删除 invalidate 链），同 JVM 其他应用规则不受影响；运行登记按上下文集合维护，同一 SpringApplication 多个存活上下文时关闭其一不再误判后续刷新为新启动；MDC 适配不再直接引用 Boot 3.4 移除的 `TaskExecutorBuilder`/`TaskExecutorCustomizer`（按类名判断）；访问日志 Filter 顺序改为 `HIGHEST_PRECEDENCE + 2`，位于 Boot 观测 Filter 之内以保留 traceId/spanId。低优先级项登记 [TD-050](../tech-debt-tracker.md#td-050-log-模块低优先级清理)。
+- **Log 模块整体审查修复（2026-11-02）**：LoggerContext 中 mask 列表属性改为可无损往返的编码（顶层逗号转义为 `\,`，拆分跳过 `()`/`{}`/`[]` 内及转义逗号），修复刷新后 `reloadConfig`/`addCustomPattern` 把 `\d{15,18}` 等自定义正则拆坏导致规则失效（2.3.0 起既有，预设使该路径常规化）；新预设校验全部先于发布，失败时不再置空全局快照（删除 invalidate 链），同 JVM 其他应用规则不受影响；运行登记按上下文集合维护，同一 SpringApplication 多个存活上下文时关闭其一不再误判后续刷新为新启动；MDC 适配不再直接引用 Boot 3.4 移除的 `TaskExecutorBuilder`/`TaskExecutorCustomizer`（按类名判断）；访问日志 Filter 顺序改为 `HIGHEST_PRECEDENCE + 2`，位于 Boot 观测 Filter 之内以保留 traceId/spanId。低优先级项登记 [TD-050](#td-050-关闭2026-11-10未发布)。
 - **D-101 预设启动机制简化（2026-11-03）**：按 [Log 计划 D-101 修订](./log-runtime/plan.md#d-101-修订预设启动机制简化)删除 `LogPresetOwnership`、`LogPresetBootstrapListener`、`LogbackMaskBootstrap` 与转换器启动期规则缓存。EPP 只做校验、规则选择并写内部属性源（预设选中时必定存在，mask 键仅在用户已配置时写入），`common.xml` 以三条 `springProperty` 写入 LoggerContext，转换器在 Context 带 mask 属性时于 `start()` 切换规则代次（F2，用户选择），刷新恢复“最后刷新者发布”并以“父 Environment 含内部源”守卫预设应用的子上下文；列表编码迁至不依赖 Logback 的 `MaskListCodec`；预设新增拒绝无法解析的 `${` 占位符。经四轮独立文档审查后用户接受剩余风险实施。
 - **D-101 验证**：`./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 通过（单元 268、集成 22，含子 JVM 中 Spring Cloud 场景 6 个、替代后端场景 5 个）。新增覆盖：索引列表三阶段、预设应用启动期并发输出不含明文、旧 XML reset 后重载保留已发布规则、无/含 spring-cloud-context 的双存活应用、真实 `ConfigDataContextRefresher` 推送非法规则时刷新失败且规则不变、bootstrap 残留内部源移除、`${` 校验。随后 `bash scripts/engineering.sh quality --mode full --source worktree` 通过（docs-full、build-model、release 合约/消费者/签名、Java 质量/测试/覆盖率均 passed，Sonar 未启用）。未覆盖：真实业务消费者应用启动未在本修订后验证；性能基准未重测（转换热路径未改）。
 

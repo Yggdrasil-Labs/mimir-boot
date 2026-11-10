@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # 技术债务追踪
@@ -30,8 +30,6 @@ updated: 2026-11-09
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-047](#td-047-nacos-消费者迁移) | Nacos 配置删除后的消费者迁移 | starter-nacos / 业务配置消费 | 高 | 待规划 | YoungerYang-Y | 2026-10-09 | [拆分与框架关闭记录](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；实际应用迁移范围待核实 |
 | [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](./v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
-| [TD-049](#td-049-旧日志配置按月滚动) | 旧 logback-spring.xml 归档按月滚动 | starter-log | 中 | 已排期 v2.4.0 | YoungerYang-Y | 2026-11-02 | [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾) |
-| [TD-050](#td-050-log-模块低优先级清理) | Log 模块低优先级清理（MDC 批量设置语义、内部入口可见性等） | starter-log | 低 | 已排期 v2.4.0 | YoungerYang-Y | 2026-11-02 | [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾) |
 | [TD-051](#td-051-既有公开类型包循环) | 既有公开类型导致的包循环 | exception / web / nacos / dubbo / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-11-06 | [质量工具链计划](./v2.4.0/code-quality-toolchain/plan.md#t5本仓库依赖方向测试) |
 
 ## 债务明细
@@ -99,32 +97,6 @@ updated: 2026-11-09
 - **目标版本**：待排期。
 - **复查条件**：Parent JDK profile、编译器或处理器配置调整，或 CI JDK 基线变化时。
 
-<a id="td-049-旧日志配置按月滚动"></a>
-
-### TD-049：旧日志配置归档按月滚动
-
-- **来源与范围**：2026-11-02 v2.4.0 Log 预设整体审查发现。旧 `logback-spring.xml` 四个文件 appender 的 `fileNamePattern` 为 `%d{yyyy-MM}/xxx-%d{yyyy-MM-dd}-%i.log.gz`，第一个 `%d` 未标记 `aux`。
-- **现状与风险**：Logback 以第一个非 aux 的 `%d` 作为滚动周期（已用 logback-core 1.5.18 实测主日期为 `yyyy-MM`），因此旧配置按月滚动、`maxHistory` 30/60 实为月数，与注释“保留天数”不符；仅按大小滚动，`totalSizeCap` 成为实际上限。v2.4.0 新预设已改为 `%d{yyyy-MM,aux}`。
-- **处置与验收**：评估将旧 XML 改为 `%d{yyyy-MM,aux}` 的兼容影响（按天滚动后归档数量与清理节奏变化），在版本说明中提示后修复；验证主日期为按天、保留天数生效。
-- **规划进展（2026-11-08）**：用户确认纳入 v2.4.0（D-116），任务见 [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾)；尚未实施。
-- **实施进展（2026-11-09）**：本地实施旧 XML 月目录 `%d` 标记 `aux`，主周期按天已由 `LogPresetResourceTest` 验证，README 写入升级说明；设计 IC-7 的受控时钟滚动清理集成未实施，遗留归档两方向尚无自动化证据，本条不关闭，见[版本记录](./v2.4.0/release.md#w-t5-与-t9-本地实施2026-11-09)。未提交、未发布。
-- **目标版本**：v2.4.0。
-
-<a id="td-050-log-模块低优先级清理"></a>
-
-### TD-050：Log 模块低优先级清理
-
-- **来源与范围**：2026-11-02 v2.4.0 Log 模块第三轮整体审查，均不影响当前正确性。
-- **现状与风险**：
-  - `MdcUtil.putAll` 注释为“批量设置”，实际经 `MDC.setContextMap` 整体替换，会清除已有 traceId/spanId（既有行为；原 Log 计划写明本轮不改，2026-11-08 由 D-117 改为纳入）。
-  - `SensitiveDataConverterInternals` 在 D-101 后只剩测试钩子 `resetForTest(Context)`，仍为 public，下游可调用以清空全局快照、改写 Context 引用。
-  - `MdcTasks.snapshot()` 在 `MDC.getCopyOfContextMap()` 已返回副本后再复制一次。
-  - `MdcTaskExecutionAutoConfiguration` 的 `@EnableConfigurationProperties(MdcPropagationProperties.class)` 注册的 Bean 无读取方，开关仅由 `@ConditionalOnProperty` 决定。
-- **处置与验收**：`putAll` 改为逐项 put 须在版本说明中提示行为变更；测试钩子迁入测试源集（同包访问或反射）；去掉多余拷贝；删除无用注册或改为实际读取。D-101 已完成启动机制简化，`SensitiveDataConverterInternals` 可整体迁入测试源集。
-- **规划进展（2026-11-08）**：用户确认四项全部纳入 v2.4.0，`putAll` 改为逐项 put（D-117），任务见 [Log 计划 T9](./v2.4.0/log-runtime/plan.md#t9td-049-与-td-050-收尾)；尚未实施。
-- **实施进展（2026-11-09）**：四项均已本地实施并通过模块 `clean verify` 与独立代码审查（PASS），满足上述处置与验收条件，待复核后关闭，见[版本记录](./v2.4.0/release.md#w-t5-与-t9-本地实施2026-11-09)。未提交、未发布。
-- **目标版本**：v2.4.0。
-
 <a id="td-051-既有公开类型包循环"></a>
 
 ### TD-051：既有公开类型导致的包循环
@@ -161,3 +133,7 @@ TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 �
 2026-10-03 关闭 TD-043、TD-044，历史问题、迁移后修复与本地验收记录见[覆盖率与格式门禁](../archive/v2.3.0/release.md#覆盖率与格式门禁td-043td-044已修复未发布)及其 T8 证据。编号不再复用；未发布状态由 release 跟踪。
 
 2026-10-09 经用户确认，将 TD-039 拆为已验证的默认 Nacos 框架修复与 TD-047 消费者迁移。TD-039 按[约定框架范围关闭](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)，完整历史验收和适用边界由该计划承接，[未发布状态](../archive/v2.3.0/release.md#td-039-框架修复关闭2026-10-09未发布)继续跟踪；原编号不再复用。消费者风险与验收条件留在 TD-047，实际业务迁移仍未核实。
+
+2026-11-10 关闭 TD-049，处置与本地验收记录见[TD-049 关闭](./v2.4.0/release.md#td-049-关闭2026-11-10未发布)。编号不再复用；未发布状态由 release 跟踪。
+
+2026-11-10 关闭 TD-050，处置与本地验收记录见[TD-050 关闭](./v2.4.0/release.md#td-050-关闭2026-11-10未发布)。编号不再复用；未发布状态由 release 跟踪。
