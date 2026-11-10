@@ -163,6 +163,31 @@ class WebAutoConfigurationIT {
     }
 
     @Test
+    void noHandlerFoundWithoutStaticResourcesDoesNotEchoRequestId() {
+        // 关闭静态资源映射后找不到处理器发生在拦截器之前
+        runner.withConfiguration(
+                        AutoConfigurations.of(
+                                WebMvcAutoConfiguration.class, JacksonAutoConfiguration.class))
+                .withPropertyValues("spring.web.resources.add-mappings=false")
+                .run(
+                        ctx ->
+                                MockMvcBuilders.webAppContextSetup(
+                                                ctx.getSourceApplicationContext())
+                                        .build()
+                                        .perform(
+                                                get("/no-such-handler")
+                                                        .header(
+                                                                HttpHeaderConstants
+                                                                        .REQUEST_ID_HEADER,
+                                                                "request-1"))
+                                        .andExpect(status().isNotFound())
+                                        .andExpect(
+                                                header().doesNotExist(
+                                                                HttpHeaderConstants
+                                                                        .REQUEST_ID_HEADER)));
+    }
+
+    @Test
     void reactiveApplicationDoesNotRegisterTraceInterception() {
         new ReactiveWebApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(WebAutoConfiguration.class))

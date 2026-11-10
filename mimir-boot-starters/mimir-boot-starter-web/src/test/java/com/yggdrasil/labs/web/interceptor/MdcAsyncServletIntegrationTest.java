@@ -31,7 +31,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.servlet.AsyncHandlerInterceptor;
@@ -55,6 +57,8 @@ import com.yggdrasil.labs.web.config.WebAutoConfiguration;
 class MdcAsyncServletIntegrationTest {
 
     private static final String PATH = "/mdc/async";
+    private static final String FORWARD_PATH = "/mdc/forward";
+    private static final String FORWARD_TARGET = "/mdc/forward-target";
     private static final String TRACE_ID = "http-trace-id";
     private static final String REQUEST_ID = "http-request-id";
     private static final String EXTERNAL_KEY = "external";
@@ -160,6 +164,25 @@ class MdcAsyncServletIntegrationTest {
                 List.of(DispatcherType.REQUEST, DispatcherType.ASYNC), probe.dispatcherTypes());
     }
 
+    @Test
+    void forwardKeepsSingleRequestIdHeaderInRealContainer() throws Exception {
+        HttpRequest request =
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + FORWARD_PATH))
+                        .header(HttpHeaderConstants.REQUEST_ID_HEADER, REQUEST_ID)
+                        .GET()
+                        .build();
+
+        HttpResponse<String> response =
+                HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(200, response.statusCode());
+        assertEquals("forwarded", response.body());
+        // forward 再次进入拦截器时保留首次写入的值
+        assertEquals(
+                List.of(REQUEST_ID),
+                response.headers().allValues(HttpHeaderConstants.REQUEST_ID_HEADER));
+    }
+
     private void assertMdcValues(MdcSnapshot snapshot) {
         assertEquals(TRACE_ID, snapshot.traceId());
         assertEquals(REQUEST_ID, snapshot.requestId());
@@ -185,8 +208,28 @@ class MdcAsyncServletIntegrationTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @Import({WebAutoConfiguration.class, AsyncEndpoint.class, MdcTestConfiguration.class})
+    @Import({
+        WebAutoConfiguration.class,
+        AsyncEndpoint.class,
+        ForwardEndpoint.class,
+        MdcTestConfiguration.class
+    })
     static class TestApplication {}
+
+    @Controller
+    static class ForwardEndpoint {
+
+        @GetMapping(FORWARD_PATH)
+        String forward() {
+            return "forward:" + FORWARD_TARGET;
+        }
+
+        @GetMapping(FORWARD_TARGET)
+        @ResponseBody
+        String target() {
+            return "forwarded";
+        }
+    }
 
     @RestController
     static class AsyncEndpoint {
