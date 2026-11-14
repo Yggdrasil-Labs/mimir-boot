@@ -89,7 +89,7 @@
         <curator.version>5.9.0</curator.version>
 
         <!-- RPC 相关 -->
-        <dubbo.version>3.3.6</dubbo.version>
+        <dubbo.version>3.3.7</dubbo.version>
     </properties>
 
     <dependencyManagement>
