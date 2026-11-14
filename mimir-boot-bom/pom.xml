@@ -69,7 +69,7 @@
         <jetcache.version>2.7.9</jetcache.version>
 
         <!-- 其他工具 -->
-        <commons.lang3.version>3.21.0</commons.lang3.version>
+        <commons.lang3.version>3.22.0</commons.lang3.version>
         <commons.collections4.version>4.6.0</commons.collections4.version>
         <guava.version>33.8.0-jre</guava.version>
 
