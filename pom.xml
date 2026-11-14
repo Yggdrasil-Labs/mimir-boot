@@ -45,7 +45,7 @@
         <!-- Spotless 插件版本（用于根 POM 前缀解析与无源校验） -->
         <spotless.plugin.version>3.11.0</spotless.plugin.version>
         <!-- Flatten 插件版本 -->
-        <flatten.plugin.version>1.8.0</flatten.plugin.version>
+        <flatten.plugin.version>1.9.0</flatten.plugin.version>
         <!-- SonarQube Maven 插件版本 -->
         <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
         <!-- Central Publishing Maven Plugin 版本（使用官方 org.sonatype.central 版本） -->
