@@ -11,7 +11,7 @@ updated: 2026-11-08
 
 接入方在容器或服务器日志预设下显式启用 JSON，即可获得统一外层、结构化访问字段、MDC 上下文与沿用原规则的脱敏输出，供通用采集平台检索、告警并关联已有 Trace/Span；应用可注册字段扩展组件补充业务字段。默认文本输出与旧接入方式不变。
 
-来源为[方案大纲](./brainstorm.md)及版本决定 D-111～D-113。本规格描述实施后的目标，尚未实施；设计与实施入口见 [design](./design.md)、[plan](./plan.md)。下文“预设”指 [L-01](../log-runtime/spec.md) 的 container、server 两个内置日志配置。
+来源为[方案大纲](./brainstorm.md)及版本决定 D-111～D-113。本规格描述行为目标，实施与验收状态见[版本记录](../release.md)；设计与实施入口见 [design](./design.md)、[plan](./plan.md)。下文“预设”指 [L-01](../log-runtime/spec.md) 的 container、server 两个内置日志配置。
 
 ## Behavior: 选择输出格式
 
@@ -133,6 +133,14 @@ Given 未启用 JSON
 When 发出与第一个场景相同的请求
 Then 访问日志文本行与实施前一致，不出现任何附加键值内容
 
+### Scenario: 保留访问日志 TurboFilter 语义
+
+Given 应用配置了按完整消息或参数判定的 Logback TurboFilter
+When 访问日志输出，无论采用 text 还是 JSON
+Then 过滤器获得原有模板与参数，并对本次事件判定一次
+And DENY 不输出；ACCEPT 可越过 Logger 的级别限制；NEUTRAL 遵守有效级别
+And 重复消息过滤器仍能抑制重复访问事件
+
 ### Scenario: SQL 日志
 
 Given 启用 JSON，MyBatis 慢 SQL 记录输出一条消息为 JSON 文本的 WARN
@@ -252,6 +260,13 @@ Given 附加 `m={"a":1,"self":<m 自身>}` 与 `n={1:"x"}`（键为整数）
 When JSON 输出
 Then `attributes.m` 为 `{"a":1}`，`attributes` 不含 `n`
 And `processing.errors` 含 `{"field":"/attributes/m/self","reason":"circular_reference"}` 与 `{"field":"/attributes/n","reason":"invalid_value"}`
+
+### Scenario: 复用日志 builder 不串事件
+
+Given 业务复用一个带键值对的 SLF4J LoggingEventBuilder 连续记录两条日志
+When 两次记录之间修改 MDC、字段或脱敏规则
+Then 每条事件捕获各自的字段与规则，扩展分别执行一次
+And 捕获出口不向 builder 的共享键值对列表写入保留快照键
 
 ### Scenario: 记录后修改原容器
 

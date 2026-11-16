@@ -4,14 +4,14 @@ status: in-progress
 branch: main
 created: 2026-10-23
 released: null
-updated: 2026-11-10
+updated: 2026-11-16
 ---
 
 # v2.4.0 版本记录
 
 ## 当前交付状态
 
-十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已有 SDD 草稿，未实施；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已于 2026-11-09 实施并提交，2026-11-10 补齐专项验收、关闭 TD-049 与 TD-050，完整质量门禁通过；同日修复 Exception 请求绑定异常映射。详细依据见下方实施记录及各需求文档。
+十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已于 2026-11-15 实施并完成模块验收与性能基准，完整质量验收见下方记录；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已于 2026-11-09 实施并提交，2026-11-10 补齐专项验收、关闭 TD-049 与 TD-050，完整质量门禁通过；同日修复 Exception 请求绑定异常映射。详细依据见下方实施记录及各需求文档。
 
 | 需求 | 当前状态 |
 |---|---|
@@ -25,13 +25,43 @@ updated: 2026-11-10
 | [Processor](./mybatis-processor/plan.md) | 主体已实施，本地验证通过 |
 | [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
 | [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
-| [Log 日志治理（L-04）](./log-governance/plan.md) | SDD 草稿（2026-11-08），未实施 |
+| [Log 日志治理（L-04）](./log-governance/plan.md) | 已实施，模块验收、性能基准及完整质量门禁通过 |
 | [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114）；已实施，计划验收全部完成，见下方记录 |
 | [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117）；已实施，计划验收全部完成，TD-049、TD-050 已关闭，见下方记录 |
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
 尚未闭环：Parent、BOM、Processor 的 JDK 25 矩阵及仅 BOM 的 Processor release 21 目标；Log 的 D-101 后真实业务消费者启动和 MVC 默认执行器专项；MyBatis 真实 SQL 到 Log 新预设的联调记录、慢 SQL 吞吐及 P95/P99 基准，以及真实 MySQL/PostgreSQL 方言验收。H2 不能替代真实数据库验收。D-101 已撤销旧所有权机制，转换热路径未改，性能基准无需因该修订重测。既有后续技术债见[台账](../tech-debt-tracker.md)。
+
+### L-04 JSON 日志治理本地实施（2026-11-15）
+
+按 [L-04 计划](./log-governance/plan.md) 实施 T1～T6，未发布：
+
+- **配置与接入**：BOM 管理 `logstash-logback-encoder:8.1`，Log Starter 声明 optional 依赖；新增 `mimir.boot.log.format=text|json`、环境/实例、MDC 排除名单与 JSON Pointer 字段长度限制。默认 text；JSON 预设、后端与依赖不满足时启动失败；所有配置先校验再写内部源。限制值严格按正整数解析，拒绝 YAML 小数及溢出，诊断不回显配置值。
+- **字段与编码**：公开 `LogFieldProvider`、事件/异常只读视图、`MimirJsonEncoder`、`LogFieldCaptureAppender` 与 `json-support.xml`。产生线程捕获不可变字段和脱敏规则代次，扩展排序与归属按主应用上下文处理；关闭前清空注册。同一 Logger 的扩展重入日志仍捕获基础快照。字段规范化只接受约定类型，32 层边界准确，数字白名单拒绝可自定义行为的子类；加工顺序为 MDC 排除、脱敏、按码点截断、编码，链路字段独立提升。
+- **兼容性**：两个预设通过委派编码器保留原 text 编码器、路由、文件和异步策略，旧 `logback-spring.xml` 未改。访问日志增加类型化键值对，保留原消息、级别与终态归并；自定义 `%kvp`/其他 JSON 编码器及保留键可见性写入 [Log README](../../../mimir-boot-starters/mimir-boot-starter-log/README.md#json-日志v240)。文本消费者不因 optional 依赖传递引入 Encoder/Jackson；隔离 JVM 剔除这些 jar 验证两预设 text 正常、JSON 与自定义编码器缺依赖时失败。
+- **本地验证**：`./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-log -am verify` 通过；Log 模块 354 项单元测试、34 项集成测试零失败、零错误、零跳过，架构、覆盖率及主/测试源码 PMD/CPD 通过。新增 11 项真实 JSON 输出集成用例及子 JVM 场景覆盖两预设、自定义 XML、访问/SQL/异常、legacy bootstrap、启动期设置、编程式规则和双异步出口快照。独立全量复审无未解决发现，按公共评分规则判定 PASS（各维度 4 分）。2026-11-16 执行 `bash scripts/engineering.sh quality --mode full --source worktree` 通过，11 项必需检查全部 passed、Sonar 按 `RUN_SONAR=false` 不适用，汇总 findings 为空。覆盖文档、16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、临时签名与全仓 Java 测试/覆盖率/PMD/CPD；`AlwaysFailIT` 负向消费者按预期失败并被验收。完整入口耗时约 9 分 19 秒；随后仅补充本条结果并单独复验文档。以上不是远端 CI、正式发布或发布后消费者结果。
+
+2026-11-16 后续清理 `SuppressWarnings`：删除转换器 `start()` 残留，合并上下文身份检查，将抑制缩到实际比较方法；UTF-8 解码保留不含配置原文的 JDK 安全原因链，移除对应抑制；其余本次涉及的保留项补齐就地理由。Log 模块抑制注解由 24 处降至 21 处。新增两项安全原因链回归，随后同一模块 `verify` 命令再次通过，测试、架构、覆盖率、PMD/CPD 均通过；本次未重跑上方全仓完整质量入口。
+
+2026-11-16 修复复审发现的三项 P1：捕获出口挂载快照前复制当前事件的键值对列表，复用 builder 时各事件保持独立 MDC、字段与规则；访问日志保留完整模板和参数的单次 TurboFilter 判定，覆盖 DENY、ACCEPT 越级、NEUTRAL 及消息去重，Logback 类型隔离不影响替代后端；format 改为严格 text/json 白名单（忽略大小写与首尾空白），仅缺失时默认，拒绝空白、标点变体和展开为空的占位符。新增回归先确认失败，修复后 106 项聚焦用例通过；`./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 通过，Log 模块 367 项单元测试、34 项集成测试零失败、零错误、零跳过，架构/覆盖率/PMD/CPD 均通过，无 Logback 的访问日志场景也通过。修复后独立复审无未解决发现，各维度 4 分，按公共规则判定 PASS。本次未重跑全仓完整质量入口。
+
+提交前完整验收使用 `bash scripts/engineering.sh quality --mode full --source index` 检查最终暂存组合，执行结果与对应输入树记录在本轮提交说明中；本地提交不代表远端 CI 或制品发布。
+
+性能基准命令：`./mvnw -o -pl mimir-boot-starters/mimir-boot-starter-log -am -Dtest=LogJsonEncoderBenchmark -Dsurefire.failIfNoSpecifiedTests=false test`，已于 2026-11-16 按修复后的捕获路径重测通过，以下为本轮结果。环境为本地 WSL、Temurin 17.0.19、可用 CPU 16、最大堆 3974 MiB、消息 UTF-8 1028 字节；每轮遍历完整八组矩阵，每组预热 5000 条、测量 20000 条，共三轮。下表为三轮各指标中位数，不设门槛。
+
+| 格式 | 注册扩展数 | 出口 | 吞吐（事件/秒） | 写入 P95（μs） | 写入 P99（μs） |
+|---|---:|---|---:|---:|---:|
+| text | 0 | sync-console | 234,955.68 | 6.354 | 29.850 |
+| text | 0 | async-file | 240,596.40 | 8,099.293 | 9,443.454 |
+| text | 3 | sync-console | 244,752.74 | 5.850 | 28.565 |
+| text | 3 | async-file | 238,362.50 | 8,223.954 | 9,910.847 |
+| json | 0 | sync-console | 120,209.03 | 13.344 | 33.537 |
+| json | 0 | async-file | 126,830.51 | 14,902.343 | 16,608.979 |
+| json | 3 | sync-console | 90,885.05 | 19.349 | 36.478 |
+| json | 3 | async-file | 100,578.94 | 17,886.952 | 19,070.892 |
+
+写入时延从事件创建前到真实出口 write/flush 返回，包含异步排队；吞吐包含最后排空与出口关闭。控制台输出重定向临时文件，不包含终端渲染；文件出口沿用 server 的按天与 100MB 滚动、30 天/10GB 保留策略，测量期间未触发滚动，`maxFlushTime=0` 用于完整排空。每轮核对全部输出行数、完成数与错误状态；写入返回不等于介质持久化。text 模式不调用注册的扩展，组间差异包含 JIT 和文件 I/O 波动；本机结果不构成跨机器承诺或真实部署压测。
 
 ### W-T5 与 T9 本地实施（2026-11-09）
 
@@ -159,7 +189,7 @@ updated: 2026-11-10
 
 本页汇总当前交付状态并保留各阶段实施记录。下表按现有模块组织，每个已纳入的需求编号均在相应规格与计划内覆盖；Processor和RPC使用精简设计。未纳入方向不因补齐SDD自动变为本轮需求。
 
-2026-11-06 新增 Log 的 L-04 [JSON 日志治理规划](./log-governance/brainstorm.md)：方向讨论已收敛，2026-11-08 补齐 SDD 草稿（D-112、D-113 补充决定）；与 L-01/L-02 的已记录实施进度分开，不代表 JSON 功能已实现。
+2026-11-06 新增 Log 的 L-04 [JSON 日志治理规划](./log-governance/brainstorm.md)：方向讨论已收敛，2026-11-08 补齐 SDD 草稿（D-112、D-113 补充决定）；与 L-01/L-02 的已记录实施进度分开；2026-11-15 实施、2026-11-16 完成完整质量验收，见上方 L-04 记录。
 
 ## 推荐方案与需求文档
 
@@ -217,7 +247,7 @@ Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容�
 
 ## 范围边界
 
-Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序等不纳入（W-03 请求标识回传原不纳入，2026-11-08 由 D-114 纳入）；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独纳入规划，尚未实施。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
+Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序等不纳入（W-03 请求标识回传原不纳入，2026-11-08 由 D-114 纳入）；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独实施，本地验收与基准结果见上方 L-04 记录。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
 
 TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../tech-debt-tracker.md)。
 

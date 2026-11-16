@@ -77,7 +77,7 @@ Behavior and constraints:
 - 失败消息只含属性名与原因，不回显值（沿用 `bindStrict`）。
 - `environment` 回退只取 `getActiveProfiles()` 恰为 1 个的情况，不读默认 Profile。
 - `JsonPointer`、`LogJsonSettingsCodec`、`LogJsonKeys`、`LogJsonSettings` 为 public 并标注内部实现，不得引用 logstash 或 Jackson 类型。
-- 新属性逐项 `bindStrict`，诊断为具体属性名；非 Logback 后端下 `format=json` 同样启动失败。
+- 新属性逐项 `bindStrict`，诊断为具体属性名；format 仅缺失时默认，按 text/json 白名单校验；非 Logback 后端下 `format=json` 同样启动失败。
 - 内部键值全部经 `LogJsonSettingsCodec` 编码，不复用 `MaskListCodec`。
 - `LogPresetProperties` 的严格绑定与内部键保持不变；`mimirLogPresetResolved` 写入条件不变。
 
@@ -130,7 +130,7 @@ Behavior and constraints:
 - 合并、受保护字段、重入标志按 design IC-5 伪代码；排序语义同 `ObjectProvider.orderedStream()`，同序按 Bean 名升序。
 - 规范化规则按 design IC-6 表；深度上限 32；不调用未知对象 `toString()`。
 - 注册仅限主应用上下文（`getParent() == null`，或父上下文 `getId()` 为 `"bootstrap"`）且自身非 legacy bootstrap 环境；不得用父 Environment 的 `bootstrap` 属性源识别（主上下文刷新时已被移除）；只处理本上下文的刷新事件；只有 owner 可清空。`LogFieldProviderRegistry` 为 public 并标注内部实现。
-- 保留键 `mimir.log.fields` 经 `FieldSnapshotKeyValuePair` 挂载，其 `value` 恒为字符串 `[mimir-fields]`；快照不得经公开字段或 getter 暴露。
+- 保留键 `mimir.log.fields` 经 `FieldSnapshotKeyValuePair` 挂载，其 `value` 恒为字符串 `[mimir-fields]`；挂载前复制当前事件的键值对列表，不能污染复用 builder；快照不得经公开字段或 getter 暴露。
 
 Acceptance:
 
@@ -146,7 +146,8 @@ Purpose: 访问日志携带结构化字段，文本输出不变（IC-3）。
 
 Files:
 
-- Modify: `.../log/web/AccessLogFilter.java` — `logAccessByStatus` 改用流式 API 并追加九个键值对
+- Modify: `.../log/web/AccessLogFilter.java` — `logAccessByStatus` 追加九个键值对，Logback 路径先完成原有完整消息 TurboFilter 判定
+- Create: `.../log/web/LogbackAccessLogSupport.java` — 隔离可选 Logback 类型，保留单次完整参数过滤和 ACCEPT/DENY/NEUTRAL 语义
 - Modify: `src/test/java/com/yggdrasil/labs/log/web/AccessLogFilterTest.java`、同目录 `AccessLogFilterServletIntegrationTest.java` — 补充断言
 
 Behavior and constraints:
@@ -156,7 +157,7 @@ Behavior and constraints:
 
 Acceptance:
 
-- 现有访问日志测试不改期望即通过（文本不变）。
+- 现有访问日志测试不改期望即通过（文本不变）；完整消息 TurboFilter 判定一次，覆盖 DENY、ACCEPT 越级、NEUTRAL 级别及重复消息抑制，替代后端隔离启动正常。
 - 新断言：同步完成、异常、异步超时、重复回调各场景事件键值对的键、值与类型正确，且每请求一条；`COMPLETED` 终态不含 `errorType` 键。
 
 ### T5：JSON 编码器与预设接入

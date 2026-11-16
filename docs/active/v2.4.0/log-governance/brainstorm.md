@@ -2,12 +2,12 @@
 version: v2.4.0
 status: draft
 created: 2026-11-06
-updated: 2026-11-08
+updated: 2026-11-16
 ---
 
 # Log JSON 日志治理
 
-[L-04](../brainstorm.md)：面向通用采集平台，便于检索、监控告警和关联已有 Trace/Span。范围已确认，尚未实施。
+[L-04](../brainstorm.md)：面向通用采集平台，便于检索、监控告警和关联已有 Trace/Span。范围已确认，已于 2026-11-15 实施；最终验收与基准见[版本记录](../release.md)。
 
 ## 已确认决策
 
@@ -305,4 +305,4 @@ public interface LogFieldProvider {
 
 ## 后续设计
 
-2026-11-08 已按上述共识形成 [规格](./spec.md)、[设计](./design.md) 与 [实施计划](./plan.md) 草稿，尚未实施。
+2026-11-08 已按上述共识形成 [规格](./spec.md)、[设计](./design.md) 与 [实施计划](./plan.md) 草稿；2026-11-15～16 实施与验收已完成，结果见[版本记录](../release.md)。

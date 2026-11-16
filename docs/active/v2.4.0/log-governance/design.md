@@ -9,7 +9,7 @@ updated: 2026-11-08
 
 ## Context
 
-本设计承接 [spec](./spec.md) 的八项行为，基线为 Java 17 / Boot 3.3.13 / Logback 1.5.18 / SLF4J 2.0.17 / Jackson 2.17.3（Boot BOM 管理）。范围与取舍来自[方案大纲](./brainstorm.md)及 D-111～D-113，尚未实施。
+本设计承接 [spec](./spec.md) 的八项行为，基线为 Java 17 / Boot 3.3.13 / Logback 1.5.18 / SLF4J 2.0.17 / Jackson 2.17.3（Boot BOM 管理）。范围与取舍来自[方案大纲](./brainstorm.md)及 D-111～D-113，实施与验收状态见[版本记录](../release.md)。
 
 当前事实（2026-11-08 核对 `mimir-boot-starter-log`）：
 
@@ -68,7 +68,7 @@ flowchart LR
 数据路径：
 
 1. **启动**：EPP 在原预设处理之外，对所有非 legacy bootstrap 的环境（含非 Logback 后端，有意为之：非法 `json.*` 配置一律启动失败）绑定并校验 `format`、`environment`、`instance`、`json.*`，写入内部键；`format=json` 时校验预设与依赖。XML 经 `json-support.xml` 把内部键写成 Context 属性；`MimirJsonEncoder.start()` 读取为不可变 `LogJsonSettings`。
-2. **捕获（产生线程）**：每个预设 Logger 的第一个出口是 `LogFieldCaptureAppender`。它复制 MDC、规范化事件键值对、在注册表就绪且非重入时依序调用扩展，记录规范化错误，并引用当前脱敏规则快照，构成不可变 `FieldSnapshot`，以保留键值对 `mimir.log.fields` 挂到事件上（见 Data Model）。同一事件后续出口（含 ERROR 的两个异步出口）复用该快照。
+2. **捕获（产生线程）**：每个预设 Logger 的第一个出口是 `LogFieldCaptureAppender`。它复制 MDC、规范化事件键值对、在注册表就绪且非重入时依序调用扩展，记录规范化错误，并引用当前脱敏规则快照，构成不可变 `FieldSnapshot`，挂载前复制当前事件键值对列表，避免写回 SLF4J builder 的共享列表；再以保留键值对 `mimir.log.fields` 挂到事件上（见 Data Model）。同一事件后续出口（含 ERROR 的两个异步出口）复用该快照。
 3. **输出（出口线程）**：`FormatDelegatingEncoder` 按 Context 属性选择原 `PatternLayoutEncoder` 或 `MimirJsonEncoder`。JSON 下 `GovernedFieldsJsonProvider` 取事件快照（缺失时就地构建不含扩展的基础快照），执行 MDC 排除 → 脱敏 → 截断 → 类型安全写出，并汇总 `processing`。
 
 常量归属：两个内部属性源名称在 `LogPresetSupport`；全部 JSON 相关内部键名（含 `internal.format`、`internal.json.*`）、Context 属性名、保留键与字段集合在 `LogJsonKeys`。
@@ -83,7 +83,7 @@ flowchart LR
 
 | 属性 | 类型 | 默认 | 校验 |
 |---|---|---|---|
-| `format` | 枚举 `LogFormat { TEXT, JSON }` | `TEXT` | 绑定失败 → 启动失败 |
+| `format` | 枚举 `LogFormat { TEXT, JSON }` | `TEXT` | 仅未配置时默认；忽略大小写并去除首尾空白后须为 text/json，空白或标点变体启动失败 |
 | `environment` | String | 未设置 | 空白视为未设置 |
 | `instance` | String | 未设置 | 空白视为未设置；环境变量 `MIMIR_BOOT_LOG_INSTANCE` 经宽松绑定生效 |
 | `json.exclude-mdc-keys` | `List<String>` | 空 | 无 |
@@ -120,7 +120,7 @@ if jsonKeys 非空: addFirst(mimirLogJsonResolved, jsonKeys)   // 独立属性�
 | `mimir.boot.log.internal.json.exclude-mdc-keys` | 每项编码后以 `,` 连接 |
 | `mimir.boot.log.internal.json.field-length-limits` | 每项 `编码后指针=limit`，以 `,` 连接 |
 
-`LogJsonSettingsCodec`（`json` 包，public，标注内部实现）对每个值做 UTF-8 百分号编码（仅保留 `A-Z a-z 0-9 - . _`），因此编码结果不含 `,`、`=`、`$`、`{`，列表与 Map 可无损往返，且 `springProperty` 解析占位符时不会遇到 `${` 而回显原值。不复用面向正则的 `MaskListCodec`（其拆分不还原 `\,`、在括号内不拆分）。`field-length-limits` 的键须以 `[...]` 括号写法配置以保留 `/`；校验失败诊断提示该写法。
+`LogJsonSettingsCodec`（`json` 包，public，标注内部实现）对每个值做 UTF-8 百分号编码（仅保留 `A-Z a-z 0-9 - . _`），因此编码结果不含 `,`、`=`、`$`、`{`，列表与 Map 可无损往返，且 `springProperty` 解析占位符时不会遇到 `${` 而回显原值。内部列表中的空元素以裸 `%` 表示，空串仍表示空列表；普通 `%` 编码为 `%25`，单值编解码规则不变。不复用面向正则的 `MaskListCodec`（其拆分不还原 `\,`、在括号内不拆分）。`field-length-limits` 的键须以 `[...]` 括号写法配置以保留 `/`；校验失败诊断提示该写法。
 
 `LogPresetProperties` 以 `bindOrCreate("mimir.boot.log", …)` 绑定，Binder 默认忽略未知字段，新增属性不影响其绑定。`json.*` 使用独立属性源，旧默认 XML 与自定义 XML 下同样写入供 IC-7 读取；因 `environment` 可由唯一 active Profile 回退，未配置任何新属性的应用也可能新增该属性源，除此之外不改动其他属性源；`mimirLogPresetResolved` 仍只在选中预设时存在，`LogMaskAutoConfiguration` 依赖它的预设父上下文守卫不受影响。
 
@@ -170,10 +170,10 @@ Provider 列表与字段（顺序非契约）：
 
 ### IC-3 访问与 SQL 日志（Behavior: 访问与 SQL 日志）
 
-`AccessLogFilter.logAccessByStatus` 改用 SLF4J 2 流式 API，消息模板与参数不变，追加键值对：
+`AccessLogFilter.logAccessByStatus` 保留 SLF4J 2 键值对事件，消息模板与参数不变。Logback 路径由包内 `LogbackAccessLogSupport` 使用完整模板、参数执行一次 TurboFilter 链：DENY 拒绝，ACCEPT 可越过 Logger 级别，NEUTRAL 遵守有效级别；通过后调用 `makeLoggingEventBuilder`，避免 `atLevel` 的空消息复查。Logback 类型隔离在该辅助类中，仅在类存在时加载；其他后端沿用普通流式入口。随后追加键值对：
 
 ```java
-ACCESS_LOG.atLevel(level).setMessage(message).addArgument(...)... // 参数顺序与原 args 一致
+builder.setMessage(message).addArgument(...)... // builder 已完成上述过滤判定，参数顺序与原 args 一致
     .addKeyValue("method", method).addKeyValue("path", uri)
     .addKeyValue("statusCode", statusCode)           // Integer
     .addKeyValue("durationMs", durationMs)           // Long

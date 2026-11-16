@@ -26,7 +26,7 @@ updated: 2026-11-09
 | [Parent](./parent-build/brainstorm.md) | P-01 编译目标约束；P-02 保留 classpath 处理器发现；P-04 测试与质量检查开关统一；PC-01 保证 GPG 签名可选；PC-02 合并重复格式检查；PC-03 接通插件版本属性；P-03、P-05 只做使用说明与验证 | 跨 Maven 版本可复现构建未纳入 |
 | [BOM](./bom-dependencies/brainstorm.md) | 管理 `lombok-mapstruct-binding`、`poi-ooxml`、`cola-component-dto`；验证聚焦本轮变更；保持框架基线 | B-04 安全补丁版本覆盖未采纳 |
 | [Common](./common-contracts/brainstorm.md) | C-01 错误码定义接口；C-02 分页逐条转换及 COLA 分页响应支持；C-04 批量操作结果；C-07 R 的 JSON 只保留 success | C-05、C-08 暂缓；C-03、C-06、C-09 未纳入 |
-| [Log 运行预设](./log-runtime/brainstorm.md)、[日志治理](./log-governance/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播；L-04 可选 JSON 日志治理（仅规划）；TD-049 旧 XML 按天滚动、TD-050 低优先级清理（D-116、D-117，未实施） | L-03 访问日志采样未纳入；业务步骤链路暂缓 |
+| [Log 运行预设](./log-runtime/brainstorm.md)、[日志治理](./log-governance/brainstorm.md) | L-01 容器输出预设与少量属性入口；L-02 业务任务 MDC 传播；L-04 可选 JSON 日志治理（已实施，验收见版本记录）；TD-049 旧 XML 按天滚动、TD-050 低优先级清理（D-116、D-117，未实施） | L-03 访问日志采样未纳入；业务步骤链路暂缓 |
 | [Exception](./exception-contracts/brainstorm.md) | E-01 标准 HTTP 异常语义补齐；E-02 统一校验错误明细 | E-03 安全、异步超时与客户端断开语义未采纳 |
 | [Web](./web-binding/brainstorm.md) | W-01 日期格式统一接入；W-02 大整数 JSON 输出；W-03 回传 requestId（D-114，未实施） | — |
 | [MyBatis](./mybatis-capabilities/brainstorm.md) | M-04 慢 SQL 记录；`IPage` 转 COLA `PageResponse`；`searchCount=false` 使用说明 | M-01 撤销；M-02、以 `PageResult` 输出的 M-03 暂缓；防全表更新与删除、单页上限经 D-115 纳入后撤出（D-119、D-120）；审计人类型可配置未纳入 |
@@ -104,7 +104,7 @@ updated: 2026-11-09
 
 - **TD-049、TD-050 收尾（D-116、D-117）**：2026-11-08 纳入。旧 `logback-spring.xml` 四个文件 appender 的月目录 `%d` 标记 `aux`，主滚动周期改为按天，`maxHistory` 恢复为天数语义；TD-050 四项全部处理，其中 `MdcUtil.putAll` 由 `setContextMap` 整体替换改为逐项 put，不再清除已有 traceId/spanId。两处均为可观察行为变更，须写入升级说明。任务见 [Log 计划 T9](./log-runtime/plan.md#t9td-049-与-td-050-收尾)。
 
-- **L-04 JSON 日志治理（D-111～D-113）**：显式启用 JSON，普通日志统一外层、访问日志独立字段、SQL 保留消息字符串；`context` / `attributes` 分组，MDC 默认全量加排除名单，沿用有效脱敏规则；扩展值限于 JSON 基础类型及 Map/List。保留原输出策略，仅关联已有 Trace/Span，不纳入业务步骤链路。2026-11-06 完成方向讨论与复核修订，当前仅有[方案大纲](./log-governance/brainstorm.md)，未实施。
+- **L-04 JSON 日志治理（D-111～D-113）**：显式启用 JSON，普通日志统一外层、访问日志独立字段、SQL 保留消息字符串；`context` / `attributes` 分组，MDC 默认全量加排除名单，沿用有效脱敏规则；扩展值限于 JSON 基础类型及 Map/List。保留原输出策略，仅关联已有 Trace/Span，不纳入业务步骤链路。2026-11-06 完成方向讨论与复核修订，已补齐 [SDD 与实施计划](./log-governance/plan.md)，2026-11-15 已实施，验收见[版本记录](./release.md)。
 
 ### Exception
 
@@ -305,7 +305,7 @@ updated: 2026-11-09
 | D-108 | 代码质量工具链开关保持插件原生属性；已自行配置 PMD 的下游受影响，作为向后兼容的显式例外写入升级说明并给出恢复配置，不改用 Mimir 私有开关 | 有效（2026-11-02 用户确认），见[代码质量规格 CQ-10](./code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级) |
 | D-109 | 不引入 Checkstyle：注释与命名改由 PMD 选定规则负责（`CommentRequired`、`DanglingJavadoc` 与 codestyle 命名规则），修订 D-103；接受不检查 Javadoc 标签与签名一致性等缺口 | 有效（2026-11-02 用户确认），见[代码质量设计](./code-quality-toolchain/design.md#pmd-规则集cq-01cq-02) |
 | D-110 | 规则 jar 同时提供独立 Maven 插件入口，复用官方实现并隔离报告至 `target/mimir-quality/`；保留原生属性。直接调用选择 `check@pmd` / `cpd-check@cpd`；规则制品版本覆盖只支持同上游来源版本 | 有效（2026-11-06 用户在方案审查后要求开始实施）；见[接入设计](./code-quality-toolchain/design.md#分叉配置问题与接入方案) |
-| D-111 | 纳入 L-04 可选 JSON 日志治理，字段、脱敏、类型与失败边界见[方案大纲](./log-governance/brainstorm.md)；保留原默认行为，暂缓业务步骤链路及完整 tracing 接入 | 有效（2026-11-06 用户确认整体范围），仅规划未实施 |
+| D-111 | 纳入 L-04 可选 JSON 日志治理，字段、脱敏、类型与失败边界见[方案大纲](./log-governance/brainstorm.md)；保留原默认行为，暂缓业务步骤链路及完整 tracing 接入 | 有效（2026-11-06 用户确认整体范围）；2026-11-15 已实施，验收见版本记录 |
 | D-112 | L-04 补充：`format=json` 仅对 container、server 预设生效，非预设下配置即启动失败；Encoder 为 optional 依赖并由 BOM 管理版本；JSON 访问日志保留原拼接消息 | 有效（2026-11-08 用户确认），见[方案大纲](./log-governance/brainstorm.md#已确认决策) |
 | D-113 | L-04 补充：公开 Mimir JSON 编码器供自定义 XML 引用，`json.*` 配置不论是否选用预设均生效，`format` 仍仅对预设生效；事件自带键值对沿用扩展值类型规则，不调用 `toString()`；性能只做 text/json 基准记录，不设发布门槛 | 有效（2026-11-08 用户确认），见[方案大纲](./log-governance/brainstorm.md#已确认决策) |
 | D-114 | Web 纳入 W-03：响应头回传本次请求使用的 requestId（`X-Request-Id`），沿用 Trace 拦截器既有启用条件，不新增开关；替代 D-45 中 W-03 保留候选的部分 | 有效（2026-11-08 用户确认），未实施 |
@@ -321,7 +321,7 @@ updated: 2026-11-09
 
 原有 9 项需求与后续纳入的代码质量工具链均已有 `spec.md`、`design.md`、`plan.md` 和主体实现。当前处于专项验收及发布收尾阶段，逐项状态、验证依据和剩余边界统一见[版本记录](./release.md#当前交付状态)。
 
-2026-11-06 新增 L-04 [JSON 日志治理大纲](./log-governance/brainstorm.md)，整体范围已确认，当前仅落盘脑暴草案；未生成正式 SDD 或修改实现。该新增方向不改变 L-01/L-02 的原始范围和验证记录。
+2026-11-06 新增 L-04 [JSON 日志治理大纲](./log-governance/brainstorm.md)，整体范围已确认，2026-11-08 补齐 SDD，2026-11-15 已实施；验证与基准见[版本记录](./release.md)。该新增方向不改变 L-01/L-02 的原始范围和验证记录。
 
 2026-11-08 按 D-114～D-117 追加小范围事项；其中 D-115 的 MyBatis 两项经文档审查后由 D-119、D-120 撤出，最终只有 Web 与 Log 两组任务。不新建需求目录，分别并入 [Web 计划 W-T5](./web-binding/plan.md#w-t5回传-requestid)、[Log 计划 T9](./log-runtime/plan.md#t9td-049-与-td-050-收尾)。行为与设计已同步补入对应 spec、design（Web W5，Log D-116/D-117 两节行为与 IC-7），均未实施。
 
