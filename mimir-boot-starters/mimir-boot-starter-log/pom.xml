@@ -128,6 +128,13 @@
             <artifactId>spring-boot-starter-logging</artifactId>
         </dependency>
 
+        <!-- JSON 输出显式启用，编码器及 Jackson 不传递给默认文本消费者。 -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- SLF4J 桥接器，统一日志实现 -->
         <!-- 桥接 Apache Commons Logging 到 SLF4J -->
         <dependency>

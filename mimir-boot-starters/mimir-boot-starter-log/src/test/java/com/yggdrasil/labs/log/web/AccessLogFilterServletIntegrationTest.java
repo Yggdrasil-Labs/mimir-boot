@@ -1,6 +1,7 @@
 package com.yggdrasil.labs.log.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -196,6 +197,21 @@ class AccessLogFilterServletIntegrationTest {
         assertTrue(message.contains("Status=[" + status + "]"));
         assertTrue(message.contains("Outcome=[COMPLETED]"));
         assertTrue(message.contains("ErrorType=[-]"));
+        assertStructuredAccessFields(event, uri, status);
+    }
+
+    private static void assertStructuredAccessFields(ILoggingEvent event, String path, int status) {
+        assertTrue(event.getKeyValuePairs() != null, "访问事件应携带结构化键值对");
+        java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
+        event.getKeyValuePairs().forEach(pair -> fields.put(pair.key, pair.value));
+        assertEquals("GET", fields.get("method"));
+        assertEquals(path, fields.get("path"));
+        assertEquals(status, fields.get("statusCode"));
+        assertTrue(fields.get("statusCode") instanceof Integer);
+        assertTrue(fields.get("durationMs") instanceof Long);
+        assertTrue(fields.get("slow") instanceof Boolean);
+        assertEquals("COMPLETED", fields.get("outcome"));
+        assertFalse(fields.containsKey("errorType"));
     }
 
     private void awaitLogPollInterval() throws InterruptedException {

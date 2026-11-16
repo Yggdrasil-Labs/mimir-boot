@@ -11,12 +11,16 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.servlet.AsyncContext;
 import jakarta.servlet.AsyncEvent;
@@ -42,7 +46,10 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.turbo.DuplicateMessageFilter;
+import ch.qos.logback.classic.turbo.TurboFilter;
 import ch.qos.logback.core.read.ListAppender;
+import ch.qos.logback.core.spi.FilterReply;
 
 /**
  * 访问日志过滤器测试
@@ -56,6 +63,7 @@ class AccessLogFilterTest extends BaseUnitTest {
     private AccessLogFilter filter;
     private ListAppender<ILoggingEvent> listAppender;
     private Logger accessLogger;
+    private List<TurboFilter> savedTurboFilters;
 
     @Override
     @BeforeEach
@@ -70,8 +78,128 @@ class AccessLogFilterTest extends BaseUnitTest {
     @Override
     @AfterEach
     public void tearDown() {
+        if (savedTurboFilters != null) {
+            LoggerContext context = accessLogger.getLoggerContext();
+            context.getTurboFilterList().forEach(TurboFilter::stop);
+            context.getTurboFilterList().clear();
+            context.getTurboFilterList().addAll(savedTurboFilters);
+        }
         LogTestUtils.cleanupLogger(accessLogger, listAppender);
         super.tearDown();
+    }
+
+    @Test
+    void messageAndArgumentTurboFilterStillRejectsAccessRecord() throws Exception {
+        useTurboFilter(
+                new TurboFilter() {
+                    @Override
+                    public FilterReply decide(
+                            org.slf4j.Marker marker,
+                            Logger logger,
+                            Level level,
+                            String message,
+                            Object[] arguments,
+                            Throwable failure) {
+                        return message != null
+                                        && arguments != null
+                                        && Arrays.asList(arguments).contains("/blocked")
+                                ? FilterReply.DENY
+                                : FilterReply.NEUTRAL;
+                    }
+                });
+        accessLogger.info("URI=[{}]", "/blocked");
+        assertTrue(listAppender.list.isEmpty(), "原日志 API 应拒绝该路径");
+        emitAccessRequest("/blocked");
+        assertTrue(listAppender.list.isEmpty(), "结构化访问日志也应执行完整参数过滤");
+    }
+
+    @Test
+    void turboFilterAcceptOverridesLoggerThresholdAndRunsOnce() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        useTurboFilter(
+                new TurboFilter() {
+                    @Override
+                    public FilterReply decide(
+                            org.slf4j.Marker marker,
+                            Logger logger,
+                            Level level,
+                            String message,
+                            Object[] arguments,
+                            Throwable failure) {
+                        calls.incrementAndGet();
+                        return message == null ? FilterReply.NEUTRAL : FilterReply.ACCEPT;
+                    }
+                });
+        Level previous = accessLogger.getLevel();
+        accessLogger.setLevel(Level.OFF);
+        try {
+            emitAccessRequest("/accepted");
+            assertEquals(1, listAppender.list.size());
+            assertEquals(1, calls.get(), "不得额外执行空消息过滤");
+            assertEquals(Level.INFO, listAppender.list.get(0).getLevel());
+        } finally {
+            accessLogger.setLevel(previous);
+        }
+    }
+
+    @Test
+    void neutralTurboFilterReceivesCompleteArgumentsBeforeLevelRejection() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        AtomicReference<String> seenMessage = new AtomicReference<>();
+        AtomicReference<Object[]> seenArguments = new AtomicReference<>();
+        useTurboFilter(
+                new TurboFilter() {
+                    @Override
+                    public FilterReply decide(
+                            org.slf4j.Marker marker,
+                            Logger logger,
+                            Level level,
+                            String message,
+                            Object[] arguments,
+                            Throwable failure) {
+                        calls.incrementAndGet();
+                        seenMessage.set(message);
+                        seenArguments.set(arguments);
+                        return FilterReply.NEUTRAL;
+                    }
+                });
+        Level previous = accessLogger.getLevel();
+        accessLogger.setLevel(Level.OFF);
+        try {
+            emitAccessRequest("/neutral");
+            assertTrue(listAppender.list.isEmpty());
+            assertEquals(1, calls.get());
+            org.junit.jupiter.api.Assertions.assertNotNull(seenMessage.get());
+            assertTrue(seenMessage.get().contains("URI=[{}]"));
+            assertEquals("/neutral", seenArguments.get()[2]);
+        } finally {
+            accessLogger.setLevel(previous);
+        }
+    }
+
+    @Test
+    void duplicateMessageTurboFilterKeepsSuppressingRepeatedAccessLogs() throws Exception {
+        DuplicateMessageFilter duplicate = new DuplicateMessageFilter();
+        duplicate.setAllowedRepetitions(0);
+        useTurboFilter(duplicate);
+        emitAccessRequest("/duplicate");
+        emitAccessRequest("/duplicate");
+        assertEquals(1, listAppender.list.size());
+    }
+
+    private void useTurboFilter(TurboFilter turboFilter) {
+        LoggerContext context = accessLogger.getLoggerContext();
+        savedTurboFilters = new ArrayList<>(context.getTurboFilterList());
+        context.getTurboFilterList().clear();
+        turboFilter.setContext(context);
+        turboFilter.start();
+        context.addTurboFilter(turboFilter);
+    }
+
+    private void emitAccessRequest(String path) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+        request.setRemoteAddr("127.0.0.1");
+        filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {});
     }
 
     /** 测试正常请求（2xx） */
@@ -89,6 +217,16 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         AssertUtils.assertLogSize(listAppender, 1);
         ILoggingEvent event = listAppender.list.get(0);
+        assertTrue(event.getKeyValuePairs() != null, "访问事件应携带结构化键值对");
+        java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
+        event.getKeyValuePairs().forEach(pair -> fields.put(pair.key, pair.value));
+        assertEquals("GET", fields.get("method"));
+        assertEquals("/api/user/123", fields.get("path"));
+        assertEquals(200, fields.get("statusCode"));
+        assertTrue(fields.get("durationMs") instanceof Long);
+        assertEquals(false, fields.get("slow"));
+        assertEquals("COMPLETED", fields.get("outcome"));
+        assertFalse(fields.containsKey("errorType"));
         String message = event.getFormattedMessage();
         assertTrue(message.contains("Outcome=[COMPLETED]"));
         assertTrue(message.contains("ErrorType=[-]"));
@@ -115,7 +253,10 @@ class AccessLogFilterTest extends BaseUnitTest {
         assertThrows(IllegalStateException.class, () -> filter.doFilter(request, response, chain));
 
         AssertUtils.assertLogSize(listAppender, 1);
-        String message = listAppender.list.get(0).getFormattedMessage();
+        ILoggingEvent event = listAppender.list.get(0);
+        assertStructuredAccessFields(
+                event, "/api/failure", 500, "ERROR", "java.lang.IllegalStateException");
+        String message = event.getFormattedMessage();
         assertTrue(message.contains("Status=[500]"));
         assertTrue(message.contains("Outcome=[ERROR]"));
         assertTrue(message.contains("ErrorType=[java.lang.IllegalStateException]"));
@@ -138,7 +279,9 @@ class AccessLogFilterTest extends BaseUnitTest {
 
         assertSame(failure, propagated);
         AssertUtils.assertLogSize(listAppender, 1);
-        String message = listAppender.list.get(0).getFormattedMessage();
+        ILoggingEvent event = listAppender.list.get(0);
+        assertStructuredAccessFields(event, "/api/error", 200, "ERROR", "java.lang.AssertionError");
+        String message = event.getFormattedMessage();
         assertTrue(message.contains("Outcome=[ERROR]"));
         assertTrue(message.contains("ErrorType=[java.lang.AssertionError]"));
     }
@@ -171,7 +314,9 @@ class AccessLogFilterTest extends BaseUnitTest {
         listenerCaptor.getValue().onComplete(new AsyncEvent(asyncContext));
 
         AssertUtils.assertLogSize(listAppender, 1);
-        String message = listAppender.list.get(0).getFormattedMessage();
+        ILoggingEvent event = listAppender.list.get(0);
+        assertStructuredAccessFields(event, "/api/async", 201, "COMPLETED", null);
+        String message = event.getFormattedMessage();
         assertTrue(message.contains("Status=[201]"));
         assertTrue(message.contains("Outcome=[COMPLETED]"));
     }
@@ -256,7 +401,14 @@ class AccessLogFilterTest extends BaseUnitTest {
         listener.onComplete(new AsyncEvent(asyncContext));
 
         AssertUtils.assertLogSize(listAppender, 1);
-        String message = listAppender.list.get(0).getFormattedMessage();
+        ILoggingEvent event = listAppender.list.get(0);
+        assertStructuredAccessFields(
+                event,
+                "/api/async-error-with-throwable",
+                500,
+                "ERROR",
+                "java.lang.IllegalArgumentException");
+        String message = event.getFormattedMessage();
         assertTrue(message.contains("Outcome=[ERROR]"));
         assertTrue(message.contains("ErrorType=[java.lang.IllegalArgumentException]"));
     }
@@ -282,7 +434,9 @@ class AccessLogFilterTest extends BaseUnitTest {
         listener.onError(new AsyncEvent(asyncContext, new IllegalStateException("late")));
 
         AssertUtils.assertLogSize(listAppender, 1);
-        String message = listAppender.list.get(0).getFormattedMessage();
+        ILoggingEvent event = listAppender.list.get(0);
+        assertStructuredAccessFields(event, "/api/async-timeout", 503, "TIMEOUT", "ASYNC_TIMEOUT");
+        String message = event.getFormattedMessage();
         assertTrue(message.contains("Outcome=[TIMEOUT]"));
         assertTrue(message.contains("ErrorType=[ASYNC_TIMEOUT]"));
     }
@@ -304,6 +458,24 @@ class AccessLogFilterTest extends BaseUnitTest {
         ArgumentCaptor<AsyncListener> listenerCaptor = ArgumentCaptor.forClass(AsyncListener.class);
         verify(asyncContext).addListener(listenerCaptor.capture());
         return listenerCaptor.getValue();
+    }
+
+    private static void assertStructuredAccessFields(
+            ILoggingEvent event, String path, int status, String outcome, String errorType) {
+        assertTrue(event.getKeyValuePairs() != null, "访问事件应携带结构化键值对");
+        java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
+        event.getKeyValuePairs().forEach(pair -> fields.put(pair.key, pair.value));
+        assertEquals(path, fields.get("path"));
+        assertEquals(status, fields.get("statusCode"));
+        assertTrue(fields.get("statusCode") instanceof Integer);
+        assertTrue(fields.get("durationMs") instanceof Long);
+        assertTrue(fields.get("slow") instanceof Boolean);
+        assertEquals(outcome, fields.get("outcome"));
+        if (errorType == null) {
+            assertFalse(fields.containsKey("errorType"));
+        } else {
+            assertEquals(errorType, fields.get("errorType"));
+        }
     }
 
     @Test

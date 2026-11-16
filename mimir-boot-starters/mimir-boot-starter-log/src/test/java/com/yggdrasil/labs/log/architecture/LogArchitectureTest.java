@@ -17,4 +17,19 @@ class LogArchitectureTest {
                 .check(classes);
         MimirArchRules.noCycles("com.yggdrasil.labs.log").check(classes);
     }
+
+    @Test
+    void textAndFieldContractsDoNotLinkOptionalJsonLibraries() {
+        JavaClasses classes = MimirArchClasses.importDirectory(Path.of("target/classes"));
+        com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses()
+                .that()
+                .resideInAPackage("..log.field..")
+                .or()
+                .haveNameMatching(
+                        ".*\\.(?:LogFieldCaptureAppender|FieldSnapshot|ValueNormalizer|LogFieldProviderRegistry|LogJsonKeys|LogJsonSettings|FieldSnapshotKeyValuePair|JsonPointer|LogJsonSettingsCodec|FormatDelegatingEncoder|StructuredMaskSupport)")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("net.logstash..", "com.fasterxml..")
+                .check(classes);
+    }
 }

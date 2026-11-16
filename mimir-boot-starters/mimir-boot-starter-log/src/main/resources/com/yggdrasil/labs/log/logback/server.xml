@@ -19,7 +19,7 @@
 
     <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/info.log</file>
-        <encoder>
+        <encoder class="com.yggdrasil.labs.log.json.FormatDelegatingEncoder">
             <pattern>${MIMIR_LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
@@ -33,7 +33,7 @@
 
     <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/error.log</file>
-        <encoder>
+        <encoder class="com.yggdrasil.labs.log.json.FormatDelegatingEncoder">
             <pattern>${MIMIR_LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
@@ -47,7 +47,7 @@
 
     <appender name="FILE_ACCESS" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/access.log</file>
-        <encoder>
+        <encoder class="com.yggdrasil.labs.log.json.FormatDelegatingEncoder">
             <pattern>${MIMIR_ACCESS_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
@@ -61,7 +61,7 @@
 
     <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/sql.log</file>
-        <encoder>
+        <encoder class="com.yggdrasil.labs.log.json.FormatDelegatingEncoder">
             <pattern>${MIMIR_SQL_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
@@ -112,16 +112,20 @@
     </appender>
 
     <logger name="access.log" level="INFO" additivity="false">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="ASYNC_FILE_ACCESS"/>
     </logger>
     <logger name="SQL.JSON" level="INFO" additivity="false">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="ASYNC_FILE_SQL"/>
     </logger>
     <logger name="SQL.SLOW" level="WARN" additivity="false">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="ASYNC_FILE_SQL"/>
     </logger>
 
     <root level="INFO">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="ASYNC_FILE_INFO"/>
         <appender-ref ref="ASYNC_FILE_ERROR"/>
     </root>

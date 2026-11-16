@@ -462,6 +462,158 @@ mimir:
 
 **性能**：字段型规则只在 `=`/`:` 分隔符附近检查字段名，开销随分隔符数量与消息长度增长。本地基准（Temurin 17、Ryzen 9 8945HX）中，四组规则的纯转换开销约为：1KiB 消息 0.3–0.6µs、64KiB 约 12µs、8KiB 异常栈文本约 16µs；在同步文件输出的完整链路中，1KiB 消息吞吐约为关闭规则时的 89%–90%（5 轮中位数）。实际开销取决于消息内容与输出链路，高吞吐场景请结合实际部署压测。
 
+### JSON 日志（v2.4.0）
+
+选择容器或服务器预设并设置 `mimir.boot.log.format=json`，即可将各出口改为每事件一行 JSON。未配置时保持文本输出；日志级别、四类文件路由、滚动与异步策略沿用所选预设。服务器的 ERROR 业务事件在 `info.log`、`error.log` 中各出现一次。
+
+应用须显式声明编码器依赖，其版本由 Mimir BOM 管理为 8.1；Starter 将该依赖标记为 optional，默认文本消费者不会因此引入编码器及其 Jackson 依赖。
+
+```xml
+<dependency>
+    <groupId>net.logstash.logback</groupId>
+    <artifactId>logstash-logback-encoder</artifactId>
+</dependency>
+```
+
+```yaml
+spring:
+  application:
+    name: order-service
+logging:
+  config: classpath:com/yggdrasil/labs/log/logback/container.xml
+mimir:
+  boot:
+    log:
+      format: json
+      environment: prod-east
+      instance: order-01
+      json:
+        exclude-mdc-keys: [internalDebug]
+        field-length-limits:
+          "[/message]": 4096
+          "[/attributes/a~1b]": 128
+```
+
+| 属性 | 默认值 | 行为 |
+|---|---|---|
+| `mimir.boot.log.format` | `text` | `text` / `json`（忽略大小写及首尾空白）；仅未配置时默认 text，空白或标点变体启动失败；JSON 格式要求 container、server 预设与 Logback 后端 |
+| `mimir.boot.log.environment` | 未设置 | 空白按未设置处理；否则优先于 Profile；仅一个 active Profile 时自动取其名称，多 Profile 或只有 default Profile 时省略 |
+| `mimir.boot.log.instance` | 未设置 | 空白省略；可通过 `MIMIR_BOOT_LOG_INSTANCE` 设置 |
+| `mimir.boot.log.json.exclude-mdc-keys` | 空列表 | 从 `context` 排除的 MDC 键，区分大小写 |
+| `mimir.boot.log.json.field-length-limits` | 空 Map | JSON Pointer → 正整数，限制字符串的 Unicode 码点数；路径需用 `[...]` 配置以保留 `/` |
+
+路径遵循 RFC 6901：`~1` 表示键中的 `/`，`~0` 表示 `~`；点号不分层。指向不存在字段或非字符串值的路径会被忽略。处理顺序为 MDC 排除、脱敏、截断、编码，截断不会切断表情字符的代理对。配置仅在启动时读取，运行期配置刷新不更新这些设置；非法格式、非法路径或非正整数限制会使启动失败，诊断不回显配置原值。`json.*` 即使使用旧配置、自定义 XML 或其他后端也会校验。
+
+未选择预设却设置 `format=json`、使用非 Logback 后端或缺少编码器/Jackson 时，启动失败，不会回退文本。自定义 XML 按下方公开编码器方式接入，不设置 `format=json`。
+
+#### 字段与类型
+
+| 字段 | 类型与来源 |
+|---|---|
+| `timestamp` | 带时区偏移的 ISO 8601 字符串，精确到毫秒，采用 JVM 默认时区 |
+| `level`、`thread`、`logger`、`message` | 原事件的级别、线程名、完整 Logger 名及格式化消息；消息仍是字符串，内嵌 JSON 不展开 |
+| `service` | `spring.application.name`，缺省 `application` |
+| `environment`、`instance` | 上表解析出的可选字符串，缺失时省略 |
+| `traceId`、`spanId` | MDC 同名非空值，提升到顶层后从 `context` 移除；不创建链路或 Span |
+| `context` | 其余 MDC 的字符串 Map，排除并脱敏后写出，空时省略 |
+| `attributes` | 事件键值对与扩展字段的合并结果，保留数字、布尔、数组、对象和 null 类型，空时省略 |
+| `exception` | 携带异常时包含 `type`、可选 `message`、`stackTrace`；异常栈含原因链与 suppressed 异常并经过脱敏 |
+| `processing` | 发生加工时包含 `truncatedFields` 或 `errors`，两者均空时省略 |
+
+访问日志保留原文本 `message`，并在 `attributes` 中增加下列字段；路径仍不含 query string，状态码、级别与终态归并沿用文本模式。
+
+| 字段 | JSON 类型 |
+|---|---|
+| `method`、`path`、`clientIp`、`userAgent`、`outcome` | 字符串 |
+| `statusCode`、`durationMs` | 整数；耗时非负，单位毫秒 |
+| `slow` | 布尔 |
+| `errorType` | 可选字符串，成功终态省略；异步超时为 `ASYNC_TIMEOUT` |
+
+`SQL.JSON`、`SQL.SLOW` 保留 MyBatis Starter 已生成并预脱敏的消息字符串，不再解析其内容。例如普通业务事件：
+
+```json
+{"timestamp":"2026-11-15T10:20:30.120+08:00","level":"INFO","service":"order-service","thread":"main","logger":"com.example.OrderService","message":"开始处理请求","traceId":"4bf9","spanId":"00f0","context":{"tenantId":"t1"},"attributes":{"orderId":7,"ok":true}}
+```
+
+JSON 沿用 `mimir.boot.log.mask.*` 规则。消息和异常按原文本规则处理；`context`、`attributes` 按键名后缀规则递归脱敏，再应用值正则。字段名命中时整个值（包括对象或数组）替换为替换串；数字、布尔命中值正则后变为脱敏字符串。旧文本自定义正则不会自动转换为字段名规则。**JSON 模式下 MDC 开始参与脱敏**，依赖 MDC 原文检索的接入方需核对规则与查询。
+
+#### 事件键值对与字段扩展
+
+业务可直接使用 SLF4J 2 键值对：
+
+```java
+log.atInfo().addKeyValue("orderId", 7).addKeyValue("ok", true).log("开始处理请求");
+```
+
+支持 `null`、`String`、`Boolean`、`Integer`/`Long`/`Short`/`Byte`/`BigInteger`/`BigDecimal`、有限的 `Float`/`Double`、`List` 和字符串键的 `Map`。嵌套深度上限为 32；不反射遍历 JavaBean，不调用不支持对象的 `toString()`。数组、Set、枚举、Character、自定义 Number 等不支持；NaN、Infinity、非法 Map 键和循环引用会隔离对应字段。日志调用时会复制容器，返回后修改原容器不影响排队事件。
+
+通过 `com.yggdrasil.labs.log.field.LogFieldProvider` Bean 为 `attributes` 补充字段：
+
+```java
+import java.util.Map;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import com.yggdrasil.labs.log.field.LogFieldProvider;
+
+@Configuration(proxyBeanMethods = false)
+class OrderLogConfiguration {
+    @Bean
+    @Order(10)
+    LogFieldProvider orderFields() {
+        return event -> Map.of("component", "orders", "sourceService", event.service());
+    }
+}
+```
+
+SPI 仅依赖 JDK 类型，接口为 `Map<String, ?> provide(LogEventView event)`；返回 null 或空 Map 表示无补充。`LogEventView` 提供：
+
+| 方法 | 类型与含义 |
+|---|---|
+| `timestamp()`、`level()`、`service()` | `Instant`、`String`、`String` |
+| `environment()`、`instance()`、`message()`、`traceId()`、`spanId()` | `Optional<String>`；消息为格式化后、脱敏前全文 |
+| `logger()`、`thread()` | `String`，Logger 与线程名 |
+| `context()` | `Map<String,String>`，排除与脱敏前的全部 MDC |
+| `attributes()` | `Map<String,Object>`，仅含事件自带且通过类型检查的键值对 |
+| `exception()` | `Optional<LogExceptionView>`；该视图仅有 `String type()`、`Optional<String> message()`，不提供原始异常对象 |
+
+扩展在产生日志的线程上对每事件最多执行一次，ERROR 的两个出口复用同一快照；应保持轻量，不阻塞、不执行 I/O。全部扩展读取同一个不可变视图，看不到其他扩展结果。排序遵循 Spring 顺序（含 `Ordered`、类与 `@Bean` 方法上的 `@Order`），同序按 Bean 名升序。优先扩展覆盖事件同名字段，后续扩展不覆盖已成功补充的字段。
+
+扩展不能声明与顶层字段同名的键，访问日志的九个结构化字段也受保护。抛出异常、修改只读视图或返回非法值时，会记录错误并继续输出基础事件；扩展内部再次打日志时跳过扩展调用。仅主应用上下文的 Bean 生效：刷新完成后注册，开始关闭时清空；启动早期与关闭阶段不调用扩展。普通子上下文的扩展不注册，Spring Cloud legacy bootstrap 的主应用仍可注册。
+
+`processing.truncatedFields` 使用 JSON Pointer 标记截断路径。`processing.errors` 条目包含 `reason`、可选的 `field` 路径和扩展 Bean 名 `provider`，不含失败对象或异常消息。原因码为 `unsupported_type`、`invalid_value`、`circular_reference`、`protected_field`、`provider_error`、`field_error`；一个字段失败不会丢弃基础事件或改变级别。
+
+#### 自定义 XML
+
+声明同一编码器依赖，在 Spring Boot 的 `logging.config` 中指定自定义 XML，并保持 `format` 未设置或为 `text`。公开接入点为 `com.yggdrasil.labs.log.json.MimirJsonEncoder`、`LogFieldCaptureAppender` 和 `json-support.xml`：
+
+```xml
+<configuration>
+    <include resource="com/yggdrasil/labs/log/logback/json-support.xml"/>
+    <appender name="MIMIR_LOG_FIELDS" class="com.yggdrasil.labs.log.json.LogFieldCaptureAppender"/>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="com.yggdrasil.labs.log.json.MimirJsonEncoder"/>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
+```
+
+捕获出口必须位于**同一 Logger 的其他出口之前**，尤其必须在 AsyncAppender 之前；其 `active` 缺省为 true，不输出内容。未声明捕获出口时，编码器仍输出基础字段、事件键值对与 MDC，但不调用扩展。`json.*`、环境与实例配置和预设一致；非预设的脱敏规则沿用原刷新发布时机，刷新前事件使用当时有效规则。缺少编码器依赖时，自定义 XML 加载会抛缺类错误并使启动失败。
+
+#### 手工基准
+
+`LogJsonEncoderBenchmark` 不参与默认测试集，不设置性能门槛。手工执行：
+
+```bash
+./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am test \
+  -Dtest=LogJsonEncoderBenchmark -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+基准覆盖 text/json × 0/3 扩展 × 同步 ConsoleAppender/异步 RollingFileAppender，文件出口沿用 server 的按天与 100MB 滚动、30 天及 10GB 保留策略，测量期不触发滚动；为完整排空使用 `maxFlushTime=0`。默认每组 3 轮，每轮预热 5000 条、测量 20000 条。可用 `-Dmimir.boot.log.json.benchmark.samples=...`、`.warmup=...`、`.events=...` 调整。`write-p95`/`write-p99` 从事件创建前计时到真实出口写入和 flush 返回，包含异步排队，另报生产线程调用延迟；写入返回不等于介质持久化。吞吐包含最终异步排空与出口关闭；控制台标准输出重定向到临时文件，不包含终端渲染成本。text 模式保持捕获关闭，注册扩展不被调用。基准结果取决于 JVM、消息与存储环境，不能替代真实部署压测。
+
 ### 日志格式说明
 
 **默认日志格式**：
@@ -960,6 +1112,18 @@ log.debug("Complex: {}", () -> expensiveOperation());
 ## 升级和兼容性
 
 ### v2.4.0
+
+**可选 JSON 与自定义 XML 的键值对兼容性**
+
+- 默认文本输出不变；JSON 需显式依赖与格式设置。JSON 的 MDC 开始参与脱敏，规则见上方说明。
+- 访问日志新增最多九个 SLF4J 键值对。内置文本预设和旧默认 XML 不显示这些字段，但自定义 `%kvp`、logstash `LogstashEncoder` 或 Logback `JsonEncoder` 配置会看到它们，即使没有启用 Mimir JSON；成功终态没有 `errorType`。
+- JSON 捕获出口占用保留键 `mimir.log.fields`，业务不要写入该键。其他出口仅看到固定字符串 `[mimir-fields]`，不会展开内部快照。需要过滤时，自定义 logstash 编码器可配置：
+
+```xml
+<encoder class="net.logstash.logback.encoder.LogstashEncoder">
+    <excludeKeyName>mimir.log.fields</excludeKeyName>
+</encoder>
+```
 
 **旧日志配置改为按天滚动（未选择新预设、使用 Starter 自带 `logback-spring.xml` 的应用）**
 

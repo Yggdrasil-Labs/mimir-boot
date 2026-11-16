@@ -20,6 +20,28 @@ final class KeyValueMasker {
         return maskKeyValueFields(message, fieldNames, replacement);
     }
 
+    boolean isSensitiveKey(String key) {
+        if (key == null || fieldNames.empty) {
+            return false;
+        }
+        for (int suffixLength = 1;
+                suffixLength <= Math.min(key.length(), fieldNames.maxLength);
+                suffixLength++) {
+            String[] candidates = fieldNames.candidates(key.charAt(key.length() - suffixLength));
+            if (candidates == null) {
+                continue;
+            }
+            for (String candidate : candidates) {
+                if (candidate.length() == suffixLength
+                        && key.regionMatches(
+                                true, key.length() - suffixLength, candidate, 0, suffixLength)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** 字段名按首字符分组的查找表：候选保持原长度降序；ASCII 字母同时登记大小写，其余字符只登记原字符，与逐个比较首字符的语义一致。 */
     private static final class FieldNameIndex {
 

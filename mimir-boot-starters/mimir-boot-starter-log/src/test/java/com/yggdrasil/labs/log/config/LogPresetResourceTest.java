@@ -83,7 +83,8 @@ class LogPresetResourceTest {
     void every_spring_property_declares_default_matching_ic3() throws Exception {
         Map<String, String> internal = new HashMap<>();
         Map<String, String> mask = new HashMap<>();
-        for (String name : List.of("common.xml", "container.xml", "server.xml")) {
+        for (String name :
+                List.of("common.xml", "container.xml", "server.xml", "json-support.xml")) {
             try (InputStream input = getClass().getClassLoader().getResourceAsStream(BASE + name)) {
                 NodeList nodes =
                         DocumentBuilderFactory.newInstance()
@@ -108,7 +109,14 @@ class LogPresetResourceTest {
                 }
             }
         }
-        assertThat(internal).isEqualTo(INTERNAL_DEFAULTS);
+        Map<String, String> xmlDefaults = new HashMap<>(INTERNAL_DEFAULTS);
+        xmlDefaults.put("mimir.boot.log.internal.format", "text");
+        xmlDefaults.put("mimir.boot.log.internal.json.capture-active", "false");
+        for (String key :
+                List.of("environment", "instance", "exclude-mdc-keys", "field-length-limits")) {
+            xmlDefaults.put("mimir.boot.log.internal.json." + key, "");
+        }
+        assertThat(internal).isEqualTo(xmlDefaults);
         assertThat(new LogPresetProperties().toInternalProperties()).isEqualTo(INTERNAL_DEFAULTS);
         // D-101：mask 内部键未写入时，启用列表取四组缺省，自定义与替换串为空
         assertThat(mask)
@@ -127,7 +135,7 @@ class LogPresetResourceTest {
         Logger root = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
         assertThat(root.getLevel()).isEqualTo(Level.INFO);
         assertThat(appenderNames(root))
-                .containsExactlyInAnyOrder("ASYNC_FILE_INFO", "ASYNC_FILE_ERROR");
+                .containsExactly("MIMIR_LOG_FIELDS", "ASYNC_FILE_INFO", "ASYNC_FILE_ERROR");
         assertAsync(root, "ASYNC_FILE_INFO", 1024, false, 1000);
         RollingFileAppender<ILoggingEvent> info = file(root, "ASYNC_FILE_INFO");
         assertRolling(info, 104_857_600L, 30, 10_737_418_240L);
@@ -182,7 +190,7 @@ class LogPresetResourceTest {
 
         Logger root = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
         assertThat(root.getLevel()).isEqualTo(Level.INFO);
-        assertThat(appenderNames(root)).containsExactly("CONSOLE");
+        assertThat(appenderNames(root)).containsExactly("MIMIR_LOG_FIELDS", "CONSOLE");
         assertThat(root.getAppender("CONSOLE")).isInstanceOf(ConsoleAppender.class);
         assertDedicatedLogger("access.log", Level.INFO, "CONSOLE");
         assertDedicatedLogger("SQL.JSON", Level.INFO, "CONSOLE");
@@ -297,7 +305,7 @@ class LogPresetResourceTest {
         Logger logger = loggerContext.getLogger(name);
         assertThat(logger.getLevel()).isEqualTo(level);
         assertThat(logger.isAdditive()).isFalse();
-        assertThat(appenderNames(logger)).containsExactly(appender);
+        assertThat(appenderNames(logger)).containsExactly("MIMIR_LOG_FIELDS", appender);
     }
 
     private static List<String> appenderNames(Logger logger) {

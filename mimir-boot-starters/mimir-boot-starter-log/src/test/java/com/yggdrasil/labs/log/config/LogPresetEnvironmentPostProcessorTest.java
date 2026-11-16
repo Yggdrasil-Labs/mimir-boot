@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,12 +22,17 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.DefaultPropertiesPropertySource;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.boot.logging.DeferredLogFactory;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.DefaultResourceLoader;
 
 import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
+import com.yggdrasil.labs.log.json.LogJsonKeys;
+import com.yggdrasil.labs.log.json.LogJsonSettingsCodec;
 
 import ch.qos.logback.classic.LoggerContext;
 
@@ -466,6 +473,430 @@ class LogPresetEnvironmentPostProcessorTest {
 
     private void run(StandardEnvironment environment) {
         run(new SpringApplication(), environment);
+    }
+
+    @Test
+    void invalid_json_format_fails_without_disclosing_configuration() {
+        StandardEnvironment environment =
+                environment(
+                        Map.of(
+                                "logging.config",
+                                CONTAINER,
+                                "mimir.boot.log.format",
+                                "private-yaml"));
+
+        assertThatThrownBy(() -> run(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("mimir.boot.log.format")
+                .hasMessageNotContaining("private-yaml")
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "js-on", "json!"})
+    void blank_and_punctuation_format_values_fail_without_disclosing_configuration(String value) {
+        StandardEnvironment environment =
+                environment(Map.of("logging.config", CONTAINER, "mimir.boot.log.format", value));
+
+        assertThatThrownBy(() -> run(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("属性 mimir.boot.log.format 仅允许 text 或 json")
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+    }
+
+    @Test
+    void format_placeholder_expanding_to_empty_fails_without_disclosing_configuration() {
+        StandardEnvironment environment =
+                environment(
+                        Map.of(
+                                "logging.config",
+                                CONTAINER,
+                                "empty",
+                                "",
+                                "mimir.boot.log.format",
+                                "${empty}"));
+
+        assertThatThrownBy(() -> run(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("mimir.boot.log.format")
+                .hasMessageNotContaining("${empty}")
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+    }
+
+    @Test
+    void format_defaults_to_text_only_when_unset_and_accepts_case_and_outer_whitespace() {
+        StandardEnvironment unset = environment(Map.of("logging.config", CONTAINER));
+        run(unset);
+        assertThat(unset.getProperty(LogJsonKeys.INTERNAL_FORMAT)).isEqualTo("text");
+
+        StandardEnvironment explicit =
+                environment(
+                        Map.of("logging.config", CONTAINER, "mimir.boot.log.format", "  JsOn \t"));
+        run(explicit);
+        assertThat(explicit.getProperty(LogJsonKeys.INTERNAL_FORMAT)).isEqualTo("json");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "classpath:my-logback.xml"})
+    void json_requires_a_recognised_preset(String location) {
+        assertThatThrownBy(
+                        () ->
+                                run(
+                                        environment(
+                                                Map.of(
+                                                        "logging.config",
+                                                        location,
+                                                        "mimir.boot.log.format",
+                                                        "json"))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(
+                        "mimir.boot.log.format=json", "container", "server", "自定义 XML");
+        assertThat(lastEnvironment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        lastEnvironment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    @Test
+    void json_requires_logback_before_checking_the_preset() {
+        System.setProperty(LOGGING_SYSTEM, "none");
+
+        assertThatThrownBy(() -> run(environment(Map.of("mimir.boot.log.format", "json"))))
+                .hasMessageContaining("container", "server", "Logback");
+        assertThatThrownBy(
+                        () ->
+                                run(
+                                        environment(
+                                                Map.of(
+                                                        "mimir.boot.log.json.field-length-limits.[/message]",
+                                                        0))))
+                .hasMessageContaining("mimir.boot.log.json.field-length-limits");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"net.logstash.", "com.fasterxml.jackson."})
+    void json_checks_both_optional_dependencies_before_writing(String excludedPrefix) {
+        SpringApplication application = new SpringApplication();
+        application.setResourceLoader(
+                new DefaultResourceLoader(new WithoutClasses(excludedPrefix)));
+        StandardEnvironment environment =
+                environment(Map.of("logging.config", SERVER, "mimir.boot.log.format", "json"));
+
+        assertThatThrownBy(() -> run(application, environment))
+                .hasMessageContaining("net.logstash.logback:logstash-logback-encoder");
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+
+        run(application, environment(Map.of("logging.config", CONTAINER)));
+        assertThat(lastEnvironment.getProperty(LogJsonKeys.INTERNAL_FORMAT)).isEqualTo("text");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"message", "/a~2", "", "/a~"})
+    void invalid_limit_paths_fail_without_disclosing_values(String pointer) {
+        StandardEnvironment environment =
+                environment(
+                        Map.of(
+                                "logging.config",
+                                CONTAINER,
+                                "mimir.boot.log.json.field-length-limits.[" + pointer + "]",
+                                3));
+
+        assertThatThrownBy(() -> run(environment))
+                .hasMessageContaining("mimir.boot.log.json.field-length-limits", "[...]")
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-2", "private-limit"})
+    void invalid_limits_fail_for_custom_xml_too(String limit) {
+        assertThatThrownBy(
+                        () ->
+                                run(
+                                        environment(
+                                                Map.of(
+                                                        "mimir.boot.log.json.field-length-limits.[/message]",
+                                                        limit))))
+                .hasMessageContaining("mimir.boot.log.json.field-length-limits")
+                .hasMessageNotContaining(limit)
+                .hasNoCause();
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {1.5, 1.0})
+    void rejects_typed_decimal_field_limits_without_truncation(double limit) {
+        StandardEnvironment environment =
+                environment(
+                        Map.of(
+                                "logging.config", CONTAINER,
+                                "mimir.boot.log.json.field-length-limits.[/message]", limit));
+
+        assertThatThrownBy(() -> run(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("mimir.boot.log.json.field-length-limits")
+                .hasMessageNotContaining(Double.toString(limit))
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1.5", "1.0"})
+    void rejects_yaml_decimal_field_limits_without_truncation(String limit) throws IOException {
+        StandardEnvironment environment = yamlLimitEnvironment(limit);
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .get("typed-yaml")
+                                .getProperty("mimir.boot.log.json.field-length-limits[/message]"))
+                .isInstanceOf(Double.class);
+
+        assertThatThrownBy(() -> run(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("mimir.boot.log.json.field-length-limits")
+                .hasMessageNotContaining(limit)
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1", "2147483647"})
+    void accepts_yaml_integer_field_limits_including_upper_bound(String limit) throws IOException {
+        StandardEnvironment environment = yamlLimitEnvironment(limit);
+
+        run(environment);
+
+        assertThat(
+                        LogJsonSettingsCodec.decodeLimits(
+                                environment.getProperty(LogJsonKeys.INTERNAL_FIELD_LENGTH_LIMITS)))
+                .containsOnly(Map.entry("/message", Integer.valueOf(limit)));
+    }
+
+    @Test
+    void rejects_yaml_integer_limit_overflow_without_disclosing_value() throws IOException {
+        StandardEnvironment environment = yamlLimitEnvironment("2147483648");
+
+        assertThatThrownBy(() -> run(environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("mimir.boot.log.json.field-length-limits")
+                .hasMessageNotContaining("2147483648")
+                .hasNoCause();
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    private static StandardEnvironment yamlLimitEnvironment(String limit) throws IOException {
+        String yaml =
+                """
+                logging:
+                  config: %s
+                mimir:
+                  boot:
+                    log:
+                      json:
+                        field-length-limits:
+                          "[/message]": %s
+                """
+                        .formatted(CONTAINER, limit);
+        StandardEnvironment environment = environment(Map.of());
+        new YamlPropertySourceLoader()
+                .load("typed-yaml", new ByteArrayResource(yaml.getBytes(StandardCharsets.UTF_8)))
+                .forEach(source -> environment.getPropertySources().addFirst(source));
+        return environment;
+    }
+
+    @Test
+    void json_publishes_encoded_values_in_the_correct_sources() {
+        String special = "a,b=${unresolved}(中文)";
+        String pointer = "/attributes/" + special;
+        StandardEnvironment environment =
+                environment(
+                        Map.of(
+                                "logging.config",
+                                CONTAINER,
+                                "mimir.boot.log.format",
+                                "json",
+                                "mimir.boot.log.environment",
+                                special,
+                                "mimir.boot.log.instance",
+                                special,
+                                "mimir.boot.log.json.exclude-mdc-keys[0]",
+                                special,
+                                "mimir.boot.log.json.field-length-limits.[" + pointer + "]",
+                                3));
+
+        run(environment);
+
+        assertThat(((MapPropertySource) environment.getPropertySources().get(RESOLVED)).getSource())
+                .containsOnly(
+                        Map.entry(LogJsonKeys.INTERNAL_FORMAT, "json"),
+                        Map.entry(LogJsonKeys.INTERNAL_CAPTURE_ACTIVE, "true"));
+        assertThat(
+                        ((MapPropertySource)
+                                        environment
+                                                .getPropertySources()
+                                                .get(
+                                                        LogPresetSupport
+                                                                .JSON_RESOLVED_PROPERTY_SOURCE))
+                                .getSource())
+                .containsOnly(
+                        Map.entry(
+                                LogJsonKeys.INTERNAL_ENVIRONMENT,
+                                LogJsonSettingsCodec.encode(special)),
+                        Map.entry(
+                                LogJsonKeys.INTERNAL_INSTANCE,
+                                LogJsonSettingsCodec.encode(special)),
+                        Map.entry(
+                                LogJsonKeys.INTERNAL_EXCLUDE_MDC_KEYS,
+                                LogJsonSettingsCodec.encodeList(List.of(special))),
+                        Map.entry(
+                                LogJsonKeys.INTERNAL_FIELD_LENGTH_LIMITS,
+                                LogJsonSettingsCodec.encodeLimits(Map.of(pointer, 3))));
+    }
+
+    @Test
+    void custom_xml_publishes_only_json_settings_and_uses_single_active_profile() {
+        StandardEnvironment environment = environment(Map.of("untouched", "keep"));
+        environment.setActiveProfiles("prod");
+        List<String> sources =
+                environment.getPropertySources().stream().map(source -> source.getName()).toList();
+
+        run(environment);
+
+        assertThat(
+                        environment.getPropertySources().stream()
+                                .map(source -> source.getName())
+                                .toList())
+                .containsExactlyElementsOf(
+                        java.util.stream.Stream.concat(
+                                        java.util.stream.Stream.of(
+                                                LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE),
+                                        sources.stream())
+                                .toList());
+        assertThat(environment.getProperty(LogJsonKeys.INTERNAL_ENVIRONMENT)).isEqualTo("prod");
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        environment.setActiveProfiles("prod", "east");
+        run(environment);
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+        environment.setActiveProfiles();
+        environment.setDefaultProfiles("default-only");
+        run(environment);
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    @Test
+    void explicit_environment_and_relaxed_instance_override_fallback() {
+        StandardEnvironment environment =
+                environment(Map.of("mimir.boot.log.environment", "prod-east"));
+        environment.setActiveProfiles("prod");
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new SystemEnvironmentPropertySource(
+                                "os", Map.of("MIMIR_BOOT_LOG_INSTANCE", "node-01")));
+
+        run(environment);
+
+        assertThat(environment.getProperty(LogJsonKeys.INTERNAL_ENVIRONMENT))
+                .isEqualTo("prod-east");
+        assertThat(environment.getProperty(LogJsonKeys.INTERNAL_INSTANCE)).isEqualTo("node-01");
+    }
+
+    @Test
+    void blank_metadata_is_unset_and_bootstrap_removes_both_residual_sources() {
+        StandardEnvironment environment =
+                environment(
+                        Map.of("mimir.boot.log.environment", " ", "mimir.boot.log.instance", "\t"));
+        environment.setActiveProfiles("prod");
+        run(environment);
+        assertThat(environment.getProperty(LogJsonKeys.INTERNAL_ENVIRONMENT)).isEqualTo("prod");
+        assertThat(environment.containsProperty(LogJsonKeys.INTERNAL_INSTANCE)).isFalse();
+
+        environment.getPropertySources().addFirst(new MapPropertySource("bootstrap", Map.of()));
+        environment
+                .getPropertySources()
+                .addFirst(new MapPropertySource(RESOLVED, Map.of("residual", "x")));
+        run(environment);
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    @Test
+    void server_validation_failure_does_not_write_json_settings() {
+        StandardEnvironment environment =
+                environment(
+                        Map.of(
+                                "logging.config",
+                                SERVER,
+                                "mimir.boot.log.environment",
+                                "prod",
+                                "mimir.boot.log.async.queue-size",
+                                0));
+        assertThatThrownBy(() -> run(environment)).hasMessageContaining("async.queue-size");
+        assertThat(environment.getPropertySources().contains(RESOLVED)).isFalse();
+        assertThat(
+                        environment
+                                .getPropertySources()
+                                .contains(LogPresetSupport.JSON_RESOLVED_PROPERTY_SOURCE))
+                .isFalse();
+    }
+
+    private static final class WithoutClasses extends ClassLoader {
+
+        private final String prefix;
+
+        private WithoutClasses(String prefix) {
+            super(LogPresetEnvironmentPostProcessorTest.class.getClassLoader());
+            this.prefix = prefix;
+        }
+
+        @Override
+        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            if (name.startsWith(prefix)) {
+                throw new ClassNotFoundException(name);
+            }
+            return super.loadClass(name, resolve);
+        }
     }
 
     private void run(SpringApplication application, StandardEnvironment environment) {
