@@ -4,14 +4,14 @@ status: in-progress
 branch: main
 created: 2026-10-23
 released: null
-updated: 2026-11-07
+updated: 2026-11-16
 ---
 
 # v2.4.0 版本记录
 
 ## 当前交付状态
 
-十项需求主体均已实施，专项验收及发布收尾仍在进行。详细依据见下方实施记录及各需求文档。
+十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已于 2026-11-15 实施并完成模块验收与性能基准，完整质量验收见下方记录；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已于 2026-11-09 实施并提交，2026-11-10 补齐专项验收、关闭 TD-049 与 TD-050，完整质量门禁通过；同日修复 Exception 请求绑定异常映射。详细依据见下方实施记录及各需求文档。
 
 | 需求 | 当前状态 |
 |---|---|
@@ -25,10 +25,77 @@ updated: 2026-11-07
 | [Processor](./mybatis-processor/plan.md) | 主体已实施，本地验证通过 |
 | [RPC](./rpc-deprecation/plan.md) | 主体已实施，本地验证通过 |
 | [代码质量工具链](./code-quality-toolchain/plan.md) | 主体已实施，完整门禁通过 |
+| [Log 日志治理（L-04）](./log-governance/plan.md) | 已实施，模块验收、性能基准及完整质量门禁通过 |
+| [Web W-03 回传 requestId](./web-binding/plan.md#w-t5回传-requestid) | 2026-11-08 纳入（D-114）；已实施，计划验收全部完成，见下方记录 |
+| [Log TD-049、TD-050 收尾](./log-runtime/plan.md#t9td-049-与-td-050-收尾) | 2026-11-08 纳入（D-116、D-117）；已实施，计划验收全部完成，TD-049、TD-050 已关闭，见下方记录 |
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
 尚未闭环：Parent、BOM、Processor 的 JDK 25 矩阵及仅 BOM 的 Processor release 21 目标；Log 的 D-101 后真实业务消费者启动和 MVC 默认执行器专项；MyBatis 真实 SQL 到 Log 新预设的联调记录、慢 SQL 吞吐及 P95/P99 基准，以及真实 MySQL/PostgreSQL 方言验收。H2 不能替代真实数据库验收。D-101 已撤销旧所有权机制，转换热路径未改，性能基准无需因该修订重测。既有后续技术债见[台账](../tech-debt-tracker.md)。
+
+### L-04 JSON 日志治理本地实施（2026-11-15）
+
+按 [L-04 计划](./log-governance/plan.md) 实施 T1～T6，未发布：
+
+- **配置与接入**：BOM 管理 `logstash-logback-encoder:8.1`，Log Starter 声明 optional 依赖；新增 `mimir.boot.log.format=text|json`、环境/实例、MDC 排除名单与 JSON Pointer 字段长度限制。默认 text；JSON 预设、后端与依赖不满足时启动失败；所有配置先校验再写内部源。限制值严格按正整数解析，拒绝 YAML 小数及溢出，诊断不回显配置值。
+- **字段与编码**：公开 `LogFieldProvider`、事件/异常只读视图、`MimirJsonEncoder`、`LogFieldCaptureAppender` 与 `json-support.xml`。产生线程捕获不可变字段和脱敏规则代次，扩展排序与归属按主应用上下文处理；关闭前清空注册。同一 Logger 的扩展重入日志仍捕获基础快照。字段规范化只接受约定类型，32 层边界准确，数字白名单拒绝可自定义行为的子类；加工顺序为 MDC 排除、脱敏、按码点截断、编码，链路字段独立提升。
+- **兼容性**：两个预设通过委派编码器保留原 text 编码器、路由、文件和异步策略，旧 `logback-spring.xml` 未改。访问日志增加类型化键值对，保留原消息、级别与终态归并；自定义 `%kvp`/其他 JSON 编码器及保留键可见性写入 [Log README](../../../mimir-boot-starters/mimir-boot-starter-log/README.md#json-日志v240)。文本消费者不因 optional 依赖传递引入 Encoder/Jackson；隔离 JVM 剔除这些 jar 验证两预设 text 正常、JSON 与自定义编码器缺依赖时失败。
+- **本地验证**：`./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-log -am verify` 通过；Log 模块 354 项单元测试、34 项集成测试零失败、零错误、零跳过，架构、覆盖率及主/测试源码 PMD/CPD 通过。新增 11 项真实 JSON 输出集成用例及子 JVM 场景覆盖两预设、自定义 XML、访问/SQL/异常、legacy bootstrap、启动期设置、编程式规则和双异步出口快照。独立全量复审无未解决发现，按公共评分规则判定 PASS（各维度 4 分）。2026-11-16 执行 `bash scripts/engineering.sh quality --mode full --source worktree` 通过，11 项必需检查全部 passed、Sonar 按 `RUN_SONAR=false` 不适用，汇总 findings 为空。覆盖文档、16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、临时签名与全仓 Java 测试/覆盖率/PMD/CPD；`AlwaysFailIT` 负向消费者按预期失败并被验收。完整入口耗时约 9 分 19 秒；随后仅补充本条结果并单独复验文档。以上不是远端 CI、正式发布或发布后消费者结果。
+
+2026-11-16 后续清理 `SuppressWarnings`：删除转换器 `start()` 残留，合并上下文身份检查，将抑制缩到实际比较方法；UTF-8 解码保留不含配置原文的 JDK 安全原因链，移除对应抑制；其余本次涉及的保留项补齐就地理由。Log 模块抑制注解由 24 处降至 21 处。新增两项安全原因链回归，随后同一模块 `verify` 命令再次通过，测试、架构、覆盖率、PMD/CPD 均通过；本次未重跑上方全仓完整质量入口。
+
+2026-11-16 修复复审发现的三项 P1：捕获出口挂载快照前复制当前事件的键值对列表，复用 builder 时各事件保持独立 MDC、字段与规则；访问日志保留完整模板和参数的单次 TurboFilter 判定，覆盖 DENY、ACCEPT 越级、NEUTRAL 及消息去重，Logback 类型隔离不影响替代后端；format 改为严格 text/json 白名单（忽略大小写与首尾空白），仅缺失时默认，拒绝空白、标点变体和展开为空的占位符。新增回归先确认失败，修复后 106 项聚焦用例通过；`./mvnw -o -Pci -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 通过，Log 模块 367 项单元测试、34 项集成测试零失败、零错误、零跳过，架构/覆盖率/PMD/CPD 均通过，无 Logback 的访问日志场景也通过。修复后独立复审无未解决发现，各维度 4 分，按公共规则判定 PASS。本次未重跑全仓完整质量入口。
+
+提交前完整验收使用 `bash scripts/engineering.sh quality --mode full --source index` 检查最终暂存组合，执行结果与对应输入树记录在本轮提交说明中；本地提交不代表远端 CI 或制品发布。
+
+性能基准命令：`./mvnw -o -pl mimir-boot-starters/mimir-boot-starter-log -am -Dtest=LogJsonEncoderBenchmark -Dsurefire.failIfNoSpecifiedTests=false test`，已于 2026-11-16 按修复后的捕获路径重测通过，以下为本轮结果。环境为本地 WSL、Temurin 17.0.19、可用 CPU 16、最大堆 3974 MiB、消息 UTF-8 1028 字节；每轮遍历完整八组矩阵，每组预热 5000 条、测量 20000 条，共三轮。下表为三轮各指标中位数，不设门槛。
+
+| 格式 | 注册扩展数 | 出口 | 吞吐（事件/秒） | 写入 P95（μs） | 写入 P99（μs） |
+|---|---:|---|---:|---:|---:|
+| text | 0 | sync-console | 234,955.68 | 6.354 | 29.850 |
+| text | 0 | async-file | 240,596.40 | 8,099.293 | 9,443.454 |
+| text | 3 | sync-console | 244,752.74 | 5.850 | 28.565 |
+| text | 3 | async-file | 238,362.50 | 8,223.954 | 9,910.847 |
+| json | 0 | sync-console | 120,209.03 | 13.344 | 33.537 |
+| json | 0 | async-file | 126,830.51 | 14,902.343 | 16,608.979 |
+| json | 3 | sync-console | 90,885.05 | 19.349 | 36.478 |
+| json | 3 | async-file | 100,578.94 | 17,886.952 | 19,070.892 |
+
+写入时延从事件创建前到真实出口 write/flush 返回，包含异步排队；吞吐包含最后排空与出口关闭。控制台输出重定向临时文件，不包含终端渲染；文件出口沿用 server 的按天与 100MB 滚动、30 天/10GB 保留策略，测量期间未触发滚动，`maxFlushTime=0` 用于完整排空。每轮核对全部输出行数、完成数与错误状态；写入返回不等于介质持久化。text 模式不调用注册的扩展，组间差异包含 JIT 和文件 I/O 波动；本机结果不构成跨机器承诺或真实部署压测。
+
+### W-T5 与 T9 本地实施（2026-11-09）
+
+按用户要求先实施简单部分，2026-11-09 提交为 `c30afdc`（Log）、`2ea9df5`（Web），记录见 `8c861bd`：
+
+- **Log T9**：`MdcUtil.putAll` 改为合并语义，跳过 null 键与 null/空串值；`MdcTasks.snapshot()` 去掉二次复制；`MdcTaskExecutionAutoConfiguration` 不再注册 `MdcPropagationProperties`；`SensitiveDataConverterInternals` 移入测试源集；旧 `logback-spring.xml` 四个文件 appender 的月目录 `%d` 标记 `aux`。Log README 新增"升级和兼容性"章节，滚动策略补充归档目录说明。
+- **Web W-T5**：`TraceInterceptor` 紧接 `X-Trace-Id` 之后、请求属性与 MDC 之前回传 `X-Request-Id`，响应中已有该头时保留原值。Web README 同步拦截器说明、响应头示例、CORS 暴露头示例及"升级和兼容性"章节。
+- **TDD**：新增行为用例先确认失败再实现：`MdcUtilTest` 的合并与跳过无效条目两条、`LogPresetResourceTest` 旧 XML 主周期一条、`TraceInterceptorTest` 的合法回传、生成回传、再派发单值、写头失败、子类对照五条。`MdcUtilTest` 的"空输入不变"与 `TraceInterceptorTest` 的"已有头保留"在旧实现下本就成立，作为回归护栏保留。
+
+验证：`./mvnw -o -T2 -Pci -pl mimir-boot-starters/mimir-boot-starter-log,mimir-boot-starters/mimir-boot-starter-web -am verify` 通过，Common、Test、Log、Exception、Web 各模块单元与集成测试零失败、零错误、零跳过，覆盖率与 PMD/CPD 门禁通过；Log 主制品 jar 已核对不含 `SensitiveDataConverterInternals`。未运行完整质量入口 `scripts/engineering.sh quality`，不代表 CI、发布或消费者验证。随后经独立代码审查（CONDITIONAL，无 P0），按其意见补充异步再派发与排除路径用例、写头失败的 traceId 断言、开关开启时不注册属性 Bean 的断言（关闭时的同类断言恒成立，仅作对照），Web 升级说明补充"应用内在拦截器之后写该头"的影响，并回写 Web design 与 plan；修复后全量重审为 PASS（加权均分 4.59，无 P0/P1）。
+
+2026-11-09 提交时登记的未完成验收，已于 2026-11-10 全部补齐（未提交、未发布）：
+
+- **T9 受控时钟滚动清理**：新增 `config/LegacyLogbackRollingTest`，通过真实 `LogbackLoggingSystem` 加载旧 XML，以 `setCurrentTime` 与活动文件修改时间固定时钟，并经 `cleanUpFuture`、`compressionFuture` 等待异步任务。3 个用例覆盖：首次清理按文件名日期删除回溯窗口内归档、早于"保留天数 + 32 天"的归档永不清理、当月遗留归档首次不删且满期后删除；错误日志 60 天窗口删到前两个月目录；持续运行不回溯而重启重新回溯 32 天。变异检查：去掉 `aux` 恢复按月滚动后 3 个用例全部失败。该测试为行为刻画，不存在先失败阶段。
+- **W-T5 剩余集成**：新增 `advice/RequestIdHeaderMvcIntegrationTest`（接入 Exception 统一封装：500 与缺少参数的 400 带头；处理器匹配阶段 405、415、406 及 params 不匹配不带头；默认静态资源 404 带头；前置 Filter 写入值保留；Filter 拒绝 401 与更早拦截器拒绝 403 不带头）、`advice/EagerMultipartTraceMvcIntegrationTest`（真实容器非懒解析 413 不带头），扩展 `ExistingMultipartTraceMvcIntegrationTest`（懒解析 413 带头）、`MdcAsyncServletIntegrationTest`（真实容器 forward 单值）、`WebAutoConfigurationIT`（`add-mappings=false` 的 404 不带头）。两个 multipart 测试共用的请求构造抽为测试辅助类 `OversizedUploadRequests`。
+- **完整质量门禁**：`bash scripts/engineering.sh quality --mode full --source worktree` 首次因测试源码 CPD 检出上述两个 multipart 测试 13 行重复而失败，抽取辅助类后重跑通过：引导、docs、构建模型、发布契约、隔离消费者、发布签名、Java 质量、测试、覆盖率、PMD、CPD 共 11 项通过，Sonar 按 `RUN_SONAR=false` 不适用。测试共 1,725 项，唯一失败为证明 Failsafe 门禁有效的预期夹具 `AlwaysFailIT`。Exception 修复后再次运行同一入口，11 项通过、Sonar 不适用，测试共 1,727 项，唯一失败仍为预期夹具 `AlwaysFailIT`。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
+- **Exception 请求绑定异常补充映射**：上述 W5 用例发现 params 条件不匹配抛出的 `UnsatisfiedServletRequestParameterException` 经统一封装返回 500，Spring 原生为 400。根因是 `ServletRequestBindingException` 族（另含缺少 Cookie、缺少矩阵变量及基类）无专用分支，落入 `Exception` 兜底。用户确认当即修复：`MimirExceptionHandler` 新增 `handleServletRequestBindingException`，返回 400 与 `PARAM_INVALID`，使用固定文案且日志只记异常类型，不回显请求参数值；缺参数、请求头、路径变量的专用分支按继承深度优先，行为不变。按 E-01 "选择明确类型" 的设计纳入，未改为全局适配 ErrorResponse。单测覆盖整族三种异常及不回显，MVC 集成覆盖真实处理器匹配阶段 400 与缺参数仍为 `PARAM_MISSING`；公开处理方法数量护栏由 21 更新为 22；Web 侧 params 不匹配用例恢复严格断言 400。Exception README 映射表与升级说明、design I2 映射表已同步。
+
+#### TD-049 关闭（2026-11-10，未发布）
+
+来源为 2026-11-02 v2.4.0 Log 预设整体审查：旧 `logback-spring.xml` 四个文件 appender 的 `fileNamePattern` 为 `%d{yyyy-MM}/xxx-%d{yyyy-MM-dd}-%i.log.gz`，第一个 `%d` 未标记 `aux`，Logback 以月为主滚动周期，`maxHistory` 30/60 实为月数，与注释"保留天数"不符，实际只受 `totalSizeCap` 约束。
+
+处置（D-116，提交 `c30afdc`）：月目录 `%d` 标记 `aux`，主周期改为按天，目录、文件名格式与数值不变；Log README 升级说明写明遗留归档两个方向的影响、备份范围与手工清理判断依据。验收：`LogPresetResourceTest` 断言旧 XML 四个 appender 主周期为天；`LegacyLogbackRollingTest` 以受控时钟验证保留天数生效、提前删除与长期残留两个方向及重启回溯，变异检查有效；完整质量门禁通过。台账条目已移除，编号不再复用。
+
+#### TD-050 关闭（2026-11-10，未发布）
+
+来源为 2026-11-02 Log 模块第三轮整体审查，四项均不影响当时正确性：
+
+- `MdcUtil.putAll` 注释为"批量设置"，实际经 `MDC.setContextMap` 整体替换，会清除已有 traceId/spanId。
+- `SensitiveDataConverterInternals` 在 D-101 后只剩测试钩子，仍为 public，下游可调用以清空全局快照、改写 Context 引用。
+- `MdcTasks.snapshot()` 在 `MDC.getCopyOfContextMap()` 已返回副本后再复制一次。
+- `MdcTaskExecutionAutoConfiguration` 注册的 `MdcPropagationProperties` Bean 无读取方。
+
+处置（D-117，提交 `c30afdc`）：`putAll` 改为合并写入并在 Log README 升级说明中提示行为变更；测试钩子移入测试源集，主制品不再包含；去掉多余复制；删除无用注册并保留属性类以生成配置元数据。验收：`MdcUtilTest`、`MdcTasksTest`、`MdcTaskExecutionAutoConfigurationTest` 及 Log 模块 `clean verify`、独立代码审查（PASS）与上述完整质量门禁均通过。台账条目已移除，编号不再复用。
 
 ### 第二批测试优化与模块并行（2026-11-07）
 
@@ -122,6 +189,8 @@ updated: 2026-11-07
 
 本页汇总当前交付状态并保留各阶段实施记录。下表按现有模块组织，每个已纳入的需求编号均在相应规格与计划内覆盖；Processor和RPC使用精简设计。未纳入方向不因补齐SDD自动变为本轮需求。
 
+2026-11-06 新增 Log 的 L-04 [JSON 日志治理规划](./log-governance/brainstorm.md)：方向讨论已收敛，2026-11-08 补齐 SDD 草稿（D-112、D-113 补充决定）；与 L-01/L-02 的已记录实施进度分开；2026-11-15 实施、2026-11-16 完成完整质量验收，见上方 L-04 记录。
+
 ## 推荐方案与需求文档
 
 | 模块 | 覆盖需求 | 推荐方案 | SDD |
@@ -129,10 +198,11 @@ updated: 2026-11-07
 | [Parent讨论](./parent-build/brainstorm.md) | P-01～P-05、PC-01～PC-03 | 公共默认值与JDK适配分离；原生开关独立；GPG可选；发布POM保留覆盖能力 | [规格](./parent-build/spec.md) · [设计](./parent-build/design.md) · [计划](./parent-build/plan.md) |
 | [BOM讨论](./bom-dependencies/brainstorm.md) | B-01～B-03 | 只托管binding、OOXML、COLA DTO；消费者按需声明；验证继承与import两条路径 | [规格](./bom-dependencies/spec.md) · [设计](./bom-dependencies/design.md) · [计划](./bom-dependencies/plan.md) |
 | [Common讨论](./common-contracts/brainstorm.md) | C-01、C-02、C-04、C-07 | 兼容命名工厂；消息允许为空；复制分页元数据；不可变完整批量结果；COLA独立可选 | [规格](./common-contracts/spec.md) · [设计](./common-contracts/design.md) · [计划](./common-contracts/plan.md) |
-| [Log讨论](./log-runtime/brainstorm.md) | L-01、L-02 | 容器/服务器显式预设；少量可覆盖属性；MDC提交快照与执行后恢复 | [规格](./log-runtime/spec.md) · [设计](./log-runtime/design.md) · [计划](./log-runtime/plan.md) |
+| [Log讨论](./log-runtime/brainstorm.md) | L-01、L-02、TD-049、TD-050 | 容器/服务器显式预设；少量可覆盖属性；MDC提交快照与执行后恢复；旧XML按天滚动与putAll合并语义（D-116、D-117） | [规格](./log-runtime/spec.md) · [设计](./log-runtime/design.md) · [计划](./log-runtime/plan.md) |
+| [Log 日志治理讨论](./log-governance/brainstorm.md) | L-04 | 可选 JSON；访问字段结构化；全量 MDC 加排除；沿用脱敏与路由 | [规格](./log-governance/spec.md) · [设计](./log-governance/design.md) · [计划](./log-governance/plan.md) |
 | [Exception讨论](./exception-contracts/brainstorm.md) | E-01、E-02 | 标准HTTP状态与协议头；结构化校验明细显式启用，保留默认响应形态 | [规格](./exception-contracts/spec.md) · [设计](./exception-contracts/design.md) · [计划](./exception-contracts/plan.md) |
-| [Web讨论](./web-binding/brainstorm.md) | W-01、W-02、C-07接入 | Java Time缺省格式器；大整数按阈值可选字符串化；Web承担R MixIn与兼容开关 | [规格](./web-binding/spec.md) · [设计](./web-binding/design.md) · [计划](./web-binding/plan.md) |
-| [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明 | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
+| [Web讨论](./web-binding/brainstorm.md) | W-01、W-02、C-07接入、W-03 | Java Time缺省格式器；大整数按阈值可选字符串化；Web承担R MixIn与兼容开关；响应回传requestId（D-114） | [规格](./web-binding/spec.md) · [设计](./web-binding/design.md) · [计划](./web-binding/plan.md) |
+| [MyBatis讨论](./mybatis-capabilities/brainstorm.md) | M-04、D-59说明、D-69转换 | 独立慢SQL WARN与阈值；IPage到COLA；仅补searchCount=false说明（D-115 追加项已由 D-119、D-120 撤出） | [规格](./mybatis-capabilities/spec.md) · [设计](./mybatis-capabilities/design.md) · [计划](./mybatis-capabilities/plan.md) |
 | [Processor讨论](./mybatis-processor/brainstorm.md) | D-71 | 支持源版本跟随编译器；准确解释生成全限定名冲突 | [规格](./mybatis-processor/spec.md) · [设计](./mybatis-processor/design.md) · [计划](./mybatis-processor/plan.md) |
 | [RPC Core讨论](./rpc-deprecation/brainstorm.md) | D-75 | 仅增强旧入口删除预告，保留原始since、兼容适配与运行行为 | [规格](./rpc-deprecation/spec.md) · [设计](./rpc-deprecation/design.md) · [计划](./rpc-deprecation/plan.md) |
 | [代码质量讨论](./code-quality-toolchain/brainstorm.md) | Q-01～Q-06、D-102～D-110 | 规则 jar 提供独立插件入口；Parent 接入 PMD/CPD，下游各工具独立开关默认只报告，本仓库严格；starter-test 提供 ArchUnit 规则库；Spotless/JaCoCo 语义不变 | [规格](./code-quality-toolchain/spec.md) · [设计](./code-quality-toolchain/design.md) · [计划](./code-quality-toolchain/plan.md) |
@@ -163,7 +233,7 @@ flowchart LR
 
 跨模块约定：Common只定义响应与转换语义，Web拥有C-07的Jackson实现；BOM只托管COLA版本，Common/MyBatis各自维护optional与无COLA类路径；MyBatis产生SQL.SLOW事件，Log负责新预设路由；HTTP状态由异常处理模块决定，Common新工厂不决定HTTP。
 
-Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容需共同交付：适配归属 Web W-TC，联合 MVC 验收归属 Web W-T4，Exception T4 复核其结果；不新增 Exception→Web 依赖，也不扩展 W-03。仅 Exception 模块通过不足以完成 E6/W4 验收。Log 的预设默认规则须保留用户启动默认属性中的显式列表及空列表；无可用 Logback 且未选新预设时，早期入口退出，独立 MDC 能力保持可组合。
+Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容需共同交付：适配归属 Web W-TC，联合 MVC 验收归属 Web W-T4，Exception T4 复核其结果；不新增 Exception→Web 依赖，E6/W4 范围内也不扩展 W-03（W-03 另由 D-114 以 Web W5 纳入）。仅 Exception 模块通过不足以完成 E6/W4 验收。Log 的预设默认规则须保留用户启动默认属性中的显式列表及空列表；无可用 Logback 且未选新预设时，早期入口退出，独立 MDC 能力保持可组合。
 
 2026-10-31 设计审查补充的跨模块约定（除注明的 D-97～D-100 外为推荐，非逐项确认）：
 
@@ -177,7 +247,7 @@ Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容�
 
 ## 范围边界
 
-Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序、完整JSON日志、W-03请求标识回传等不纳入；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
+Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序等不纳入（W-03 请求标识回传原不纳入，2026-11-08 由 D-114 纳入）；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独实施，本地验收与基准结果见上方 L-04 记录。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
 
 TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../tech-debt-tracker.md)。
 
@@ -216,9 +286,9 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **集成测试结构调整**：仓库质量门禁只允许单个 Failsafe execution、不允许自定义报告目录与 execution 级排除，与计划的三个独立 execution 冲突。经用户决定，legacy bootstrap 与替代后端两组场景改由 `LogIsolatedJvmIntegrationTest` 按场景组装类路径拉起子 JVM 执行（各 5 个场景），专用依赖不进入测试类路径，由 `maven-dependency-plugin:copy` 构建时复制到 `target/` 供子 JVM 使用；未修改 `tools/`。
 - **未覆盖**：JDK 25 未验证；MVC 默认执行器选择未单独验证；“取得令牌至发布前并发输出”只以单线程语义用例验证，未做多线程竞争测试。未发布。
 - **整体审查修复（2026-11-02）**：MDC 适配改为只作用于 `applicationTaskExecutor` 的 BeanPostProcessor，复用 Boot Builder 自建并显式设置装饰器的线程池不再被覆盖；未选预设的旧配置不取得所有权，恢复“最后刷新者发布”语义；转换器仅在全局引用为空或上下文为 SLF4J 当前 LoggerContext 时重绑；`server.xml` 的 ERROR 过滤移到异步 appender 入队前；EPP 改为在全部 EnvironmentPostProcessor 之后执行；无 SpringApplication 时所有权按 Environment 绑定与释放；早期监听器只订阅三类事件；资源测试改用临时日志目录。审查建议将 `RpcTracerBridge.extract` 改为默认方法，因 RPC 计划决策边界禁止取消旧抽象约束，未采纳。
-- **第二轮审查修复（2026-11-02）**：运行期配置刷新以原 SpringApplication 再次调用 EPP 时跳过（已从 spring-cloud-context 4.1.6 字节码确认该调用路径），避免刷新配置异常时置空脱敏快照；新预设归档目录日期改为 `%d{yyyy-MM,aux}`，按天滚动、保留天数生效（旧 `logback-spring.xml` 同类问题登记 [TD-049](../tech-debt-tracker.md#td-049-旧日志配置按月滚动)，本轮不改旧行为）；取得所有权不再清空转换器 Context 引用；公开 `publishConfiguration` 清除启动期缓存；非 ASCII 首字符查表改为排序数组二分查找；删除仅测试使用的所有权释放入口；EPP 排序说明改为不保证与同为最低优先级处理器的先后。审查再次建议 `RpcTracerBridge.extract` 改默认方法，按 RPC 计划决策边界未采纳。
+- **第二轮审查修复（2026-11-02）**：运行期配置刷新以原 SpringApplication 再次调用 EPP 时跳过（已从 spring-cloud-context 4.1.6 字节码确认该调用路径），避免刷新配置异常时置空脱敏快照；新预设归档目录日期改为 `%d{yyyy-MM,aux}`，按天滚动、保留天数生效（旧 `logback-spring.xml` 同类问题登记 [TD-049](#td-049-关闭2026-11-10未发布)，本轮不改旧行为）；取得所有权不再清空转换器 Context 引用；公开 `publishConfiguration` 清除启动期缓存；非 ASCII 首字符查表改为排序数组二分查找；删除仅测试使用的所有权释放入口；EPP 排序说明改为不保证与同为最低优先级处理器的先后。审查再次建议 `RpcTracerBridge.extract` 改默认方法，按 RPC 计划决策边界未采纳。
 - **第三轮审查修复（2026-11-02）**：未选预设且 Environment 中无任何 `mimir.boot.log.mask.*` 属性时 EPP 不再发布空快照，恢复从 LoggerContext（logback.xml `<property>`）/系统属性懒加载规则；`mimir.boot.log.mdc.enabled` 改为默认 `false`，默认执行器 MDC 适配须显式开启；经用户决定调整 RPC 计划决策边界，`RpcTracerBridge.extract` 改为空默认方法（源码与二进制兼容），仅实现 `extractScope` 的 Bridge 可在 `-Werror` 下编译，README 同步。
-- **Log 模块整体审查修复（2026-11-02）**：LoggerContext 中 mask 列表属性改为可无损往返的编码（顶层逗号转义为 `\,`，拆分跳过 `()`/`{}`/`[]` 内及转义逗号），修复刷新后 `reloadConfig`/`addCustomPattern` 把 `\d{15,18}` 等自定义正则拆坏导致规则失效（2.3.0 起既有，预设使该路径常规化）；新预设校验全部先于发布，失败时不再置空全局快照（删除 invalidate 链），同 JVM 其他应用规则不受影响；运行登记按上下文集合维护，同一 SpringApplication 多个存活上下文时关闭其一不再误判后续刷新为新启动；MDC 适配不再直接引用 Boot 3.4 移除的 `TaskExecutorBuilder`/`TaskExecutorCustomizer`（按类名判断）；访问日志 Filter 顺序改为 `HIGHEST_PRECEDENCE + 2`，位于 Boot 观测 Filter 之内以保留 traceId/spanId。低优先级项登记 [TD-050](../tech-debt-tracker.md#td-050-log-模块低优先级清理)。
+- **Log 模块整体审查修复（2026-11-02）**：LoggerContext 中 mask 列表属性改为可无损往返的编码（顶层逗号转义为 `\,`，拆分跳过 `()`/`{}`/`[]` 内及转义逗号），修复刷新后 `reloadConfig`/`addCustomPattern` 把 `\d{15,18}` 等自定义正则拆坏导致规则失效（2.3.0 起既有，预设使该路径常规化）；新预设校验全部先于发布，失败时不再置空全局快照（删除 invalidate 链），同 JVM 其他应用规则不受影响；运行登记按上下文集合维护，同一 SpringApplication 多个存活上下文时关闭其一不再误判后续刷新为新启动；MDC 适配不再直接引用 Boot 3.4 移除的 `TaskExecutorBuilder`/`TaskExecutorCustomizer`（按类名判断）；访问日志 Filter 顺序改为 `HIGHEST_PRECEDENCE + 2`，位于 Boot 观测 Filter 之内以保留 traceId/spanId。低优先级项登记 [TD-050](#td-050-关闭2026-11-10未发布)。
 - **D-101 预设启动机制简化（2026-11-03）**：按 [Log 计划 D-101 修订](./log-runtime/plan.md#d-101-修订预设启动机制简化)删除 `LogPresetOwnership`、`LogPresetBootstrapListener`、`LogbackMaskBootstrap` 与转换器启动期规则缓存。EPP 只做校验、规则选择并写内部属性源（预设选中时必定存在，mask 键仅在用户已配置时写入），`common.xml` 以三条 `springProperty` 写入 LoggerContext，转换器在 Context 带 mask 属性时于 `start()` 切换规则代次（F2，用户选择），刷新恢复“最后刷新者发布”并以“父 Environment 含内部源”守卫预设应用的子上下文；列表编码迁至不依赖 Logback 的 `MaskListCodec`；预设新增拒绝无法解析的 `${` 占位符。经四轮独立文档审查后用户接受剩余风险实施。
 - **D-101 验证**：`./mvnw -pl mimir-boot-starters/mimir-boot-starter-log -am clean verify` 通过（单元 268、集成 22，含子 JVM 中 Spring Cloud 场景 6 个、替代后端场景 5 个）。新增覆盖：索引列表三阶段、预设应用启动期并发输出不含明文、旧 XML reset 后重载保留已发布规则、无/含 spring-cloud-context 的双存活应用、真实 `ConfigDataContextRefresher` 推送非法规则时刷新失败且规则不变、bootstrap 残留内部源移除、`${` 校验。随后 `bash scripts/engineering.sh quality --mode full --source worktree` 通过（docs-full、build-model、release 合约/消费者/签名、Java 质量/测试/覆盖率均 passed，Sonar 未启用）。未覆盖：真实业务消费者应用启动未在本修订后验证；性能基准未重测（转换热路径未改）。
 

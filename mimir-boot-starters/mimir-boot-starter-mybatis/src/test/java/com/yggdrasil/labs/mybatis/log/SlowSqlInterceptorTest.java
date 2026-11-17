@@ -392,10 +392,14 @@ class SlowSqlInterceptorTest {
         }
 
         @Override
-        public void parameterize(Statement statement) {}
+        public void parameterize(Statement statement) {
+            // 此夹具仅模拟元数据读取和 update 调用，无需绑定 JDBC 参数。
+        }
 
         @Override
-        public void batch(Statement statement) {}
+        public void batch(Statement statement) {
+            // 此夹具仅用于单次 update 拦截测试，无需执行 JDBC 批处理。
+        }
 
         @Override
         public int update(Statement statement) {

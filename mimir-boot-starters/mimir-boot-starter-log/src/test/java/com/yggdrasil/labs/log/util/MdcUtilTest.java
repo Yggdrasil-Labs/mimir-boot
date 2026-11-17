@@ -101,15 +101,40 @@ class MdcUtilTest extends BaseUnitTest {
     }
 
     @Test
-    void putAllReplacesExistingContextWhileNullAndEmptyMapsPreserveIt() {
-        MdcUtil.put("previous", "value");
-        MdcUtil.putAll(Map.of("replacement", "value"));
-        assertNull(MdcUtil.get("previous"));
-        assertEquals("value", MdcUtil.get("replacement"));
+    void putAllMergesIntoExistingContext() {
+        MdcUtil.put("traceId", "trace-1");
+        MdcUtil.put("spanId", "span-1");
+        MdcUtil.put("orderId", "o-1");
+
+        MdcUtil.putAll(Map.of("orderId", "o-2", "userId", "u-1"));
+
+        assertEquals(
+                Map.of("traceId", "trace-1", "spanId", "span-1", "orderId", "o-2", "userId", "u-1"),
+                MdcUtil.getAll());
+    }
+
+    @Test
+    void putAllWithNullOrEmptyMapKeepsContext() {
+        MdcUtil.put("orderId", "o-1");
 
         MdcUtil.putAll(null);
         MdcUtil.putAll(Map.of());
-        assertEquals("value", MdcUtil.get("replacement"));
+
+        assertEquals(Map.of("orderId", "o-1"), MdcUtil.getAll());
+    }
+
+    @Test
+    void putAllSkipsNullKeysAndNullOrEmptyValues() {
+        MdcUtil.put("orderId", "o-1");
+        Map<String, String> context = new HashMap<>();
+        context.put(null, "ignored");
+        context.put("orderId", null);
+        context.put("userId", "");
+        context.put("tenantId", "t-1");
+
+        assertDoesNotThrow(() -> MdcUtil.putAll(context));
+
+        assertEquals(Map.of("orderId", "o-1", "tenantId", "t-1"), MdcUtil.getAll());
     }
 
     @Test

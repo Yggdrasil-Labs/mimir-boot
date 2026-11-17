@@ -2,6 +2,7 @@ package com.yggdrasil.labs.web.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +15,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcRegistrations;
+import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.ComponentScan;
@@ -21,6 +23,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.handler.HandlerExceptionResolverComposite;
 import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -82,6 +87,114 @@ class WebAutoConfigurationIT {
                                     .andExpect(status().isOk())
                                     .andExpect(jsonPath("$.data").value("payload"))
                                     .andExpect(jsonPath("$.traceId").doesNotExist());
+                        });
+    }
+
+    /** 处理器内异常由 Spring 默认解析器处理；接入 Exception 统一封装的路径另行验收。 */
+    @Test
+    void mvcChainEchoesRequestIdOnSuccessAndHandlerException() {
+        runner.withConfiguration(
+                        AutoConfigurations.of(
+                                WebMvcAutoConfiguration.class, JacksonAutoConfiguration.class))
+                .withBean(RequestIdController.class, RequestIdController::new)
+                .run(
+                        ctx -> {
+                            MockMvc mvc =
+                                    MockMvcBuilders.webAppContextSetup(
+                                                    ctx.getSourceApplicationContext())
+                                            .build();
+                            mvc.perform(
+                                            get("/request-id")
+                                                    .header(
+                                                            HttpHeaderConstants.REQUEST_ID_HEADER,
+                                                            "request-1"))
+                                    .andExpect(status().isOk())
+                                    .andExpect(
+                                            header().string(
+                                                            HttpHeaderConstants.REQUEST_ID_HEADER,
+                                                            "request-1"));
+                            // 拦截器执行后在处理器内抛出的异常，响应仍带本次 requestId
+                            mvc.perform(
+                                            get("/request-id/failure")
+                                                    .header(
+                                                            HttpHeaderConstants.REQUEST_ID_HEADER,
+                                                            "request-2"))
+                                    .andExpect(status().isBadRequest())
+                                    .andExpect(
+                                            header().string(
+                                                            HttpHeaderConstants.REQUEST_ID_HEADER,
+                                                            "request-2"));
+                            // 拦截器排除路径即使正常处理也不回传
+                            mvc.perform(
+                                            get("/actuator/request-id")
+                                                    .header(
+                                                            HttpHeaderConstants.REQUEST_ID_HEADER,
+                                                            "request-3"))
+                                    .andExpect(status().isOk())
+                                    .andExpect(
+                                            header().doesNotExist(
+                                                            HttpHeaderConstants.REQUEST_ID_HEADER));
+                        });
+    }
+
+    @Test
+    void disabledWebAutoConfigurationDoesNotEchoRequestId() {
+        runner.withConfiguration(
+                        AutoConfigurations.of(
+                                WebMvcAutoConfiguration.class, JacksonAutoConfiguration.class))
+                .withPropertyValues("mimir.boot.web.enabled=false")
+                .withBean(RequestIdController.class, RequestIdController::new)
+                .run(
+                        ctx ->
+                                MockMvcBuilders.webAppContextSetup(
+                                                ctx.getSourceApplicationContext())
+                                        .build()
+                                        .perform(
+                                                get("/request-id")
+                                                        .header(
+                                                                HttpHeaderConstants
+                                                                        .REQUEST_ID_HEADER,
+                                                                "request-1"))
+                                        .andExpect(status().isOk())
+                                        .andExpect(
+                                                header().doesNotExist(
+                                                                HttpHeaderConstants
+                                                                        .REQUEST_ID_HEADER)));
+    }
+
+    @Test
+    void noHandlerFoundWithoutStaticResourcesDoesNotEchoRequestId() {
+        // 关闭静态资源映射后找不到处理器发生在拦截器之前
+        runner.withConfiguration(
+                        AutoConfigurations.of(
+                                WebMvcAutoConfiguration.class, JacksonAutoConfiguration.class))
+                .withPropertyValues("spring.web.resources.add-mappings=false")
+                .run(
+                        ctx ->
+                                MockMvcBuilders.webAppContextSetup(
+                                                ctx.getSourceApplicationContext())
+                                        .build()
+                                        .perform(
+                                                get("/no-such-handler")
+                                                        .header(
+                                                                HttpHeaderConstants
+                                                                        .REQUEST_ID_HEADER,
+                                                                "request-1"))
+                                        .andExpect(status().isNotFound())
+                                        .andExpect(
+                                                header().doesNotExist(
+                                                                HttpHeaderConstants
+                                                                        .REQUEST_ID_HEADER)));
+    }
+
+    @Test
+    void reactiveApplicationDoesNotRegisterTraceInterception() {
+        new ReactiveWebApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(WebAutoConfiguration.class))
+                .run(
+                        ctx -> {
+                            assertThat(ctx).doesNotHaveBean(TraceInterceptor.class);
+                            assertThat(ctx).doesNotHaveBean(WebMvcConfig.class);
                         });
     }
 
@@ -293,6 +406,24 @@ class WebAutoConfigurationIT {
     }
 
     private static final class ConsumerValue {}
+
+    @RestController
+    static class RequestIdController {
+        @GetMapping("/request-id")
+        String ok() {
+            return "ok";
+        }
+
+        @GetMapping("/request-id/failure")
+        String failure() {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+
+        @GetMapping("/actuator/request-id")
+        String excluded() {
+            return "excluded";
+        }
+    }
 
     @RestController
     static class DisabledResponseController {

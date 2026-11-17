@@ -423,6 +423,7 @@ spring:
 | `ConstraintViolationException`（返回值、混合或无法确认来源） | 500 | `SYSTEM_ERROR` |
 | `MissingRequestHeaderException` | 400 | `PARAM_MISSING` |
 | `MissingPathVariableException` | 500 | `SYSTEM_ERROR` |
+| 其余 `ServletRequestBindingException`（参数条件不匹配、缺少 Cookie、缺少矩阵变量等） | 400 | `PARAM_INVALID` |
 | `HttpMediaTypeNotAcceptableException` | 406 | `OPERATION_NOT_ALLOWED` |
 | `HttpMediaTypeNotSupportedException` | 415 | `OPERATION_NOT_ALLOWED` |
 | `MaxUploadSizeExceededException` | 413 | `PARAM_INVALID` |
@@ -437,6 +438,7 @@ spring:
 - 响应工厂最多调用一次。工厂返回 `ResponseEntity` 时只使用其 body 和合法非冲突头，不能覆盖处理器已解析的状态或异常协议头；工厂失败时以默认 `R` 降级且不返回校验明细。旧处理器方法保留静态 `@ResponseStatus`，使返回普通对象的旧子类继续继承原状态；默认实现的最终状态由 `ResponseEntity` 表达，动态状态不能只靠静态注解判断。
 - 合并结果交由原生 MVC 写出；不可表示的媒体类型、Resource、条件或 Range 请求以及实际写出失败遵循框架行为。工厂显式 Content-Type 同样经过原生协商，写出失败不属于工厂降级。
 - 仅 Servlet MVC 环境自动注册处理器、默认响应工厂和 `ExceptionProperties`。Reactive 应用如需工厂或属性绑定，应自行声明或启用。
+- 其余 `ServletRequestBindingException`（如 `@GetMapping(params = ...)` 条件不匹配抛出的 `UnsatisfiedServletRequestParameterException`、缺少 Cookie）由新增分支返回 400 和 `PARAM_INVALID`，此前落入通用兜底返回 500。响应使用固定文案，不回显请求参数值。子类若已用其他方法名声明这些类型的映射，会与新分支产生启动二义性，应覆盖 `handleServletRequestBindingException` 或移除重复映射。
 - 子类使用单参构造时沿用旧明细模式；需要结构化配置时使用双参构造。子类以不同方法名重复声明 `ResponseStatusException` 或 `ErrorResponseException` 映射会导致启动二义性，应覆盖对应新方法或移除重复映射；这些异常的业务子类也会进入新分支。
 - 自动配置仍通过原 `mimirExceptionHandler(ExceptionResponseFactory)` Bean 方法创建处理器，继承配置类并覆盖该方法的旧扩展继续生效。默认实现使用 `@EnableConfigurationProperties` 注册的绑定属性 Bean，额外声明的同类型 Bean 不参与默认处理器的属性选择；自定义处理器所需属性由其构造方式决定。显式声明处理器 Bean 时自动配置仍退让。
 - 与 Web Starter 同时使用时，可写的 `R` 异常响应沿用已有 traceId 增强及其开关和用户覆盖规则；`fail` 字段由 Web 的独立配置控制。工厂传入 `null` message 时，JSON 的空值策略可能省略 message 字段。

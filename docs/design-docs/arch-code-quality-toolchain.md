@@ -50,7 +50,7 @@ flowchart LR
 | 格式：缩进、换行、空白、import 顺序与未使用 import | Spotless | PMD 不启用 `UnnecessaryImport`、`CommentSize` 等格式相关规则，codestyle 类目只启用命名规则 |
 | 注释：公开 API 的 Javadoc 存在性、Javadoc 位置 | PMD（`CommentRequired`、`DanglingJavadoc`） | 不开启 doclint；标签与签名一致性不检查（D-109） |
 | 命名 | PMD（codestyle 命名规则） | codestyle 类目中命名以外的规则不启用 |
-| 坏味道与潜在错误 | PMD（bestpractices、errorprone、design、multithreading 精选） | — |
+| 坏味道与潜在错误 | PMD（bestpractices、errorprone、design、multithreading 精选） | PMD 规则按需选用；复杂度阈值不表示与 Sonar 全面等价 |
 | 重复代码 | CPD | Sonar 重复率只作远端参考 |
 | 依赖方向：包/分层方向、包循环、模块间禁止引用 | ArchUnit | Enforcer 不扩展模块方向规则；Maven reactor 负责模块循环 |
 | 环境与禁用库 | Enforcer（现状） | ArchUnit 不检查第三方坐标 |
@@ -63,7 +63,7 @@ flowchart LR
 
 Parent 发布的公共默认是“执行时只报告”：`pmd.failOnViolation`、`cpd.failOnViolation` 均为 `false`，`dev`、`prod` 跳过，`precheck`、`ci` 执行。本仓库在直接继承 Parent 的 Common 与 10 个 Starter 的 POM 中各自把两个属性设为 `true`（`mimir-boot-starters` 只是聚合器，属性不会被继承），完整验收会拒绝漏设或放宽。下游从报告切换为阻断是显式选择；若将来要改变下游默认值，按破坏性变更走版本说明。
 
-Parent 分别由 `pmd`、`test-pmd` execution 读取 Maven 实际主、测试源码根，共用 PMD 原生开关；主源码使用 41 条生产规则，测试使用 8 条测试规则，CPD 同样分别比较主、测试源码，阈值均为 100 tokens，规则清单见[规则模块](../../mimir-boot-code-quality/README.md#规则边界与替换)。
+Parent 分别由 `pmd`、`test-pmd` execution 读取 Maven 实际主、测试源码根，共用 PMD 原生开关；主源码使用 45 条生产规则，测试使用 11 条测试规则。生产 `CognitiveComplexity` 从 16 起报告（Sonar 允许 15；此处仅为阈值贴近，不表示 PMD 与 Sonar 全面等价）；生产规则还新增重复字面量、空方法体/构造器体内注释及 try-with-resources 检查。测试规则新增空方法体/构造器体内注释及 try-with-resources 检查，不启用重复字面量和复杂度规则。空实现规则检查方法体内注释，与 Javadoc 要求不同，private 构造器默认排除。CPD 同样分别比较主、测试源码，阈值均为 100 tokens，规则清单见[规则模块](../../mimir-boot-code-quality/README.md#规则边界与替换)。
 
 按 D-110，Mimir 的检查使用独立插件坐标，避免官方插件分叉目标的配置与下游合并；XML、HTML、缓存、规则临时文件和性能记录均使用 `target/mimir-quality/`。开关采用插件原生属性（D-108），因此下游已自行配置 PMD 时仍会读到 Parent 的开关默认值。下游自有的 Checkstyle 配置不受影响。原生开关共享及新增插件解析要求是显式兼容例外，影响与恢复方式见[需求规格 CQ-10](../active/v2.4.0/code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级)。
 

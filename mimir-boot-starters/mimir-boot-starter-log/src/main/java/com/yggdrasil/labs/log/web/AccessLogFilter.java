@@ -12,11 +12,15 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
+import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.PathMatcher;
 
 import com.yggdrasil.labs.common.util.IpUtils;
 import com.yggdrasil.labs.common.util.LogSanitizer;
+import com.yggdrasil.labs.log.json.LogJsonKeys;
 
 /**
  * 访问日志过滤器
@@ -37,6 +41,9 @@ public class AccessLogFilter implements Filter {
 
     private static final Logger ACCESS_LOG = LoggerFactory.getLogger("access.log");
     private static final Logger LOGGER = LoggerFactory.getLogger(AccessLogFilter.class);
+    private static final boolean LOGBACK_AVAILABLE =
+            ClassUtils.isPresent(
+                    "ch.qos.logback.classic.Logger", AccessLogFilter.class.getClassLoader());
     private static final String SLOW_ENDPOINT_SUFFIX = " [慢接口]";
     private static final String LIFECYCLE_ATTRIBUTE =
             AccessLogFilter.class.getName() + ".lifecycle";
@@ -293,37 +300,36 @@ public class AccessLogFilter implements Filter {
                         entry.userAgent()
                     };
 
-            // 判断状态码范围
-            if (entry.statusCode() >= 500) {
-                // 5xx: 服务器错误，记录为 ERROR
-                // 示例：500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable
-                ACCESS_LOG.error(message, args);
-            } else if (entry.statusCode() >= 400) {
-                // 4xx: 客户端错误，记录为 WARN
-                // 示例：400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many
-                // Requests
-                if (isSlow) {
-                    ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
-                } else {
-                    ACCESS_LOG.warn(message, args);
-                }
-            } else if (entry.statusCode() >= 300) {
-                // 3xx: 重定向，记录为 INFO
-                // 示例：301 Moved Permanently, 302 Found, 304 Not Modified
-                if (isSlow) {
-                    ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
-                } else {
-                    ACCESS_LOG.info(message, args);
-                }
-            } else {
-                // 2xx: 成功，记录为 INFO
-                // 示例：200 OK, 201 Created, 204 No Content
-                if (isSlow) {
-                    ACCESS_LOG.warn(message + SLOW_ENDPOINT_SUFFIX, args);
-                } else {
-                    ACCESS_LOG.info(message, args);
-                }
+            Level level =
+                    entry.statusCode() >= 500
+                            ? Level.ERROR
+                            : entry.statusCode() >= 400 || isSlow ? Level.WARN : Level.INFO;
+            // 5xx 沿用原消息；其他慢请求保留既有后缀。
+            String template =
+                    isSlow && entry.statusCode() < 500 ? message + SLOW_ENDPOINT_SUFFIX : message;
+            // Logback 的流式入口不执行完整消息过滤，先保留旧 API 的 TurboFilter 判定。
+            LoggingEventBuilder builder =
+                    (LOGBACK_AVAILABLE
+                                    ? LogbackAccessLogSupport.makeBuilder(
+                                            ACCESS_LOG, level, template, args)
+                                    : ACCESS_LOG.atLevel(level))
+                            .setMessage(template);
+            for (Object argument : args) {
+                builder.addArgument(argument);
             }
+            builder.addKeyValue(LogJsonKeys.METHOD, entry.method())
+                    .addKeyValue(LogJsonKeys.PATH, entry.uri())
+                    .addKeyValue(LogJsonKeys.STATUS_CODE, entry.statusCode())
+                    .addKeyValue(LogJsonKeys.DURATION_MS, entry.durationMs())
+                    .addKeyValue(LogJsonKeys.CLIENT_IP, entry.ip())
+                    .addKeyValue(LogJsonKeys.USER_AGENT, entry.userAgent())
+                    .addKeyValue(LogJsonKeys.OUTCOME, entry.terminal().outcome())
+                    .addKeyValue(LogJsonKeys.SLOW, isSlow);
+            String errorType = entry.terminal().errorType();
+            if (errorType != null && !"-".equals(errorType)) {
+                builder.addKeyValue(LogJsonKeys.ERROR_TYPE, errorType);
+            }
+            builder.log();
         }
 
         private void terminate(

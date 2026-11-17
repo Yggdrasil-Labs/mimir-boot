@@ -41,7 +41,10 @@ updated: 2026-11-07
 
 接入形态按 D-110 更新为[独立插件入口](./design.md#分叉配置问题与接入方案)，规则制品来源与官方实现版本须配对，Mimir 输出使用 `target/mimir-quality/`。
 
+接受的第一批 PMD 规则调整：生产规则 41→45，测试规则 8→11；生产新增重复字面量（阈值 3、最短长度 5、跳过注解）、空方法体/构造器体注释与 try-with-resources，测试新增空实现检查与 try-with-resources；复杂度报告阈值 20→16，测试规则不启用重复字面量和复杂度，暂不启用 `NonSerializableClass`。
+
 - PMD/CPD 使用 `maven-pmd-plugin` 3.28.0 自带的 PMD 7.17.0，不单独覆盖；`CommentRequired` 用 `violationSuppressXPath` 排除构造器与非公开可见性，以满足 D-107；本仓库让 PMD 处理错误也阻断构建。
+- 新增空方法体/构造器体规则检查方法体内注释，与 Javadoc 要求不同；private 构造器默认排除。认知复杂度从 16 起报告，阈值贴近 Sonar 允许 15，不宣称 PMD 与 Sonar 全面等价。
 - PMD 按 Maven 主、测试源码根分别检查，共用原生开关；测试采用[独立规则集](../../../../mimir-boot-code-quality/src/main/resources/mimir-boot/pmd/test-ruleset.xml)。
 - ArchUnit 1.5.1 核心库，以 optional 方式进入 starter-test，不引入 `archunit-junit5`。
 - CPD 按模块分别比较主、测试源码，两者 `minimumTokens=100`，共用原生开关。

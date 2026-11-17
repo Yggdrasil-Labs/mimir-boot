@@ -7,23 +7,27 @@
     <include resource="com/yggdrasil/labs/log/logback/common.xml"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
+        <encoder class="com.yggdrasil.labs.log.json.FormatDelegatingEncoder">
             <pattern>${MIMIR_LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
 
     <logger name="access.log" level="INFO" additivity="false">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
     <logger name="SQL.JSON" level="INFO" additivity="false">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
     <logger name="SQL.SLOW" level="WARN" additivity="false">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
 
     <root level="INFO">
+        <appender-ref ref="MIMIR_LOG_FIELDS"/>
         <appender-ref ref="CONSOLE"/>
     </root>
 </configuration>

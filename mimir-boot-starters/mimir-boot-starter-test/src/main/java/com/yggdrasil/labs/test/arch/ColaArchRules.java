@@ -9,6 +9,9 @@ import com.tngtech.archunit.library.Architectures.LayeredArchitecture;
 
 /** COLA 分层、领域框架隔离与包循环的可选规则预设。 */
 public final class ColaArchRules {
+    private static final String ADAPTER = "adapter";
+    private static final String INFRASTRUCTURE = "infrastructure";
+
     private ColaArchRules() {}
 
     /**
@@ -21,23 +24,23 @@ public final class ColaArchRules {
     public static ArchRule layered(String rootPackage) {
         Map<String, List<String>> layers =
                 LayerSpec.of(rootPackage)
-                        .layer("adapter")
+                        .layer(ADAPTER)
                         .layer("client")
                         .layer("app")
                         .layer("domain")
-                        .layer("infrastructure")
+                        .layer(INFRASTRUCTURE)
                         .definitions();
         LayeredArchitecture architecture =
                 LayerRules.architecture(layers)
-                        .whereLayer("adapter")
+                        .whereLayer(ADAPTER)
                         .mayNotBeAccessedByAnyLayer()
                         .whereLayer("app")
-                        .mayOnlyBeAccessedByLayers("adapter")
+                        .mayOnlyBeAccessedByLayers(ADAPTER)
                         .whereLayer("client")
-                        .mayOnlyBeAccessedByLayers("adapter", "app")
+                        .mayOnlyBeAccessedByLayers(ADAPTER, "app")
                         .whereLayer("domain")
-                        .mayOnlyBeAccessedByLayers("app", "infrastructure")
-                        .whereLayer("infrastructure")
+                        .mayOnlyBeAccessedByLayers("app", INFRASTRUCTURE)
+                        .whereLayer(INFRASTRUCTURE)
                         .mayNotBeAccessedByAnyLayer();
         return LayerRules.withPopulatedLayers(architecture, layers);
     }

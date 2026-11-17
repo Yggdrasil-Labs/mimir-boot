@@ -347,6 +347,118 @@ class TraceInterceptorTest extends BaseUnitTest {
     }
 
     @Test
+    void echoesValidRequestIdHeaderInResponse() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        MockHttpServletResponse localResponse = new MockHttpServletResponse();
+        localRequest.addHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "request-1");
+
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+
+        assertEquals("request-1", localResponse.getHeader(HttpHeaderConstants.REQUEST_ID_HEADER));
+        assertEquals("request-1", org.slf4j.MDC.get("requestId"));
+    }
+
+    @Test
+    void echoesGeneratedRequestIdWhenHeaderMissingOrInvalid() {
+        for (String header : new String[] {null, "invalid request id"}) {
+            MockHttpServletRequest localRequest = new MockHttpServletRequest();
+            MockHttpServletResponse localResponse = new MockHttpServletResponse();
+            if (header != null) {
+                localRequest.addHeader(HttpHeaderConstants.REQUEST_ID_HEADER, header);
+            }
+
+            traceInterceptor.preHandle(localRequest, localResponse, handler);
+
+            String echoed = localResponse.getHeader(HttpHeaderConstants.REQUEST_ID_HEADER);
+            assertEquals(32, echoed.length());
+            assertNotEquals(header, echoed);
+            assertEquals(org.slf4j.MDC.get("requestId"), echoed);
+            traceInterceptor.afterCompletion(localRequest, localResponse, handler, null);
+        }
+    }
+
+    @Test
+    void preservesRequestIdHeaderAlreadyWrittenToResponse() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        MockHttpServletResponse localResponse = new MockHttpServletResponse();
+        localRequest.addHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "request-1");
+        localResponse.setHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "filter-1");
+
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+
+        assertEquals(
+                List.of("filter-1"),
+                localResponse.getHeaders(HttpHeaderConstants.REQUEST_ID_HEADER));
+        assertEquals("request-1", org.slf4j.MDC.get("requestId"));
+    }
+
+    /** 防止误改为 addHeader；containsHeader 守卫由 preservesRequestIdHeaderAlreadyWrittenToResponse 保护。 */
+    @Test
+    void redispatchKeepsSingleRequestIdHeader() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        MockHttpServletResponse localResponse = new MockHttpServletResponse();
+        localRequest.addHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "request-1");
+
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+        localRequest.setDispatcherType(DispatcherType.FORWARD);
+        traceInterceptor.preHandle(localRequest, localResponse, handler);
+
+        assertEquals(
+                List.of("request-1"),
+                localResponse.getHeaders(HttpHeaderConstants.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void requestIdHeaderFailureLeavesNoRequestStateOrMdc() {
+        MockHttpServletRequest localRequest = new MockHttpServletRequest();
+        localRequest.addHeader(HttpHeaderConstants.TRACE_ID_HEADER, "new-trace-id");
+        localRequest.addHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "request-1");
+        org.slf4j.MDC.put("traceId", "previous-trace-id");
+        org.slf4j.MDC.put("requestId", "previous-request-id");
+        // 先写 X-Trace-Id 会以其他参数调用 setHeader，严格桩需放宽
+        lenient()
+                .doThrow(new IllegalStateException("response committed"))
+                .when(response)
+                .setHeader(HttpHeaderConstants.REQUEST_ID_HEADER, "request-1");
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> traceInterceptor.preHandle(localRequest, response, handler));
+
+        assertEquals("previous-trace-id", org.slf4j.MDC.get("traceId"));
+        assertEquals("previous-request-id", org.slf4j.MDC.get("requestId"));
+        assertFalse(localRequest.getAttributeNames().hasMoreElements());
+    }
+
+    @Test
+    void subclassDecidesWhetherRequestIdHeaderIsWritten() {
+        TraceInterceptor skipsParent =
+                new TraceInterceptor() {
+                    @Override
+                    public boolean preHandle(
+                            HttpServletRequest request, HttpServletResponse response, Object h) {
+                        return true;
+                    }
+                };
+        TraceInterceptor callsParent =
+                new TraceInterceptor() {
+                    @Override
+                    public boolean preHandle(
+                            HttpServletRequest request, HttpServletResponse response, Object h) {
+                        return super.preHandle(request, response, h);
+                    }
+                };
+        MockHttpServletResponse skipped = new MockHttpServletResponse();
+        MockHttpServletResponse written = new MockHttpServletResponse();
+
+        skipsParent.preHandle(new MockHttpServletRequest(), skipped, handler);
+        callsParent.preHandle(new MockHttpServletRequest(), written, handler);
+
+        assertNull(skipped.getHeader(HttpHeaderConstants.REQUEST_ID_HEADER));
+        assertNotNull(written.getHeader(HttpHeaderConstants.REQUEST_ID_HEADER));
+    }
+
+    @Test
     void releasesMdcAfterConcurrentHandlingStarted() throws Exception {
         MockHttpServletRequest localRequest = new MockHttpServletRequest();
         MockHttpServletResponse localResponse = new MockHttpServletResponse();

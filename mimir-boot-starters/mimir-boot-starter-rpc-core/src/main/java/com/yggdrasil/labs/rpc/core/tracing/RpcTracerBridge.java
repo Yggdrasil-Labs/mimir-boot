@@ -18,7 +18,9 @@ public interface RpcTracerBridge {
      *     无需覆盖本方法，也就不会产生 removal 警告；计划于下一个主版本删除。
      */
     @Deprecated(since = "2.2.1", forRemoval = true)
-    default void extract(RpcCallContext context, Map<String, String> carrier) {}
+    default void extract(RpcCallContext context, Map<String, String> carrier) {
+        // 保留旧接口的空默认行为，允许新实现仅覆盖 extractScope。
+    }
 
     /**
      * 从载体提取上下文，并返回当前调用结束时需要关闭的作用域。

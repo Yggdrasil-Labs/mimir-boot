@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-11-02
+updated: 2026-11-09
 ---
 
 # Log 日志预设与任务上下文设计
@@ -73,7 +73,7 @@ flowchart TD
 
 ### IC-1 选择日志预设并保持旧接入兼容
 
-新增资源：`classpath:com/yggdrasil/labs/log/logback/container.xml`、`classpath:com/yggdrasil/labs/log/logback/server.xml`，共享格式与转换规则放入同目录 `common.xml`，以 `<included>` 为根。原 `src/main/resources/logback-spring.xml` 保持原输出和参数，不把新默认值抽入旧 XML。
+新增资源：`classpath:com/yggdrasil/labs/log/logback/container.xml`、`classpath:com/yggdrasil/labs/log/logback/server.xml`，共享格式与转换规则放入同目录 `common.xml`，以 `<included>` 为根。原 `src/main/resources/logback-spring.xml` 保持原输出和参数，不把新默认值抽入旧 XML。唯一例外是 2026-11-08 的 D-116：四个文件 appender 的月目录 `%d` 标记 `aux`，修正主滚动周期，见 IC-7。
 
 部署示例：`logging.config=classpath:com/yggdrasil/labs/log/logback/container.xml`；服务器模板换为 `.../server.xml`。不设置该值仍走原选择规则。资源不存在沿用 Boot 启动失败，不提供 Mimir 自动回退。
 
@@ -227,6 +227,22 @@ public final class MdcTasks {
 
 默认执行器实例、名称/别名、lazy 和生命周期完全由 Boot 创建管理。验收重点为原候选选择不变、存在其他新/旧 customizer 时不改写装饰器，以及显式 compose 可用。README 明确保守退让范围及退让/虚拟线程未接入时的 INFO 诊断；不增加全量业务链编排或 customizer 排序要求。
 
+### IC-7 TD-049、TD-050 收尾（D-116、D-117）
+
+**旧 XML 滚动周期**：Logback 以 `fileNamePattern` 中第一个未标记 `aux` 的 `%d` 作为主滚动周期。旧 XML 为 `%d{yyyy-MM}/info-%d{yyyy-MM-dd}-%i.log.gz`，主周期是月，`maxHistory` 实为月数（logback-core 1.5.18 实测）。改为 `%d{yyyy-MM,aux}` 后主周期为第二个 `%d` 的天，目录仍按月分组，与 `server.xml` 一致。`maxFileSize`、`totalSizeCap`、`maxHistory` 数值不变，仅修正注释。升级后保留期由约 30/60 个月缩为 30/60 天。
+
+遗留归档不会被自动清理，这是本项最主要的兼容影响。依据 logback-core 1.5.18 的 `TimeBasedArchiveRemover`：首次清理只回溯 `INACTIVITY_TOLERANCE_IN_MILLIS`（32 天）内跨越的周期，此后每次只清理新流逝的周期；`totalSizeCap` 也只统计保留期内各周期的文件。因此升级前按月口径留下、早于"保留天数 + 32 天"的归档既不按时间删除，也不计入总量上限。开启 `cleanHistoryOnStart` 同样受 32 天窗口限制，不能解决，故不采用。处理方式是在升级说明中列出需要手工清理的目录与判断方法。判断依据是月目录与文件修改时间，而不是文件名中的日期：按月口径时，归档的文件名日期在启动时取当前时间或活动文件的修改时间，跨月后取首条触发滚动的日志事件时间（`SizeAndTimeBasedFileNamingAndTriggeringPolicy.isTriggeringEvent` 调用 `setDateInCurrentPeriod(currentTime)`），同一月目录中的文件名日期不等于内容日期。建议清理修改时间早于"保留天数"的月目录内归档，并先确认采集端已完成收集。
+
+反方向还有提前删除：按天清理通过 `SizeAndTimeBasedArchiveRemover.getFilesInPeriod` 以 `FileNamePattern.toRegexForFixedDate` 按文件名日期匹配。如上所述，按月口径下同月归档的文件名日期往往是该月首次滚动或启动的时间，早于其实际内容。因此首次清理回溯的 32 天窗口内，文件名日期超过保留天数的遗留归档会被立即删除，即使内容较新（例如 11-09 升级时，10 月目录中名为 `10-01`、含 10 月下旬日志的归档）。这里的"首次清理"指每次 appender 启动后的第一次清理（`TimeBasedRollingPolicy.rollover` 每次滚动都会触发清理，含按大小滚动，因此可能发生在升级当天；每次重启都会重新回溯 32 天）。首次清理覆盖的文件名日期范围是距今"保留天数 + 1"至"保留天数 + 32"天，错误文件（60 天）因此会删到前两个月目录（例如 9 月目录中名为 `09-01`、含 9 月中下旬错误日志的归档）。当月遗留归档（如 11 月目录中名为 `11-01` 的归档）不在首次清理范围内，但会在文件名日期满保留期时（约 12-02）删除，早于其最新内容满保留期的时间。这一影响无法在配置层面规避，升级说明要求升级前确认采集端已收集完毕，或先备份内容仍在各自保留期内的全部月目录，即从"升级日减去保留天数"所在月份到当月（普通文件 30 天、错误文件 60 天分别计算；例如 03-01 升级时，普通文件需备份 1 月至 3 月，错误文件需备份 12 月至 3 月）。
+
+**`MdcUtil.putAll`**：由 `MDC.setContextMap(context)` 改为遍历输入，对每个条目复用 `MdcUtil.put` 的过滤规则：跳过 null 键、null 值与空串值，不删除已有键，其余逐项 `MDC.put`。null 或空 Map 保持空操作。跳过 null 键是为了不引入原实现没有的异常（原 `setContextMap` 遇 null 键不抛异常，`MDC.put` 会抛 `IllegalArgumentException`）。需要整体替换的调用方改用模块既有的 `MdcUtil.setContextMap`。任务传播入口 `MdcTasks` 本就不使用 `putAll`（见 IC-5），不受影响。
+
+**其余清理**：
+
+- `MdcTasks.snapshot()`：`MDC.getCopyOfContextMap()` 已返回副本，直接以 `Collections.unmodifiableMap` 包装，去掉二次复制；返回值不可变的契约不变。
+- `SensitiveDataConverterInternals`：D-101 后仅剩测试钩子 `resetForTest(Context)`，主源码无引用。整体移入同包测试源集，不再随制品发布。该类为 2.4.0 新增、未发布，属于版本内调整，不写入升级说明。
+- `MdcTaskExecutionAutoConfiguration`：删除无读取方的 `@EnableConfigurationProperties(MdcPropagationProperties.class)`，保留属性类以生成配置元数据。该自动配置与属性类均为 2.4.0 新增、未发布，不写入升级说明。
+
 ## Data Model
 
 不新增持久化模型。新增内部 `LogPresetProperties` 分组承载 file/async 数值；（D-101）内部属性源 `mimirLogPresetResolved` 只由 EPP 生成、`addFirst`，不是用户配置入口。服务器数值键沿用初版：`mimir.boot.log.internal.file.max-size-bytes`、`max-history`、`total-size-cap-bytes`、`error-max-history`、`error-total-size-cap-bytes`（同一 file 前缀），`mimir.boot.log.internal.async.queue-size`、`never-block`、`max-flush-time-millis`（同一 async 前缀）；XML `defaultValue` 依次为 `104857600`、`30`、`10737418240`、`60`、`5368709120`、`1024`、`false`、`1000`。mask 键如下：
@@ -237,7 +253,7 @@ public final class MdcTasks {
 | `mimir.boot.log.internal.mask.custom-patterns` | 预设且用户自定义列表已绑定 | 同上 | 空字符串 → `mimir.boot.log.mask.customPatterns` |
 | `mimir.boot.log.internal.mask.replacement` | 预设且用户替换串已绑定 | 原样 | 空字符串 → `mimir.boot.log.mask.replacement`（空时转换器回退 `****`） |
 
-`MdcPropagationProperties` 承载 enabled；不改变现有 mask 字段与绑定前缀。预设类型由已选择的资源位置解析为内部 CONTAINER/SERVER，不作为第二套公共选择属性。
+`MdcPropagationProperties` 声明 enabled 的配置元数据；（D-117）不再注册为 Bean，开关仍由 `@ConditionalOnProperty` 判定；不改变现有 mask 字段与绑定前缀。预设类型由已选择的资源位置解析为内部 CONTAINER/SERVER，不作为第二套公共选择属性。
 
 每个待执行任务保留提交 Map 的独立副本和执行期间保存的工作线程 Map；空间复杂度 O(k)，k 是全部 MDC 条目数量。脱敏仍以不可变规则快照一次发布，单次转换只读一个代次；不在每条日志中重新编译正则。普通子上下文事件不作为新的独立配置代次来源。（D-101）不维护启动所有权或运行登记等静态状态；规则代次随带 mask 属性的 Logback 配置加载（`start()` 置空快照）与上下文刷新（原子发布）切换，静态状态仅为转换器快照、Context 引用与编程式规则列表。
 
@@ -279,7 +295,9 @@ public final class MdcTasks {
 | 启动所有权令牌 + 启动期规则缓存 + 生命周期监听器（2.4.0 初版实施，D-101 替换） | EPP 直接发布快照，不依赖 XML 配合 | 约 800 行 JVM 级静态状态；三轮审查的缺陷集中于此：多应用互相阻塞或残留、运行期刷新识别依赖 SpringApplication 身份、校验失败置空全局快照、非所有者跳过校验 |
 | 仅用 `springProperty` 读取用户键 | 无需 EPP 写键 | YAML/索引列表无法按原键读取，会静默回落到四组缺省；自定义正则须编码 |
 | `start()` 绑定当前 Context 即无条件置空快照 | 顺序启动“新→旧”时旧应用刷新前也严格使用自身规则 | 旧接入者自定义 XML `scan=true` 重扫（先 reset 再重载）后，刷新发布的规则丢失，相对 2.3.0 回退；F2 选择按 Context 是否带 mask 属性置空 |
-| 旧 `logback-spring.xml` 同样加入 mask `springProperty`，旧配置早期即按 Spring 属性脱敏 | 旧接入者早期阶段也受保护 | 修改旧资源且超出“旧配置行为与升级前一致”的范围；留待后续需求 |
+| TD-049 保持旧 XML 按月滚动，只修正注释 | 归档节奏不变 | `maxHistory` 以月计与配置意图不符，错误归档可保留数年并只受总量上限约束；D-116 选择修正周期 |
+| `MdcUtil.putAll` 只修注释保留整体替换 | 无行为变化 | 方法名与"批量设置"语义不符，调用后会清除 traceId/spanId；D-117 选择合并语义。v2.2.1 的 IC-13（[归档设计](../../../archive/v2.2.1/technical-debt-remediation/design.md)）曾文档化整体替换语义并以测试锁定，D-117 推翻该历史决定；已发布 Javadoc 只写"批量设置上下文"，不构成公开契约冲突 |
+| 旧 `logback-spring.xml` 同样加入 mask `springProperty`，旧配置早期即按 Spring 属性脱敏 | 旧接入者早期阶段也受保护 | 修改旧资源，且超出 D-116 之外的旧配置兼容范围；留待后续需求 |
 | 启动令牌自动保护任意子 SpringApplication | 看似无需接入方约束 | 无法拦截 Boot 的全局失败清理；包装 Boot 监听器还需处理事件向父传播、启动顺序和退出。本轮推荐普通子上下文共享父日志，独立生命周期由进程隔离 |
 | 默认 never-block=true | 限制满队列等待 | 可能丢 ERROR；本轮推荐保留日志为默认、提供显式取舍 |
 | 注册 Mimir TaskDecorator Bean | 实现直观 | 与业务 decorator 竞争，可能使 getIfUnique 失效 |
@@ -298,6 +316,7 @@ public final class MdcTasks {
 | IC-4 | Binder + 父应用真实启动 + 普通子上下文 + 顺序独立启动集成 | （D-101）早期监听、Bean 构造、刷新后分别输出消息/异常；setDefaultProperties 与 ConfigData 的缺省/单规则/空列表/空字符串/索引（YAML 列表）/relaxed 写法及更高优先级覆盖；含 `{m,n}` 与字面逗号的自定义正则；非法规则；普通子 refresh 失败/关闭/重建；顺序启动（新→旧、旧→新、新→新不同规则，含复用 Environment）；有/无 spring-cloud-context 的两个缓存上下文；运行期以原 SpringApplication 再次调用 EPP；启动期另一线程持续输出明文；预设下含无法解析 `${` 的自定义正则/替换串；运行期刷新非法规则（直接以同一 SpringApplication 调用 EPP 模拟，不覆盖真实刷新器）；启动失败堆栈与关闭回调日志；预设父应用 + 含 Log 自动配置的普通子上下文；（D-100）含 `bootstrap` 源的单元测试及开启 legacy bootstrap 的真实启动（独立 JVM），`logging.config` 经系统属性/环境变量提供 | 三阶段选择结果一致：预设缺省四组、显式列表不扩展、空列表关闭、旧配置缺省为空；自定义正则无损；用户默认属性不变；启动失败堆栈与关闭阶段日志按本次规则脱敏；刷新前 reload/addCustomPattern 不丢失四组缺省；校验失败不改变已生效规则；顺序启动新→新、旧→新无残留，新→旧在旧应用刷新后无残留；缓存上下文后者自身参数与校验生效、规则按最后刷新者；运行期 EPP 调用不改变规则；并发输出行均不含明文；预设应用的子上下文不改变父规则；legacy bootstrap 主应用三阶段四组缺省及 `application.yml` 旧 mask 配置生效，bootstrap 阶段加载预设时为四组缺省。独立子 SpringApplication 不作为受支持方式验收 |
 | IC-5 | 单元/线程池集成 | 快照后修改、空上下文、异常、嵌套、caller-runs、拒绝、Callable、1000 次线程复用 | 全键快照，结果/异常保留，退出 Map 与进入前完全相同 |
 | IC-6 | ApplicationContextRunner + 真实异步调用 | 0/1/多 decorator、有/无唯一 Primary；新/旧 customizer 的直接 setter 或仅参数定制、不同注册及执行顺序；自定义 Builder/Executor、禁用、MVC/Async | 业务候选与 Boot 一致；无其他 customizer 时 MDC 生效；有其他 customizer 时原装饰器和参数不变，不自动补 MDC 且输出一条退让 INFO；虚拟线程且开关开启时输出未接入 INFO；显式 compose 后传播与恢复成立 |
+| IC-7 | 资源解析单元 + 受控时钟滚动集成 + MDC 单元 + ApplicationContextRunner | 复用 `LogPresetResourceTest` 的滚动周期断言，旧 XML 四个 appender 主周期为天、目录按月；滚动用例在临时目录加载旧 XML，通过 `TimeBasedFileNamingAndTriggeringPolicy#setCurrentTime` 推进时钟；清理由 `cleanAsynchronously` 异步执行，返回的 Future 由 policy 内部持有、测试不可直接取得，多步序列的中间步骤以反射读取 `TimeBasedRollingPolicy` 的包级字段 `cleanUpFuture` 并 `get()` 等待（或轮询文件状态），只在最后一步用 `appender.stop()` 等待（其内部调用 `waitForAsynchronousJobToStop`）；重启 appender 会重新回溯 32 天，单独作为一个用例验证，不混入"持续运行"序列；预置不同日期的归档：超过 30 天（错误文件 60 天）且在 32 天回溯窗口内的归档被删除，错误文件前两个月目录中的遗留归档在首次清理中被删除，早于"保留天数 + 32 天"的月目录归档多次跨天滚动后仍存在；文件名日期在回溯窗口内且超过保留天数、但修改时间较新的遗留归档在首次清理中被删除；当月遗留归档在文件名日期满保留期时删除、首次清理不删除；`putAll` 合并、覆盖同名键、null/空 Map 不变、null 键与 null/空值被跳过且不抛异常；`MdcTasks` 去掉二次复制后既有 `MdcTasksTest` 全部通过（快照为私有实现，不单独断言不可变）；mdc 开关开启与关闭时自动配置行为不变且上下文无 `MdcPropagationProperties` Bean；主制品不含 `SensitiveDataConverterInternals` | 全部通过，既有 IC-1 至 IC-6 用例不回退 |
 | 性能门槛 | 手工受控基准，非普通单元计时断言 | 扩展既有 SensitiveDataConverterBenchmark 的输入与结果口径 | 记录对照数据和门槛判断，不以本轮文档检查替代 |
 
 本轮文档检查仅核对本目录 frontmatter、相对链接、行为与契约映射及差异空白。实现后先执行 Log 模块定向 Maven 验证，再按项目规程进行完整质量验收和对应消费者启动；本地结果与 CI、发布后采集验证分别报告。性能门槛未达时继续优化或修订显式选用范围，不能无记录降低指标。

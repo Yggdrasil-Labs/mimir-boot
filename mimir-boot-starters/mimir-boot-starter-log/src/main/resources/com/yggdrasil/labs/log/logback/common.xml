@@ -6,6 +6,12 @@
     不使用 NopStatusListener 与 scan，保留 Logback 状态错误输出
 -->
 <included>
+    <include resource="com/yggdrasil/labs/log/logback/json-support.xml"/>
+    <springProperty scope="context" name="mimir.boot.log.json.format" source="mimir.boot.log.internal.format" defaultValue="text"/>
+    <springProperty name="MIMIR_JSON_CAPTURE_ACTIVE" source="mimir.boot.log.internal.json.capture-active" defaultValue="false"/>
+    <appender name="MIMIR_LOG_FIELDS" class="com.yggdrasil.labs.log.json.LogFieldCaptureAppender">
+        <active>${MIMIR_JSON_CAPTURE_ACTIVE}</active>
+    </appender>
     <conversionRule conversionWord="mask"
                     class="com.yggdrasil.labs.log.converter.SensitiveDataConverter"/>
     <conversionRule conversionWord="maskThrowable"

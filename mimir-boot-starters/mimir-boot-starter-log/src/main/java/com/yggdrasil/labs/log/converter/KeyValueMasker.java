@@ -20,6 +20,28 @@ final class KeyValueMasker {
         return maskKeyValueFields(message, fieldNames, replacement);
     }
 
+    boolean isSensitiveKey(String key) {
+        if (key == null || fieldNames.empty) {
+            return false;
+        }
+        for (int suffixLength = 1;
+                suffixLength <= Math.min(key.length(), fieldNames.maxLength);
+                suffixLength++) {
+            String[] candidates = fieldNames.candidates(key.charAt(key.length() - suffixLength));
+            if (candidates == null) {
+                continue;
+            }
+            for (String candidate : candidates) {
+                if (candidate.length() == suffixLength
+                        && key.regionMatches(
+                                true, key.length() - suffixLength, candidate, 0, suffixLength)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** 字段名按首字符分组的查找表：候选保持原长度降序；ASCII 字母同时登记大小写，其余字符只登记原字符，与逐个比较首字符的语义一致。 */
     private static final class FieldNameIndex {
 
@@ -88,12 +110,8 @@ final class KeyValueMasker {
         int copiedUntil = 0;
         int index = 0;
         while (index < length) {
-            if (nextEquals >= 0 && nextEquals < index) {
-                nextEquals = message.indexOf('=', index);
-            }
-            if (nextColon >= 0 && nextColon < index) {
-                nextColon = message.indexOf(':', index);
-            }
+            nextEquals = advanceSeparator(message, '=', nextEquals, index);
+            nextColon = advanceSeparator(message, ':', nextColon, index);
             int separator = nextSeparator(nextEquals, nextColon);
             if (separator < 0) {
                 break;
@@ -116,6 +134,11 @@ final class KeyValueMasker {
         return masked == null
                 ? message
                 : masked.append(message, copiedUntil, message.length()).toString();
+    }
+
+    /** 扫描位置越过缓存分隔符时才继续查找，避免重复扫描已处理片段。 */
+    private static int advanceSeparator(String message, char separator, int previous, int index) {
+        return previous >= 0 && previous < index ? message.indexOf(separator, index) : previous;
     }
 
     private static SensitiveFieldValue findSensitiveFieldValue(

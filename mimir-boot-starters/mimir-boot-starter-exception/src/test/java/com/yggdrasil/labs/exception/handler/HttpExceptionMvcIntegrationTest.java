@@ -1,5 +1,7 @@
 package com.yggdrasil.labs.exception.handler;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
@@ -46,6 +48,7 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -159,6 +162,21 @@ class HttpExceptionMvcIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("CUSTOM"))
                 .andExpect(jsonPath("$.message").value("业务文案"));
+    }
+
+    @Test
+    void mapsUnsatisfiedParameterConditionsToBadRequestWhileSpecificBindingTypesKeepCodes()
+            throws Exception {
+        MockMvc mvc = mvc(new DefaultExceptionResponseFactory());
+        // params 条件不匹配在处理器匹配阶段抛出，与 Spring 原生一致返回 400
+        mvc.perform(get("/mode").param("mode", "secret-value"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.PARAM_INVALID.getCode()))
+                .andExpect(jsonPath("$.message").value(not(containsString("secret-value"))));
+        // 同族的具体类型仍由专用分支处理
+        mvc.perform(get("/required"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.PARAM_MISSING.getCode()));
     }
 
     @Test
@@ -662,6 +680,16 @@ class HttpExceptionMvcIntegrationTest {
         @GetMapping("/ok")
         String ok() {
             return "ok";
+        }
+
+        @GetMapping(value = "/mode", params = "mode=expected")
+        String mode() {
+            return "mode";
+        }
+
+        @GetMapping("/required")
+        String required(@RequestParam("value") String value) {
+            return value;
         }
 
         @GetMapping("/limited")

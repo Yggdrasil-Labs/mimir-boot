@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # MyBatis 能力补齐方案大纲
@@ -29,7 +29,7 @@ updated: 2026-10-31
 | IPage 到 COLA | 逐条映射到 `PageResponse`，遵循 null/异常及 int 范围契约 | D-55、D-68、D-69 |
 | 分页说明 | 单独 count 或只取前 N 条时说明 `searchCount=false` 用法 | D-59 |
 
-不恢复已撤销的 M-01 拦截器顺序编排；不恢复暂缓的 M-02 无总数分页或 M-03 带函数输出 `PageResult`。防全表写、分页上限和审计人类型调整不在本轮范围。
+不恢复已撤销的 M-01 拦截器顺序编排；不恢复暂缓的 M-02 无总数分页或 M-03 带函数输出 `PageResult`。防全表写、分页上限和审计人类型调整不在本轮范围（防全表写与分页上限 2026-11-08 曾由 D-115 纳入，经文档审查后分别由 D-119、D-120 撤出，见[版本 Brainstorm](../brainstorm.md#暂缓撤销与未采纳)）。
 
 ## 当前代码事实
 

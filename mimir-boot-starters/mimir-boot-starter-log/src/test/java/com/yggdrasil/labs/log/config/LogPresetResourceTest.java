@@ -83,7 +83,8 @@ class LogPresetResourceTest {
     void every_spring_property_declares_default_matching_ic3() throws Exception {
         Map<String, String> internal = new HashMap<>();
         Map<String, String> mask = new HashMap<>();
-        for (String name : List.of("common.xml", "container.xml", "server.xml")) {
+        for (String name :
+                List.of("common.xml", "container.xml", "server.xml", "json-support.xml")) {
             try (InputStream input = getClass().getClassLoader().getResourceAsStream(BASE + name)) {
                 NodeList nodes =
                         DocumentBuilderFactory.newInstance()
@@ -108,7 +109,14 @@ class LogPresetResourceTest {
                 }
             }
         }
-        assertThat(internal).isEqualTo(INTERNAL_DEFAULTS);
+        Map<String, String> xmlDefaults = new HashMap<>(INTERNAL_DEFAULTS);
+        xmlDefaults.put("mimir.boot.log.internal.format", "text");
+        xmlDefaults.put("mimir.boot.log.internal.json.capture-active", "false");
+        for (String key :
+                List.of("environment", "instance", "exclude-mdc-keys", "field-length-limits")) {
+            xmlDefaults.put("mimir.boot.log.internal.json." + key, "");
+        }
+        assertThat(internal).isEqualTo(xmlDefaults);
         assertThat(new LogPresetProperties().toInternalProperties()).isEqualTo(INTERNAL_DEFAULTS);
         // D-101：mask 内部键未写入时，启用列表取四组缺省，自定义与替换串为空
         assertThat(mask)
@@ -127,7 +135,7 @@ class LogPresetResourceTest {
         Logger root = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
         assertThat(root.getLevel()).isEqualTo(Level.INFO);
         assertThat(appenderNames(root))
-                .containsExactlyInAnyOrder("ASYNC_FILE_INFO", "ASYNC_FILE_ERROR");
+                .containsExactly("MIMIR_LOG_FIELDS", "ASYNC_FILE_INFO", "ASYNC_FILE_ERROR");
         assertAsync(root, "ASYNC_FILE_INFO", 1024, false, 1000);
         RollingFileAppender<ILoggingEvent> info = file(root, "ASYNC_FILE_INFO");
         assertRolling(info, 104_857_600L, 30, 10_737_418_240L);
@@ -182,7 +190,7 @@ class LogPresetResourceTest {
 
         Logger root = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
         assertThat(root.getLevel()).isEqualTo(Level.INFO);
-        assertThat(appenderNames(root)).containsExactly("CONSOLE");
+        assertThat(appenderNames(root)).containsExactly("MIMIR_LOG_FIELDS", "CONSOLE");
         assertThat(root.getAppender("CONSOLE")).isInstanceOf(ConsoleAppender.class);
         assertDedicatedLogger("access.log", Level.INFO, "CONSOLE");
         assertDedicatedLogger("SQL.JSON", Level.INFO, "CONSOLE");
@@ -236,7 +244,35 @@ class LogPresetResourceTest {
         assertThat(loggerContext.getLogger("org.springframework").getLevel()).isNull();
     }
 
+    @Test
+    void legacy_xml_rolls_daily_with_monthly_directories() {
+        // TD-049：旧 XML 的月目录 %d 标记 aux 后，主周期为天，maxHistory 按天计
+        StandardEnvironment environment = environment(Map.of());
+        environment.setActiveProfiles("test");
+        initializeLocation("classpath:logback-spring.xml", environment);
+
+        Logger root = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
+        Logger access = loggerContext.getLogger("access.log");
+        Logger sql = loggerContext.getLogger("SQL.JSON");
+        assertLegacyRolling(file(root, "ASYNC_FILE_INFO"), "info", 30, 10_737_418_240L);
+        assertLegacyRolling(file(root, "ASYNC_FILE_ERROR"), "error", 60, 5_368_709_120L);
+        assertLegacyRolling(file(access, "ASYNC_FILE_ACCESS"), "access", 30, 10_737_418_240L);
+        assertLegacyRolling(file(sql, "ASYNC_FILE_SQL"), "sql", 30, 10_737_418_240L);
+    }
+
+    private static void assertLegacyRolling(
+            RollingFileAppender<ILoggingEvent> appender, String name, int history, long cap) {
+        assertRolling(appender, 104_857_600L, history, cap);
+        // 归档仍按月份目录分组，文件名格式与升级前相同
+        assertThat(((TimeBasedRollingPolicy<?>) appender.getRollingPolicy()).getFileNamePattern())
+                .endsWith("/%d{yyyy-MM,aux}/" + name + "-%d{yyyy-MM-dd}-%i.log.gz");
+    }
+
     private void initialize(String preset, StandardEnvironment environment) {
+        initializeLocation("classpath:" + BASE + preset, environment);
+    }
+
+    private void initializeLocation(String location, StandardEnvironment environment) {
         // 未传 LogFile 时 Boot 不按 logging.file.path 设置 LOG_PATH，显式指向临时目录，避免在模块目录生成 logs/
         System.setProperty("LOG_PATH", logPath.toString());
         environment
@@ -245,8 +281,7 @@ class LogPresetResourceTest {
                         new MapPropertySource(
                                 "paths", Map.of("logging.file.path", logPath.toString())));
         loggingSystem.beforeInitialize();
-        loggingSystem.initialize(
-                new LoggingInitializationContext(environment), "classpath:" + BASE + preset, null);
+        loggingSystem.initialize(new LoggingInitializationContext(environment), location, null);
     }
 
     private static StandardEnvironment environment(Map<String, Object> properties) {
@@ -270,7 +305,7 @@ class LogPresetResourceTest {
         Logger logger = loggerContext.getLogger(name);
         assertThat(logger.getLevel()).isEqualTo(level);
         assertThat(logger.isAdditive()).isFalse();
-        assertThat(appenderNames(logger)).containsExactly(appender);
+        assertThat(appenderNames(logger)).containsExactly("MIMIR_LOG_FIELDS", appender);
     }
 
     private static List<String> appenderNames(Logger logger) {

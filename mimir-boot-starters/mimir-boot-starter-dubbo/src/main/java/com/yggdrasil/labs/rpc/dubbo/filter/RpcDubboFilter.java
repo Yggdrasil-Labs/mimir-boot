@@ -43,22 +43,11 @@ public class RpcDubboFilter implements Filter {
 
         if (isUninitialized(properties, hookChain, tracerBridge)) {
             // Spring 未初始化，降级为直通
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "RpcDubboFilter: Spring not initialized, bypassing filter for service={},"
-                                + " method={}",
-                        invoker.getInterface().getName(),
-                        invocation.getMethodName());
-            }
+            logBypass(invoker, invocation, "Spring not initialized, bypassing filter");
             return invoker.invoke(invocation);
         }
         if (!properties.isEnabled()) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "RpcDubboFilter: Filter disabled, bypassing for service={}, method={}",
-                        invoker.getInterface().getName(),
-                        invocation.getMethodName());
-            }
+            logBypass(invoker, invocation, "Filter disabled, bypassing");
             return invoker.invoke(invocation);
         }
 
@@ -136,6 +125,16 @@ public class RpcDubboFilter implements Filter {
             }
         } finally {
             closeScope(traceScope, primaryFailure);
+        }
+    }
+
+    private void logBypass(Invoker<?> invoker, Invocation invocation, String reason) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                    "RpcDubboFilter: {} for service={}, method={}",
+                    reason,
+                    invoker.getInterface().getName(),
+                    invocation.getMethodName());
         }
     }
 

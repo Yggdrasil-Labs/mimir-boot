@@ -37,7 +37,9 @@ class RpcExecutionTemplateTest {
                     }
 
                     @Override
-                    public void extract(RpcCallContext context, Map<String, String> carrier) {}
+                    public void extract(RpcCallContext context, Map<String, String> carrier) {
+                        // 本测试只覆盖调用侧注入，不执行接收侧上下文提取。
+                    }
                 };
         RpcExecutionTemplate template =
                 new RpcExecutionTemplate(new RpcHookChain(List.of(hook)), tracer, true);
@@ -65,7 +67,9 @@ class RpcExecutionTemplateTest {
                     }
 
                     @Override
-                    public void extract(RpcCallContext context, Map<String, String> carrier) {}
+                    public void extract(RpcCallContext context, Map<String, String> carrier) {
+                        // 本测试只覆盖调用侧注入，不执行接收侧上下文提取。
+                    }
                 };
         RpcExecutionTemplate template =
                 new RpcExecutionTemplate(new RpcHookChain(List.of(hook)), tracer, true);
@@ -93,7 +97,9 @@ class RpcExecutionTemplateTest {
                     }
 
                     @Override
-                    public void extract(RpcCallContext context, Map<String, String> carrier) {}
+                    public void extract(RpcCallContext context, Map<String, String> carrier) {
+                        // 本测试只覆盖调用侧注入，不执行接收侧上下文提取。
+                    }
                 };
         RpcExecutionTemplate template =
                 new RpcExecutionTemplate(new RpcHookChain(List.of(hook)), tracer, false);
@@ -156,7 +162,9 @@ class RpcExecutionTemplateTest {
                     }
 
                     @Override
-                    public void extract(RpcCallContext context, Map<String, String> carrier) {}
+                    public void extract(RpcCallContext context, Map<String, String> carrier) {
+                        // 本测试只覆盖调用侧注入，不执行接收侧上下文提取。
+                    }
                 };
         RpcExecutionTemplate template =
                 new RpcExecutionTemplate(new RpcHookChain(List.of(hook)), tracer, true);

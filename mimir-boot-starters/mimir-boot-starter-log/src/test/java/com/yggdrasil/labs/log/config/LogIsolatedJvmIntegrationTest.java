@@ -29,7 +29,7 @@ class LogIsolatedJvmIntegrationTest {
         List<String> classpath = baseClasspath();
         classpath.addAll(isolatedJars("mimir.isolated.legacy-bootstrap", "spring-cloud-context-"));
 
-        runScenarios(LegacyBootstrapScenarios.class, classpath, 6);
+        runScenarios(LegacyBootstrapScenarios.class, classpath, 8);
     }
 
     @Test
@@ -47,7 +47,24 @@ class LogIsolatedJvmIntegrationTest {
         classpath.addAll(
                 isolatedJars("mimir.isolated.backend", "log4j-core-", "log4j-slf4j2-impl-"));
 
-        runScenarios(BackendCompatibilityScenarios.class, classpath, 5);
+        runScenarios(BackendCompatibilityScenarios.class, classpath, 6);
+    }
+
+    @Test
+    void optional_json_dependency_scenarios_without_encoder_or_jackson() throws Exception {
+        runScenarios(MissingJsonDependencyScenarios.class, withoutJsonDependencies(), 5);
+    }
+
+    private static List<String> withoutJsonDependencies() {
+        List<String> classpath = new ArrayList<>();
+        for (String entry : baseClasspath()) {
+            String name = new File(entry).getName();
+            if (!name.startsWith("logstash-logback-encoder-") && !name.startsWith("jackson-")) {
+                classpath.add(entry);
+            }
+        }
+        assertThat(classpath).hasSizeLessThan(baseClasspath().size());
+        return classpath;
     }
 
     private void runScenarios(Class<?> scenarios, List<String> classpath, int expectedTests)

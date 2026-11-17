@@ -59,6 +59,7 @@ class MdcTaskExecutionAutoConfigurationTest {
                             assertThat(context)
                                     .doesNotHaveBean(MdcApplicationTaskExecutorPostProcessor.class);
                             assertThat(context).doesNotHaveBean(MdcVirtualThreadNotice.class);
+                            assertThat(context).doesNotHaveBean(MdcPropagationProperties.class);
                             assertThat(runAndCapture(executor(context))).isNull();
                         });
     }
@@ -69,6 +70,8 @@ class MdcTaskExecutionAutoConfigurationTest {
                 context -> {
                     assertThat(context)
                             .hasSingleBean(MdcApplicationTaskExecutorPostProcessor.class);
+                    // 开关仅由条件注解判定，属性类不注册为 Bean
+                    assertThat(context).doesNotHaveBean(MdcPropagationProperties.class);
                     assertThat(context.getBean("applicationTaskExecutor"))
                             .isSameAs(context.getBean("taskExecutor"))
                             .isInstanceOf(ThreadPoolTaskExecutor.class);

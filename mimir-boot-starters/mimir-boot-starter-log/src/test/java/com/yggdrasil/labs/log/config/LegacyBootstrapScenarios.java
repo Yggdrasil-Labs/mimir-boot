@@ -6,7 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,13 +22,19 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.context.event.ApplicationPreparedEvent;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yggdrasil.labs.log.converter.SensitiveDataConverter;
+import com.yggdrasil.labs.log.field.LogFieldProvider;
+import com.yggdrasil.labs.log.json.LogFieldProviderRegistry;
 
 import ch.qos.logback.classic.LoggerContext;
 
@@ -40,11 +49,13 @@ class LegacyBootstrapScenarios {
     private static final String CONTAINER =
             "classpath:com/yggdrasil/labs/log/logback/container.xml";
     private static volatile String marker;
+    private static final AtomicInteger BOOTSTRAP_PROVIDER_CALLS = new AtomicInteger();
 
     @BeforeEach
     void setUp() {
         MaskTestSupport.reset();
         marker = UUID.randomUUID().toString();
+        BOOTSTRAP_PROVIDER_CALLS.set(0);
     }
 
     @AfterEach
@@ -107,17 +118,17 @@ class LegacyBootstrapScenarios {
     @Test
     void cached_second_application_with_cloud_context_reloads_own_xml_and_rules(
             CapturedOutput output) {
-        ConfigurableApplicationContext first =
-                startPlain(CONTAINER, "--mimir.boot.log.mask.enabled-patterns=password");
-        try (ConfigurableApplicationContext ignoredSecond =
-                startPlain(
-                        "classpath:com/yggdrasil/labs/log/logback/server.xml",
-                        "--mimir.boot.log.async.queue-size=4096",
-                        "--mimir.boot.log.mask.enabled-patterns=token",
-                        "--logging.file.path="
-                                + System.getProperty("java.io.tmpdir")
-                                + "/mimir-cached-"
-                                + marker)) {
+        try (ConfigurableApplicationContext ignoredFirst =
+                        startPlain(CONTAINER, "--mimir.boot.log.mask.enabled-patterns=password");
+                ConfigurableApplicationContext ignoredSecond =
+                        startPlain(
+                                "classpath:com/yggdrasil/labs/log/logback/server.xml",
+                                "--mimir.boot.log.async.queue-size=4096",
+                                "--mimir.boot.log.mask.enabled-patterns=token",
+                                "--logging.file.path="
+                                        + System.getProperty("java.io.tmpdir")
+                                        + "/mimir-cached-"
+                                        + marker)) {
             ch.qos.logback.classic.Logger root =
                     (ch.qos.logback.classic.Logger)
                             LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
@@ -131,8 +142,6 @@ class LegacyBootstrapScenarios {
             assertThat(new SensitiveDataConverter().maskSensitiveData("password=alpha token=beta"))
                     .as("D-101：重新加载后即为后者规则")
                     .isEqualTo("password=alpha token=****");
-        } finally {
-            first.close();
         }
     }
 
@@ -184,6 +193,83 @@ class LegacyBootstrapScenarios {
                     .as("运行期刷新失败不改变当前规则")
                     .isEqualTo("password=**** token=**** secret=**** api_key=****");
         }
+    }
+
+    @Test
+    void json_provider_registers_only_in_main_application_with_bootstrap_parent(
+            CapturedOutput output) throws Exception {
+        AtomicBoolean checkedBootstrapRegistry = new AtomicBoolean();
+        SpringApplication application = new SpringApplication(App.class);
+        application.setWebApplicationType(WebApplicationType.NONE);
+        application.addListeners(
+                (ApplicationPreparedEvent event) -> {
+                    ConfigurableApplicationContext context = event.getApplicationContext();
+                    if (context.getParent() != null
+                            && "bootstrap".equals(context.getParent().getId())) {
+                        assertThat(context.getParent().getBean("bootstrapProvider"))
+                                .isInstanceOf(LogFieldProvider.class);
+                        assertThat(LogFieldProviderRegistry.current())
+                                .as("bootstrap 刷新完成后仍未注册扩展")
+                                .isEmpty();
+                        checkedBootstrapRegistry.set(true);
+                    }
+                });
+        try (ConfigurableApplicationContext context =
+                application.run(
+                        "--spring.cloud.bootstrap.enabled=true",
+                        "--spring.cloud.bootstrap.sources=" + BootstrapFields.class.getName(),
+                        "--logging.config=" + CONTAINER,
+                        "--mimir.boot.log.format=json",
+                        "--spring.main.banner-mode=off")) {
+            assertThat(context.getParent()).isNotNull();
+            assertThat(context.getParent().getId()).isEqualTo("bootstrap");
+            assertThat(checkedBootstrapRegistry).isTrue();
+            assertThat(LogFieldProviderRegistry.current())
+                    .extracting(LogFieldProviderRegistry.NamedProvider::beanName)
+                    .containsExactly("mainProvider");
+            assertThat(LogFieldProviderRegistry.current().get(0).provider())
+                    .isSameAs(context.getBean("mainProvider"));
+            LoggerFactory.getLogger("demo.bootstrap").info("json-provider {}", marker);
+        }
+        JsonNode event = new ObjectMapper().readTree(lineOf(output, "json-provider"));
+        assertThat(event.at("/attributes/applicationField").asText()).isEqualTo("main");
+        assertThat(event.path("attributes").has("bootstrapField")).isFalse();
+        assertThat(BOOTSTRAP_PROVIDER_CALLS).hasValue(0);
+        assertThat(LogFieldProviderRegistry.current()).isEmpty();
+    }
+
+    @Test
+    void json_settings_ignore_real_environment_change_event(CapturedOutput output)
+            throws Exception {
+        String key = "mimir.boot.log.json.exclude-mdc-keys[0]";
+        try (ConfigurableApplicationContext context =
+                startPlain(
+                        CONTAINER,
+                        "--mimir.boot.log.format=json",
+                        "--" + key + "=a",
+                        "--spring.main.banner-mode=off")) {
+            context.getEnvironment()
+                    .getPropertySources()
+                    .addFirst(new MapPropertySource("runtime-json-settings", Map.of(key, "b")));
+            Class<?> eventType =
+                    Class.forName(
+                            "org.springframework.cloud.context.environment.EnvironmentChangeEvent");
+            ApplicationEvent event =
+                    (ApplicationEvent)
+                            eventType
+                                    .getConstructor(Object.class, Set.class)
+                                    .newInstance(context, Set.of(key));
+            context.publishEvent(event);
+            assertThat(context.getEnvironment().getProperty(key)).isEqualTo("b");
+            org.slf4j.MDC.setContextMap(Map.of("a", "1", "b", "2"));
+            try {
+                LoggerFactory.getLogger("demo.bootstrap").info("json-refresh {}", marker);
+            } finally {
+                org.slf4j.MDC.clear();
+            }
+        }
+        JsonNode event = new ObjectMapper().readTree(lineOf(output, "json-refresh"));
+        assertThat(event.path("context")).isEqualTo(new ObjectMapper().readTree("{\"b\":\"2\"}"));
     }
 
     private static String stackTrace(Throwable ex) {
@@ -243,12 +329,32 @@ class LegacyBootstrapScenarios {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ImportAutoConfiguration(LogMaskAutoConfiguration.class)
+    @ImportAutoConfiguration({LogMaskAutoConfiguration.class, LogFieldAutoConfiguration.class})
     static class App {
+        @Bean
+        LogFieldProvider mainProvider() {
+            return event ->
+                    event.message().orElse("").startsWith("json-provider ")
+                            ? Map.of("applicationField", "main")
+                            : Map.of();
+        }
+
         @Bean
         Object phaseBean() {
             LoggerFactory.getLogger("demo.bean").info("phase2 {} {}", marker, SECRETS);
             return new Object();
+        }
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ImportAutoConfiguration(LogFieldAutoConfiguration.class)
+    static class BootstrapFields {
+        @Bean
+        LogFieldProvider bootstrapProvider() {
+            return event -> {
+                BOOTSTRAP_PROVIDER_CALLS.incrementAndGet();
+                return Map.of("bootstrapField", "bootstrap");
+            };
         }
     }
 

@@ -8,7 +8,7 @@ Mimir Boot Starter Web 提供了开箱即用的 Web 层增强功能：
 
 - ✅ **CORS 跨域配置**：统一配置跨域资源共享策略
 - ✅ **Jackson 序列化配置**：统一日期时间格式、空值处理等
-- ✅ **Trace 拦截器**：处理受限格式的 traceId/requestId，写入 MDC，并将 traceId 写入响应头
+- ✅ **Trace 拦截器**：处理受限格式的 traceId/requestId，写入 MDC，响应头回传 traceId，并在尚无该头时回传 requestId
 - ✅ **Web 拦截器**：记录容器提供的直连 IP，并只恢复自己写入的 MDC 键
 - ✅ **响应体增强器**：自动为实际 `R` 响应对象（含 `HttpEntity<R>`/`ResponseEntity<R>` 响应）填充 traceId
 - ✅ **上传限制迁移**：使用 Spring Boot multipart 配置管理请求和文件大小
@@ -118,6 +118,7 @@ mimir:
         maxAge: PT1H  # 1 小时（ISO-8601 格式）
         exposedHeaders:
           - X-Trace-Id
+          - X-Request-Id  # 浏览器跨域读取响应头需显式暴露
 ```
 
 **禁用 CORS**：
@@ -268,6 +269,8 @@ mimir:
 - 自动生成或从请求头获取 traceId
 - 将 traceId 设置到 MDC 和响应头 `X-Trace-Id`
 - 从 `X-Request-Id` 获取合法 requestId，缺失或非法时生成新的 32 位十六进制值
+- 将本次 requestId 回传到响应头 `X-Request-Id`；响应中已有该头（如前置 Filter 已写入）时保留原值（v2.4.0）
+- 只有经过 Trace 拦截器的请求才带这两个响应头。拦截器排除的路径（`/error`、`/actuator/**`、Swagger 等）、被前置 Filter 或更早拦截器拒绝的请求，以及在 multipart 解析、处理器匹配阶段失败的请求（如请求方法、媒体类型不匹配的 405/415/406）不会带；判断依据是失败阶段，而不是状态码
 - 仅在请求范围内修改 traceId/requestId，完成后恢复进入前状态
 - 仅接受最长 64 位、以字母或数字开头的 ASCII `[A-Za-z0-9._-]`；无效请求头会生成新的 traceId
 
@@ -294,6 +297,7 @@ X-Request-Id: request-123
 ```http
 HTTP/1.1 200 OK
 X-Trace-Id: a1b2c3d4e5f6
+X-Request-Id: request-123
 ```
 
 Micrometer Tracing 在 classpath 中不会禁用默认拦截器；应用如需替换行为，可声明自己的 `TraceInterceptor` Bean。
@@ -430,6 +434,7 @@ mimir:
         maxAge: PT1H
         exposedHeaders:
           - X-Trace-Id
+          - X-Request-Id  # 浏览器跨域读取响应头需显式暴露
 ```
 
 ### 5. Jackson 序列化配置
@@ -622,6 +627,18 @@ R<UserVO> response = R.success(UserVO.from(user));
 response.setTraceId("custom-trace-id");  // 通常不需要
 return response;
 ```
+
+## 升级和兼容性
+
+### v2.4.0
+
+**响应回传 `X-Request-Id`**
+
+- 经 Trace 拦截器处理、且响应中原本没有该头的请求，会新增响应头 `X-Request-Id`，值与日志中的 requestId 一致。
+- 应用内已在拦截器之前写入该头（如前置 Filter）时保留原值，不受影响。
+- 应用内在拦截器之后才写该头（Controller、`ResponseBodyAdvice`、在 `chain.doFilter` 之后补头的 Filter）时：用 `setHeader` 会覆盖框架写入的值；用 `addHeader` 会让响应出现两个值。请统一改用 `setHeader`，或去掉自行写入的逻辑。
+- 反向代理若在响应上追加该头（如 Nginx `add_header X-Request-Id ...`），客户端可能收到两个值；请改为替换或去掉代理侧配置。
+- CORS 默认暴露头不变，浏览器跨域读取该头需在 `exposedHeaders` 中显式加入 `X-Request-Id`。
 
 ## 技术栈
 

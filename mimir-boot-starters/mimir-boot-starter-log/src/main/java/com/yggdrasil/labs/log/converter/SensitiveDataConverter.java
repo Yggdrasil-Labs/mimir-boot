@@ -40,15 +40,34 @@ public class SensitiveDataConverter extends ClassicConverter {
             new AtomicReference<>();
 
     private record MaskConfigurationSnapshot(
-            List<Pattern> patterns, KeyValueMasker keyValueFieldNames, String replacement) {}
+            List<Pattern> patterns, KeyValueMasker keyValueFieldNames, String replacement)
+            implements StructuredMaskSupport.MaskRules {
 
-    // 只有当前 Logback Context 实例可以接管全局快照，不能按内容相等判断归属。
-    @SuppressWarnings("PMD.CompareObjectsWithEquals")
+        @Override
+        public String maskText(String text) {
+            return maskSensitiveData(text, this);
+        }
+
+        @Override
+        public boolean isSensitiveKey(String key) {
+            return keyValueFieldNames.isSensitiveKey(key);
+        }
+
+        @Override
+        public String maskValue(String value) {
+            return maskMatchingValues(value, patterns, replacement);
+        }
+    }
+
     @Override
     public void start() {
-        // 绑定本次真实 Context：全局引用为空时沿用首次绑定，否则只接受 SLF4J 当前的 LoggerContext，
-        // 避免第三方或临时创建的 LoggerContext 抢占；未设置 Context 的实例不改变引用，也不清空已发布快照
-        Context context = getContext();
+        bindContextConfiguration(getContext());
+        super.start();
+    }
+
+    // Context 归属按实例身份判断，不能用 equals；首次绑定后只接受 SLF4J 当前的 LoggerContext。
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
+    static void bindContextConfiguration(Context context) {
         if (context != null
                 && (CONFIGURATION_CONTEXT.get() == null
                         || context == LoggerFactory.getILoggerFactory())) {
@@ -61,7 +80,10 @@ public class SensitiveDataConverter extends ClassicConverter {
                 }
             }
         }
-        super.start();
+    }
+
+    static StructuredMaskSupport.MaskRules currentRules() {
+        return currentConfiguration();
     }
 
     private static boolean hasMaskProperties(Context context) {
@@ -234,6 +256,29 @@ public class SensitiveDataConverter extends ClassicConverter {
             do {
                 masked.append(result, lastMatchEnd, matcher.start());
                 masked.append(maskValue(matcher, snapshot.replacement()));
+                lastMatchEnd = matcher.end();
+            } while (matcher.find());
+            result = masked.append(result, lastMatchEnd, result.length()).toString();
+        }
+        return result;
+    }
+
+    private static String maskMatchingValues(
+            String value, List<Pattern> patterns, String replacement) {
+        if (value == null || value.isEmpty() || patterns.isEmpty()) {
+            return value;
+        }
+        String result = value;
+        for (Pattern pattern : patterns) {
+            Matcher matcher = pattern.matcher(result);
+            if (!matcher.find()) {
+                continue;
+            }
+            StringBuilder masked = new StringBuilder(result.length());
+            int lastMatchEnd = 0;
+            do {
+                masked.append(result, lastMatchEnd, matcher.start());
+                masked.append(maskValue(matcher, replacement));
                 lastMatchEnd = matcher.end();
             } while (matcher.find());
             result = masked.append(result, lastMatchEnd, result.length()).toString();

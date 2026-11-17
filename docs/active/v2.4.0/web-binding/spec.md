@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # Web 日期绑定与 JSON 输出需求规格
@@ -11,11 +11,13 @@ updated: 2026-10-31
 
 ## 目标与非目标
 
-提供默认日期格式衔接、可选安全整数输出，并承接Common响应状态迁移及Exception统一封装后的既有追踪增强兼容。保留业务显式定制；不扩展CORS、请求标识回传或Servlet异步MDC，不引入强制接口描述依赖。
+提供默认日期格式衔接、可选安全整数输出，并承接Common响应状态迁移及Exception统一封装后的既有追踪增强兼容。2026-11-08按D-114追加W5，在响应头回传已有requestId。保留业务显式定制；不扩展CORS、请求标识生成规则或Servlet异步MDC，不引入强制接口描述依赖。
 
 ## 生效前提（审查补充）
 
 W1至W4都挂在Web自动配置之下：仅当应用为Servlet Web应用且 `mimir.boot.web.enabled=true`（缺省即true）时生效。非Servlet应用（WebFlux、无Web的消息/任务服务）或 `mimir.boot.web.enabled=false` 时，日期格式器、数值策略、R MixIn与响应增强均不装配；此时Boot共享mapper仍按原样输出 `fail`，C-07的默认新协议不适用。该前提是推荐草案中的审查补充，不是新的用户确认决定。
+
+W5同样位于该前提之下，并且只在框架Trace拦截器实际执行时生效。
 
 ## Behavior W1：日期参数默认与JSON格式一致
 
@@ -67,9 +69,27 @@ W1至W4都挂在Web自动配置之下：仅当应用为Servlet Web应用且 `mim
 | null消息（审查补充） | 失败响应message为null，Web默认不写null | 输出公共响应 | JSON无 `message` 键；开启写null时为 `"message": null`；traceId增强不受影响 |
 | 下游自定义Advice（审查补充） | 业务另有自己的ResponseBodyAdvice（不替换框架增强器），异常处理以Object声明、运行期返回ResponseEntity | 输出异常响应 | 记录该Advice的supports判定与beforeBodyWrite实际收到的body；框架不为业务Advice补做候选判定，行为差异写入升级说明 |
 
+## Behavior W5：响应回传 requestId（D-114）
+
+| Scenario | Given | When | Then |
+|---|---|---|---|
+| 回传合法请求值 | 请求头 `X-Request-Id` 为符合既有格式的request-1 | 请求经Trace拦截器处理并正常返回 | 响应头 `X-Request-Id` 为request-1，即拦截器本次确定、随后写入MDC的requestId |
+| 缺失或非法时回传生成值 | 请求未携带该头，或值不符合既有格式 | 请求正常返回 | 响应头为本次新生成的requestId，与MDC中的值相同；非法输入不被原样回传 |
+| 异常响应 | 请求头合法，拦截器执行后处理器抛出异常，由统一异常封装输出4xx/5xx | 输出异常响应 | 响应头同样带本次requestId；异常响应体与状态码不变 |
+| 再次派发 | 同一请求经异步再派发或forward再次进入拦截器 | 输出最终响应 | 沿用首次确定的requestId，响应头只有一个值 |
+| 响应已有该头 | 拦截器之前的业务Filter已在响应中设置 `X-Request-Id`=filter-1，请求头未携带该值 | 请求经Trace拦截器处理 | 保留 filter-1，框架不覆盖；此时响应值可能与日志中的requestId不同，由写入方负责。反向代理在应用返回后追加的头不在框架保证范围内 |
+| 拦截器未执行 | 请求路径为 `/error`、`/actuator/**` 等拦截器排除路径，或请求在multipart解析、处理器匹配阶段即失败（例如默认非懒解析时的413，请求方法、媒体类型或请求参数条件不匹配时的405、415、406、400，以及关闭静态资源映射时找不到处理器的404） | 输出响应 | 框架不写该响应头；判断依据是失败发生的阶段，而不是状态码，所列情形仅为示例 |
+| 更早的拒绝 | 请求在进入DispatcherServlet前被Filter拒绝（如安全框架的401/403、启用框架 `CorsFilter` 时的预检与跨域拒绝；使用 MVC 原生 CORS 时预检请求经拦截器、会带该头，实际请求的跨域拒绝发生在拦截器之前、不带该头），或排在Trace拦截器之前的拦截器返回false或抛出异常 | 输出响应 | 框架不写该响应头 |
+| 拦截器已执行后的失败 | 默认开启静态资源映射时请求不存在的路径，或开启懒解析时multipart超限 | 输出404或413 | 响应带本次requestId |
+| 不生效条件 | Web总开关关闭、非Servlet应用，或业务以子类替换Trace拦截器且覆盖请求前处理时不调用父类实现 | 请求返回 | 框架不写该响应头 |
+| 写头失败 | 写入响应头时抛出异常 | 请求处理 | 异常沿原路径传播，MDC中不残留本次traceId与requestId |
+| 既有行为保持 | 任一上述场景 | 请求返回 | `X-Trace-Id` 响应头、traceId与requestId的校验及生成规则、MDC写入与恢复均与升级前一致 |
+
 ## Constraints
 
 安全整数阈值为±(2^53-1)，即±9007199254740991（D-48）。W1默认开启；W2默认关闭。三个新增开关彼此独立，但都位于Servlet应用与 `mimir.boot.web.enabled` 总开关之下；总开关关闭时三者均不生效。新增逻辑不改变Java字段类型或反序列化规则。Common不增加Jackson运行依赖；共享受管mapper可能服务MVC以外用途，升级需检查这些消费者。推荐旧fail兼容开关在2.x保留，下个主版本再评估，不自动到期。
+
+W5不新增开关，不修改CORS默认暴露头；浏览器跨域读取 `X-Request-Id` 需由接入方显式加入 `exposed-headers`。
 
 W4复用既有增强开关，不增加配置、公共SPI或追踪策略；既有增强器公开构造、方法及泛型接口保留。适配归属Web且联合验证依赖Exception统一封装实现，不引入Exception到Web的反向模块依赖。
 

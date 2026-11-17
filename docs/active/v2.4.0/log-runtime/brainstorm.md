@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # Log 日志预设与任务上下文方案大纲
@@ -18,7 +18,7 @@ updated: 2026-10-31
 | [plan](./plan.md) | 五项有依赖的实施任务、真实文件路径、验证与决策边界；尚未实施 |
 
 - 推荐用 `logging.config` 选择独立 `classpath:com/yggdrasil/labs/log/logback/container.xml` / `server.xml`，由部署公共模板指定；未选择时保留原 XML。容器仅标准输出，服务器仅四类文件，SQL.SLOW 与 SQL.JSON 共用 sql.log，不开启日志生产开关。
-- 新预设 root INFO，prod系列复用13个有效WARN前缀，删除新预设中的三个Spring子Logger例外；通过 `logging.level.*` 显式覆盖。旧资源不随之改写。
+- 新预设 root INFO，prod系列复用13个有效WARN前缀，删除新预设中的三个Spring子Logger例外；通过 `logging.level.*` 显式覆盖。旧资源不随之改写（例外：2026-11-08 按 D-116 修正旧 XML 滚动周期，见 [design IC-7](./design.md#ic-7-td-049td-050-收尾d-116d-117)）。
 - 早期发布与根上下文刷新共用同一 mask 规则选择：Binder 已绑定则使用原列表，包括空列表、空字符串、索引和 relaxed 写法；未绑定且识别为新预设（大小写敏感 `classpath:` 前缀，见 design IC-1）则选四组，否则选旧空默认。直接发布有效列表，不将四组缺省规则写入 Environment；EPP 保留 Boot 默认源的优先级归位。早期入口先检查 Logback 类和 Boot 后端选择；不兼容后端未选新预设时退出，显式选择时明确失败。新预设非法规则启动失败，旧规则错误处理保留；（2026-10-31 审查修订）所有者失败或根关闭时清空所有权槽、移除服务器数值规范化源并清除启动期规则缓存，保留最后规则快照以覆盖失败堆栈与关闭日志，由下一所有者发布时直接替换（取得令牌时不置空，避免空快照窗口）；2026-10-31 用户确认 D-100：开启 Spring Cloud legacy bootstrap 时，以属性源名 `bootstrap` 识别 bootstrap 应用，其不取得所有权、不发布，由主应用按主 Environment 发布，保持旧 mask 配置兼容并使预设缺省生效；细节以 design IC-4 为准。
 - 服务器推荐单文件100MB、普通/访问/SQL各30天10GB、错误60天5GB；四个队列各1024，discardingThreshold=0、neverBlock=false、每appender排空等待1s。默认保留日志但允许业务等待；显式非阻塞可能丢弃包括ERROR的事件。完整范围见design。
 - MDC推荐提交时全Map快照、finally恢复。默认执行器通过单个旧 TaskExecutorCustomizer 适配新/旧Builder，保留Boot的getIfUnique业务候选选择，包括唯一Primary；不注册普通Mimir TaskDecorator Bean，不自动组合全部业务Bean。
@@ -50,7 +50,7 @@ updated: 2026-10-31
 本轮只做本地源码和依赖源码包核对，未启动应用、运行 Java 测试或性能测量。
 
 - [现有 XML](../../../../mimir-boot-starters/mimir-boot-starter-log/src/main/resources/logback-spring.xml) 已随 Starter 提供。生产 root 为 WARN；`com.yggdrasil.labs`、`access.log`、`SQL.JSON` 走文件，普通业务包的 INFO 可能被过滤。
-- 文件滚动大小均为 100MB；普通、访问、SQL 保留 30 天、总量各 10GB，错误保留 60 天、总量 5GB。异步队列分别为 512、1024、512、256，不能把这些现状值直接当作新预设已批准默认值。
+- 文件滚动大小均为 100MB；普通、访问、SQL 的 `maxHistory` 为 30、总量各 10GB，错误为 60、总量 5GB；因主周期实为月，保留单位实为月而非天（TD-049，D-116 修正为按天）。异步队列分别为 512、1024、512、256，不能把这些现状值直接当作新预设已批准默认值。
 - 所有异步 appender 使用 `discardingThreshold=0`，未设置 `neverBlock`。Logback 1.5.18 `AsyncAppenderBase` 默认 `neverBlock=false`，满队列使用阻塞写入；“异步”不代表业务线程不会等待。
 - [脱敏自动配置](../../../../mimir-boot-starters/mimir-boot-starter-log/src/main/java/com/yggdrasil/labs/log/config/LogMaskAutoConfiguration.java) 在 `ContextRefreshedEvent` 才发布配置；[转换器](../../../../mimir-boot-starters/mimir-boot-starter-log/src/main/java/com/yggdrasil/labs/log/converter/SensitiveDataConverter.java) 使用静态不可变快照与 Logback 上下文引用，启动和重复建上下文的行为需要单独核对。
 - Boot 3.3.13 `LoggingApplicationListener` 在环境准备阶段初始化日志并读取 `logging.config`，早于上下文刷新。仅给普通配置 Bean 加默认值不足以覆盖启动阶段。
@@ -101,7 +101,7 @@ updated: 2026-10-31
 
 新预设复用的 13 条 WARN 前缀：`org.springframework`、`org.apache`、`com.alibaba`、`com.baomidou`、`org.mybatis`、`com.zaxxer`、`com.mysql`、`org.postgresql`、`org.hibernate`、`io.netty`、`io.lettuce`、`redis.clients`、`org.reflections`。去掉重复的 `io.lettuce.core`，不拆宽前缀，说明用 `logging.level` 恢复。
 
-现有 XML 末尾还显式将三个 Spring 子 logger 设为 INFO；新预设是否沿用这些例外需要说明，不能仅复制父前缀后宣称全部 Spring 日志均降至 WARN。旧预设保持原行为。
+现有 XML 末尾还显式将三个 Spring 子 logger 设为 INFO；新预设是否沿用这些例外需要说明，不能仅复制父前缀后宣称全部 Spring 日志均降至 WARN。旧预设保持原行为（例外：D-116 修正滚动周期；`MdcUtil.putAll` 由 D-117 改为合并语义）。
 
 满队列可选阻塞以优先保留日志，或不阻塞以优先保护业务延迟；后者可能连 WARN/ERROR 也丢失。队列大小不能解决长期输出阻塞，需把丢弃范围、停机丢失与故障可观测性放在同一决策中，尚不选定默认策略。
 

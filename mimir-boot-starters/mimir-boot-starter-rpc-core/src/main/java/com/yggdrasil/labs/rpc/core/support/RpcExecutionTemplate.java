@@ -59,36 +59,36 @@ public class RpcExecutionTemplate {
                     contextPropagationEnabled);
         }
         Instant start = Instant.now();
-        RpcHookInvocation invocation = hookChain.open(context);
-        try {
-            invocation.before();
-            injectContext(context);
-            T result = callable.call();
-            Duration duration = Duration.between(start, Instant.now());
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "RPC call succeeded: service={}, method={}, duration={}ms",
-                        context.getMetadata().getService(),
-                        context.getMetadata().getMethod(),
-                        duration.toMillis());
+        try (RpcHookInvocation invocation = hookChain.open(context)) {
+            // 在资源关闭前完成失败回调，保留 onError 先于 cleanup 的生命周期顺序。
+            try {
+                invocation.before();
+                injectContext(context);
+                T result = callable.call();
+                Duration duration = Duration.between(start, Instant.now());
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(
+                            "RPC call succeeded: service={}, method={}, duration={}ms",
+                            context.getMetadata().getService(),
+                            context.getMetadata().getMethod(),
+                            duration.toMillis());
+                }
+                invocation.completeSuccess(RpcCallResult.success(duration));
+                return result;
+            } catch (Throwable throwable) {
+                Duration duration = Duration.between(start, Instant.now());
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(
+                            "RPC call failed: service={}, method={}, duration={}ms, error={}",
+                            context.getMetadata().getService(),
+                            context.getMetadata().getMethod(),
+                            duration.toMillis(),
+                            throwable.getClass().getSimpleName(),
+                            throwable);
+                }
+                invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
+                throw propagate(throwable);
             }
-            invocation.completeSuccess(RpcCallResult.success(duration));
-            return result;
-        } catch (Throwable throwable) {
-            Duration duration = Duration.between(start, Instant.now());
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "RPC call failed: service={}, method={}, duration={}ms, error={}",
-                        context.getMetadata().getService(),
-                        context.getMetadata().getMethod(),
-                        duration.toMillis(),
-                        throwable.getClass().getSimpleName(),
-                        throwable);
-            }
-            invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
-            throw propagate(throwable);
-        } finally {
-            invocation.close();
         }
     }
 

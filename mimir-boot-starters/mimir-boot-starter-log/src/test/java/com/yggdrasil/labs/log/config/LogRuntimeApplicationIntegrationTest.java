@@ -195,8 +195,8 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void ordinary_child_context_does_not_change_parent_logging(CapturedOutput output) {
-        ConfigurableApplicationContext parent = start(Map.of(), "--logging.config=" + CONTAINER);
-        try {
+        try (ConfigurableApplicationContext parent =
+                start(Map.of(), "--logging.config=" + CONTAINER)) {
             AnnotationConfigApplicationContext child = new AnnotationConfigApplicationContext();
             child.setParent(parent);
             child.getEnvironment()
@@ -220,8 +220,6 @@ class LogRuntimeApplicationIntegrationTest {
                                             LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME))
                                     .getAppender("CONSOLE"))
                     .isNotNull();
-        } finally {
-            parent.close();
         }
         try (ConfigurableApplicationContext ignoredNext =
                 start(Map.of(), "--logging.file.path=" + logPath, "--spring.profiles.active=dev")) {
@@ -232,15 +230,14 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void cached_second_application_without_cloud_follows_last_refresh(CapturedOutput output) {
-        ConfigurableApplicationContext first = start(Map.of(), "--logging.config=" + CONTAINER);
-        ConfigurableApplicationContext second = null;
-        try {
-            second =
-                    start(
-                            Map.of(),
-                            "--logging.config=classpath:com/yggdrasil/labs/log/logback/server.xml",
-                            "--logging.file.path=" + logPath,
-                            "--mimir.boot.log.mask.enabled-patterns=");
+        try (ConfigurableApplicationContext ignoredFirst =
+                        start(Map.of(), "--logging.config=" + CONTAINER);
+                ConfigurableApplicationContext second =
+                        start(
+                                Map.of(),
+                                "--logging.config=classpath:com/yggdrasil/labs/log/logback/server.xml",
+                                "--logging.file.path=" + logPath,
+                                "--mimir.boot.log.mask.enabled-patterns=")) {
             LOG.info("cached {} {}", marker, SECRETS);
             String cached = lineOf(output, "cached");
             assertThat(cached).as("Boot 未重载 XML：仍为首个应用的标准输出出口").isNotNull();
@@ -251,11 +248,6 @@ class LogRuntimeApplicationIntegrationTest {
                                     .contains(LogPresetSupport.RESOLVED_PROPERTY_SOURCE))
                     .as("后者 EPP 的绑定与校验仍执行")
                     .isTrue();
-        } finally {
-            if (second != null) {
-                second.close();
-            }
-            first.close();
         }
     }
 

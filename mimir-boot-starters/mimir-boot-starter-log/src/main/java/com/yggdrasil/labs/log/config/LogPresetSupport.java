@@ -24,6 +24,7 @@ final class LogPresetSupport {
     static final String SERVER_LOCATION = "com/yggdrasil/labs/log/logback/server.xml";
     static final String BOOTSTRAP_PROPERTY_SOURCE = "bootstrap";
     static final String RESOLVED_PROPERTY_SOURCE = "mimirLogPresetResolved";
+    static final String JSON_RESOLVED_PROPERTY_SOURCE = "mimirLogJsonResolved";
     static final String ENABLED_PATTERNS = "mimir.boot.log.mask.enabled-patterns";
     static final String CUSTOM_PATTERNS = "mimir.boot.log.mask.custom-patterns";
     static final String REPLACEMENT = "mimir.boot.log.mask.replacement";

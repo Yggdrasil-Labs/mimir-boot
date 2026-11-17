@@ -40,7 +40,9 @@ public class PageResult<T extends Serializable> implements Serializable {
     private Boolean hasPrevious;
 
     /** 构造方法 */
-    public PageResult() {}
+    public PageResult() {
+        // 保留无参入口，供序列化框架构造及后续逐字段填充使用。
+    }
 
     /**
      * 构造方法

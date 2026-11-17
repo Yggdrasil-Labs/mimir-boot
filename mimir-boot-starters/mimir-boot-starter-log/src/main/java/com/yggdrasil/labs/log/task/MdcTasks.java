@@ -1,7 +1,6 @@
 package com.yggdrasil.labs.log.task;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -90,7 +89,8 @@ public final class MdcTasks {
         if (current == null || current.isEmpty()) {
             return Collections.emptyMap();
         }
-        return Collections.unmodifiableMap(new HashMap<>(current));
+        // getCopyOfContextMap 已返回独立副本，无需再次复制
+        return Collections.unmodifiableMap(current);
     }
 
     private static void apply(Map<String, String> context) {

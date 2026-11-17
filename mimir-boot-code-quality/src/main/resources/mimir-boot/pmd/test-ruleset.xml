@@ -9,6 +9,11 @@
   <rule ref="category/java/bestpractices.xml/SimplifiableTestAssertion"/>
   <!-- 检查 JUnit 5 测试类和方法是否使用包可见性。 -->
   <rule ref="category/java/bestpractices.xml/JUnit5TestShouldBePackagePrivate"/>
+  <!-- 测试夹具的空方法和非私有空构造器须在方法体内说明其有意留空的职责。 -->
+  <rule ref="category/java/documentation.xml/UncommentedEmptyMethodBody"/>
+  <rule ref="category/java/documentation.xml/UncommentedEmptyConstructor"/>
+  <!-- 测试资源同样优先使用自动资源关闭，避免异常路径遗漏清理。 -->
+  <rule ref="category/java/bestpractices.xml/UseTryWithResources"/>
   <!-- 检查声明或赋值后未使用的局部变量，减少无效的测试准备。 -->
   <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
   <!-- 检查逻辑运算符写反的空值判断，避免判断本身触发空指针异常。 -->

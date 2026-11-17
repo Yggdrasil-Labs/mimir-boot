@@ -80,6 +80,21 @@ class BackendCompatibilityScenarios {
         }
     }
 
+    @Test
+    void access_filter_remains_usable_without_logback() throws Exception {
+        assertThat(ClassUtils.isPresent("ch.qos.logback.classic.Logger", null)).isFalse();
+        var request =
+                new org.springframework.mock.web.MockHttpServletRequest("GET", "/backend-access");
+        request.setRemoteAddr("127.0.0.1");
+        var response = new org.springframework.mock.web.MockHttpServletResponse();
+        java.util.concurrent.atomic.AtomicBoolean invoked =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        new com.yggdrasil.labs.log.web.AccessLogFilter(3000, java.util.List.of())
+                .doFilter(request, response, (req, res) -> invoked.set(true));
+        assertThat(invoked.get()).isTrue();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
     private static ConfigurableApplicationContext start(String... args) {
         SpringApplication application = new SpringApplication(App.class);
         application.setWebApplicationType(WebApplicationType.NONE);

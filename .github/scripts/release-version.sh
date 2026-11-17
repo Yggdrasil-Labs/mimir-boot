@@ -17,7 +17,7 @@ require_maven_revision() {
   local revision="${1:-}"
   local release_version="${revision%-SNAPSHOT}"
 
-  if [ "$revision" != "$release_version" ] && [ "$revision" != "${release_version}-SNAPSHOT" ]; then
+  if [[ "$revision" != "$release_version" && "$revision" != "${release_version}-SNAPSHOT" ]]; then
     echo "Error: invalid Maven revision '$revision'." >&2
     return 1
   fi

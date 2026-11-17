@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 自定义 JSON 编码器与预设共用的配置片段，不定义输出或日志级别。 -->
+<included>
+    <springProperty scope="context" name="mimir.boot.log.json.service" source="spring.application.name" defaultValue="application"/>
+    <springProperty scope="context" name="mimir.boot.log.json.environment" source="mimir.boot.log.internal.json.environment" defaultValue=""/>
+    <springProperty scope="context" name="mimir.boot.log.json.instance" source="mimir.boot.log.internal.json.instance" defaultValue=""/>
+    <springProperty scope="context" name="mimir.boot.log.json.excludeMdcKeys" source="mimir.boot.log.internal.json.exclude-mdc-keys" defaultValue=""/>
+    <springProperty scope="context" name="mimir.boot.log.json.fieldLengthLimits" source="mimir.boot.log.internal.json.field-length-limits" defaultValue=""/>
+</included>

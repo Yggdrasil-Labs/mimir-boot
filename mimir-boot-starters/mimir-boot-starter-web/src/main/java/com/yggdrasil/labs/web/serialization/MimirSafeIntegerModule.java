@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ser.std.ArraySerializerBase;
 import com.fasterxml.jackson.databind.ser.std.NumberSerializer;
 import com.fasterxml.jackson.databind.ser.std.NumberSerializers;
 import com.fasterxml.jackson.databind.ser.std.StdScalarSerializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
@@ -61,7 +62,7 @@ public final class MimirSafeIntegerModule extends SimpleModule {
         }
 
         @Override
-        public JsonSerializer<?> createContextual(
+        public StdSerializer<? super Long> createContextual(
                 SerializerProvider provider, BeanProperty property) throws JsonMappingException {
             // 属性显式声明的输出形态优先于全局安全整数策略。
             JsonFormat.Value format = findFormatOverrides(provider, property, handledType());
@@ -113,7 +114,7 @@ public final class MimirSafeIntegerModule extends SimpleModule {
 
     private static final class LongArraySerializer extends ArraySerializerBase<long[]> {
 
-        private final JsonSerializer<Long> elementSerializer;
+        private final StdSerializer<? super Long> elementSerializer;
 
         private LongArraySerializer() {
             super(long[].class);
@@ -124,7 +125,7 @@ public final class MimirSafeIntegerModule extends SimpleModule {
                 LongArraySerializer source,
                 BeanProperty property,
                 Boolean unwrapSingle,
-                JsonSerializer<Long> elementSerializer) {
+                StdSerializer<? super Long> elementSerializer) {
             super(source, property, unwrapSingle);
             this.elementSerializer = elementSerializer;
         }
@@ -135,7 +136,6 @@ public final class MimirSafeIntegerModule extends SimpleModule {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public JsonSerializer<?> createContextual(
                 SerializerProvider provider, BeanProperty property) throws JsonMappingException {
             Boolean unwrapSingle =
@@ -145,9 +145,8 @@ public final class MimirSafeIntegerModule extends SimpleModule {
                             long[].class,
                             JsonFormat.Feature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED);
             // 基本类型数组不查询全局 Long serializer，保持 Jackson 原生的数组覆盖边界。
-            JsonSerializer<Long> serializer =
-                    (JsonSerializer<Long>)
-                            new LongSerializer().createContextual(provider, property);
+            StdSerializer<? super Long> serializer =
+                    new LongSerializer().createContextual(provider, property);
             return new LongArraySerializer(this, property, unwrapSingle, serializer);
         }
 

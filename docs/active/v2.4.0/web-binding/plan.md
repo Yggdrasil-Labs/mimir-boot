@@ -2,7 +2,7 @@
 version: v2.4.0
 status: draft
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-09
 ---
 
 # Web 日期绑定与 JSON 输出实施计划
@@ -26,6 +26,7 @@ updated: 2026-10-31
 | W-T3 成功状态迁移 | W-T2共享装配；Common C-07契约 | config/JacksonConfig.java、新R MixIn及其新增测试；读取W-T1已加字段 |
 | W-TC 异常追踪兼容 | W4/Exception E6契约；局部实现不依赖Exception代码落地 | advice/ResponseBodyEnhancer.java、内部Object包装器边界及增强器测试，不改共享配置 |
 | W-T4 集成与文档 | W-T1至W-T3、W-TC；联合异常验收另依赖Exception T1至T3 | README、复用扩展既有WebAutoConfigurationTest/IT，独占Web联合MVC测试，不修改Exception文件 |
+| W-T5 回传requestId（2026-11-08 追加） | 无（W-T1至W-T4、W-TC已完成） | TraceInterceptor、W-T5所列测试文件（含W-T4原独占的WebAutoConfigurationIT）、README相应小节 |
 
 ### W-T1：MVC缺省策略
 
@@ -86,6 +87,14 @@ W4联合矩阵由本任务独占Web测试文件，依赖Exception T1至T3和W-TC
 
 以下为后续实施命令，本轮未运行：`./mvnw -pl mimir-boot-starters/mimir-boot-starter-web -am test` 与 `./mvnw -pl mimir-boot-starters/mimir-boot-starter-web -am verify`。按现有Failsafe入口实际执行ResponseBodyEnhancerMvcIntegrationTest、Override、WebMvcRegistrations及联合新增用例，并核对本次报告中的类名、数量、失败/错误/跳过；test通过或应用启动不能替代集成报告。独立消费者同时验证Common单独与Web受管两条路径。通过条件是W1/W2/W3与总前提成立下的8组新增开关组合、总开关关闭及非Servlet两组对照、W4矩阵均符合规格。Exception或Web任一适配尚未落地时，W4/E6明确记为未验收。
 
+### W-T5：回传 requestId
+
+2026-11-08 按 D-114 追加，未实施；不依赖 W-T1 至 W-T4，可独立交付。行为见[规格 W5](./spec.md#behavior-w5响应回传-requestidd-114)，实现位置与取舍见[设计 W5](./design.md#w5回传requestidd-114)。
+
+- Modify: `interceptor/TraceInterceptor.java`；测试追加到同包既有 `interceptor/TraceInterceptorTest.java`（回传规则、写头失败、子类对照）、`interceptor/MdcAsyncServletIntegrationTest.java`（异步再派发与forward）、`config/WebAutoConfigurationIT.java`（异常响应、总开关，另起 `ReactiveWebApplicationContextRunner` 做非Servlet对照）及 `advice/ExistingMultipartTraceMvcIntegrationTest.java`（真实容器、懒解析413带头）；非懒解析413不带头需真实容器，新建同包 `advice/EagerMultipartTraceMvcIntegrationTest.java`（名称可调整），MockMvc 不能复现 multipart 解析失败。其余真实MVC链用例（处理器匹配阶段的405/415/406/400、默认与 `add-mappings=false` 下的404、前置Filter已写入值被保留、排除路径、Filter拒绝与更早拦截器拒绝、经统一异常封装的4xx/5xx）新建 `advice/RequestIdHeaderMvcIntegrationTest.java`（名称可调整），沿用 `advice/WebExceptionJointMvcIntegrationTest.java` 接入Exception统一封装的上下文组织；`WebAutoConfigurationIT` 只承担总开关与非Servlet对照。W-T4 已完成，不存在并行编辑冲突。
+- Modify: 模块 `README.md` — Trace 拦截器说明补充回传头及不带该头的情况（Filter拒绝、更早拦截器拒绝、排除路径、multipart解析与处理器匹配阶段的失败，均为示例）；CORS 示例补 `X-Request-Id` 并说明跨域读取需显式暴露；README 目前没有升级章节，在"技术栈"之前新增"升级和兼容性"章节（参照 Exception README 的同名小节），写明三类影响：原本没有该头的响应新增该头；在响应上追加该头的反向代理可能产生重复值；应用内在拦截器之后用 `addHeader` 写该头会产生重复值、用 `setHeader` 会覆盖框架值；并说明在拦截器之前写入的该头会被保留。不带该头的情况按失败阶段说明，不按状态码列举。
+- 验收：按[设计验证策略](./design.md#验证策略)的 W5 行执行；命令同 W-T4。
+
 ## 决策边界
 
-内部类拆分与测试组织可自主调整；三开关默认值、公共格式优先级、元数据类型、fail迁移边界变化先修订契约。W-TC/W-T4只拥有Web文件，不能改Exception实现；不得改变公开增强器构造/方法/泛型接口、用户supports退出或converter元信息契约，不得建立Exception→Web反向依赖。不得扩展W-03或引入Common Jackson运行依赖，不新增tools专项验收脚本。本轮文档不代表已经实施或发布。
+内部类拆分与测试组织可自主调整；三开关默认值、公共格式优先级、元数据类型、fail迁移边界变化先修订契约。W-TC/W-T4只拥有Web文件，不能改Exception实现；不得改变公开增强器构造/方法/泛型接口、用户supports退出或converter元信息契约，不得建立Exception→Web反向依赖。W-03仅按W-T5回传既有requestId，不扩展为请求标识生成或新开关；不得引入Common Jackson运行依赖，不新增tools专项验收脚本。本轮文档不代表已经实施或发布。
