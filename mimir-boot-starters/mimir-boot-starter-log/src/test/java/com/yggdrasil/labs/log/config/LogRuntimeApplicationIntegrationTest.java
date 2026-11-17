@@ -195,8 +195,8 @@ class LogRuntimeApplicationIntegrationTest {
 
     @Test
     void ordinary_child_context_does_not_change_parent_logging(CapturedOutput output) {
-        ConfigurableApplicationContext parent = start(Map.of(), "--logging.config=" + CONTAINER);
-        try {
+        try (ConfigurableApplicationContext parent =
+                start(Map.of(), "--logging.config=" + CONTAINER)) {
             AnnotationConfigApplicationContext child = new AnnotationConfigApplicationContext();
             child.setParent(parent);
             child.getEnvironment()
@@ -220,8 +220,6 @@ class LogRuntimeApplicationIntegrationTest {
                                             LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME))
                                     .getAppender("CONSOLE"))
                     .isNotNull();
-        } finally {
-            parent.close();
         }
         try (ConfigurableApplicationContext ignoredNext =
                 start(Map.of(), "--logging.file.path=" + logPath, "--spring.profiles.active=dev")) {

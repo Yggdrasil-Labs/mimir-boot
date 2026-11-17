@@ -174,7 +174,7 @@ class LogFieldAutoConfigurationTest {
     @Order(5)
     static class AnnotatedProvider implements LogFieldProvider {
         @Override
-        public Map<String, ?> provide(LogEventView event) {
+        public Map<String, Object> provide(LogEventView event) {
             return Map.of();
         }
     }
@@ -186,7 +186,7 @@ class LogFieldAutoConfigurationTest {
         }
 
         @Override
-        public Map<String, ?> provide(LogEventView event) {
+        public Map<String, Object> provide(LogEventView event) {
             return Map.of();
         }
     }

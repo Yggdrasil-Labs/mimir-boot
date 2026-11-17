@@ -226,7 +226,7 @@ public final class StructuredMaskSupport {
 @FunctionalInterface
 public interface LogFieldProvider {
     /** 返回补充到 attributes 的字段；null 或空 Map 表示无补充。不得阻塞或执行 I/O。 */
-    Map<String, ?> provide(LogEventView event);
+    Map<String, Object> provide(LogEventView event);
 }
 
 public interface LogEventView {

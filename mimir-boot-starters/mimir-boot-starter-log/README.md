@@ -566,7 +566,7 @@ class OrderLogConfiguration {
 }
 ```
 
-SPI 仅依赖 JDK 类型，接口为 `Map<String, ?> provide(LogEventView event)`；返回 null 或空 Map 表示无补充。`LogEventView` 提供：
+SPI 仅依赖 JDK 类型，接口为 `Map<String, Object> provide(LogEventView event)`；返回 null 或空 Map 表示无补充。`LogEventView` 提供：
 
 | 方法 | 类型与含义 |
 |---|---|

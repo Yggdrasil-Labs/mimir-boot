@@ -103,7 +103,7 @@ env:
 
 ```java
 public interface LogFieldProvider {
-    Map<String, ?> provide(LogEventView event);
+    Map<String, Object> provide(LogEventView event);
 }
 ```
 

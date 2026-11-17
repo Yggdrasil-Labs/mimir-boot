@@ -12,5 +12,5 @@ import java.util.Map;
 public interface LogFieldProvider {
 
     /** 返回合并至 attributes 的字段。 */
-    Map<String, ?> provide(LogEventView event);
+    Map<String, Object> provide(LogEventView event);
 }

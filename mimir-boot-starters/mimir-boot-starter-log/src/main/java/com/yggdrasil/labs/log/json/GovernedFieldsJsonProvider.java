@@ -21,6 +21,7 @@ import net.logstash.logback.composite.AbstractJsonProvider;
 
 /** 先在内存中治理字段，再通过 JSON 生成器写出单条事件。 */
 final class GovernedFieldsJsonProvider extends AbstractJsonProvider<ILoggingEvent> {
+    private static final String FIELD_ERROR = "field_error";
     private static final DateTimeFormatter TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
                     .withZone(ZoneId.systemDefault());
@@ -156,7 +157,7 @@ final class GovernedFieldsJsonProvider extends AbstractJsonProvider<ILoggingEven
         try {
             fields.put(key, rules.maskText(value));
         } catch (RuntimeException e) {
-            errors.add(new ProcessingError(path, null, "field_error"));
+            errors.add(new ProcessingError(path, null, FIELD_ERROR));
         }
     }
 
@@ -175,7 +176,7 @@ final class GovernedFieldsJsonProvider extends AbstractJsonProvider<ILoggingEven
                             ? rules.replacement()
                             : maskValue(value, path, rules, errors));
         } catch (RuntimeException e) {
-            errors.add(new ProcessingError(path, null, "field_error"));
+            errors.add(new ProcessingError(path, null, FIELD_ERROR));
         }
     }
 
@@ -194,7 +195,7 @@ final class GovernedFieldsJsonProvider extends AbstractJsonProvider<ILoggingEven
                 try {
                     result.add(maskValue(list.get(i), path + "/" + i, rules, errors));
                 } catch (RuntimeException e) {
-                    errors.add(new ProcessingError(path + "/" + i, null, "field_error"));
+                    errors.add(new ProcessingError(path + "/" + i, null, FIELD_ERROR));
                 }
             }
             return result;
@@ -217,7 +218,7 @@ final class GovernedFieldsJsonProvider extends AbstractJsonProvider<ILoggingEven
                     try {
                         result.put(name, truncate(value, childPath, truncated, errors));
                     } catch (RuntimeException e) {
-                        errors.add(new ProcessingError(childPath, null, "field_error"));
+                        errors.add(new ProcessingError(childPath, null, FIELD_ERROR));
                     }
                 });
         return result;

@@ -110,12 +110,8 @@ final class KeyValueMasker {
         int copiedUntil = 0;
         int index = 0;
         while (index < length) {
-            if (nextEquals >= 0 && nextEquals < index) {
-                nextEquals = message.indexOf('=', index);
-            }
-            if (nextColon >= 0 && nextColon < index) {
-                nextColon = message.indexOf(':', index);
-            }
+            nextEquals = advanceSeparator(message, '=', nextEquals, index);
+            nextColon = advanceSeparator(message, ':', nextColon, index);
             int separator = nextSeparator(nextEquals, nextColon);
             if (separator < 0) {
                 break;
@@ -138,6 +134,11 @@ final class KeyValueMasker {
         return masked == null
                 ? message
                 : masked.append(message, copiedUntil, message.length()).toString();
+    }
+
+    /** 扫描位置越过缓存分隔符时才继续查找，避免重复扫描已处理片段。 */
+    private static int advanceSeparator(String message, char separator, int previous, int index) {
+        return previous >= 0 && previous < index ? message.indexOf(separator, index) : previous;
     }
 
     private static SensitiveFieldValue findSensitiveFieldValue(

@@ -741,7 +741,7 @@ class LogJsonOutputIntegrationTest {
         private final AtomicReference<String> thread = new AtomicReference<>();
 
         @Override
-        public Map<String, ?> provide(LogEventView event) {
+        public Map<String, Object> provide(LogEventView event) {
             if (!event.message().orElse("").startsWith("provider-event ")) {
                 return Map.of();
             }

@@ -14,6 +14,7 @@ import java.util.Map;
 final class ValueNormalizer {
 
     private static final int MAX_DEPTH = 32;
+    private static final String INVALID_VALUE = "invalid_value";
     private static final Result REJECTED = new Result(false, null);
 
     private ValueNormalizer() {}
@@ -32,7 +33,7 @@ final class ValueNormalizer {
             String provider) {
         try {
             if (depth > MAX_DEPTH) {
-                return reject(path, errors, provider, "invalid_value");
+                return reject(path, errors, provider, INVALID_VALUE);
             }
             if (value == null || value instanceof String || value instanceof Boolean) {
                 return new Result(true, value);
@@ -73,12 +74,12 @@ final class ValueNormalizer {
         if (value instanceof Float number) {
             return Float.isFinite(number)
                     ? new Result(true, value)
-                    : reject(path, errors, provider, "invalid_value");
+                    : reject(path, errors, provider, INVALID_VALUE);
         }
         if (value instanceof Double number) {
             return Double.isFinite(number)
                     ? new Result(true, value)
-                    : reject(path, errors, provider, "invalid_value");
+                    : reject(path, errors, provider, INVALID_VALUE);
         }
         return reject(path, errors, provider, "unsupported_type");
     }
@@ -93,7 +94,7 @@ final class ValueNormalizer {
         List<Map.Entry<String, Object>> entries = new ArrayList<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             if (!(entry.getKey() instanceof String key)) {
-                return reject(path, errors, provider, "invalid_value");
+                return reject(path, errors, provider, INVALID_VALUE);
             }
             entries.add(new SimpleImmutableEntry<>(key, entry.getValue()));
         }
