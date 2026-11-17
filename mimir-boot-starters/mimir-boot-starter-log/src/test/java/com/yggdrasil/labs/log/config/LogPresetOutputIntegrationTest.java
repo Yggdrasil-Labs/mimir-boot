@@ -132,7 +132,7 @@ class LogPresetOutputIntegrationTest {
     @Test
     void stdout_failure_does_not_fall_back_to_files() throws Exception {
         PrintStream original = System.out;
-        PrintStream failing =
+        try (PrintStream failing =
                 new PrintStream(
                         new OutputStream() {
                             @Override
@@ -141,15 +141,15 @@ class LogPresetOutputIntegrationTest {
                             }
                         },
                         true,
-                        StandardCharsets.UTF_8);
-        try (ConfigurableApplicationContext ignoredContext = start(CONTAINER)) {
-            System.setOut(failing);
-            LoggerFactory.getLogger("demo.route").error("stdout-failure {}", id);
-            System.setOut(original);
-            assertThat(failing.checkError()).as("测试侧确认底层写入失败").isTrue();
-        } finally {
-            System.setOut(original);
-            failing.close();
+                        StandardCharsets.UTF_8)) {
+            try (ConfigurableApplicationContext ignoredContext = start(CONTAINER)) {
+                System.setOut(failing);
+                LoggerFactory.getLogger("demo.route").error("stdout-failure {}", id);
+                System.setOut(original);
+                assertThat(failing.checkError()).as("测试侧确认底层写入失败").isTrue();
+            } finally {
+                System.setOut(original);
+            }
         }
         try (Stream<Path> files = Files.walk(logPath)) {
             assertThat(files.filter(Files::isRegularFile)).as("不创建备用文件").isEmpty();

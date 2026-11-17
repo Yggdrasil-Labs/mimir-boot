@@ -118,17 +118,17 @@ class LegacyBootstrapScenarios {
     @Test
     void cached_second_application_with_cloud_context_reloads_own_xml_and_rules(
             CapturedOutput output) {
-        ConfigurableApplicationContext first =
-                startPlain(CONTAINER, "--mimir.boot.log.mask.enabled-patterns=password");
-        try (ConfigurableApplicationContext ignoredSecond =
-                startPlain(
-                        "classpath:com/yggdrasil/labs/log/logback/server.xml",
-                        "--mimir.boot.log.async.queue-size=4096",
-                        "--mimir.boot.log.mask.enabled-patterns=token",
-                        "--logging.file.path="
-                                + System.getProperty("java.io.tmpdir")
-                                + "/mimir-cached-"
-                                + marker)) {
+        try (ConfigurableApplicationContext ignoredFirst =
+                        startPlain(CONTAINER, "--mimir.boot.log.mask.enabled-patterns=password");
+                ConfigurableApplicationContext ignoredSecond =
+                        startPlain(
+                                "classpath:com/yggdrasil/labs/log/logback/server.xml",
+                                "--mimir.boot.log.async.queue-size=4096",
+                                "--mimir.boot.log.mask.enabled-patterns=token",
+                                "--logging.file.path="
+                                        + System.getProperty("java.io.tmpdir")
+                                        + "/mimir-cached-"
+                                        + marker)) {
             ch.qos.logback.classic.Logger root =
                     (ch.qos.logback.classic.Logger)
                             LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
@@ -142,8 +142,6 @@ class LegacyBootstrapScenarios {
             assertThat(new SensitiveDataConverter().maskSensitiveData("password=alpha token=beta"))
                     .as("D-101：重新加载后即为后者规则")
                     .isEqualTo("password=alpha token=****");
-        } finally {
-            first.close();
         }
     }
 

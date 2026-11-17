@@ -57,7 +57,7 @@ class MapperScannerConfigurerJarIntegrationTest {
 
             GenericApplicationContext context = new GenericApplicationContext();
             context.setClassLoader(jarClassLoader);
-            try {
+            try (context) {
                 Configuration configuration =
                         new Configuration(
                                 new Environment(
@@ -81,8 +81,6 @@ class MapperScannerConfigurerJarIntegrationTest {
                 Object mapper = context.getBean(mapperType);
                 assertTrue(context.containsBean("orderMapper"));
                 assertEquals("ok", mapperType.getMethod("probe").invoke(mapper));
-            } finally {
-                context.close();
             }
         } finally {
             Thread.currentThread().setContextClassLoader(previousClassLoader);

@@ -105,41 +105,40 @@ public class RpcFeignClient implements Client {
         }
 
         Instant start = Instant.now();
-        RpcHookInvocation invocation = hookChain.open(context);
-
-        try {
-            invocation.before();
-            Request wrapped = injectContext(request, context);
-            Response response = delegate.execute(wrapped, options);
-            Duration duration = Duration.between(start, Instant.now());
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "RpcFeignClient: HTTP call succeeded - service={}, method={}, url={},"
-                                + " status={}, duration={}ms",
-                        metadata.getService(),
-                        metadata.getMethod(),
-                        sanitizedUrl.debugUrl(),
-                        response.status(),
-                        duration.toMillis());
+        try (RpcHookInvocation invocation = hookChain.open(context)) {
+            // 在资源关闭前完成失败回调，保留 onError 先于 cleanup 的生命周期顺序。
+            try {
+                invocation.before();
+                Request wrapped = injectContext(request, context);
+                Response response = delegate.execute(wrapped, options);
+                Duration duration = Duration.between(start, Instant.now());
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(
+                            "RpcFeignClient: HTTP call succeeded - service={}, method={}, url={},"
+                                    + " status={}, duration={}ms",
+                            metadata.getService(),
+                            metadata.getMethod(),
+                            sanitizedUrl.debugUrl(),
+                            response.status(),
+                            duration.toMillis());
+                }
+                invocation.completeSuccess(RpcCallResult.success(duration));
+                return response;
+            } catch (Throwable throwable) {
+                Duration duration = Duration.between(start, Instant.now());
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(
+                            "RpcFeignClient: HTTP call failed - service={}, method={}, url={},"
+                                    + " duration={}ms, error={}",
+                            metadata.getService(),
+                            metadata.getMethod(),
+                            sanitizedUrl.debugUrl(),
+                            duration.toMillis(),
+                            throwable.getClass().getSimpleName());
+                }
+                invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
+                throw propagate(throwable);
             }
-            invocation.completeSuccess(RpcCallResult.success(duration));
-            return response;
-        } catch (Throwable throwable) {
-            Duration duration = Duration.between(start, Instant.now());
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                        "RpcFeignClient: HTTP call failed - service={}, method={}, url={},"
-                                + " duration={}ms, error={}",
-                        metadata.getService(),
-                        metadata.getMethod(),
-                        sanitizedUrl.debugUrl(),
-                        duration.toMillis(),
-                        throwable.getClass().getSimpleName());
-            }
-            invocation.completeFailure(RpcCallResult.failure(duration, throwable), throwable);
-            throw propagate(throwable);
-        } finally {
-            invocation.close();
         }
     }
 

@@ -1075,7 +1075,9 @@ class ValidationErrorExtractorTest {
     }
 
     static class ConstructorInput {
-        ConstructorInput(Map<String, Item> mapping) {}
+        ConstructorInput(Map<String, Item> mapping) {
+            // 仅提供构造器参数的泛型声明供路径解析，不需要初始化状态。
+        }
     }
 
     static class Input {
