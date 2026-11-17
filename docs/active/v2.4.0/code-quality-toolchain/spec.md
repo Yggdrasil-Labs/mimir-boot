@@ -55,6 +55,28 @@ And 启用 Spotless 检查时由 Spotless 报告格式问题。
 
 ## 行为 CQ-02：坏味道检查
 
+生产规则集包含 45 条规则：`CognitiveComplexity` 的 `reportLevel=16`，从 16 起报告；此阈值贴近 Sonar 允许 15 的设置，不表示 PMD 与 Sonar 全面等价。`AvoidDuplicateLiterals` 使用 `maxDuplicateLiterals=3`、`minimumLength=5`、`skipAnnotations=true`。生产与测试规则集均启用 `UncommentedEmptyMethodBody`、`UncommentedEmptyConstructor` 和 `UseTryWithResources`；空实现规则只检查方法体/构造器体内注释，与 Javadoc 要求不同，private 构造器默认排除。测试规则集共 11 条，不启用重复字面量与复杂度规则。
+
+### 场景：生产复杂度与重复字面量边界
+
+Given 生产源码的方法认知复杂度为 16，另有长度至少 5 的字面量重复达到 3 次且未出现在注解中
+When 执行 PMD 检查
+Then 分别报告 `CognitiveComplexity` 与 `AvoidDuplicateLiterals`
+And 测试源码中的相同复杂度或重复字面量不由这两条新增生产规则报告。
+
+### 场景：空方法体与构造器体注释
+
+Given 一个空方法体和非 private 空构造器体无注释，一个 private 空构造器体无注释，另一个空方法体含注释但没有 Javadoc
+When 执行生产或测试 PMD 检查
+Then 前两者报告对应 `UncommentedEmptyMethodBody` 或 `UncommentedEmptyConstructor`
+And private 构造器默认不报告，带方法体注释的方法不因缺少 Javadoc 被这两条规则报告。
+
+### 场景：try-with-resources 建议
+
+Given 生产或测试源码以 try-finally 手动关闭可自动管理的资源
+When 执行 PMD 检查
+Then 报告 `UseTryWithResources`。
+
 ### 场景：空 catch 块
 
 Given 下游 main 源码中有 `catch (IOException e) {}`，未设置新属性
@@ -280,7 +302,7 @@ Then 构建失败并提示缺少版本（插件依赖不受 BOM 的 `dependencyM
 
 Given 下游在自身 POM 中为 `mimir-boot-code-quality` 的 `pmd` execution 配置 `rulesets` 为 `config/pmd.xml`
 When 以 `precheck` 执行 PMD 检查
-Then 主源码使用下游规则，原 41 条生产规则不生效；测试规则仍由 `test-pmd` execution 独立配置。
+Then 主源码使用下游规则，Mimir 的 45 条生产规则不生效；测试规则仍由 `test-pmd` execution 独立配置。
 
 ### 场景：单独运行检查
 

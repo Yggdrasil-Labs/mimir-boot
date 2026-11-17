@@ -107,8 +107,8 @@ flowchart TB
 
 | execution / goal | 规则与源码根 | XML 报告 |
 |---|---|---|
-| `pmd` / `check` | 41 条生产规则，Maven 实际 `compileSourceRoots`，`includeTests=false` | `target/mimir-quality/pmd.xml` |
-| `test-pmd` / `test-check` | 8 条测试规则，Maven 实际 `testCompileSourceRoots`，`includeTests=true` | `target/mimir-quality/tests/pmd.xml` |
+| `pmd` / `check` | 45 条生产规则，Maven 实际 `compileSourceRoots`，`includeTests=false` | `target/mimir-quality/pmd.xml` |
+| `test-pmd` / `test-check` | 11 条测试规则，Maven 实际 `testCompileSourceRoots`，`includeTests=true` | `target/mimir-quality/tests/pmd.xml` |
 | `cpd` / `cpd-check` | 主源码重复，`includeTests=false`，100 tokens | `target/mimir-quality/cpd.xml` |
 | `test-cpd` / `test-cpd-check` | 测试源码重复，`includeTests=true`，100 tokens | `target/mimir-quality/tests/cpd.xml` |
 
@@ -166,8 +166,8 @@ PMD、CPD 的测试报告与检查目标分别从固定官方描述符派生；�
 
 | 资源路径 | 内容 |
 |---|---|
-| `mimir-boot/pmd/main-ruleset.xml` | 直接定义 41 条生产规则，范围由 Maven 主源码入口决定 |
-| `mimir-boot/pmd/test-ruleset.xml` | 直接定义 8 条测试规则，范围由 Maven 测试源码入口决定 |
+| `mimir-boot/pmd/main-ruleset.xml` | 直接定义 45 条生产规则，范围由 Maven 主源码入口决定 |
+| `mimir-boot/pmd/test-ruleset.xml` | 直接定义 11 条测试规则，范围由 Maven 测试源码入口决定 |
 
 - 发布附件：源码包由 `maven-source-plugin` 的 `jar-no-fork` 打包资源。没有 Java 源码时 Javadoc 插件不产出附件，因此用 `maven-jar-plugin` 以 `javadoc` 分类器打包模块内的说明文件，满足 Central 对附件的要求。
 - 其他构建设置：Flatten 沿用根 POM 配置；与 Common 一样显式设置 `maven.deploy.skip=false`；签名沿用根 POM 的 `sign-artifacts`。
@@ -177,15 +177,15 @@ PMD、CPD 的测试报告与检查目标分别从固定官方描述符派生；�
 
 生产规则集承载注释、命名与坏味道三个维度（D-109）。注释与命名规则来自 documentation、codestyle 类目，但只启用下表列出的规则，不整体引入类目。
 
-Parent 分别由 `pmd` 与 `test-pmd` execution 加载 `main-ruleset.xml`、`test-ruleset.xml`，共用 PMD 原生开关；41 条生产规则与 8 条测试规则不按路径名判断源码类别。11 个本仓库模块统一继承；CPD 同样按主、测试源码分别比较，阈值均为 100 tokens。
+Parent 分别由 `pmd` 与 `test-pmd` execution 加载 `main-ruleset.xml`、`test-ruleset.xml`，共用 PMD 原生开关；45 条生产规则与 11 条测试规则不按路径名判断源码类别。11 个本仓库模块统一继承；CPD 同样按主、测试源码分别比较，阈值均为 100 tokens。
 
 | 维度 | 类目 | 规则 |
 |---|---|---|
-| 注释 | documentation | `CommentRequired`，见下文；`DanglingJavadoc` |
+| 注释 | documentation | `CommentRequired`，见下文；`DanglingJavadoc`；`UncommentedEmptyMethodBody`、`UncommentedEmptyConstructor`（默认排除 private 构造器；检查方法体内注释，不要求 Javadoc） |
 | 命名 | codestyle | `ClassNamingConventions`、`MethodNamingConventions`、`FieldNamingConventions`、`FormalParameterNamingConventions`、`LocalVariableNamingConventions`、`TypeParameterNamingConventions`、`PackageCase`，均使用默认格式 |
-| 坏味道 | bestpractices | `UnusedPrivateField`、`UnusedPrivateMethod`、`UnusedLocalVariable`、`UnusedFormalParameter`、`UnusedAssignment`、`PreserveStackTrace`、`MissingOverride`、`SystemPrintln`、`AvoidPrintStackTrace`、`UseCollectionIsEmpty`、`ForLoopCanBeForeach` |
-| 坏味道 | errorprone | `EmptyCatchBlock`、`OverrideBothEqualsAndHashcode`、`CompareObjectsWithEquals`、`ReturnEmptyCollectionRatherThanNull`、`CloseResource`、`EqualsNull`、`BrokenNullCheck`、`AssignmentInOperand`、`ImplicitSwitchFallThrough`、`ConstructorCallsOverridableMethod`、`UseLocaleWithCaseConversions`、`AvoidBranchingStatementAsLastInLoop` |
-| 坏味道 | design | `CyclomaticComplexity`（`methodReportLevel=15`）、`CognitiveComplexity`（`reportLevel=20`）、`NPathComplexity`（默认 200）、`SimplifyBooleanReturns`、`SimplifiedTernary`、`AvoidThrowingRawExceptionTypes`、`SignatureDeclareThrowsException`、`UselessOverridingMethod` |
+| 坏味道 | bestpractices | `UnusedPrivateField`、`UnusedPrivateMethod`、`UnusedLocalVariable`、`UnusedFormalParameter`、`UnusedAssignment`、`PreserveStackTrace`、`MissingOverride`、`SystemPrintln`、`AvoidPrintStackTrace`、`UseCollectionIsEmpty`、`ForLoopCanBeForeach`、`UseTryWithResources` |
+| 坏味道 | errorprone | `EmptyCatchBlock`、`OverrideBothEqualsAndHashcode`、`CompareObjectsWithEquals`、`ReturnEmptyCollectionRatherThanNull`、`CloseResource`、`EqualsNull`、`BrokenNullCheck`、`AssignmentInOperand`、`ImplicitSwitchFallThrough`、`ConstructorCallsOverridableMethod`、`UseLocaleWithCaseConversions`、`AvoidBranchingStatementAsLastInLoop`、`AvoidDuplicateLiterals`（`maxDuplicateLiterals=3`、`minimumLength=5`、`skipAnnotations=true`） |
+| 坏味道 | design | `CyclomaticComplexity`（`methodReportLevel=15`）、`CognitiveComplexity`（`reportLevel=16`，PMD 从 16 起报告；阈值贴近 Sonar 允许 15，不代表两者全面等价）、`NPathComplexity`（默认 200）、`SimplifyBooleanReturns`、`SimplifiedTernary`、`AvoidThrowingRawExceptionTypes`、`SignatureDeclareThrowsException`、`UselessOverridingMethod` |
 | 坏味道 | multithreading | `DoubleCheckedLocking` |
 
 `CommentRequired` 的参数，目标是 D-107“只要求公开类型与方法有 Javadoc”：
@@ -210,7 +210,7 @@ Parent 分别由 `pmd` 与 `test-pmd` execution 加载 `main-ruleset.xml`、`tes
 
 `ClassNamingConventions` 的 `utilityClassPattern` 若默认要求 `Utils`、`Helper` 等后缀，设为与 `classPattern` 相同，不强制工具类后缀；其余命名规则保持默认。
 
-明确不启用：codestyle 与 documentation 类目中除上表外的规则（含 `UnnecessaryImport`、`CommentSize`、`LinguisticNaming`），以及 performance、security 类目。PMD 遇到未知规则名会直接让构建失败，因此规则名是否正确由首次构建验证。
+空方法体与构造器体规则检查方法体内注释，不要求 Javadoc；`UncommentedEmptyConstructor` 默认排除 private 构造器。测试规则集启用这两条及 `UseTryWithResources`，不启用 `AvoidDuplicateLiterals` 或复杂度规则。明确不启用：codestyle 与 documentation 类目中除上表外的规则（含 `UnnecessaryImport`、`CommentSize`、`LinguisticNaming`），以及 performance、security 类目。PMD 遇到未知规则名会直接让构建失败，因此规则名是否正确由首次构建验证。
 
 ### Parent 属性（CQ-04、CQ-06、CQ-09、CQ-10）
 

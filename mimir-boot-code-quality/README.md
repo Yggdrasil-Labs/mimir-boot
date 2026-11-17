@@ -68,9 +68,9 @@ BOM 不管理插件依赖版本，也不自动启用检查。以下为仅检查�
 
 ## 规则边界与替换
 
-`main-ruleset.xml` 直接定义 41 条生产规则，检查公开类型和方法的 Javadoc、Java 命名和常见坏味道。扫描范围由 Maven 实际源码根决定，支持自定义目录与追加源码根；规则 XML 不过滤路径。默认排除 `target/generated-sources`，CPD 阈值为 100 tokens。
+`main-ruleset.xml` 直接定义 45 条生产规则，检查公开类型和方法的 Javadoc、Java 命名和常见坏味道。`CognitiveComplexity` 的 `reportLevel` 为 16；PMD 从 16 起报告，阈值贴近 Sonar 允许 15 的设置，但不代表两者规则或计算结果全面等价。`AvoidDuplicateLiterals` 仅对长度至少 5、重复达到 3 次的字面量报告，并跳过注解。`UncommentedEmptyMethodBody` 与 `UncommentedEmptyConstructor` 检查空方法体/构造器体内是否有注释；这是方法体内注释检查，与 Javadoc 要求不同，private 构造器默认排除。另启用 `UseTryWithResources`。扫描范围由 Maven 实际源码根决定，支持自定义目录与追加源码根；规则 XML 不过滤路径。默认排除 `target/generated-sources`，CPD 阈值为 100 tokens。
 
-`test-ruleset.xml` 通过 `test-pmd` 入口检查 Maven 实际测试源码根，排除 `target/generated-test-sources`，启用 8 条规则：
+`test-ruleset.xml` 通过 `test-pmd` 入口检查 Maven 实际测试源码根，排除 `target/generated-test-sources`，启用 11 条规则。新增空方法体/构造器体内注释检查和 `UseTryWithResources`；测试规则集不启用 `AvoidDuplicateLiterals` 与复杂度规则。
 
 - 测试断言与声明：`UnnecessaryBooleanAssertion`、`DetachedTestCase`、`SimplifiableTestAssertion`、`JUnit5TestShouldBePackagePrivate`。
 - 通用错误：`UnusedLocalVariable`、`BrokenNullCheck`、`EmptyCatchBlock`、`ImplicitSwitchFallThrough`。

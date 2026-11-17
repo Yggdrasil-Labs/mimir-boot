@@ -18,6 +18,9 @@
   </rule>
   <!-- 检查未附着到有效声明的 Javadoc，避免注释放错位置而未进入 API 文档。 -->
   <rule ref="category/java/documentation.xml/DanglingJavadoc"/>
+  <!-- 空方法和非私有空构造器须在方法体内说明意图，区分有意空实现与遗漏。 -->
+  <rule ref="category/java/documentation.xml/UncommentedEmptyMethodBody"/>
+  <rule ref="category/java/documentation.xml/UncommentedEmptyConstructor"/>
   <!-- 检查类、接口、枚举等类型名称是否符合命名约定。 -->
   <rule ref="category/java/codestyle.xml/ClassNamingConventions"/>
   <!-- 检查方法名是否符合小写字母开头的驼峰命名约定。 -->
@@ -54,6 +57,16 @@
   <rule ref="category/java/bestpractices.xml/UseCollectionIsEmpty"/>
   <!-- 识别仅用于遍历元素的索引循环，提示使用增强 for 循环。 -->
   <rule ref="category/java/bestpractices.xml/ForLoopCanBeForeach"/>
+  <!-- 检查 finally 中的手动资源关闭，优先使用能保留主异常的自动资源关闭。 -->
+  <rule ref="category/java/bestpractices.xml/UseTryWithResources"/>
+  <!-- 同文件内长度至少为 5 的字符串重复达到 3 次时提示提取常量；注解值不参与。 -->
+  <rule ref="category/java/errorprone.xml/AvoidDuplicateLiterals">
+    <properties>
+      <property name="maxDuplicateLiterals" value="3"/>
+      <property name="minimumLength" value="5"/>
+      <property name="skipAnnotations" value="true"/>
+    </properties>
+  </rule>
   <!-- 检查空 catch 块，提醒明确处理异常而非无意吞掉异常。 -->
   <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
   <!-- 检查 equals 与 hashCode 是否成对覆盖，避免破坏哈希集合的对象相等契约。 -->
@@ -80,8 +93,8 @@
   <rule ref="category/java/errorprone.xml/AvoidBranchingStatementAsLastInLoop"/>
   <!-- 检查圈复杂度：方法报告阈值为 15，类的总复杂度沿用 PMD 默认阈值 80。 -->
   <rule ref="category/java/design.xml/CyclomaticComplexity"><properties><property name="methodReportLevel" value="15"/></properties></rule>
-  <!-- 检查嵌套和控制流带来的认知复杂度，方法报告阈值为 20。 -->
-  <rule ref="category/java/design.xml/CognitiveComplexity"><properties><property name="reportLevel" value="20"/></properties></rule>
+  <!-- 检查嵌套和控制流带来的认知复杂度；达到 16 即报告，对应允许复杂度不超过 15。 -->
+  <rule ref="category/java/design.xml/CognitiveComplexity"><properties><property name="reportLevel" value="16"/></properties></rule>
   <!-- 检查方法的非循环执行路径数量，沿用 PMD 默认阈值 200，避免分支组合过多。 -->
   <rule ref="category/java/design.xml/NPathComplexity"/>
   <!-- 简化仅返回 true 或 false 的条件分支，使布尔结果直接由条件表达。 -->
