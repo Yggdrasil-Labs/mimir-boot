@@ -7,8 +7,16 @@ final class SlowSqlTextSanitizer {
     private static final int MAX_OUTPUT_LENGTH = 4096;
     private static final int MAX_DEPTH = 32;
     private static final String TRUNCATED_SUFFIX = " [truncated]";
+    private static final String SQL_SELECT = "SELECT";
+    private static final String SQL_WHERE = "WHERE";
+    private static final String SQL_DISTINCT = "DISTINCT";
+    private static final String SQL_RIGHT = "RIGHT";
+    private static final String SQL_INNER = "INNER";
+    private static final String SQL_LIMIT = "LIMIT";
+    private static final String SQL_OFFSET = "OFFSET";
+    private static final String OMITTED_SQL = "<omitted>";
     private static final String[] KEYWORDS = {
-        "SELECT",
+        SQL_SELECT,
         "INSERT",
         "INTO",
         "VALUES",
@@ -16,7 +24,7 @@ final class SlowSqlTextSanitizer {
         "SET",
         "DELETE",
         "FROM",
-        "WHERE",
+        SQL_WHERE,
         "AND",
         "OR",
         "NOT",
@@ -25,12 +33,12 @@ final class SlowSqlTextSanitizer {
         "LIKE",
         "BETWEEN",
         "EXISTS",
-        "DISTINCT",
+        SQL_DISTINCT,
         "AS",
         "JOIN",
         "LEFT",
-        "RIGHT",
-        "INNER",
+        SQL_RIGHT,
+        SQL_INNER,
         "OUTER",
         "ON",
         "GROUP",
@@ -39,8 +47,8 @@ final class SlowSqlTextSanitizer {
         "ORDER",
         "ASC",
         "DESC",
-        "LIMIT",
-        "OFFSET",
+        SQL_LIMIT,
+        SQL_OFFSET,
         "FETCH",
         "FIRST",
         "NEXT",
@@ -54,9 +62,9 @@ final class SlowSqlTextSanitizer {
         "ELSE",
         "END"
     };
-    private static final Result UNAVAILABLE = new Result("<omitted>", "UNAVAILABLE");
-    private static final Result TOO_LONG = new Result("<omitted>", "TOO_LONG");
-    private static final Result UNSUPPORTED = new Result("<omitted>", "UNSUPPORTED");
+    private static final Result UNAVAILABLE = new Result(OMITTED_SQL, "UNAVAILABLE");
+    private static final Result TOO_LONG = new Result(OMITTED_SQL, "TOO_LONG");
+    private static final Result UNSUPPORTED = new Result(OMITTED_SQL, "UNSUPPORTED");
 
     private SlowSqlTextSanitizer() {}
 
@@ -435,7 +443,7 @@ final class SlowSqlTextSanitizer {
 
         boolean statement() {
             boolean valid;
-            if (is("SELECT")) {
+            if (is(SQL_SELECT)) {
                 valid = query(0);
             } else if (take("INSERT")) {
                 valid = insert();
@@ -521,10 +529,10 @@ final class SlowSqlTextSanitizer {
         }
 
         private boolean writeTail() {
-            if (take("WHERE") && !expression(0)) {
+            if (take(SQL_WHERE) && !expression(0)) {
                 return false;
             }
-            return order(0) && (!take("LIMIT") || limit());
+            return order(0) && (!take(SQL_LIMIT) || limit());
         }
 
         private boolean alias() {
@@ -593,10 +601,10 @@ final class SlowSqlTextSanitizer {
                 if (!order(depth)) {
                     return false;
                 }
-                if (take("LIMIT")) {
+                if (take(SQL_LIMIT)) {
                     return limit();
                 }
-                if (take("OFFSET")) {
+                if (take(SQL_OFFSET)) {
                     if (!count()) {
                         return false;
                     }
@@ -610,10 +618,10 @@ final class SlowSqlTextSanitizer {
             }
 
             private boolean select(int depth) {
-                if (!take("SELECT")) {
+                if (!take(SQL_SELECT)) {
                     return false;
                 }
-                if (!take("DISTINCT")) {
+                if (!take(SQL_DISTINCT)) {
                     take("ALL");
                 }
                 return selectItems(depth) && from(depth) && predicates(depth);
@@ -651,20 +659,20 @@ final class SlowSqlTextSanitizer {
             }
 
             private boolean isJoin() {
-                return is("JOIN") || is("LEFT") || is("RIGHT") || is("INNER");
+                return is("JOIN") || is("LEFT") || is(SQL_RIGHT) || is(SQL_INNER);
             }
 
             private boolean join(int depth) {
-                if (take("LEFT") || take("RIGHT")) {
+                if (take("LEFT") || take(SQL_RIGHT)) {
                     take("OUTER");
                 } else {
-                    take("INNER");
+                    take(SQL_INNER);
                 }
                 return take("JOIN") && table(depth) && take("ON") && expression(depth);
             }
 
             private boolean predicates(int depth) {
-                if (take("WHERE") && !expression(depth)) {
+                if (take(SQL_WHERE) && !expression(depth)) {
                     return false;
                 }
                 if (take("GROUP") && (!take("BY") || !expressions(depth))) {
@@ -706,7 +714,7 @@ final class SlowSqlTextSanitizer {
                 if (!count()) {
                     return false;
                 }
-                return !(take(",") || take("OFFSET")) || count();
+                return !(take(",") || take(SQL_OFFSET)) || count();
             }
         }
 
@@ -777,10 +785,7 @@ final class SlowSqlTextSanitizer {
                 }
                 boolean negated = take("NOT");
                 if (take("IN")) {
-                    if (depth >= MAX_DEPTH || !take("(")) {
-                        return false;
-                    }
-                    return (is("SELECT") ? query(depth + 1) : expressions(depth + 1)) && take(")");
+                    return inValues(depth);
                 }
                 if (take("BETWEEN")) {
                     return sum(depth) && take("AND") && sum(depth);
@@ -789,6 +794,13 @@ final class SlowSqlTextSanitizer {
                     return sum(depth);
                 }
                 return !negated;
+            }
+
+            private boolean inValues(int depth) {
+                if (depth >= MAX_DEPTH || !take("(")) {
+                    return false;
+                }
+                return (is(SQL_SELECT) ? query(depth + 1) : expressions(depth + 1)) && take(")");
             }
 
             private boolean isComparisonOperator() {
@@ -843,7 +855,7 @@ final class SlowSqlTextSanitizer {
                 }
                 if (take("(")) {
                     return depth < MAX_DEPTH
-                            && (is("SELECT") ? query(depth + 1) : expression(depth + 1))
+                            && (is(SQL_SELECT) ? query(depth + 1) : expression(depth + 1))
                             && take(")");
                 }
                 if (take("EXISTS")) {
@@ -853,15 +865,19 @@ final class SlowSqlTextSanitizer {
                     return depth < MAX_DEPTH && caseBody(depth + 1);
                 }
                 if (current.type() == Type.IDENTIFIER) {
-                    if (!name()) {
-                        return false;
-                    }
-                    return !take("(") || (depth < MAX_DEPTH && arguments(depth + 1));
+                    return namedValue(depth);
                 }
-                if (take("LEFT") || take("RIGHT")) {
+                if (take("LEFT") || take(SQL_RIGHT)) {
                     return depth < MAX_DEPTH && take("(") && arguments(depth + 1);
                 }
                 return false;
+            }
+
+            private boolean namedValue(int depth) {
+                if (!name()) {
+                    return false;
+                }
+                return !take("(") || (depth < MAX_DEPTH && arguments(depth + 1));
             }
 
             private boolean isLiteral() {
@@ -877,7 +893,7 @@ final class SlowSqlTextSanitizer {
                 if (take(")")) {
                     return true;
                 }
-                boolean modifier = take("DISTINCT") || take("ALL");
+                boolean modifier = take(SQL_DISTINCT) || take("ALL");
                 if (is("*")) {
                     return !modifier && take("*") && take(")");
                 }

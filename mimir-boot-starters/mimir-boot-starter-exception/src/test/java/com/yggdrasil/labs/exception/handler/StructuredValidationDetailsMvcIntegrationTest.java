@@ -196,9 +196,13 @@ class StructuredValidationDetailsMvcIntegrationTest {
             return "ok";
         }
 
-        public void accept(@Valid Object input) {}
+        public void accept(@Valid Object input) {
+            // 仅供可执行校验读取 Object 参数的级联约束，不需要执行方法体。
+        }
 
-        public void acceptNested(@Valid OpaqueInput input) {}
+        public void acceptNested(@Valid OpaqueInput input) {
+            // 仅供可执行校验读取嵌套对象的级联约束，不需要执行方法体。
+        }
     }
 
     static class OpaqueInput {

@@ -2,6 +2,7 @@ package com.yggdrasil.labs.exception.handler;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -68,16 +69,20 @@ record ExceptionHttpMetadata(
         source.forEach(
                 (name, values) -> {
                     if (HttpHeaders.CONNECTION.equalsIgnoreCase(name) && values != null) {
-                        for (String value : values) {
-                            if (validValue(value)) {
-                                for (String token : value.split(",")) {
-                                    excluded.add(token.trim().toLowerCase(Locale.ROOT));
-                                }
-                            }
-                        }
+                        addConnectionExclusions(values, excluded);
                     }
                 });
         return excluded;
+    }
+
+    private static void addConnectionExclusions(List<String> values, Set<String> excluded) {
+        for (String value : values) {
+            if (validValue(value)) {
+                for (String token : value.split(",")) {
+                    excluded.add(token.trim().toLowerCase(Locale.ROOT));
+                }
+            }
+        }
     }
 
     private static HttpHeaders copyHeaders(
@@ -97,15 +102,20 @@ record ExceptionHttpMetadata(
                             || values == null) {
                         return;
                     }
-                    for (String value : values) {
-                        if (validValue(value)) {
-                            result.add(name, value);
-                        } else {
-                            log.warn("已丢弃非法 HTTP 头值");
-                        }
-                    }
+                    copyValidHeaderValues(name, values, result);
                 });
         return result;
+    }
+
+    private static void copyValidHeaderValues(
+            String name, List<String> values, HttpHeaders result) {
+        for (String value : values) {
+            if (validValue(value)) {
+                result.add(name, value);
+            } else {
+                log.warn("已丢弃非法 HTTP 头值");
+            }
+        }
     }
 
     private static boolean validValue(String value) {

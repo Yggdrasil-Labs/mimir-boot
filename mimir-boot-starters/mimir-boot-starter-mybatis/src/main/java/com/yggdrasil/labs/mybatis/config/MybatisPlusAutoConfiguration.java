@@ -72,6 +72,12 @@ public class MybatisPlusAutoConfiguration {
         // 乐观锁
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
 
+        addCustomInnerInterceptors(interceptor, beanFactory);
+        return interceptor;
+    }
+
+    private static void addCustomInnerInterceptors(
+            MybatisPlusInterceptor interceptor, ListableBeanFactory beanFactory) {
         // 从 Spring 容器中获取所有 InnerInterceptor Bean（包括 JsonSqlLogInnerInterceptor 等）
         // 这样可以确保即使配置类加载顺序不同，也能正确获取到所有拦截器
         try {
@@ -99,8 +105,6 @@ public class MybatisPlusAutoConfiguration {
                 LOGGER.warn("获取 InnerInterceptor Bean 时发生异常，跳过自定义拦截器", e);
             }
         }
-
-        return interceptor;
     }
 
     /** 将配置的包模式转换为 Mapper 扫描器可用的基础包。 */

@@ -1029,29 +1029,49 @@ class ValidationErrorExtractorTest {
     }
 
     static class Inputs {
-        void body(Input input) {}
+        void body(Input input) {
+            // 仅提供绑定路径解析所需的参数类型声明，不需要执行方法体。
+        }
 
-        void mapped(MappedInput input) {}
+        void mapped(MappedInput input) {
+            // 仅提供 Map 字段路径解析所需的参数类型声明，不需要执行方法体。
+        }
 
-        void polymorphic(@Valid Object input) {}
+        void polymorphic(@Valid Object input) {
+            // 仅提供 Object 参数的级联约束与类型声明，不需要执行方法体。
+        }
 
-        void nestedPolymorphic(@Valid OpaqueInput input) {}
+        void nestedPolymorphic(@Valid OpaqueInput input) {
+            // 仅提供嵌套 Object 字段的级联约束与类型声明，不需要执行方法体。
+        }
 
-        void opaqueContainers(@Valid List<Object> items) {}
+        void opaqueContainers(@Valid List<Object> items) {
+            // 仅提供 Object 容器元素的级联约束与类型声明，不需要执行方法体。
+        }
 
-        void validatedContainers(@Valid List<Item> items, @Valid Map<String, Item> mapping) {}
+        void validatedContainers(@Valid List<Item> items, @Valid Map<String, Item> mapping) {
+            // 仅提供 List 与 Map 元素的级联约束，不需要执行方法体。
+        }
 
-        void containerOnly(List<Item> query) {}
+        void containerOnly(List<Item> query) {
+            // 仅提供容器元素路径解析所需的参数声明，不需要执行方法体。
+        }
 
-        void sort(SortingInput z, SortingInput ignored, SortingInput a) {}
+        void sort(SortingInput z, SortingInput ignored, SortingInput a) {
+            // 仅提供验证错误排序所需的参数序号与字段声明，不需要执行方法体。
+        }
 
-        void containers(List<Item> items, Map<String, Item> mapping) {}
+        void containers(List<Item> items, Map<String, Item> mapping) {
+            // 仅提供容器参数的泛型声明供路径解析使用，不需要执行方法体。
+        }
 
         void constraints(
                 @Size List<Item> items,
                 @NotNull Map<String, Item> mapping,
                 Map<String, @NotNull Item> elements,
-                @NotNull Map<String, @NotNull Item> ambiguous) {}
+                @NotNull Map<String, @NotNull Item> ambiguous) {
+            // 仅提供容器与元素约束的声明供分类使用，不需要执行方法体。
+        }
     }
 
     static class ConstructorInput {

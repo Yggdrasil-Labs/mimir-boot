@@ -77,7 +77,9 @@ class ReflectionUtilsTest extends BaseUnitTest {
         // 创建一个不能转换为 InnerInterceptor 的类
         class NotAnInnerInterceptor {
             @SuppressWarnings("unused")
-            public NotAnInnerInterceptor() {}
+            public NotAnInnerInterceptor() {
+                // 此夹具仅提供不兼容的运行时类型以触发强制转换异常，无需初始化状态。
+            }
         }
 
         // 验证强制转换会抛出 ClassCastException
