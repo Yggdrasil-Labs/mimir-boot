@@ -383,8 +383,9 @@ class LogJsonOutputIntegrationTest {
         CountDownLatch release = new CountDownLatch(1);
         ProbeProvider provider;
         try (ConfigurableApplicationContext context = startJson(SERVER);
-                BlockedAsyncSink info = blockAsyncSink("ASYNC_FILE_INFO", entered, release);
-                BlockedAsyncSink error = blockAsyncSink("ASYNC_FILE_ERROR", entered, release)) {
+                BlockedAsyncSink ignoredInfo = blockAsyncSink("ASYNC_FILE_INFO", entered, release);
+                BlockedAsyncSink ignoredError =
+                        blockAsyncSink("ASYNC_FILE_ERROR", entered, release)) {
             provider = context.getBean(ProbeProvider.class);
             LoggerFactory.getLogger("demo.json").error("queue-gate {}", id);
             assertThat(entered.await(5, TimeUnit.SECONDS)).as("两个异步出口均阻塞于先行事件").isTrue();
@@ -466,9 +467,9 @@ class LogJsonOutputIntegrationTest {
         assertThatThrownBy(
                         () -> {
                             try (ConfigurableApplicationContext ignored = startJson(SERVER);
-                                    BlockedAsyncSink info =
+                                    BlockedAsyncSink ignoredInfo =
                                             blockAsyncSink("ASYNC_FILE_INFO", entered, release);
-                                    BlockedAsyncSink error =
+                                    BlockedAsyncSink ignoredError =
                                             blockAsyncSink("ASYNC_FILE_ERROR", entered, release)) {
                                 LoggerFactory.getLogger("demo.json").error("queue-gate {}", id);
                                 assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
