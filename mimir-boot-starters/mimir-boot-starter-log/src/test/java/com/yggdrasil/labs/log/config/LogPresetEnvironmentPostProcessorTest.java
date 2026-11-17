@@ -684,16 +684,16 @@ class LogPresetEnvironmentPostProcessorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"1", "2147483647"})
-    void accepts_yaml_integer_field_limits_including_upper_bound(String limit) throws IOException {
-        StandardEnvironment environment = yamlLimitEnvironment(limit);
+    @ValueSource(ints = {1, Integer.MAX_VALUE})
+    void accepts_yaml_integer_field_limits_including_upper_bound(int limit) throws IOException {
+        StandardEnvironment environment = yamlLimitEnvironment(Integer.toString(limit));
 
         run(environment);
 
         assertThat(
                         LogJsonSettingsCodec.decodeLimits(
                                 environment.getProperty(LogJsonKeys.INTERNAL_FIELD_LENGTH_LIMITS)))
-                .containsOnly(Map.entry("/message", Integer.valueOf(limit)));
+                .containsOnly(Map.entry("/message", limit));
     }
 
     @Test

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -192,7 +193,7 @@ class LegacyLogbackRollingTest {
             if (Files.notExists(active)) {
                 Files.createFile(active);
             }
-            active.toFile().setLastModified(time);
+            Files.setLastModifiedTime(active, FileTime.fromMillis(time));
             policy.getTimeBasedFileNamingAndTriggeringPolicy().setCurrentTime(time);
             policy.start();
             appender.start();

@@ -50,9 +50,13 @@ import com.yggdrasil.labs.log.json.LogFieldProviderRegistry;
 import com.yggdrasil.labs.log.web.AccessLogFilter;
 
 import ch.qos.logback.classic.AsyncAppender;
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.LoggingEvent;
+import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
+import ch.qos.logback.core.status.Status;
 
 /** JSON 真实 XML 接入、字段治理与异步出口的端到端契约。 */
 @ExtendWith(OutputCaptureExtension.class)
@@ -378,10 +382,10 @@ class LogJsonOutputIntegrationTest {
         CountDownLatch entered = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         ProbeProvider provider;
-        try (ConfigurableApplicationContext context = startJson(SERVER)) {
+        try (ConfigurableApplicationContext context = startJson(SERVER);
+                BlockedAsyncSink info = blockAsyncSink("ASYNC_FILE_INFO", entered, release);
+                BlockedAsyncSink error = blockAsyncSink("ASYNC_FILE_ERROR", entered, release)) {
             provider = context.getBean(ProbeProvider.class);
-            blockAsyncSink("ASYNC_FILE_INFO", entered, release);
-            blockAsyncSink("ASYNC_FILE_ERROR", entered, release);
             LoggerFactory.getLogger("demo.json").error("queue-gate {}", id);
             assertThat(entered.await(5, TimeUnit.SECONDS)).as("两个异步出口均阻塞于先行事件").isTrue();
             Map<String, Object> mutable = new LinkedHashMap<>();
@@ -411,9 +415,119 @@ class LogJsonOutputIntegrationTest {
         assertThat(provider.calls.get()).isEqualTo(1);
         assertThat(provider.thread.get()).isEqualTo(Thread.currentThread().getName());
         assertThat(output.getOut()).doesNotContain(id);
+        try (ConfigurableApplicationContext ignored = startJson(CONTAINER)) {
+            LoggerFactory.getLogger("demo.json").info("after-queued-restart {}", id);
+        }
+        event(output, "after-queued-restart " + id);
     }
 
-    private static void blockAsyncSink(
+    @Test
+    void released_async_gate_writes_event_even_when_writer_is_interrupted() throws Exception {
+        String message = "queue-gate interrupted " + id;
+        try (ConfigurableApplicationContext ignored = startJson(SERVER);
+                BlockedAsyncSink blocker =
+                        blockAsyncSink(
+                                "ASYNC_FILE_INFO", new CountDownLatch(1), new CountDownLatch(0))) {
+            AtomicReference<Boolean> interrupted = new AtomicReference<>();
+            Thread writer =
+                    new Thread(
+                            () -> {
+                                Thread.currentThread().interrupt();
+                                blocker.doAppend(
+                                        new LoggingEvent(
+                                                getClass().getName(),
+                                                loggerContext().getLogger("demo.json"),
+                                                Level.INFO,
+                                                message,
+                                                null,
+                                                null));
+                                interrupted.set(Thread.currentThread().isInterrupted());
+                            },
+                            "interrupted-async-sink");
+            writer.start();
+            writer.join(TimeUnit.SECONDS.toMillis(5));
+            assertThat(writer.isAlive()).as("已释放的闸门不应阻塞写出").isFalse();
+            assertThat(interrupted.get()).as("写出后保留调用线程的中断状态").isTrue();
+            assertThat(loggerContext().getStatusManager().getCopyOfStatusList())
+                    .noneMatch(status -> status.getLevel() == Status.ERROR);
+            event(readFile(logPath.resolve("order-service/info.log")), message);
+        } finally {
+            loggerContext().stop();
+        }
+    }
+
+    @Test
+    void failed_queue_assertion_drains_both_sinks_before_restart(CapturedOutput output)
+            throws Exception {
+        CountDownLatch entered = new CountDownLatch(2);
+        CountDownLatch release = new CountDownLatch(1);
+        AssertionError expected = new AssertionError("模拟排队期间断言失败");
+        String message = "cleanup-after-failure " + id;
+        assertThatThrownBy(
+                        () -> {
+                            try (ConfigurableApplicationContext ignored = startJson(SERVER);
+                                    BlockedAsyncSink info =
+                                            blockAsyncSink("ASYNC_FILE_INFO", entered, release);
+                                    BlockedAsyncSink error =
+                                            blockAsyncSink("ASYNC_FILE_ERROR", entered, release)) {
+                                LoggerFactory.getLogger("demo.json").error("queue-gate {}", id);
+                                assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+                                LoggerFactory.getLogger("demo.json").error(message);
+                                throw expected;
+                            } finally {
+                                release.countDown();
+                                loggerContext().stop();
+                            }
+                        })
+                .isSameAs(expected)
+                .satisfies(ex -> assertThat(ex.getSuppressed()).isEmpty());
+        Path directory = logPath.resolve("order-service");
+        assertThat(event(readFile(directory.resolve("info.log")), message))
+                .isEqualTo(event(readFile(directory.resolve("error.log")), message));
+        try (ConfigurableApplicationContext ignored = startJson(CONTAINER)) {
+            LoggerFactory.getLogger("demo.json").info("after-failed-queue-restart {}", id);
+        }
+        event(output, "after-failed-queue-restart " + id);
+    }
+
+    @Test
+    void async_sink_failure_is_reported_after_real_delegate_drains() throws Exception {
+        IllegalStateException expected = new IllegalStateException("模拟异步写出失败");
+        try (ConfigurableApplicationContext ignored = startJson(SERVER)) {
+            assertThatThrownBy(
+                            () -> {
+                                try (BlockedAsyncSink sink =
+                                        blockAsyncSink(
+                                                "ASYNC_FILE_INFO",
+                                                new CountDownLatch(1),
+                                                new CountDownLatch(0))) {
+                                    LoggingEvent broken =
+                                            new LoggingEvent() {
+                                                @Override
+                                                public void prepareForDeferredProcessing() {
+                                                    // 由真实异步 worker 触发下方故障。
+                                                }
+
+                                                @Override
+                                                public String getFormattedMessage() {
+                                                    throw expected;
+                                                }
+                                            };
+                                    broken.setLevel(Level.ERROR);
+                                    sink.async.doAppend(broken);
+                                }
+                            })
+                    .isInstanceOf(AssertionError.class)
+                    .hasCause(expected);
+            event(readFile(logPath.resolve("order-service/info.log")), "queue-drained");
+            assertThat(loggerContext().getStatusManager().getCopyOfStatusList())
+                    .noneMatch(status -> status.getLevel() == Status.ERROR);
+        } finally {
+            loggerContext().stop();
+        }
+    }
+
+    private static BlockedAsyncSink blockAsyncSink(
             String appenderName, CountDownLatch entered, CountDownLatch release) {
         AsyncAppender async =
                 (AsyncAppender)
@@ -424,33 +538,97 @@ class LogJsonOutputIntegrationTest {
         async.detachAppender(delegate);
         // AsyncAppender 的 detach 不重置单下游计数，沿用队列集成测试的替换方式。
         org.springframework.test.util.ReflectionTestUtils.setField(async, "appenderCount", 0);
-        UnsynchronizedAppenderBase<ILoggingEvent> blocker =
-                new UnsynchronizedAppenderBase<>() {
-                    @Override
-                    protected void append(ILoggingEvent event) {
-                        if (event.getFormattedMessage().startsWith("queue-gate ")) {
-                            entered.countDown();
-                            try {
-                                if (!release.await(10, TimeUnit.SECONDS)) {
-                                    throw new IllegalStateException("异步写出闸门超时");
-                                }
-                            } catch (InterruptedException ex) {
-                                Thread.currentThread().interrupt();
-                                throw new IllegalStateException(ex);
-                            }
-                        }
-                        delegate.doAppend(event);
-                    }
-
-                    @Override
-                    public void stop() {
-                        delegate.stop();
-                        super.stop();
-                    }
-                };
+        BlockedAsyncSink blocker = new BlockedAsyncSink(async, delegate, entered, release);
         blocker.setContext(loggerContext());
         blocker.start();
         async.addAppender(blocker);
+        return blocker;
+    }
+
+    private static final class BlockedAsyncSink extends UnsynchronizedAppenderBase<ILoggingEvent>
+            implements AutoCloseable {
+        private final AsyncAppender async;
+        private final Appender<ILoggingEvent> delegate;
+        private final CountDownLatch entered;
+        private final CountDownLatch release;
+        private final CountDownLatch drained = new CountDownLatch(1);
+        private final AtomicReference<Throwable> failure = new AtomicReference<>();
+        private final ILoggingEvent drainMarker =
+                new LoggingEvent(
+                        getClass().getName(),
+                        loggerContext().getLogger("demo.json"),
+                        Level.ERROR,
+                        "queue-drained",
+                        null,
+                        null);
+
+        private BlockedAsyncSink(
+                AsyncAppender async,
+                Appender<ILoggingEvent> delegate,
+                CountDownLatch entered,
+                CountDownLatch release) {
+            this.async = async;
+            this.delegate = delegate;
+            this.entered = entered;
+            this.release = release;
+        }
+
+        @Override
+        protected void append(ILoggingEvent event) {
+            try {
+                if (event.getFormattedMessage().startsWith("queue-gate ")) {
+                    entered.countDown();
+                    await(release, "异步写出闸门超时");
+                }
+                delegate.doAppend(event);
+            } catch (RuntimeException | AssertionError ex) {
+                failure.compareAndSet(null, ex);
+            } finally {
+                if (event == drainMarker) {
+                    drained.countDown();
+                }
+            }
+        }
+
+        @Override
+        public void close() {
+            release.countDown();
+            // 标记经同一 FIFO 和真实 delegate 写出后，才能关闭 Spring / Logback。
+            async.doAppend(drainMarker);
+            await(drained, "异步出口未完成排空: " + async.getName());
+            if (failure.get() != null) {
+                throw new AssertionError("异步出口写出失败: " + async.getName(), failure.get());
+            }
+            assertThat(loggerContext().getStatusManager().getCopyOfStatusList())
+                    .noneMatch(status -> status.getLevel() == Status.ERROR);
+        }
+
+        @Override
+        public void stop() {
+            delegate.stop();
+            super.stop();
+        }
+
+        private static void await(CountDownLatch latch, String message) {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            boolean interrupted = false;
+            try {
+                while (latch.getCount() != 0) {
+                    try {
+                        long remaining = deadline - System.nanoTime();
+                        if (remaining <= 0 || !latch.await(remaining, TimeUnit.NANOSECONDS)) {
+                            throw new IllegalStateException(message);
+                        }
+                    } catch (InterruptedException ex) {
+                        interrupted = true;
+                    }
+                }
+            } finally {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
     }
 
     private ConfigurableApplicationContext startJson(String config, String... extra) {
