@@ -29,7 +29,10 @@ jobs:
   check-release-pr-merged:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     permissions:
       contents: read
       pull-requests: read
@@ -80,14 +83,17 @@ jobs:
     needs: [check-release-pr-merged]
     if: |
       always() &&
-      (github.event_name == 'workflow_dispatch' || needs.check-release-pr-merged.outputs.is_release_pr == 'true')
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.head_repository.full_name == github.repository &&
+      needs.check-release-pr-merged.outputs.is_release_pr == 'true'))
     permissions:
       contents: write
     steps:
       - name: Bootstrap release helpers
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          # 发布辅助脚本固定取自受信任的 main，不执行触发运行携带的 fork 代码。
+          ref: main
 
       - name: Preserve release-version guard
         run: cp .github/scripts/release-version.sh "$RUNNER_TEMP/release-version.sh"
