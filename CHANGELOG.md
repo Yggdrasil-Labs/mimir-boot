@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.4.0...v2.4.1) (2026-11-19)
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.4.1-SNAPSHOT for next development cycle ([c7457e1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c7457e1c1cd13a73945514bd2287b70311fabc92))
+
 ## [2.4.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.3.0...v2.4.0) (2026-11-19)
 
 
