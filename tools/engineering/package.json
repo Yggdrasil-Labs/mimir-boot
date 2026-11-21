@@ -12,7 +12,7 @@
   "devDependencies": {
     "@xmldom/xmldom": "0.9.12",
     "markdown-it": "15.0.3",
-    "markdownlint-cli2": "0.24.0"
+    "markdownlint-cli2": "0.24.1"
   },
   "overrides": {
     "markdownlint-cli2": {
