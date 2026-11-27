@@ -194,9 +194,13 @@ class LegacyLogbackRollingTest {
                 Files.createFile(active);
             }
             Files.setLastModifiedTime(active, FileTime.fromMillis(time));
-            policy.getTimeBasedFileNamingAndTriggeringPolicy().setCurrentTime(time);
             policy.start();
+            // start() 会重建触发器，必须在启动后设置模拟时间，避免首次写入使用真实日期。
+            policy.getTimeBasedFileNamingAndTriggeringPolicy().setCurrentTime(time);
             appender.start();
+            assertThat(policy.getTimeBasedFileNamingAndTriggeringPolicy().getCurrentTime())
+                    .as("启动后的触发器必须保留模拟时间")
+                    .isEqualTo(time);
             append();
         }
 
