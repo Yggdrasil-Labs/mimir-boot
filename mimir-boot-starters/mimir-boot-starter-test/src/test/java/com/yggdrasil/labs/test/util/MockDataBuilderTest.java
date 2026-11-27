@@ -1,11 +1,13 @@
 package com.yggdrasil.labs.test.util;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mockStatic;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 /**
  * MockDataBuilder 测试
@@ -285,34 +287,38 @@ class MockDataBuilderTest {
 
     @Test
     void testTestTimestamp() {
-        LocalDateTime timestamp1 = MockDataBuilder.testTimestamp();
-        LocalDateTime timestamp2 = MockDataBuilder.testTimestamp();
+        LocalDateTime fixedNow = LocalDateTime.of(2026, 11, 27, 12, 34, 56);
 
-        assertNotNull(timestamp1, "时间戳不应为 null");
-        assertNotNull(timestamp2, "时间戳不应为 null");
-        assertTrue(timestamp1.isBefore(timestamp2) || timestamp1.isEqual(timestamp2), "时间戳应合理");
+        try (MockedStatic<LocalDateTime> localDateTime = mockStatic(LocalDateTime.class)) {
+            localDateTime.when(LocalDateTime::now).thenReturn(fixedNow);
+
+            assertEquals(fixedNow, MockDataBuilder.testTimestamp(), "无参时间戳应返回当前时间");
+        }
     }
 
     @Test
     void testTestTimestamp_WithOffset() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime future = MockDataBuilder.testTimestamp(5);
-        LocalDateTime past = MockDataBuilder.testTimestamp(-5);
+        LocalDateTime fixedNow = LocalDateTime.of(2026, 11, 27, 12, 34, 56);
 
-        assertNotNull(future, "未来时间戳不应为 null");
-        assertNotNull(past, "过去时间戳不应为 null");
-        assertTrue(future.isAfter(now), "未来时间戳应在当前时间之后");
-        assertTrue(past.isBefore(now), "过去时间戳应在当前时间之前");
+        try (MockedStatic<LocalDateTime> localDateTime = mockStatic(LocalDateTime.class)) {
+            localDateTime.when(LocalDateTime::now).thenReturn(fixedNow);
+
+            assertEquals(fixedNow.plusDays(5), MockDataBuilder.testTimestamp(5), "正偏移时间戳应精确增加指定天数");
+            assertEquals(
+                    fixedNow.minusDays(5), MockDataBuilder.testTimestamp(-5), "负偏移时间戳应精确减少指定天数");
+        }
     }
 
     @Test
     void testTestTimestamp_ZeroOffset() {
-        LocalDateTime timestamp1 = MockDataBuilder.testTimestamp(0);
-        LocalDateTime timestamp2 = MockDataBuilder.testTimestamp();
+        LocalDateTime fixedNow = LocalDateTime.of(2026, 11, 27, 12, 34, 56);
 
-        // 两个时间戳应该非常接近（在几毫秒内）
-        long diff = Math.abs(java.time.Duration.between(timestamp1, timestamp2).toMillis());
-        assertTrue(diff < 100, "零偏移的时间戳应与当前时间接近");
+        try (MockedStatic<LocalDateTime> localDateTime = mockStatic(LocalDateTime.class)) {
+            localDateTime.when(LocalDateTime::now).thenReturn(fixedNow);
+
+            assertEquals(fixedNow, MockDataBuilder.testTimestamp(0), "零偏移时间戳应等于当前时间");
+            assertEquals(fixedNow, MockDataBuilder.testTimestamp(), "无参时间戳应等于当前时间");
+        }
     }
 
     // ========== 链式调用测试 ==========

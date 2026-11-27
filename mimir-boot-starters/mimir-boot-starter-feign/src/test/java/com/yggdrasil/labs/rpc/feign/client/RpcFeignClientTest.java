@@ -5,15 +5,21 @@ import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.slf4j.LoggerFactory;
 
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
@@ -46,6 +52,57 @@ class RpcFeignClientTest {
         properties.setEnabled(true);
         properties.setContextPropagationEnabled(true);
         client = new RpcFeignClient(delegate, hookChain, tracerBridge, properties);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-3600, true", "3600, true", "-3600, false", "3600, false"})
+    void shouldMeasureElapsedTimeIndependentlyOfWallClock(long clockShiftSeconds, boolean success)
+            throws Exception {
+        Instant startTime = Instant.parse("2026-01-01T00:00:00Z");
+        Instant shiftedTime = startTime.plusSeconds(clockShiftSeconds);
+        AtomicReference<Instant> wallClock = new AtomicReference<>(startTime);
+        Request request = request("http://example.com/api");
+        Response response = response(request);
+        IOException primary = new IOException("business failure");
+        when(delegate.execute(any(), any()))
+                .thenAnswer(
+                        ignored -> {
+                            wallClock.set(shiftedTime);
+                            if (!success) {
+                                throw primary;
+                            }
+                            return response;
+                        });
+
+        try (MockedStatic<Instant> instant = mockStatic(Instant.class, CALLS_REAL_METHODS)) {
+            instant.when(Instant::now).thenAnswer(ignored -> wallClock.get());
+            long before = System.nanoTime();
+            if (success) {
+                assertSame(response, client.execute(request, new Request.Options()));
+            } else {
+                assertSame(
+                        primary,
+                        Assertions.assertThrows(
+                                IOException.class,
+                                () -> client.execute(request, new Request.Options())));
+            }
+            Duration enclosingDuration = Duration.ofNanos(System.nanoTime() - before);
+
+            ArgumentCaptor<RpcCallResult> resultCaptor =
+                    ArgumentCaptor.forClass(RpcCallResult.class);
+            if (success) {
+                verify(hook).after(any(), resultCaptor.capture());
+                verify(hook, never()).onError(any(), any());
+            } else {
+                verify(hook).onError(any(), resultCaptor.capture());
+                assertSame(primary, resultCaptor.getValue().getError().orElseThrow());
+                verify(hook, never()).after(any(), any());
+            }
+            Assertions.assertEquals(success, resultCaptor.getValue().isSuccess());
+            assertElapsedWithinInvocation(resultCaptor.getValue(), enclosingDuration);
+        }
+        assertContextStartTime(startTime);
+        verify(hook).cleanup(any());
     }
 
     @Test
@@ -476,6 +533,20 @@ class RpcFeignClientTest {
             logger.setLevel(previousLevel);
             appender.stop();
         }
+    }
+
+    private static void assertElapsedWithinInvocation(
+            RpcCallResult result, Duration enclosingDuration) {
+        Assertions.assertFalse(result.getDuration().isNegative(), "墙钟回拨不应使调用耗时为负");
+        Assertions.assertTrue(
+                result.getDuration().compareTo(enclosingDuration) <= 0, "调用耗时应位于外层单调计时区间内");
+    }
+
+    private void assertContextStartTime(Instant startTime) {
+        ArgumentCaptor<RpcCallContext> contextCaptor =
+                ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        Assertions.assertEquals(startTime, contextCaptor.getValue().getStartTime());
     }
 
     private void verifySuccessfulLifecycle() {

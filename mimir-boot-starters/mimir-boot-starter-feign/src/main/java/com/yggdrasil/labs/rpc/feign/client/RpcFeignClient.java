@@ -3,7 +3,6 @@ package com.yggdrasil.labs.rpc.feign.client;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -104,14 +103,14 @@ public class RpcFeignClient implements Client {
                     sanitizedUrl.debugUrl());
         }
 
-        Instant start = Instant.now();
+        long startNanos = System.nanoTime();
         try (RpcHookInvocation invocation = hookChain.open(context)) {
             // 在资源关闭前完成失败回调，保留 onError 先于 cleanup 的生命周期顺序。
             try {
                 invocation.before();
                 Request wrapped = injectContext(request, context);
                 Response response = delegate.execute(wrapped, options);
-                Duration duration = Duration.between(start, Instant.now());
+                Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug(
                             "RpcFeignClient: HTTP call succeeded - service={}, method={}, url={},"
@@ -125,7 +124,7 @@ public class RpcFeignClient implements Client {
                 invocation.completeSuccess(RpcCallResult.success(duration));
                 return response;
             } catch (Throwable throwable) {
-                Duration duration = Duration.between(start, Instant.now());
+                Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug(
                             "RpcFeignClient: HTTP call failed - service={}, method={}, url={},"

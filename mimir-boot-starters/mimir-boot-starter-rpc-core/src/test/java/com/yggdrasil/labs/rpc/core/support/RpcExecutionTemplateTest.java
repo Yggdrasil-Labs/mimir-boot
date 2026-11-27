@@ -1,14 +1,21 @@
 package com.yggdrasil.labs.rpc.core.support;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
 import com.yggdrasil.labs.rpc.core.context.RpcCallMetadata;
@@ -22,6 +29,51 @@ class RpcExecutionTemplateTest {
     @BeforeAll
     static void enableDebugLogging() {
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-3600, true", "3600, true", "-3600, false", "3600, false"})
+    void shouldMeasureElapsedTimeIndependentlyOfWallClock(long clockShiftSeconds, boolean success) {
+        RecordingHook hook = new RecordingHook();
+        RpcExecutionTemplate template =
+                new RpcExecutionTemplate(new RpcHookChain(List.of(hook)), noOpTracer(), false);
+        RpcCallContext context = context("clockShift");
+        Instant startTime = context.getStartTime();
+        Instant shiftedTime = startTime.plusSeconds(clockShiftSeconds);
+        AtomicReference<Instant> wallClock = new AtomicReference<>(startTime);
+        Exception primary = new Exception("business failure");
+        Callable<String> businessCall =
+                () -> {
+                    wallClock.set(shiftedTime);
+                    if (!success) {
+                        throw primary;
+                    }
+                    return "ok";
+                };
+
+        try (MockedStatic<Instant> instant =
+                Mockito.mockStatic(Instant.class, Mockito.CALLS_REAL_METHODS)) {
+            instant.when(Instant::now).thenAnswer(ignored -> wallClock.get());
+            long before = System.nanoTime();
+            if (success) {
+                Assertions.assertEquals("ok", template.execute(context, businessCall));
+            } else {
+                Assertions.assertSame(
+                        primary,
+                        Assertions.assertThrows(
+                                Exception.class, () -> template.execute(context, businessCall)));
+            }
+            Duration enclosingDuration = Duration.ofNanos(System.nanoTime() - before);
+
+            Assertions.assertEquals(success, hook.result.isSuccess());
+            if (!success) {
+                Assertions.assertSame(primary, hook.result.getError().orElseThrow());
+            }
+            assertElapsedWithinInvocation(hook.result, enclosingDuration);
+        }
+        Assertions.assertEquals(startTime, context.getStartTime());
+        Assertions.assertEquals(
+                List.of("before", success ? "after" : "onError", "cleanup"), hook.events);
     }
 
     @Test
@@ -377,10 +429,18 @@ class RpcExecutionTemplateTest {
         };
     }
 
+    private static void assertElapsedWithinInvocation(
+            RpcCallResult result, Duration enclosingDuration) {
+        Assertions.assertFalse(result.getDuration().isNegative(), "墙钟回拨不应使调用耗时为负");
+        Assertions.assertTrue(
+                result.getDuration().compareTo(enclosingDuration) <= 0, "调用耗时应位于外层单调计时区间内");
+    }
+
     private static class RecordingHook implements RpcHook {
         private final List<String> events = new ArrayList<>();
         private boolean onErrorCalled = false;
         private boolean afterCalled = false;
+        private RpcCallResult result;
 
         @Override
         public void before(RpcCallContext context) {
@@ -389,12 +449,14 @@ class RpcExecutionTemplateTest {
 
         @Override
         public void after(RpcCallContext context, RpcCallResult result) {
+            this.result = result;
             afterCalled = true;
             events.add("after");
         }
 
         @Override
         public void onError(RpcCallContext context, RpcCallResult result) {
+            this.result = result;
             onErrorCalled = true;
             events.add("onError");
         }

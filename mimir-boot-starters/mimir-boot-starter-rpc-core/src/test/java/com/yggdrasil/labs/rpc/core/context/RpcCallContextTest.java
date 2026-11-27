@@ -6,6 +6,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 class RpcCallContextTest {
 
@@ -16,11 +18,15 @@ class RpcCallContextTest {
 
         RpcCallMetadata metadata =
                 RpcCallMetadata.builder().service("svc").method("m1").attachments(original).build();
-        RpcCallContext context = RpcCallContext.create(metadata);
+        Instant startTime = Instant.parse("2026-11-27T12:00:00Z");
+        RpcCallContext context;
+        try (MockedStatic<Instant> clock = Mockito.mockStatic(Instant.class)) {
+            clock.when(Instant::now).thenReturn(startTime);
+            context = RpcCallContext.create(metadata);
+        }
 
         Assertions.assertEquals(metadata, context.getMetadata());
-        Assertions.assertNotNull(context.getStartTime());
-        Assertions.assertTrue(context.getStartTime().isBefore(Instant.now().plusSeconds(1)));
+        Assertions.assertEquals(startTime, context.getStartTime());
 
         // attachments are copied and immutable from outside
         Assertions.assertEquals("v1", context.getAttachments().get("k1"));

@@ -13,6 +13,7 @@ import {
 import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -174,9 +175,9 @@ function processGroupAlive(pid) {
 
 async function waitForProcessGroupExit(pid, timeoutMs = PROCESS_GROUP_WAIT_MS) {
     if (process.platform === 'win32' || !pid) return true;
-    const deadline = Date.now() + timeoutMs;
+    const deadline = performance.now() + timeoutMs;
     while (processGroupAlive(pid)) {
-        if (Date.now() >= deadline) return false;
+        if (performance.now() >= deadline) return false;
         await delay(PROCESS_GROUP_POLL_MS);
     }
     return true;

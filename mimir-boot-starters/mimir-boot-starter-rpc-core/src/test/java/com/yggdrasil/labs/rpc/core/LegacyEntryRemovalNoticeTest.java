@@ -158,7 +158,6 @@ import com.yggdrasil.labs.rpc.core.hook.RpcHook;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookChain;
 import com.yggdrasil.labs.rpc.core.hook.RpcHookInvocation;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -168,18 +167,19 @@ public final class MigrationExamples {
 
     // README 同步示例
     static <T> T callSync(RpcHookChain hookChain, RpcCallContext context, Supplier<T> remoteCall) {
-        Instant start = Instant.now();
+        long startNanos = System.nanoTime();
         RpcHookInvocation invocation = hookChain.open(context);
         try {
             invocation.before();
             T value = remoteCall.get();
             invocation.completeSuccess(
-                    RpcCallResult.success(Duration.between(start, Instant.now())));
+                    RpcCallResult.success(Duration.ofNanos(System.nanoTime() - startNanos)));
             return value;
         } catch (RuntimeException error) {
             // primaryError 与 RpcCallResult.failure 中的异常为同一非 null 实例，完成后由调用方重抛
             invocation.completeFailure(
-                    RpcCallResult.failure(Duration.between(start, Instant.now()), error), error);
+                    RpcCallResult.failure(Duration.ofNanos(System.nanoTime() - startNanos), error),
+                    error);
             throw error;
         } finally {
             invocation.close();
@@ -191,7 +191,7 @@ public final class MigrationExamples {
             RpcHookChain hookChain,
             RpcCallContext context,
             Supplier<CompletableFuture<T>> remoteCall) {
-        Instant start = Instant.now();
+        long startNanos = System.nanoTime();
         RpcAsyncHookInvocation invocation = hookChain.openAsync(context);
         CompletableFuture<T> future;
         try {
@@ -199,13 +199,14 @@ public final class MigrationExamples {
             future = remoteCall.get();
         } catch (RuntimeException error) {
             invocation.completeFailure(
-                    RpcCallResult.failure(Duration.between(start, Instant.now()), error), error);
+                    RpcCallResult.failure(Duration.ofNanos(System.nanoTime() - startNanos), error),
+                    error);
             throw error;
         }
         try {
             return future.whenComplete(
                     (value, error) -> {
-                        Duration duration = Duration.between(start, Instant.now());
+                        Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
                         if (error == null) {
                             invocation.completeSuccess(RpcCallResult.success(duration));
                         } else {
@@ -217,7 +218,7 @@ public final class MigrationExamples {
             // 回调未注册成功：以实际异常结束生命周期，避免泄漏
             invocation.completeFailure(
                     RpcCallResult.failure(
-                            Duration.between(start, Instant.now()), registrationFailure),
+                            Duration.ofNanos(System.nanoTime() - startNanos), registrationFailure),
                     registrationFailure);
             throw registrationFailure;
         }
