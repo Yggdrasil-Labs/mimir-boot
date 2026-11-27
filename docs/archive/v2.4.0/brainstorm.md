@@ -14,7 +14,7 @@ updated: 2026-11-09
 ## 目标与约束
 
 - 按 v2.4.0 能力迭代规划，允许新功能或较大的协议演进（D-01）；不新增模块，在现有模块职责内丰富能力（D-02）。唯一例外是 2026-11-02 纳入的代码质量工具链，可新增规则资源模块 `mimir-boot-code-quality`（D-102）。
-- 产品定位是其他项目的基座，优先跨项目复用、接入体验、稳定性与兼容性（D-03）；公共配置、接口、依赖与发布行为遵循[兼容性与接入体验原则](../../../docs/standards/core-beliefs.md)，未明确调整的行为保持兼容。
+- 产品定位是其他项目的基座，优先跨项目复用、接入体验、稳定性与兼容性（D-03）；公共配置、接口、依赖与发布行为遵循[兼容性与接入体验原则](../../standards/core-beliefs.md)，未明确调整的行为保持兼容。
 - 核心目标是提供能力，让下游自由组合（D-86，2026-10-29 用户明确）：以可独立启用、关闭、覆盖和组合为设计依据，默认配置与 profile 提供便捷预设；避免为便利而添加跨能力隐式联动或强制流程。真实依赖与不兼容组合需要明确说明，这一原则不自动改变已确认默认值或扩大本轮范围。
 - 逐模块讨论，允许模块保持现状（D-04）。
 - 依据来源：本地提交 `8d33639` 的源码、POM 与模块文档的静态阅读，以及 template-project、valhalla-project、mealmate-project 三个内部业务项目的源码核对。未运行 Java 构建、测试或消费者验证；三个内部项目不代表全部接入方。
@@ -99,7 +99,7 @@ updated: 2026-11-09
   - 新预设生产 root 默认 INFO，第三方降噪直接复用现有 prod 清单（13 条有效规则，去掉与 `io.lettuce` 重复的 `io.lettuce.core`），不拆分 `org.apache`、`com.alibaba` 等宽前缀，使用说明写明可用 `logging.level` 恢复。
   - 新预设在未显式配置时默认启用 `password`、`token`、`secret`、`api_key` 四组已有脱敏规则，允许覆盖或关闭。
   - 现状依据：prod 分支 root 为 WARN 并同时写控制台与文件，`com.yggdrasil.labs`、访问与 SQL 日志只写文件，容器中 `com.example` 一类业务包的 INFO 日志会丢失；滚动与队列参数写死，只能调整 `LOG_PATH` 与 `spring.application.name`。
-  - 待设计：属性命名与优先级、早期初始化与已有自定义 Logback 配置的兼容；默认脱敏启用前补吞吐与延迟基准（[可靠性标准](../../../docs/standards/reliability.md)），并核对 ContextRefreshedEvent 前后的有效规则；异步 appender 为 `discardingThreshold=0` 且未开启 `neverBlock`，队列满时会阻塞业务线程，服务器预设默认值需一并考虑。
+  - 待设计：属性命名与优先级、早期初始化与已有自定义 Logback 配置的兼容；默认脱敏启用前补吞吐与延迟基准（[可靠性标准](../../standards/reliability.md)），并核对 ContextRefreshedEvent 前后的有效规则；异步 appender 为 `discardingThreshold=0` 且未开启 `neverBlock`，队列满时会阻塞业务线程，服务器预设默认值需一并考虑。
 - **L-02 业务任务 MDC 传播（D-33、D-34）**：优先适配 Spring Boot 默认执行器，自建执行器提供统一接入入口；传播任务提交时的全部 MDC 字段快照，完成或异常后恢复执行线程原上下文；不等同于 Span 传播。硬约束：Boot 3.3.13 默认执行器以 `getIfUnique()` 选取 `TaskDecorator`，Mimir 不得以普通 `TaskDecorator` Bean 默认接入，否则与业务已有装饰器同时存在时两者都不生效；设计时评估复用 Spring 6.1 的 `ContextPropagatingTaskDecorator`。`MdcUtil` 类注释所称“子线程自动传递”与代码不符，需校准。
 
 - **TD-049、TD-050 收尾（D-116、D-117）**：2026-11-08 纳入。旧 `logback-spring.xml` 四个文件 appender 的月目录 `%d` 标记 `aux`，主滚动周期改为按天，`maxHistory` 恢复为天数语义；TD-050 四项全部处理，其中 `MdcUtil.putAll` 由 `setContextMap` 整体替换改为逐项 put，不再清除已有 traceId/spanId。两处均为可观察行为变更，须写入升级说明。任务见 [Log 计划 T9](./log-runtime/plan.md#t9td-049-与-td-050-收尾)。
@@ -136,7 +136,7 @@ updated: 2026-11-09
 
 ### Nacos、RPC Core、Feign、Dubbo、Test
 
-- **Nacos（D-73）**：保持现状。仅 valhalla-auth 接入，使用 `optional:nacos:valhalla-auth.yaml?refreshEnabled=true`；配置 Bean 为未加 `@RefreshScope` 的普通 `@ConfigurationProperties`，`LoginExecutor` 的 `@Value` 不随推送刷新；未见加密值与配置删除需求。核对结果已写入 [TD-047](../tech-debt-tracker.md)，状态仍为待规划。
+- **Nacos（D-73）**：保持现状。仅 valhalla-auth 接入，使用 `optional:nacos:valhalla-auth.yaml?refreshEnabled=true`；配置 Bean 为未加 `@RefreshScope` 的普通 `@ConfigurationProperties`，`LoginExecutor` 的 `@Value` 不随推送刷新；未见加密值与配置删除需求。核对结果已写入 [TD-047](../../active/tech-debt-tracker.md)，状态仍为待规划。
 - **RPC Core（D-75）**：功能保持现状。TD-013（Bridge 旧 `extract()`）与 TD-023（`RpcHookChain` 旧 `before`、`after`、`onError`、`cleanup`）对应入口改标 `@Deprecated(forRemoval = true)`，在 README 与升级说明中写明迁移到受管 scope 与 `open`/`openAsync` 调用级 invocation，计划在下一个主版本删除；本轮不删除。内部仅 valhalla 经 Dubbo Starter 间接使用，未自定义 Hook 或 Bridge，未调用旧入口；唯一的 HTTP 外调是 mealmate-project 调用 DeepSeek 外部接口，不需要链路传播。
 - **Feign（D-77）**：保持现状。内部无使用方；[Spring Cloud OpenFeign](https://docs.spring.io/spring-cloud-openfeign/reference/) 自 2022.0.0 起被视为功能完结，建议迁移到 Spring HTTP Service Clients。
 - **Dubbo（D-79）**：保持现状。仅 valhalla-auth 以 `@DubboService` 暴露 `AuthRpcFacade`，业务错误通过 COLA Response 返回；内部仓库无 Consumer；Dubbo 配置放在 classpath 的 `bootstrap-dubbo.yaml`，Nacos 只作注册中心。
@@ -199,7 +199,7 @@ updated: 2026-11-09
 - 已校准，无需处理：[AGENTS.md](../../../AGENTS.md) 当前的测试与质量门禁入口已是 `./mvnw -Pci clean verify`，原记录的“默认 `verify` 被误称为质量门禁”问题不成立（2026-10-26 核对）。
 - [Parent README](../../../mimir-boot-parent/README.md) 将覆盖率报告描述为在 `test` 阶段生成且不含集成测试，与 POM 在 `verify` 阶段汇总不一致。
 - `MdcUtil` 类注释所称子线程自动传递与代码不符。
-- 技术债：TD-013、TD-023 按 D-75 明确废弃周期；TD-047 按 D-73 补充消费者核对；TD-016 字段与记录级 AAD 不纳入本轮，后续版本以 RFC 起步（D-118）。TD-049、TD-050 按 D-116、D-117 纳入本轮；TD-047 消费者清单在收尾期间并行核实，不作为发布条件（D-118）。均见[技术债台账](../tech-debt-tracker.md)。
+- 技术债：TD-013、TD-023 按 D-75 明确废弃周期；TD-047 按 D-73 补充消费者核对；TD-016 字段与记录级 AAD 不纳入本轮，后续版本以 RFC 起步（D-118）。TD-049、TD-050 按 D-116、D-117 纳入本轮；TD-047 消费者清单在收尾期间并行核实，不作为发布条件（D-118）。均见[技术债台账](../../active/tech-debt-tracker.md)。
 
 ## 决策日志
 

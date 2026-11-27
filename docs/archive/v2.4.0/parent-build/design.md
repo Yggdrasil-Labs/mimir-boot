@@ -219,7 +219,7 @@ Parent README 需给出 `maven.source.skip` 和 `maven.javadoc.skip` 独立命�
 
 以下均为后续实施验收，不是本轮执行结果。验收工作根使用仓库外的唯一临时目录（例如 `mktemp -d /tmp/parent-build-acceptance.XXXXXX`），不得放入仓库根或任何参与 `-am clean` 的项目构建目录。消费者源码/POM、生产者本地仓库、文件发布仓库、消费者本地仓库及需保留的证据分开存放在该工作根下；生产者构建输出仍由 Maven 写入各项目自己的 `target`。消费者自身的 `clean` 只清理消费者项目构建目录，不得清理其源码/POM或持久证据。不得在验收期间删除该工作根；结束后由实施者按本地临时目录管理方式处理。此处为后续验收设计，不表示已创建目录或执行验证。调用现有工程入口只作为回归，新增场景用受控临时消费者和手工命令，不把专项逻辑嵌入通用工具。
 
-已知缺口（审查补充）：CI 固定 `JAVA_VERSION: '17'`（[ci.yml](../../../../.github/workflows/ci.yml)），[构建模型检查](../../../../tools/engineering/src/quality/verify-build-model.mjs)也要求 Java 17，因此 JDK≥21 的 `proc=full` 与 JDK profile 行为只由 T3 一次性矩阵覆盖，没有持续回归。已登记为 [TD-048](../../tech-debt-tracker.md#td-048-jdk-高版本构建回归)，后续再评估 CI 多 JDK 方案；本需求不调整 CI。
+已知缺口（审查补充）：CI 固定 `JAVA_VERSION: '17'`（[ci.yml](../../../../.github/workflows/ci.yml)），[构建模型检查](../../../../tools/engineering/src/quality/verify-build-model.mjs)也要求 Java 17，因此 JDK≥21 的 `proc=full` 与 JDK profile 行为只由 T3 一次性矩阵覆盖，没有持续回归。已登记为 [TD-048](../../../active/tech-debt-tracker.md#td-048-jdk-高版本构建回归)，后续再评估 CI 多 JDK 方案；本需求不调整 CI。
 
 | 对应契约 | 层级 | 方法 | 通过标准 |
 |---|---|---|---|

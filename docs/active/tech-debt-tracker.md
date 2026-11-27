@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-10
+updated: 2026-11-27
 ---
 
 # 技术债务追踪
@@ -29,8 +29,9 @@ updated: 2026-11-10
 | [TD-016](#td-016-字段加密-aad) | 字段加密 AAD 绑定 | starter-mybatis | 中 | 待规划 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-023](#td-023-rpc-hook-legacy-api) | RPC Hook 旧 API 兼容 | starter-rpc-core / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-08-29 | [技术债修复计划](../archive/v2.2.1/technical-debt-remediation/plan.md) |
 | [TD-047](#td-047-nacos-消费者迁移) | Nacos 配置删除后的消费者迁移 | starter-nacos / 业务配置消费 | 高 | 待规划 | YoungerYang-Y | 2026-10-09 | [拆分与框架关闭记录](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)；实际应用迁移范围待核实 |
-| [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](./v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
-| [TD-051](#td-051-既有公开类型包循环) | 既有公开类型导致的包循环 | exception / web / nacos / dubbo / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-11-06 | [质量工具链计划](./v2.4.0/code-quality-toolchain/plan.md#t5本仓库依赖方向测试) |
+| [TD-048](#td-048-jdk-高版本构建回归) | JDK 21 及以上构建路径缺少持续回归 | parent / CI | 中 | 待规划 | YoungerYang-Y | 2026-10-31 | [Parent 构建契约计划](../archive/v2.4.0/parent-build/plan.md#t3源码与发布前隔离消费者验收) |
+| [TD-051](#td-051-既有公开类型包循环) | 既有公开类型导致的包循环 | exception / web / nacos / dubbo / feign | 低 | 兼容保留 | YoungerYang-Y | 2026-11-06 | [质量工具链计划](../archive/v2.4.0/code-quality-toolchain/plan.md#t5本仓库依赖方向测试) |
+| [TD-052](#td-052-v240-专项验收缺口) | v2.4.0 Log/MyBatis 专项验收缺口 | log / mybatis / 业务消费者 | 中 | 待规划 | ORPHAN | 2026-11-27 | [版本未闭环记录](../archive/v2.4.0/release.md#当前交付状态) |
 
 ## 债务明细
 
@@ -94,6 +95,7 @@ updated: 2026-11-10
 - **实施发现（2026-11-01）**：Parent 实施的 T3 回归中，本仓库 reactor 在本地 Temurin 21.0.7 下 Log、Exception、MyBatis、Dubbo 四个 Starter 的测试失败：Mockito inline mock maker 报 ByteBuddy 无法自附加当前 VM，另有 Surefire `StackWalkerStrategy` 在 Attach Listener 线程初始化失败。以 `main` 源码在同一 JDK 下对照，失败模块与测试类相同，属于既有问题，与 Parent 改动无关；JDK 17 下全部通过。本机无 JDK 25，未覆盖。
 - **补充（2026-11-01）**：MyBatis Processor 的 `supportedSourceVersionFollowsRunningCompiler` 回归用例只有在 JDK≥21 运行时才能发现支持源版本被重新固定为 RELEASE_17；CI 仅跑 JDK 17 时该用例对此类回退无检出能力。
 - **处置与验收**：评估在 CI 增加 JDK 21/25 的编译与测试矩阵或等价的定期任务；验证类版本、处理器生成结果、四模式默认值在各 JDK 下与 JDK 17 一致。引入矩阵前须先定位并修复上述 JDK 21 测试附加失败（例如显式配置 Mockito agent 或调整测试 JVM 参数），否则高版本矩阵无法通过。
+- **归档补记（2026-11-27）**：v2.4.0 的 Parent/BOM/Processor JDK 25 一次性矩阵，以及仅导入 BOM 的处理器消费者 release 21 目标仍缺验证结果；本条一并保留跟踪，不据 JDK 17 发布门禁通过推定这些目标通过。
 - **目标版本**：待排期。
 - **复查条件**：Parent JDK profile、编译器或处理器配置调整，或 CI JDK 基线变化时。
 
@@ -118,6 +120,17 @@ updated: 2026-11-10
 - **目标版本**：待排期。
 - **复查条件**：上述公开构造器、配置属性或模块分层变化时，以及每月架构回顾。
 
+<a id="td-052-v240-专项验收缺口"></a>
+
+### TD-052：v2.4.0 专项验收缺口
+
+- **来源与范围**：2026-11-27 归档 v2.4.0 时，从[版本记录](../archive/v2.4.0/release.md#当前交付状态)承接仍未闭环的专项验证；已有本地框架测试与正式发布证据保持原意。
+- **现状与风险**：Log D-101 修订后真实业务消费者启动、MVC 默认执行器专项未有验收记录；MyBatis 缺真实 SQL 到 Log 容器/服务器新预设联调、慢 SQL 吞吐及 P95/P99 基准、真实 MySQL/PostgreSQL 方言验收。H2、独立 Logger 捕获、发布制品可用均不替代这些证据；本项是验证缺口，不声称已发现运行缺陷或已接受风险。
+- **Owner**：ORPHAN；尚未指定专项验收负责人，按维护规则在 30 天内分配或明确后续处置。
+- **处置与验收条件**：指定负责人后，在实际消费者核对预设启动与 MVC 执行器 MDC；保留 SQL 经两种预设的完整输出链路记录；提供慢 SQL 开关对照吞吐、P95/P99 环境与结果；在真实 MySQL/PostgreSQL 执行分页方言正反例。逐项登记实际执行结果，缺失项保持未验收，不用归档或风险接受替代。
+- **目标版本**：待排期。
+- **复查条件**：Log 预设、MDC 执行器、慢 SQL 拦截器、分页方言调整或消费者接入时；下次架构回顾确认负责人及排期。
+
 ## 历史说明
 
 TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 的有效部分已在 v2.2.1 完成并从活跃清单移除。TD-030 至 TD-035 的主体修复与终审补丁已分阶段提交，并通过 [v2.2.1 底座质量强化计划](../archive/v2.2.1/foundation-quality-hardening/plan.md) 的本地 Final Gate。DG-1 保留旧枚举 fallback 的误判风险；DG-3 接受写入 v2 后不能回退到 v1-only 二进制。
@@ -134,6 +147,6 @@ TD-001 至 TD-012、TD-014 至 TD-015、TD-017 至 TD-022、TD-024 至 TD-029 �
 
 2026-10-09 经用户确认，将 TD-039 拆为已验证的默认 Nacos 框架修复与 TD-047 消费者迁移。TD-039 按[约定框架范围关闭](../archive/v2.3.0/runtime-debt-followup/plan.md#第九阶段td-039-框架关闭与消费者迁移拆分)，完整历史验收和适用边界由该计划承接，[未发布状态](../archive/v2.3.0/release.md#td-039-框架修复关闭2026-10-09未发布)继续跟踪；原编号不再复用。消费者风险与验收条件留在 TD-047，实际业务迁移仍未核实。
 
-2026-11-10 关闭 TD-049，处置与本地验收记录见[TD-049 关闭](./v2.4.0/release.md#td-049-关闭2026-11-10未发布)。编号不再复用；未发布状态由 release 跟踪。
+2026-11-10 关闭 TD-049，处置与本地验收记录见[TD-049 关闭](../archive/v2.4.0/release.md#td-049-关闭2026-11-10未发布)。编号不再复用；未发布状态由 release 跟踪。
 
-2026-11-10 关闭 TD-050，处置与本地验收记录见[TD-050 关闭](./v2.4.0/release.md#td-050-关闭2026-11-10未发布)。编号不再复用；未发布状态由 release 跟踪。
+2026-11-10 关闭 TD-050，处置与本地验收记录见[TD-050 关闭](../archive/v2.4.0/release.md#td-050-关闭2026-11-10未发布)。编号不再复用；未发布状态由 release 跟踪。

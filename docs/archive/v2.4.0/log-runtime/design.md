@@ -296,7 +296,7 @@ public final class MdcTasks {
 | 仅用 `springProperty` 读取用户键 | 无需 EPP 写键 | YAML/索引列表无法按原键读取，会静默回落到四组缺省；自定义正则须编码 |
 | `start()` 绑定当前 Context 即无条件置空快照 | 顺序启动“新→旧”时旧应用刷新前也严格使用自身规则 | 旧接入者自定义 XML `scan=true` 重扫（先 reset 再重载）后，刷新发布的规则丢失，相对 2.3.0 回退；F2 选择按 Context 是否带 mask 属性置空 |
 | TD-049 保持旧 XML 按月滚动，只修正注释 | 归档节奏不变 | `maxHistory` 以月计与配置意图不符，错误归档可保留数年并只受总量上限约束；D-116 选择修正周期 |
-| `MdcUtil.putAll` 只修注释保留整体替换 | 无行为变化 | 方法名与"批量设置"语义不符，调用后会清除 traceId/spanId；D-117 选择合并语义。v2.2.1 的 IC-13（[归档设计](../../../archive/v2.2.1/technical-debt-remediation/design.md)）曾文档化整体替换语义并以测试锁定，D-117 推翻该历史决定；已发布 Javadoc 只写"批量设置上下文"，不构成公开契约冲突 |
+| `MdcUtil.putAll` 只修注释保留整体替换 | 无行为变化 | 方法名与"批量设置"语义不符，调用后会清除 traceId/spanId；D-117 选择合并语义。v2.2.1 的 IC-13（[归档设计](../../v2.2.1/technical-debt-remediation/design.md)）曾文档化整体替换语义并以测试锁定，D-117 推翻该历史决定；已发布 Javadoc 只写"批量设置上下文"，不构成公开契约冲突 |
 | 旧 `logback-spring.xml` 同样加入 mask `springProperty`，旧配置早期即按 Spring 属性脱敏 | 旧接入者早期阶段也受保护 | 修改旧资源，且超出 D-116 之外的旧配置兼容范围；留待后续需求 |
 | 启动令牌自动保护任意子 SpringApplication | 看似无需接入方约束 | 无法拦截 Boot 的全局失败清理；包装 Boot 监听器还需处理事件向父传播、启动顺序和退出。本轮推荐普通子上下文共享父日志，独立生命周期由进程隔离 |
 | 默认 never-block=true | 限制满队列等待 | 可能丢 ERROR；本轮推荐保留日志为默认、提供显式取舍 |

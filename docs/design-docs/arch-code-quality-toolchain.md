@@ -65,13 +65,13 @@ Parent 发布的公共默认是“执行时只报告”：`pmd.failOnViolation`�
 
 Parent 分别由 `pmd`、`test-pmd` execution 读取 Maven 实际主、测试源码根，共用 PMD 原生开关；主源码使用 45 条生产规则，测试使用 11 条测试规则。生产 `CognitiveComplexity` 从 16 起报告（Sonar 允许 15；此处仅为阈值贴近，不表示 PMD 与 Sonar 全面等价）；生产规则还新增重复字面量、空方法体/构造器体内注释及 try-with-resources 检查。测试规则新增空方法体/构造器体内注释及 try-with-resources 检查，不启用重复字面量和复杂度规则。空实现规则检查方法体内注释，与 Javadoc 要求不同，private 构造器默认排除。CPD 同样分别比较主、测试源码，阈值均为 100 tokens，规则清单见[规则模块](../../mimir-boot-code-quality/README.md#规则边界与替换)。
 
-按 D-110，Mimir 的检查使用独立插件坐标，避免官方插件分叉目标的配置与下游合并；XML、HTML、缓存、规则临时文件和性能记录均使用 `target/mimir-quality/`。开关采用插件原生属性（D-108），因此下游已自行配置 PMD 时仍会读到 Parent 的开关默认值。下游自有的 Checkstyle 配置不受影响。原生开关共享及新增插件解析要求是显式兼容例外，影响与恢复方式见[需求规格 CQ-10](../active/v2.4.0/code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级)。
+按 D-110，Mimir 的检查使用独立插件坐标，避免官方插件分叉目标的配置与下游合并；XML、HTML、缓存、规则临时文件和性能记录均使用 `target/mimir-quality/`。开关采用插件原生属性（D-108），因此下游已自行配置 PMD 时仍会读到 Parent 的开关默认值。下游自有的 Checkstyle 配置不受影响。原生开关共享及新增插件解析要求是显式兼容例外，影响与恢复方式见[需求规格 CQ-10](../archive/v2.4.0/code-quality-toolchain/spec.md#行为-cq-10已自行配置同名插件的下游升级)。
 
 Spotless 与 JaCoCo 在下游已是“执行即阻断”。把它们改成只报告会放宽已发布的门禁，因此保持不变。PMD、CPD 与它们共用四模式表，但不新增聚合开关（D-85 独立开关原则）。
 
 ### 发布形态
 
-Parent 的 `pluginManagement` 在 Flatten 时原样保留属性引用，插件依赖若写 `${project.version}`，在下游会解析为下游自身版本。设计采用 Parent 专用版本属性，并以 Flatten `extended_interpolate` 让发布 Parent 中的该属性成为字面版本；下游还须能从插件仓库解析规则 jar。具体方案和替代方案比较见[需求设计](../active/v2.4.0/code-quality-toolchain/design.md#发布-parent-的规则-jar-版本)。
+Parent 的 `pluginManagement` 在 Flatten 时原样保留属性引用，插件依赖若写 `${project.version}`，在下游会解析为下游自身版本。设计采用 Parent 专用版本属性，并以 Flatten `extended_interpolate` 让发布 Parent 中的该属性成为字面版本；下游还须能从插件仓库解析规则 jar。具体方案和替代方案比较见[需求设计](../archive/v2.4.0/code-quality-toolchain/design.md#发布-parent-的规则-jar-版本)。
 
 ### 运行时基线
 
@@ -93,13 +93,13 @@ Parent 的 `pluginManagement` 在 Flatten 时原样保留属性引用，插件�
 
 ## 演进与决策依据
 
-用户于 2026-11-02 确认工具选型、严格/报告分层、Spotless/JaCoCo 统一治理不合并实现，以及新增规则 jar 模块并入 v2.4.0；决策编号见[版本级 brainstorm](../active/v2.4.0/brainstorm.md#决策日志) D-102～D-108；同日以 D-109 撤销 Checkstyle，由 PMD 接管注释与命名。静态实施要求见[需求计划](../active/v2.4.0/code-quality-toolchain/plan.md)。本地完整门禁与发布前隔离验收已通过，结果与未覆盖边界见[版本记录](../active/v2.4.0/release.md#代码质量工具链实施2026-11-06)；`verified` 不表示正式发布或生产验收。
+用户于 2026-11-02 确认工具选型、严格/报告分层、Spotless/JaCoCo 统一治理不合并实现，以及新增规则 jar 模块并入 v2.4.0；决策编号见[版本级 brainstorm](../archive/v2.4.0/brainstorm.md#决策日志) D-102～D-108；同日以 D-109 撤销 Checkstyle，由 PMD 接管注释与命名。静态实施要求见[需求计划](../archive/v2.4.0/code-quality-toolchain/plan.md)。本地完整门禁与发布前隔离验收已通过，结果与未覆盖边界见[版本记录](../archive/v2.4.0/release.md#代码质量工具链实施2026-11-06)；`verified` 不表示正式发布或生产验收。
 
-2026-11-06 用户在接入方案与审查后确认实施独立插件入口（D-110），调整报告路径、规则覆盖入口和版本配对约束；详见[接入设计](../active/v2.4.0/code-quality-toolchain/design.md#分叉配置问题与接入方案)。最小原型验证不替代正式交付。
+2026-11-06 用户在接入方案与审查后确认实施独立插件入口（D-110），调整报告路径、规则覆盖入口和版本配对约束；详见[接入设计](../archive/v2.4.0/code-quality-toolchain/design.md#分叉配置问题与接入方案)。最小原型验证不替代正式交付。
 
 ## 相关文档
 
 - [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - [模块划分与依赖设计](./arch-module-dependencies.md)
 - [测试与质量](../engineering/testing.md)
-- [需求规格](../active/v2.4.0/code-quality-toolchain/spec.md) · [需求设计](../active/v2.4.0/code-quality-toolchain/design.md)
+- [需求规格](../archive/v2.4.0/code-quality-toolchain/spec.md) · [需求设计](../archive/v2.4.0/code-quality-toolchain/design.md)

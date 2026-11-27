@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-06
+updated: 2026-11-27
 ---
 
 # 活跃版本索引
@@ -9,8 +9,6 @@ updated: 2026-11-06
   lint-docs.mjs 会校验此索引与实际目录的一致性。
 -->
 
-| 版本 | 阶段 | 入口 |
-|---|---|---|
-| v2.4.0 | 主体实现已完成，专项验收及发布收尾中 | [版本记录](./v2.4.0/release.md)、[版本级 Brainstorm](./v2.4.0/brainstorm.md) |
+当前没有活跃版本目录。
 
-v2.3.0 的五项需求及版本记录已于 2026-10-23 移入[归档目录](../archive/v2.3.0/index.md)，发布复核见[版本记录](../archive/v2.3.0/release.md)。v2.4.0 是本轮规划目标，当前开发版本仍以[根 POM](../../pom.xml) 的 `revision` 为准；未解决事项继续由[技术债台账](./tech-debt-tracker.md)跟踪。
+v2.4.0 的 11 项需求及版本记录已于 2026-11-27 移入[归档目录](../archive/v2.4.0/index.md)，发布复核和历史验证见[版本记录](../archive/v2.4.0/release.md)。当前开发版本仍以[根 POM](../../pom.xml)的 `revision` 为准；未解决事项继续由[技术债台账](./tech-debt-tracker.md)跟踪。其他历史版本见[归档索引](../archive/index.md)。

@@ -1,15 +1,85 @@
 ---
 version: v2.4.0
-status: in-progress
+status: released
 branch: main
 created: 2026-10-23
-released: null
-updated: 2026-11-16
+released: 2026-11-19
+archived: 2026-11-27
+retain_until: 2027-11-27
+updated: 2026-11-27
 ---
 
 # v2.4.0 版本记录
 
+本版本文档于 2026-11-27 归档。下列交付表汇总已实施并有验证记录的框架能力；历史计划、命令、草稿状态和“未发布”表述保留当时语义。归档不表示尚缺的专项验收完成，也不新增风险接受。
+
+## 发布与归档复核（2026-11-27）
+
+- [GitHub Release v2.4.0](https://github.com/Yggdrasil-Labs/mimir-boot/releases/tag/v2.4.0) 于 2026-11-19 发布，非草稿、非预发布；发布提交为 `3e33c438b706b8db79c3850cfe8433c472adaef9`。
+- [发布运行 44542857319](https://github.com/Yggdrasil-Labs/mimir-boot/actions/runs/44542857319) 为 success：共享完整质量门禁、隔离消费者、GitHub Packages、Maven Central 上传、公开制品检查和 GitHub Release 创建均成功。公开制品检查不替代业务消费者验收。
+- 本轮只读复核 `gh release view v2.4.0`、发布工作流运行及步骤结果；未重新运行 Java、下载制品或核实历史 Sonar Quality Gate。
+- JDK 25 矩阵与仅 BOM 的处理器 release 21 目标由 [TD-048](../../active/tech-debt-tracker.md#td-048-jdk-高版本构建回归) 继续跟踪；Log 业务消费者/MVC 执行器、MyBatis 新预设联调、吞吐/P95/P99 与真实 MySQL/PostgreSQL 方言验证由 [TD-052](../../active/tech-debt-tracker.md#td-052-v240-专项验收缺口) 继续跟踪。原有未闭环记录保留，未将其标为通过或豁免。
+- 当前没有 `docs/generated/`，无需生成文档刷新；版本归档入口见 [index.md](./index.md)。
+
+## 版本摘要
+
+v2.4.0 已发布 Parent/BOM 构建与依赖契约、公共模型、日志预设及 JSON 治理、Web/Exception 联合响应、MyBatis 慢 SQL 与分页、处理器源版本适配、RPC 废弃迁移及代码质量工具链。下表区分已完成交付与“已实施，专项待验证”；未执行专项继续由活跃台账跟踪，不因正式发布或文档归档改写为 completed。
+
+## 需求交付
+
+| 需求 | 路径 | 状态 | 简述 |
+|---|---|---|---|
+| parent-build | docs/archive/v2.4.0/parent-build/ | 已实施，专项待验证 | Parent 构建契约实施；验证范围及未覆盖项见下文 |
+| bom-dependencies | docs/archive/v2.4.0/bom-dependencies/ | 已实施，专项待验证 | BOM 依赖管理实施；验证范围及未覆盖项见下文 |
+| common-contracts | docs/archive/v2.4.0/common-contracts/ | completed | Common 公共模型实施；验证范围及未覆盖项见下文 |
+| log-runtime | docs/archive/v2.4.0/log-runtime/ | 已实施，专项待验证 | Log 预设与 MDC 实施；验证范围及未覆盖项见下文 |
+| exception-contracts | docs/archive/v2.4.0/exception-contracts/ | completed | Exception 异常契约实施；验证范围及未覆盖项见下文 |
+| web-binding | docs/archive/v2.4.0/web-binding/ | completed | Web 绑定与响应实施；验证范围及未覆盖项见下文 |
+| mybatis-capabilities | docs/archive/v2.4.0/mybatis-capabilities/ | 已实施，专项待验证 | MyBatis 慢 SQL 与分页实施；验证范围及未覆盖项见下文 |
+| mybatis-processor | docs/archive/v2.4.0/mybatis-processor/ | 已实施，专项待验证 | 处理器源版本适配实施；验证范围及未覆盖项见下文 |
+| rpc-deprecation | docs/archive/v2.4.0/rpc-deprecation/ | completed | RPC 旧 API 废弃标记实施；验证范围及未覆盖项见下文 |
+| code-quality-toolchain | docs/archive/v2.4.0/code-quality-toolchain/ | completed | 代码质量工具链实施；验证范围及未覆盖项见下文 |
+| log-governance | docs/archive/v2.4.0/log-governance/ | completed | JSON 日志治理实施；验证范围及未覆盖项见下文 |
+
+## 独立交付
+
+| 日期 | 类型 | 描述 | Commit | 状态 |
+|---|---|---|---|---|
+| none | none | none | none | none |
+
+## 风险接受
+
+本轮不登记新的风险接受。专项验证缺口继续作为活跃事项保留，归档不构成风险豁免。
+
+| 交付项 | 状态 | Accepted By | Accepted At | 遗留风险 |
+|---|---|---|---|---|
+| none | none | none | none | none |
+
+## 最终验证摘要
+
+下表引用下方历史实施记录，本轮未重跑这些命令。仍缺验证的交付逐项列明遗留风险并保持专项待验证；风险接受为“无”表示未登记接受或豁免，不能据此声称专项通过。
+
+| 交付项 | 状态 | 验证命令及结果 | 遗留风险 | 风险接受 |
+|---|---|---|---|---|
+| parent-build | 已实施，专项待验证 | 2026-11-01 JDK 17/21 有效模型与隔离消费者 PB-01～PB-08、`quality --mode full --source worktree` 通过 | JDK 25 矩阵未验证，见 TD-048 | 无 |
+| bom-dependencies | 已实施，专项待验证 | 2026-11-01 JDK 17/21 Parent 与仅 BOM 消费者完成 xlsx、Lombok/MapStruct 和 COLA 运行验证，发布 POM 哈希一致 | JDK 25 消费者矩阵未验证，见 TD-048 | 无 |
+| common-contracts | completed | 2026-11-01 Common 模块测试及 v2.3.0 旧消费者二进制兼容验证通过；JSON 与 HTTP 联合验证见 Exception/Web 记录 | 无 | 无 |
+| log-runtime | 已实施，专项待验证 | 2026-11-03 Log `clean verify`：268 单元、22 集成通过；2026-11-10 T9 与 W-T5 完整质量门禁通过 | 真实业务消费者启动与 MVC 默认执行器专项未验证，见 TD-052 | 无 |
+| exception-contracts | completed | 2026-11-05 Web 及依赖模块 `verify`：Exception 94 单元、50 集成通过，联合 Web 验收完成 | 无 | 无 |
+| web-binding | completed | 2026-11-05 Web 123 单元、73 集成通过；2026-11-10 requestId、multipart 与联合完整质量门禁通过 | 无 | 无 |
+| mybatis-capabilities | 已实施，专项待验证 | 提交 `12f45ee` 完整质量门禁中 SlowSqlMapperIT 15、JSON 组合 2、边界 2、COLA 类路径 1、分页转换 5 项通过；真实数据库与性能专项继续跟踪 | 新预设联调、吞吐/P95/P99 与真实 MySQL/PostgreSQL 专项未验收，见 TD-052 | 无 |
+| mybatis-processor | 已实施，专项待验证 | 2026-11-01 JDK 17/21 模块及消费者验证通过；Parent 消费者 release 21 编译通过，仅 BOM release 21 与 JDK 25 专项继续跟踪 | JDK 25 与仅 BOM release 21 目标未验证，见 TD-048 | 无 |
+| rpc-deprecation | completed | 2026-11-01～02 rpc-core 测试、默认 removal 告警与 `-Werror` 正反例、迁移示例及 v2.3.0 二进制兼容验证通过 | 无 | 无 |
+| code-quality-toolchain | completed | 2026-11-06 `quality --mode full --source worktree`：1504 单元、191 集成及架构/覆盖率/PMD/CPD/消费者/签名验证通过 | 无 | 无 |
+| log-governance | completed | 2026-11-16 Log `clean verify`：367 单元、34 集成通过；完整质量门禁、隔离 JVM 场景和三轮性能基准见历史记录 | 无 | 无 |
+
+## 遗留债务
+
+TD-013、TD-016、TD-023、TD-047、TD-048、TD-051 继续保持原状态；新增 TD-052 承接本版本已记录但缺少结果的 Log/MyBatis 专项验收。全部由[活跃台账](../../active/tech-debt-tracker.md)维护，归档不自动关闭。
+
 ## 当前交付状态
+
+> 以下为实施期历史状态，发布与归档终态见上方复核；未闭环专项仍由活跃台账跟踪。
 
 十项需求主体均已实施，专项验收及发布收尾仍在进行；2026-11-06 纳入的 Log L-04 已于 2026-11-15 实施并完成模块验收与性能基准，完整质量验收见下方记录；2026-11-08 按 D-114～D-117 追加小范围事项（D-115 的 MyBatis 两项后由 D-119、D-120 撤出），Web 与 Log 部分已于 2026-11-09 实施并提交，2026-11-10 补齐专项验收、关闭 TD-049 与 TD-050，完整质量门禁通过；同日修复 Exception 请求绑定异常映射。详细依据见下方实施记录及各需求文档。
 
@@ -31,7 +101,7 @@ updated: 2026-11-16
 
 2026-11-06 对提交 `12f45ee` 执行 `bash scripts/engineering.sh quality --mode full --source commit --commit 12f45ee`：16 个 Reactor POM 的默认及发布签名模型、发布契约、隔离消费者、52 个制品及附件的临时签名、覆盖率、PMD 和 CPD 均通过；单元测试 1,504、集成测试 191，失败、错误和跳过均为 0。Sonar 未启用。验证使用临时文件仓库，不代表远端 CI、正式发布或发布后的消费者验证。
 
-尚未闭环：Parent、BOM、Processor 的 JDK 25 矩阵及仅 BOM 的 Processor release 21 目标；Log 的 D-101 后真实业务消费者启动和 MVC 默认执行器专项；MyBatis 真实 SQL 到 Log 新预设的联调记录、慢 SQL 吞吐及 P95/P99 基准，以及真实 MySQL/PostgreSQL 方言验收。H2 不能替代真实数据库验收。D-101 已撤销旧所有权机制，转换热路径未改，性能基准无需因该修订重测。既有后续技术债见[台账](../tech-debt-tracker.md)。
+尚未闭环：Parent、BOM、Processor 的 JDK 25 矩阵及仅 BOM 的 Processor release 21 目标；Log 的 D-101 后真实业务消费者启动和 MVC 默认执行器专项；MyBatis 真实 SQL 到 Log 新预设的联调记录、慢 SQL 吞吐及 P95/P99 基准，以及真实 MySQL/PostgreSQL 方言验收。H2 不能替代真实数据库验收。D-101 已撤销旧所有权机制，转换热路径未改，性能基准无需因该修订重测。既有后续技术债见[台账](../../active/tech-debt-tracker.md)。
 
 ### L-04 JSON 日志治理本地实施（2026-11-15）
 
@@ -249,7 +319,7 @@ Exception 的统一 ResponseEntity 封装与 Web 的既有 traceId 增强兼容�
 
 Nacos、Feign、Dubbo 保持现状，Test Starter 按代码质量工具链方案扩展。无总数分页、多字段排序、拦截器排序等不纳入（W-03 请求标识回传原不纳入，2026-11-08 由 D-114 纳入）；完整依据见[范围排除记录](./brainstorm.md#暂缓撤销与未采纳)。可选 JSON 日志现按 [L-04](./log-governance/brainstorm.md) 单独实施，本地验收与基准结果见上方 L-04 记录。框架基线升级、安全补丁专项覆盖、对接HTTP Service Client和真实Dubbo Consumer E2E均未扩入。Parent 实施按 D-97 调整既有构建模型检查 `tools/engineering/src/quality/verify-build-model.mjs` 及 `tools/engineering/README.md` 用途说明、根 POM 注释与发布规程说明，准入理由见 [Parent 设计](./parent-build/design.md#pb-05可选-gpg-与框架自身发布)；不新增工具脚本。代码质量工具链扩展既有构建模型检查、质量报告与发布消费者契约，准入理由见[代码质量设计](./code-quality-toolchain/design.md#质量门禁与发布契约工具cq-05cq-09)，同样不新增脚本；它把 Parent 的 Flatten `properties` 由 `keep` 改为 `extended_interpolate`，须复核 Parent 需求的发布验证。
 
-TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../tech-debt-tracker.md)。
+TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺少持续构建回归已登记为 TD-048，本轮不改 CI。技术债状态不因设计文档齐备自动关闭，详见[台账](../../active/tech-debt-tracker.md)。
 
 ## 交付与验证边界
 
@@ -263,7 +333,7 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **源码与有效模型**：JDK 17/21 下默认、四模式及组合的有效 POM 符合设计矩阵；`build-model` 旧断言在 Parent 发布场景按 D-97 预期失败，新断言 15 个 Reactor POM 全部通过。
 - **发布前隔离消费者**：仓库外临时工作根内，以文件仓库部署的 Flatten Parent 驱动独立消费者（`relativePath` 为空，解析 POM 哈希与发布件一致），在 JDK 17/21 覆盖 PB-01～PB-08 正常、组合与负向场景；生产者签名/不签名、`-Pci`、JDK 21 及 Maven 3.9.16 生成的 Parent 内容一致。测试密钥签名下每构件一个签名。
 - **回归**：JDK 17 下 `quality --mode full --source worktree` 全部通过。
-- **未覆盖**：本机无 JDK 25；JDK 21 下本仓库四个 Starter 测试的既有附加失败已补记 [TD-048](../tech-debt-tracker.md#td-048-jdk-高版本构建回归)；真实私服、Central 通道与公开仓库消费者未验证，未发布。
+- **未覆盖**：本机无 JDK 25；JDK 21 下本仓库四个 Starter 测试的既有附加失败已补记 [TD-048](../../active/tech-debt-tracker.md#td-048-jdk-高版本构建回归)；真实私服、Central 通道与公开仓库消费者未验证，未发布。
 
 ### BOM、Processor、Common 实施（2026-11-01，分支 `feat/v2.4.0-parent-build`）
 
@@ -322,7 +392,7 @@ TD-013/TD-023只明确删除周期，TD-047继续待规划；JDK 21 及以上缺
 - **默认构建**：Common 与 Log 的七模块依赖链在临时副本中默认 `clean install` 通过（588 单元、22 集成），无 PMD/CPD 报告及违规行；最终全仓严格路径由上述 full 覆盖。
 - **插件仓库与仅 BOM 补验**：无镜像、fresh 消费者缓存、只开放临时文件仓库的条件下，仅 `repositories` 的 Parent 消费者失败并指出规则插件坐标；仅增加 `pluginRepositories` 后同命令通过。仅导 BOM 的消费者按规则模块 README 声明官方插件与带版本规则依赖，默认严格模式准确阻断一条 `CommentRequired`；仅删除规则依赖版本后，即使制品已缓存，仍在模型阶段报版本缺失。
 - **性能**：最终 Java 基础构建 156.25 秒，对比本机实施前 137.57 秒单轮基线，约增加 13.6%，低于计划 20% 边界；这是本地构建耗时对照，不是运行时性能或 CI 耗时承诺。
-- **兼容例外**：为保留既有公开构造器与返回类型，Exception、Web、Nacos、Dubbo、Feign 的架构测试仅忽略 9 个明确类型对，见 [TD-051](../tech-debt-tracker.md#td-051-既有公开类型包循环)。身份比较、敏感异常信息及既有 null 语义采用有说明的成员级精准抑制，其余规则照常执行。
+- **兼容例外**：为保留既有公开构造器与返回类型，Exception、Web、Nacos、Dubbo、Feign 的架构测试仅忽略 9 个明确类型对，见 [TD-051](../../active/tech-debt-tracker.md#td-051-既有公开类型包循环)。身份比较、敏感异常信息及既有 null 语义采用有说明的成员级精准抑制，其余规则照常执行。
 - **已有诊断与边界**：构建仍出现第三方 JSqlParser 大方法的 JaCoCo 插桩诊断，与实施前基线一致，测试和本仓库覆盖率核验均通过；未修改 JaCoCo 配置。真实 Nacos 服务测试仍按原 POM 排除。以上是本地与临时文件仓库验收，未验证远端 CI、生产或正式发布后的消费者，未发布。
 
 | 模块 | 实施前 PMD | 实施后 PMD/CPD |

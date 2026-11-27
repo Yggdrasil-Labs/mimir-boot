@@ -27,7 +27,7 @@ updated: 2026-10-31
 
 - [RpcTracerBridge](../../../../mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/tracing/RpcTracerBridge.java)：旧入口标记 `since = "2.2.1", forRemoval = false`；`extractScope()` 默认实现继续适配旧 extract。
 - [RpcHookChain](../../../../mimir-boot-starters/mimir-boot-starter-rpc-core/src/main/java/com/yggdrasil/labs/rpc/core/hook/RpcHookChain.java)：四个直调入口仍保留，新入口已按调用创建生命周期对象。
-- [技术债台账](../../tech-debt-tracker.md)：TD-013、TD-023 的上下文与保留原因。
+- [技术债台账](../../../active/tech-debt-tracker.md)：TD-013、TD-023 的上下文与保留原因。
 
 版本级 brainstorm 已记录三个内部业务项目的静态使用情况；本轮不把该历史样本当作全部消费者清单。
 

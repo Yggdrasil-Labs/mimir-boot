@@ -1,5 +1,5 @@
 ---
-updated: 2026-10-23
+updated: 2026-11-27
 ---
 
 # 版本归档索引
@@ -13,6 +13,7 @@ updated: 2026-10-23
 
 | 版本 | 归档日期 | 保留至 | 前序版本 | 包含需求 (slug) | 路径 |
 |------|----------|--------|----------|----------------|------|
+| v2.4.0 | 2026-11-27 | 2027-11-27 | v2.3.0 | bom-dependencies, code-quality-toolchain, common-contracts, exception-contracts, log-governance, log-runtime, mybatis-capabilities, mybatis-processor, parent-build, rpc-deprecation, web-binding | [`v2.4.0/`](./v2.4.0/index.md) |
 | v2.3.0 | 2026-10-23 | 2027-10-23 | v2.2.1 | docs-quality-governance, log-json-masking, mongodb-driver-alignment, springdoc-boot-alignment, runtime-debt-followup | [`v2.3.0/`](./v2.3.0/index.md) |
 | v2.2.1 | 2026-09-20 | 2027-09-20 | v2.2.0 | technical-debt-remediation, foundation-quality-hardening | [`v2.2.1/`](./v2.2.1/) |
 | v2.2.0 | 2026-08-16 | 2027-08-16 | v2.1.1 | project-governance | [`v2.2.0/`](./v2.2.0/) |

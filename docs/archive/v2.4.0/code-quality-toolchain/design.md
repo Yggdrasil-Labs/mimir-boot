@@ -369,7 +369,7 @@ COLA 访问约束：
 | starter-feign | `rpc.feign` | `common`、`rpc.core` | — | T5 |
 
 - 每个模块同时检查 `noCycles(自身包)`。
-- 为保持既有公开接口，五个模块保留九个精确类型对例外，范围及复查条件见 [TD-051](../../tech-debt-tracker.md#td-051-既有公开类型包循环)；不忽略整个包或模块。
+- 为保持既有公开接口，五个模块保留九个精确类型对例外，范围及复查条件见 [TD-051](../../../active/tech-debt-tracker.md#td-051-既有公开类型包循环)；不忽略整个包或模块。
 - Common 不能依赖 starter-test，否则会形成 reactor 循环，所以直接以 test 范围使用 ArchUnit。
 - ArchUnit 在 starter-test 中是 optional，不会传递给依赖 starter-test 的模块，因此除 starter-test 外的 10 个模块都要在自身 POM 中以 test 范围声明 `archunit`。
 - 允许关系来自 [ARCHITECTURE.md](../../../../ARCHITECTURE.md)；新增允许关系须先修改架构文档。
