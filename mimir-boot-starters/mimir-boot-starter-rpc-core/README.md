@@ -92,17 +92,20 @@ public class MicrometerTracerBridge implements RpcTracerBridge {
 
 **同步调用**：每次调用独立 `open`，在创建线程中结束。`completeFailure` 的 `primaryError` 必须是 catch 到、并用于构造 `RpcCallResult.failure` 的同一个非 null 异常；Hook 的 onError/cleanup 异常会附加为它的 suppressed，完成后由调用方重抛。没有业务异常时不要传 null，改用 `close()`。
 
+调用耗时使用 `System.nanoTime()` 的差值，避免系统时间调整影响结果；`RpcCallContext.startTime` 继续记录调用开始的日历时间。
+
 ```java
-Instant start = Instant.now();
+long startNanos = System.nanoTime();
 RpcHookInvocation invocation = hookChain.open(context);
 try {
     invocation.before();
     T value = remoteCall.get();
-    invocation.completeSuccess(RpcCallResult.success(Duration.between(start, Instant.now())));
+    invocation.completeSuccess(
+            RpcCallResult.success(Duration.ofNanos(System.nanoTime() - startNanos)));
     return value;
 } catch (RuntimeException error) {
     invocation.completeFailure(
-            RpcCallResult.failure(Duration.between(start, Instant.now()), error), error);
+            RpcCallResult.failure(Duration.ofNanos(System.nanoTime() - startNanos), error), error);
     throw error;
 } finally {
     invocation.close();
@@ -112,7 +115,7 @@ try {
 **异步调用**：`openAsync` 返回的 `RpcAsyncHookInvocation` 不是 `AutoCloseable`，不要使用 try-with-resources，也不要在返回异步结果时提前清理；终态交给完成回调，重复终态不会重复清理。回调注册失败时，用实际异常调用 `completeFailure`（或无异常时 `completeWithoutResult()`）。
 
 ```java
-Instant start = Instant.now();
+long startNanos = System.nanoTime();
 RpcAsyncHookInvocation invocation = hookChain.openAsync(context);
 CompletableFuture<T> future;
 try {
@@ -120,12 +123,12 @@ try {
     future = remoteCall.get();
 } catch (RuntimeException error) {
     invocation.completeFailure(
-            RpcCallResult.failure(Duration.between(start, Instant.now()), error), error);
+            RpcCallResult.failure(Duration.ofNanos(System.nanoTime() - startNanos), error), error);
     throw error;
 }
 try {
     return future.whenComplete((value, error) -> {
-        Duration duration = Duration.between(start, Instant.now());
+        Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
         if (error == null) {
             invocation.completeSuccess(RpcCallResult.success(duration));
         } else {
@@ -134,7 +137,8 @@ try {
     });
 } catch (RuntimeException registrationFailure) {
     invocation.completeFailure(
-            RpcCallResult.failure(Duration.between(start, Instant.now()), registrationFailure),
+            RpcCallResult.failure(
+                    Duration.ofNanos(System.nanoTime() - startNanos), registrationFailure),
             registrationFailure);
     throw registrationFailure;
 }

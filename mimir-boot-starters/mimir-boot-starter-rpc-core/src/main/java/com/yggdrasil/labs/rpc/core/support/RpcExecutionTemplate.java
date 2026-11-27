@@ -1,7 +1,6 @@
 package com.yggdrasil.labs.rpc.core.support;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -58,14 +57,14 @@ public class RpcExecutionTemplate {
                     context.getMetadata().getMethod(),
                     contextPropagationEnabled);
         }
-        Instant start = Instant.now();
+        long startNanos = System.nanoTime();
         try (RpcHookInvocation invocation = hookChain.open(context)) {
             // 在资源关闭前完成失败回调，保留 onError 先于 cleanup 的生命周期顺序。
             try {
                 invocation.before();
                 injectContext(context);
                 T result = callable.call();
-                Duration duration = Duration.between(start, Instant.now());
+                Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug(
                             "RPC call succeeded: service={}, method={}, duration={}ms",
@@ -76,7 +75,7 @@ public class RpcExecutionTemplate {
                 invocation.completeSuccess(RpcCallResult.success(duration));
                 return result;
             } catch (Throwable throwable) {
-                Duration duration = Duration.between(start, Instant.now());
+                Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug(
                             "RPC call failed: service={}, method={}, duration={}ms, error={}",

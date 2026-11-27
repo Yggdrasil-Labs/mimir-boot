@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.apache.dubbo.common.URL;
@@ -36,8 +39,11 @@ import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcInvocation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.MockedStatic;
 import org.slf4j.MDC;
 
 import com.yggdrasil.labs.rpc.core.context.RpcCallContext;
@@ -63,6 +69,121 @@ class RpcDubboFilterTest {
         properties.setEnabled(true);
         properties.setContextPropagationEnabled(true);
         RpcDubboSupportHolder.set(hookChain, tracerBridge, properties);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "-3600, success",
+        "3600, success",
+        "-3600, thrownFailure",
+        "3600, thrownFailure",
+        "-3600, resultFailure",
+        "3600, resultFailure"
+    })
+    void shouldMeasureSynchronousElapsedTimeIndependentlyOfWallClock(
+            long clockShiftSeconds, String outcome) {
+        Instant startTime = Instant.parse("2026-01-01T00:00:00Z");
+        Instant shiftedTime = startTime.plusSeconds(clockShiftSeconds);
+        AtomicReference<Instant> wallClock = new AtomicReference<>(startTime);
+        RpcInvocation invocation = new RpcInvocation();
+        invocation.setMethodName("clockShift");
+        Invoker<?> invoker = mockInvoker();
+        RuntimeException primary = new RuntimeException("business failure");
+        AppResponse response =
+                "resultFailure".equals(outcome) ? new AppResponse(primary) : new AppResponse("ok");
+        when(invoker.invoke(invocation))
+                .thenAnswer(
+                        ignored -> {
+                            wallClock.set(shiftedTime);
+                            if ("thrownFailure".equals(outcome)) {
+                                throw primary;
+                            }
+                            return response;
+                        });
+
+        try (MockedStatic<Instant> instant = mockStatic(Instant.class, CALLS_REAL_METHODS)) {
+            instant.when(Instant::now).thenAnswer(ignored -> wallClock.get());
+            long before = System.nanoTime();
+            if ("thrownFailure".equals(outcome)) {
+                assertSame(
+                        primary,
+                        assertThrows(
+                                RuntimeException.class, () -> filter.invoke(invoker, invocation)));
+            } else {
+                assertSame(response, filter.invoke(invoker, invocation));
+            }
+            Duration enclosingDuration = Duration.ofNanos(System.nanoTime() - before);
+
+            assertElapsedWithinInvocation(
+                    captureTerminalResult("success".equals(outcome), primary), enclosingDuration);
+        }
+        assertContextStartTime(startTime);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "-3600, success",
+        "3600, success",
+        "-3600, exceptionalCompletion",
+        "3600, exceptionalCompletion",
+        "-3600, resultFailure",
+        "3600, resultFailure"
+    })
+    void shouldMeasureAsyncElapsedTimeIndependentlyOfWallClock(
+            long clockShiftSeconds, String outcome) throws Exception {
+        Instant startTime = Instant.parse("2026-01-01T00:00:00Z");
+        Instant shiftedTime = startTime.plusSeconds(clockShiftSeconds);
+        AtomicReference<Instant> wallClock = new AtomicReference<>(startTime);
+        RpcContext.RestoreContext previousRpcContext = new RpcContext.RestoreContext();
+        var previousCancellationContext = RpcContext.getCancellationContext();
+        CompletableFuture<?> previousFuture = FutureContext.getContext().getCompletableFuture();
+        try {
+            RpcInvocation invocation = new RpcInvocation();
+            invocation.setMethodName("asyncClockShift");
+            Invoker<?> invoker = mockInvoker();
+            CompletableFuture<AppResponse> responseFuture = new CompletableFuture<>();
+            Result result = new AsyncRpcResult(responseFuture, invocation);
+            RuntimeException primary = new RuntimeException("async business failure");
+            AppResponse response =
+                    "resultFailure".equals(outcome)
+                            ? new AppResponse(primary)
+                            : new AppResponse("ok");
+            when(invoker.invoke(invocation)).thenReturn(result);
+
+            try (MockedStatic<Instant> instant = mockStatic(Instant.class, CALLS_REAL_METHODS)) {
+                instant.when(Instant::now).thenAnswer(ignored -> wallClock.get());
+                long before = System.nanoTime();
+                Result actual = filter.invoke(invoker, invocation);
+
+                assertSame(result, actual);
+                verify(hook, never()).after(any(), any());
+                verify(hook, never()).onError(any(), any());
+                verify(hook, never()).cleanup(any());
+                wallClock.set(shiftedTime);
+                if ("exceptionalCompletion".equals(outcome)) {
+                    responseFuture.completeExceptionally(primary);
+                } else {
+                    responseFuture.complete(response);
+                }
+                Duration enclosingDuration = Duration.ofNanos(System.nanoTime() - before);
+
+                if ("exceptionalCompletion".equals(outcome)) {
+                    assertSame(
+                            primary,
+                            assertThrows(ExecutionException.class, actual::get).getCause());
+                } else {
+                    assertSame(response, actual.get());
+                }
+                assertElapsedWithinInvocation(
+                        captureTerminalResult("success".equals(outcome), primary),
+                        enclosingDuration);
+            }
+            assertContextStartTime(startTime);
+        } finally {
+            previousRpcContext.restore();
+            RpcContext.restoreCancellationContext(previousCancellationContext);
+            FutureContext.getContext().setFuture(previousFuture);
+        }
     }
 
     @Test
@@ -614,6 +735,36 @@ class RpcDubboFilterTest {
 
         assertSame(result, actual);
         verifyNoInteractions(hook, tracerBridge);
+    }
+
+    private static void assertElapsedWithinInvocation(
+            RpcCallResult result, Duration enclosingDuration) {
+        assertFalse(result.getDuration().isNegative(), "墙钟回拨不应使调用耗时为负");
+        assertTrue(result.getDuration().compareTo(enclosingDuration) <= 0, "调用耗时应位于外层单调计时区间内");
+    }
+
+    private RpcCallResult captureTerminalResult(boolean success, Throwable primary) {
+        ArgumentCaptor<RpcCallResult> resultCaptor = ArgumentCaptor.forClass(RpcCallResult.class);
+        InOrder order = inOrder(hook);
+        order.verify(hook).before(any());
+        if (success) {
+            order.verify(hook).after(any(), resultCaptor.capture());
+            verify(hook, never()).onError(any(), any());
+        } else {
+            order.verify(hook).onError(any(), resultCaptor.capture());
+            verify(hook, never()).after(any(), any());
+            assertSame(primary, resultCaptor.getValue().getError().orElseThrow());
+        }
+        order.verify(hook).cleanup(any());
+        assertEquals(success, resultCaptor.getValue().isSuccess());
+        return resultCaptor.getValue();
+    }
+
+    private void assertContextStartTime(Instant startTime) {
+        ArgumentCaptor<RpcCallContext> contextCaptor =
+                ArgumentCaptor.forClass(RpcCallContext.class);
+        verify(hook).before(contextCaptor.capture());
+        assertEquals(startTime, contextCaptor.getValue().getStartTime());
     }
 
     private void assertFailureHooks(Throwable expectedError) {

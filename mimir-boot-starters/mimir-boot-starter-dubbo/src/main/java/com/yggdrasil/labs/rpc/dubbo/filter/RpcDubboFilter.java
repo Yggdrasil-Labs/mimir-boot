@@ -1,7 +1,6 @@
 package com.yggdrasil.labs.rpc.dubbo.filter;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -73,7 +72,7 @@ public class RpcDubboFilter implements Filter {
                     metadata.getTarget());
         }
 
-        Instant start = Instant.now();
+        long startNanos = System.nanoTime();
         RpcTraceScope traceScope = RpcTraceScope.noop();
         Throwable primaryFailure = null;
         boolean providerSide =
@@ -102,7 +101,7 @@ public class RpcDubboFilter implements Filter {
                             result,
                             hookInvocation,
                             metadata,
-                            start,
+                            startNanos,
                             properties,
                             providerSide,
                             tracerBridge,
@@ -111,12 +110,12 @@ public class RpcDubboFilter implements Filter {
                     asyncInvocation = true;
                 } else {
                     primaryFailure = resolveFailure(result, null);
-                    completeCall(hookInvocation, metadata, start, result, null);
+                    completeCall(hookInvocation, metadata, startNanos, result, null);
                 }
                 return result;
             } catch (Throwable throwable) {
                 primaryFailure = throwable;
-                completeCall(hookInvocation, metadata, start, null, throwable);
+                completeCall(hookInvocation, metadata, startNanos, null, throwable);
                 throw propagate(throwable);
             } finally {
                 if (!asyncInvocation) {
@@ -166,7 +165,7 @@ public class RpcDubboFilter implements Filter {
             Result result,
             RpcAsyncHookInvocation hookInvocation,
             RpcCallMetadata metadata,
-            Instant start,
+            long startNanos,
             DubboProperties properties,
             boolean providerSide,
             RpcTracerBridge tracerBridge,
@@ -180,7 +179,8 @@ public class RpcDubboFilter implements Filter {
                             completionScope =
                                     extractCompletionScope(tracerBridge, context, attachments);
                         }
-                        completeCall(hookInvocation, metadata, start, completedResult, throwable);
+                        completeCall(
+                                hookInvocation, metadata, startNanos, completedResult, throwable);
                     } finally {
                         closeScope(completionScope, resolveFailure(completedResult, throwable));
                         hookInvocation.completeWithoutResult();
@@ -191,10 +191,10 @@ public class RpcDubboFilter implements Filter {
     private void completeCall(
             RpcAsyncHookInvocation hookInvocation,
             RpcCallMetadata metadata,
-            Instant start,
+            long startNanos,
             Result result,
             Throwable throwable) {
-        Duration duration = Duration.between(start, Instant.now());
+        Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
         Throwable error =
                 throwable != null
                         ? throwable
