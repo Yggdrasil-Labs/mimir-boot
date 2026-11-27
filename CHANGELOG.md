@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.4.1](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.4.0...v2.4.1) (2026-11-27)
+
+
+### 🐛 Bug Fixes
+
+* **rpc:** 使用单调时钟计算调用耗时 ([b671d5a](https://github.com/Yggdrasil-Labs/mimir-boot/commit/b671d5adb240532ab0c81cec9b68c5c7fcdc64c9))
+* **test:** 消除时间相关测试的偶发失败 ([e101bff](https://github.com/Yggdrasil-Labs/mimir-boot/commit/e101bffc24bbaa5a0ca5c5b638ac86c47f4d11fe))
+* **tooling:** 使用单调时钟控制进程退出等待 ([dd1b061](https://github.com/Yggdrasil-Labs/mimir-boot/commit/dd1b0614c7be00928ea68573e6bafd8b39769b7e))
+* 消除时间相关测试偶发失败并修正耗时计量 ([#355](https://github.com/Yggdrasil-Labs/mimir-boot/issues/355)) ([0c554b4](https://github.com/Yggdrasil-Labs/mimir-boot/commit/0c554b4aaa2dd52fb01128868ae8620349526889))
+
+
+### 🔧 Miscellaneous Chores
+
+* bump version to 2.4.1-SNAPSHOT for next development cycle ([c7457e1](https://github.com/Yggdrasil-Labs/mimir-boot/commit/c7457e1c1cd13a73945514bd2287b70311fabc92))
+
 ## [2.4.0](https://github.com/Yggdrasil-Labs/mimir-boot/compare/v2.3.0...v2.4.0) (2026-11-19)
 
 
